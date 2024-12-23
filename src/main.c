@@ -18,6 +18,7 @@
 #include "de_vertices.h"
 #include "de_string.h"
 #include "de_util.h"
+#include "de_network.h"
 #include "de_main.h"
 #include "de_tests.c"
 #include "de_sprite.c"

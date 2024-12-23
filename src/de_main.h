@@ -4,14 +4,6 @@
 #define TICK_RATE 32
 #define TIME_STEP (1.f / (float)TICK_RATE)
 
-#define NET_DEFAULT_SEVER_PORT 21037
-#define NET_MAGIC_VALUE 0xfda0'dead'beef'1234llu
-#define NET_MAX_TICK_HISTORY (TICK_RATE)
-#define NET_MAX_NETWORK_OBJECTS 16
-#define NET_MAX_MSG_SIZE 32768
-#define NET_OLD_PROTOCOL 0
-#define NET_SIMULATE_PACKETLOSS 0 // doesn't seem to work on localhost
-
 typedef struct
 {
     SDL_Texture *tex;
@@ -54,8 +46,8 @@ typedef struct
 typedef enum
 {
     Tick_Cmd_None,
+    Tick_Cmd_Ping,
     Tick_Cmd_Input,
-    Tick_Cmd_NetworkObj,
     Tick_Cmd_ObjHistory,
 } Tick_CommandKind;
 
@@ -70,6 +62,11 @@ typedef struct
     V2 move_dir;
     // action buttons etc will be added here
 } Tick_Input;
+
+typedef struct
+{
+    Uint64 number;
+} Tick_Ping;
 
 typedef struct
 {
@@ -160,8 +157,13 @@ typedef struct
         bool send_err; // set on internal buffer overflow errors etc
         Uint8 payload_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network payload construction
         Uint32 payload_buf_used;
-        Uint8 packet_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network packet construction
-        S8 packet_slices[16]; // support 16 parts max
+
+        Net_PacketChain sender_chain;
+        //Uint8 packet_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network packet construction
+        //S8 packets[NET_MAX_PACKET_CHAIN_LENGTH]; // support 16 parts max
+        //Uint32 packet_count;
+
+        Net_PacketChain receiver_chain[8]; // is trying to 8 udp packet chains at a time; idk if thats too much? too little?
     } net;
 
     // debug

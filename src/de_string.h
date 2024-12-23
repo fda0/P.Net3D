@@ -84,6 +84,18 @@ static S8 S8_Suffix(S8 str, Uint64 size)
     return str;
 }
 
+static S8 S8_PrefixConsume(S8 *str, Uint64 size)
+{
+    S8 res = *str;
+    size = (size > res.size ? res.size : size);
+    res.size = size;
+
+    str->str += size;
+    str->size -= size;
+
+    return res;
+}
+
 //
 // ByteIs
 //
