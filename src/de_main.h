@@ -1,7 +1,7 @@
 // ---
 // Constants
 // ---
-#define TICK_RATE 32
+#define TICK_RATE 120
 #define TIME_STEP (1.f / (float)TICK_RATE)
 
 typedef struct
@@ -49,6 +49,7 @@ typedef enum
     Tick_Cmd_Ping,
     Tick_Cmd_Input,
     Tick_Cmd_ObjHistory,
+    Tick_Cmd_NetworkTest,
 } Tick_CommandKind;
 
 typedef struct
@@ -83,6 +84,11 @@ typedef struct
 {
     Tick_NetworkObjState states[NET_MAX_TICK_HISTORY];
 } Tick_NetworkObjHistory;
+
+typedef struct
+{
+    Uint32 numbers[1024 * 32];
+} Tick_NetworkTest;
 
 typedef struct
 {

@@ -221,45 +221,65 @@ static void Net_IterateSend(AppState *app)
         last_timestamp = app->frame_time;
     }
 
-    if (is_server)
-    {
-        Tick_Command cmd = {};
-        cmd.tick_id = app->tick_id;
-        cmd.kind = Tick_Cmd_ObjHistory;
-        Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
-
-        Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
-
-        // copy range (next..ArrayCount)
-        {
-            Uint64 start = state_index;
-            Uint64 states_to_copy = ArrayCount(app->netobj.states) - start;
-            Net_PayloadMemcpy(app, app->netobj.states + start, states_to_copy*sizeof(Tick_NetworkObjState));
-        }
-
-        if (state_index > 0) // copy range [0..next)
-        {
-            Uint64 states_to_copy = state_index;
-            Net_PayloadMemcpy(app, app->netobj.states, states_to_copy*sizeof(Tick_NetworkObjState));
-        }
-    }
-
+    // send network test
     if (is_client)
     {
         Tick_Command cmd = {};
         cmd.tick_id = app->tick_id;
-        cmd.kind = Tick_Cmd_Ping;
+        cmd.kind = Tick_Cmd_NetworkTest;
         Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
-        Tick_Ping ping = {0};
-        Net_PayloadMemcpy(app, &ping, sizeof(ping));
+        Tick_NetworkTest test;
+        ForArray(i, test.numbers)
+            test.numbers[i] = i + 1;
+
+        Net_PayloadMemcpy(app, &test, sizeof(test));
+        Net_SendPayloadAndFlush(app);
     }
 
-    Net_SendPayloadAndFlush(app);
+    if (0)
+    {
+        if (is_server)
+        {
+            Tick_Command cmd = {};
+            cmd.tick_id = app->tick_id;
+            cmd.kind = Tick_Cmd_ObjHistory;
+            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+
+            Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
+
+            // copy range (next..ArrayCount)
+            {
+                Uint64 start = state_index;
+                Uint64 states_to_copy = ArrayCount(app->netobj.states) - start;
+                Net_PayloadMemcpy(app, app->netobj.states + start, states_to_copy*sizeof(Tick_NetworkObjState));
+            }
+
+            if (state_index > 0) // copy range [0..next)
+            {
+                Uint64 states_to_copy = state_index;
+                Net_PayloadMemcpy(app, app->netobj.states, states_to_copy*sizeof(Tick_NetworkObjState));
+            }
+        }
+
+        if (is_client)
+        {
+            Tick_Command cmd = {};
+            cmd.tick_id = app->tick_id;
+            cmd.kind = Tick_Cmd_Ping;
+            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+
+            Tick_Ping ping = {0};
+            Net_PayloadMemcpy(app, &ping, sizeof(ping));
+        }
+
+        Net_SendPayloadAndFlush(app);
+    }
 }
 
-static void Net_ProcessReceivedMessage(AppState *app, S8 msg)
+static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
 {
+    S8 msg = full_message;
     while (msg.size)
     {
         Tick_Command cmd;
@@ -334,6 +354,19 @@ static void Net_ProcessReceivedMessage(AppState *app, S8 msg)
                              app->netobj.states, ArrayCount(app->netobj.states),
                              &fill_index,
                              history.states, ArrayCount(history.states));
+        }
+        else if (cmd.kind == Tick_Cmd_NetworkTest)
+        {
+            Tick_NetworkTest test;
+            Net_ConsumeS8(&msg, &test, sizeof(test));
+
+            ForArray(i, test.numbers)
+            {
+                Uint32 loaded = test.numbers[i];
+                Uint32 expected = i + 1;
+                bool compare = loaded == expected;
+                Assert(compare);
+            }
         }
         else
         {
@@ -427,11 +460,7 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
     {
         chain->packet_count = header.packet_count;
         chain->tick_id = header.tick_id;
-
-        ForArray(i, chain->packet_sizes)
-        {
-            chain->packet_sizes[i] = 0;
-        }
+        SDL_zerop(chain->packet_sizes);
     }
 
     if (chain->packet_count == header.tick_id)
