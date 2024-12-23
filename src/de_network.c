@@ -30,17 +30,9 @@ static Uint8 *Net_PayloadMemcpy(AppState *app, void *data, Uint32 size)
 
 static void Net_PayloadToPackets(AppState *app)
 {
-    // @todo(mg) we can apply compression in this function
+    // @todo(mg) add compression here
 
-    // init
-    Net_PacketChain *chain = &app->net.sender_chain;
-
-    ForArray(i, chain->packet_sizes)
-    {
-        chain->packet_sizes[i] = 0;
-    }
-    chain->packet_count = 0;
-
+    SDL_zerop(app->net.sender_packet_slices);
     bool packet_overflow = false;
 
     // calculate packet_count with ceil-rounding
@@ -52,26 +44,23 @@ static void Net_PayloadToPackets(AppState *app)
         packet_overflow = true;
     }
 
-
+    Uint32 packet_index = 0;
     if (!packet_overflow)
     {
         S8 payload = S8_Make(app->net.payload_buf, app->net.payload_buf_used);
 
-        Uint64 payload_hash = 0;
         while (payload.size)
         {
             // select index, bound check, advance count
-            Uint32 packet_index = chain->packet_count;
-            if (packet_index >= ArrayCount(chain->packet_sizes))
+            if (packet_index >= ArrayCount(app->net.sender_packet_slices))
             {
                 packet_overflow = true;
                 break;
             }
-            chain->packet_count += 1;
 
             // get payload, calc hash
             S8 payload_chunk = S8_PrefixConsume(&payload, NET_MAX_PACKET_PAYLOAD_SIZE);
-            payload_hash = S8_Hash(0, payload_chunk);
+            Uint32 payload_hash = S8_Hash(0, payload_chunk);
 
             // header calc
             Net_PacketHeader header = {0};
@@ -81,22 +70,32 @@ static void Net_PayloadToPackets(AppState *app)
             header.packet_payload_hash = (Uint32)payload_hash;
             header.tick_id = app->tick_id;
 
+
+            S8 full_packet_slice = S8_Make(app->net.sender_packets_buf + NET_MAX_PACKET_SIZE * packet_index,
+                                           NET_MAX_PACKET_SIZE);
+
+            Uint64 total_needed_size = payload_chunk.size + sizeof(header);
+
             // size checks
-            if (payload_chunk.size + sizeof(header) > NET_MAX_PACKET_PAYLOAD_SIZE)
+            if (full_packet_slice.size < total_needed_size)
             {
                 packet_overflow = true;
                 break;
             }
 
-            S8 packet_buf = Net_GetChainBuffer(chain, packet_index);
+            // save slice
+            app->net.sender_packet_slices[packet_index] = S8_Prefix(full_packet_slice, total_needed_size);
 
             // header copy
-            memcpy(packet_buf.str, &header, sizeof(header));
-            packet_buf = S8_Skip(packet_buf, sizeof(header));
+            memcpy(full_packet_slice.str, &header, sizeof(header));
+            full_packet_slice = S8_Skip(full_packet_slice, sizeof(header));
 
             // payload copy
-            memcpy(packet_buf.str, payload_chunk.str, payload_chunk.size);
-            packet_buf = S8_Skip(packet_buf, payload_chunk.size);
+            memcpy(full_packet_slice.str, payload_chunk.str, payload_chunk.size);
+            full_packet_slice = S8_Skip(full_packet_slice, payload_chunk.size);
+
+            // advance
+            packet_index += 1;
         }
     }
 
@@ -104,9 +103,9 @@ static void Net_PayloadToPackets(AppState *app)
     {
         SDL_Log("%s: Can't transform payload to packets. Error at packet %u / %u packets (max %u). Payload size: %u",
                 Net_Label(app),
-                chain->packet_count,
+                packet_index,
                 needed_packet_count,
-                (Uint32)ArrayCount(chain->packet_sizes),
+                (Uint32)ArrayCount(app->net.sender_packet_slices),
                 app->net.payload_buf_used);
     }
 }
@@ -130,12 +129,12 @@ static void Net_SendS8(AppState *app, Net_User destination, S8 msg)
 
 static void Net_SendChain(AppState *app, Net_User destination)
 {
-    Net_PacketChain *chain = &app->net.sender_chain;
-    ForArray(i, chain->packet_sizes)
+    ForArray(i, app->net.sender_packet_slices)
     {
-        S8 buf = Net_GetChainBuffer(chain, i);
-        S8 msg = S8_Prefix(buf, chain->packet_sizes[i]);
-        Net_SendS8(app, destination, msg);
+        S8 slice = app->net.sender_packet_slices[i];
+        if (!slice.size)
+            break;
+        Net_SendS8(app, destination, slice);
     }
 
 }
@@ -247,6 +246,11 @@ static void Net_IterateSend(AppState *app)
 
     if (is_client)
     {
+        Tick_Command cmd = {};
+        cmd.tick_id = app->tick_id;
+        cmd.kind = Tick_Cmd_Ping;
+        Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+
         Tick_Ping ping = {0};
         Net_PayloadMemcpy(app, &ping, sizeof(ping));
     }
@@ -378,29 +382,32 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
         return;
     }
 
-    Uint64 lowest_tick = header.tick_id;
     Uint32 best_chain_index = ~0u;
-    ForArray(i, app->net.receiver_chain)
     {
-        Uint64 tick = app->net.receiver_chain[i].tick_id;
-
-        if (tick == header.tick_id)
+        Uint64 lowest_tick = header.tick_id;
+        ForArray(i, app->net.receiver_chain)
         {
-            best_chain_index = tick;
-            break;
-        }
+            Uint64 tick = app->net.receiver_chain[i].tick_id;
 
-        if (lowest_tick > tick)
-        {
-            best_chain_index = i;
-            lowest_tick = tick;
+            if (tick == header.tick_id)
+            {
+                best_chain_index = i;
+                break;
+            }
+
+            if (lowest_tick > tick)
+            {
+                best_chain_index = i;
+                lowest_tick = tick;
+            }
         }
     }
 
     if (best_chain_index >= ArrayCount(app->net.receiver_chain))
     {
-        NET_VERBOSE_LOG("%s: packet rejected - too old, all chains are filled with newer packets",
-                        Net_Label(app));
+        NET_VERBOSE_LOG("%s: packet rejected - too old (tick id: %llu), "
+                        "all chains are filled with newer packets",
+                        Net_Label(app), header.tick_id);
         return;
     }
 
@@ -437,7 +444,7 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
     // store into packet_slot
     S8 packet_buf = Net_GetChainBuffer(chain, header.packet_id);
 
-    if (header.packet_id < header.packet_count)
+    if (header.packet_id + 1 < header.packet_count)
     {
         if (packet_buf.size != msg.size)
         {

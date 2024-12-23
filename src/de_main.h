@@ -53,7 +53,7 @@ typedef enum
 
 typedef struct
 {
-    Uint64 tick_id;
+    Uint64 tick_id; // this is already send via packet header
     Tick_CommandKind kind;
 } Tick_Command;
 
@@ -158,10 +158,8 @@ typedef struct
         Uint8 payload_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network payload construction
         Uint32 payload_buf_used;
 
-        Net_PacketChain sender_chain;
-        //Uint8 packet_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network packet construction
-        //S8 packets[NET_MAX_PACKET_CHAIN_LENGTH]; // support 16 parts max
-        //Uint32 packet_count;
+        Uint8 sender_packets_buf[NET_MAX_PACKET_CHAIN_LENGTH * NET_MAX_PACKET_SIZE];
+        S8 sender_packet_slices[NET_MAX_PACKET_CHAIN_LENGTH];
 
         Net_PacketChain receiver_chain[8]; // is trying to 8 udp packet chains at a time; idk if thats too much? too little?
     } net;
