@@ -80,7 +80,7 @@ static void Game_IssueDrawCommands(AppState *app)
 
             SDL_FColor fcolor = ColorF_To_SDL_FColor(obj->sprite_color);
             SDL_Vertex sdl_verts[4];
-            SDL_zerop(sdl_verts);
+            SDL_zeroa(sdl_verts);
 
             static_assert(ArrayCount(verts) == ArrayCount(sdl_verts));
             ForArray(i, sdl_verts)
@@ -135,7 +135,7 @@ static void Game_IssueDrawCommands(AppState *app)
 
                 SDL_FColor fcolor = ColorF_To_SDL_FColor(color);
                 SDL_Vertex sdl_verts[4];
-                SDL_zerop(sdl_verts);
+                SDL_zeroa(sdl_verts);
 
                 static_assert(ArrayCount(verts) == ArrayCount(sdl_verts));
                 ForArray(i, sdl_verts)

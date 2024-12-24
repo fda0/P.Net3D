@@ -168,7 +168,7 @@ typedef struct
         Uint8 sender_packets_buf[NET_MAX_PACKET_CHAIN_LENGTH * NET_MAX_PACKET_SIZE];
         S8 sender_packet_slices[NET_MAX_PACKET_CHAIN_LENGTH];
 
-        Net_PacketChain receiver_chain[8]; // is trying to 8 udp packet chains at a time; idk if thats too much? too little?
+        Net_PacketChain receiver_chains[8]; // is trying to 8 udp packet chains at a time; idk if thats too much? too little?
     } net;
 
     // debug

@@ -244,15 +244,12 @@ static void Tick_Iterate(AppState *app)
                 
                 if (!app->netobj.tick_bump_correction)
                     break;
-                
                 app->netobj.tick_bump_correction -= 1;
             }
             else
             {
-                if (app->netobj.next_tick >= NET_MAX_TICK_HISTORY)
-                    app->netobj.next_tick -= NET_MAX_TICK_HISTORY;
-                else
-                    app->netobj.next_tick = 0;
+                SDL_Log("%s: Ran out of tick playback state; server latest tick: %llu, tick_bump_correction: %llu",
+                        Net_Label(app), app->netobj.latest_server_at_tick, app->netobj.tick_bump_correction);
             }
         }
     }

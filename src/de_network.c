@@ -32,7 +32,7 @@ static void Net_PayloadToPackets(AppState *app)
 {
     // @todo(mg) add compression here
 
-    SDL_zerop(app->net.sender_packet_slices);
+    SDL_zeroa(app->net.sender_packet_slices);
     bool packet_overflow = false;
 
     // calculate packet_count with ceil-rounding
@@ -443,9 +443,9 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
     Uint32 best_chain_index = ~0u;
     {
         Uint64 lowest_tick = header.tick_id;
-        ForArray(i, app->net.receiver_chain)
+        ForArray(i, app->net.receiver_chains)
         {
-            Uint64 chain_tick = app->net.receiver_chain[i].tick_id;
+            Uint64 chain_tick = app->net.receiver_chains[i].tick_id;
 
             if (chain_tick == header.tick_id)
             {
@@ -461,7 +461,7 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
         }
     }
 
-    if (best_chain_index >= ArrayCount(app->net.receiver_chain))
+    if (best_chain_index >= ArrayCount(app->net.receiver_chains))
     {
         NET_VERBOSE_LOG("%s: packet rejected - too old (tick id: %llu), "
                         "all chains are filled with newer packets",
@@ -479,13 +479,13 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
         return;
     }
 
-    Net_PacketChain *chain = app->net.receiver_chain + best_chain_index;
+    Net_PacketChain *chain = app->net.receiver_chains + best_chain_index;
     // clear if tick_id doesnt match
     if (chain->tick_id != header.tick_id)
     {
-        chain->packet_count = header.packet_count;
         chain->tick_id = header.tick_id;
-        SDL_zerop(chain->packet_sizes);
+        chain->packet_count = header.packet_count;
+        SDL_zeroa(chain->packet_sizes);
     }
 
     if (chain->packet_count == header.tick_id)

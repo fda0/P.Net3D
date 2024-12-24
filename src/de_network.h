@@ -8,8 +8,8 @@
 #define NET_SIMULATE_PACKETLOSS 0 // doesn't seem to work on localhost
 
 // More/less logging switch
-//#define NET_VERBOSE_LOG(...)
-#define NET_VERBOSE_LOG(...) SDL_Log(__VA_ARGS__)
+#define NET_VERBOSE_LOG(...)
+//#define NET_VERBOSE_LOG(...) SDL_Log(__VA_ARGS__)
 
 typedef struct
 {
