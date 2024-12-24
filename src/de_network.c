@@ -258,18 +258,29 @@ static void Net_IterateSend(AppState *app)
 
             Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
 
+            Uint8 *payload_start = 0;
+            Uint8 *payload_end = 0;
+            
             // copy range (next..ArrayCount)
             {
                 Uint64 start = state_index;
                 Uint64 states_to_copy = ArrayCount(app->netobj.states) - start;
-                Net_PayloadMemcpy(app, app->netobj.states + start, states_to_copy*sizeof(Tick_NetworkObjState));
+                Uint64 copy_size = states_to_copy*sizeof(Tick_NetworkObjState);
+                payload_start = Net_PayloadMemcpy(app, app->netobj.states + start, copy_size);
+                payload_end = payload_start + copy_size;
             }
 
             if (state_index > 0) // copy range [0..next)
             {
                 Uint64 states_to_copy = state_index;
-                Net_PayloadMemcpy(app, app->netobj.states, states_to_copy*sizeof(Tick_NetworkObjState));
+                Uint64 copy_size = states_to_copy*sizeof(Tick_NetworkObjState);
+                payload_end = Net_PayloadMemcpy(app, app->netobj.states, copy_size);
+                payload_end += copy_size;
             }
+            
+            S8 payload_objs = S8_Range(payload_start, payload_end);
+            Uint64 hash = S8_Hash(0, payload_objs);
+            Net_PayloadMemcpy(app, &hash, sizeof(hash));
         }
 
         if (is_client)
@@ -305,6 +316,10 @@ static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
             Tick_NetworkObjHistory history;
             Net_ConsumeS8(&msg, &history, sizeof(history));
 
+            S8 states_string = S8_Make((Uint8 *)history.states, sizeof(history.states));
+            Uint64 states_hash = S8_Hash(0, states_string);
+            Assert(history.total_hash == states_hash);
+            
             if (cmd.tick_id < app->netobj.latest_server_at_tick)
             {
                 // the msg we recieved now is older than the last message

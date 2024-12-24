@@ -1,7 +1,7 @@
 // ---
 // Constants
 // ---
-#define TICK_RATE 120
+#define TICK_RATE 16
 #define TIME_STEP (1.f / (float)TICK_RATE)
 
 typedef struct
@@ -83,6 +83,7 @@ typedef struct
 typedef struct
 {
     Tick_NetworkObjState states[NET_MAX_TICK_HISTORY];
+    Uint64 total_hash;
 } Tick_NetworkObjHistory;
 
 typedef struct
