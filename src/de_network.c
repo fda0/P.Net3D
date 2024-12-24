@@ -37,7 +37,7 @@ static void Net_PayloadToPackets(AppState *app)
 
     // calculate packet_count with ceil-rounding
     Uint32 needed_packet_count =
-        (app->net.payload_buf_used + NET_MAX_PACKET_PAYLOAD_SIZE - 1) / NET_MAX_PACKET_PAYLOAD_SIZE;
+        (app->net.payload_buf_used + NET_MAX_PAYLOAD_SIZE - 1) / NET_MAX_PAYLOAD_SIZE;
 
     if (needed_packet_count > NET_MAX_PACKET_CHAIN_LENGTH)
     {
@@ -59,7 +59,7 @@ static void Net_PayloadToPackets(AppState *app)
             }
 
             // get payload, calc hash
-            S8 payload_chunk = S8_PrefixConsume(&payload, NET_MAX_PACKET_PAYLOAD_SIZE);
+            S8 payload_chunk = S8_PrefixConsume(&payload, NET_MAX_PAYLOAD_SIZE);
             Uint32 payload_hash = S8_Hash(0, payload_chunk);
 
             // header calc
@@ -116,8 +116,8 @@ static void Net_SendS8(AppState *app, Net_User destination, S8 msg)
                                         destination.address,
                                         destination.port,
                                         msg.str, msg.size);
-    (void)send_res;
-    if (0)
+    
+    if (!send_res)
     {
         NET_VERBOSE_LOG("%s: Sending buffer of size %lluB to %s:%d; %s",
                         Net_Label(app), msg.size,
@@ -125,6 +125,8 @@ static void Net_SendS8(AppState *app, Net_User destination, S8 msg)
                         (int)destination.port,
                         send_res ? "success" : "fail");
     }
+    
+    //SDL_Delay(10);
 }
 
 static void Net_SendChain(AppState *app, Net_User destination)
@@ -212,32 +214,40 @@ static void Net_IterateSend(AppState *app)
     bool is_server = app->net.is_server;
     bool is_client = !app->net.is_server;
     if (app->net.err) return;
-
+    
+    if (is_server && !app->net.user_count)
+    {
+        return;
+    }
+    
     {
         // hacky temporary network activity rate-limitting
         static Uint64 last_timestamp = 0;
-        if (app->frame_time < last_timestamp + 0)
+        if (app->frame_time < last_timestamp + 900)
             return;
         last_timestamp = app->frame_time;
     }
 
     // send network test
-    if (is_client)
+    if (0)
     {
-        Tick_Command cmd = {};
-        cmd.tick_id = app->tick_id;
-        cmd.kind = Tick_Cmd_NetworkTest;
-        Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
-
-        Tick_NetworkTest test;
-        ForArray(i, test.numbers)
-            test.numbers[i] = i + 1;
-
-        Net_PayloadMemcpy(app, &test, sizeof(test));
-        Net_SendPayloadAndFlush(app);
+        if (is_client)
+        {
+            Tick_Command cmd = {};
+            cmd.tick_id = app->tick_id;
+            cmd.kind = Tick_Cmd_NetworkTest;
+            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+            
+            Tick_NetworkTest test;
+            ForArray(i, test.numbers)
+                test.numbers[i] = i + 1;
+            
+            Net_PayloadMemcpy(app, &test, sizeof(test));
+            Net_SendPayloadAndFlush(app);
+        }
     }
 
-    if (0)
+    if (1)
     {
         if (is_server)
         {
@@ -420,18 +430,18 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
         Uint64 lowest_tick = header.tick_id;
         ForArray(i, app->net.receiver_chain)
         {
-            Uint64 tick = app->net.receiver_chain[i].tick_id;
+            Uint64 chain_tick = app->net.receiver_chain[i].tick_id;
 
-            if (tick == header.tick_id)
+            if (chain_tick == header.tick_id)
             {
                 best_chain_index = i;
                 break;
             }
 
-            if (lowest_tick > tick)
+            if (lowest_tick > chain_tick)
             {
                 best_chain_index = i;
-                lowest_tick = tick;
+                lowest_tick = chain_tick;
             }
         }
     }
@@ -494,6 +504,15 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
 
     chain->packet_sizes[header.packet_id] = msg.size;
     memcpy(packet_buf.str, msg.str, msg.size);
+    
+    // log
+    {
+        NET_VERBOSE_LOG("%s: saved packet id: %u (count %u); tick_id: %llu",
+                        Net_Label(app), (Uint32)header.packet_id,
+                        (Uint32)header.packet_count,
+                        header.tick_id);
+    }
+    
 
     // are all packets in the chain ready?
     bool is_chain_incomplete = false;
@@ -513,6 +532,12 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
 
     if (!is_chain_incomplete)
     {
+        {
+            NET_VERBOSE_LOG("%s: completed packets (count: %u); tick_id: %llu",
+                            Net_Label(app), (Uint32)header.packet_count,
+                            header.tick_id);
+        }
+        
         S8 complete_payload = S8_Make(chain->packet_buf, chain_packet_total_size);
         Net_ProcessReceivedMessage(app, complete_payload);
     }

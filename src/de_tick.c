@@ -230,7 +230,7 @@ static void Tick_Iterate(AppState *app)
         // playback game at double speed when in the process of correcting the delay
         ForU64(tick_bump_correction_iteration, 2)
         {
-            if (app->netobj.next_tick <= app->netobj.latest_server_at_tick)
+            if (app->netobj.next_tick < app->netobj.latest_server_at_tick)
             {
                 Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
                 app->netobj.next_tick += 1;
@@ -241,12 +241,19 @@ static void Tick_Iterate(AppState *app)
                     Assert(i < ArrayCount(state->objs));
                     *Object_Network(app, i) = state->objs[i];
                 }
+                
+                if (!app->netobj.tick_bump_correction)
+                    break;
+                
+                app->netobj.tick_bump_correction -= 1;
             }
-
-            if (!app->netobj.tick_bump_correction)
-                break;
-
-            app->netobj.tick_bump_correction -= 1;
+            else
+            {
+                if (app->netobj.next_tick >= NET_MAX_TICK_HISTORY)
+                    app->netobj.next_tick -= NET_MAX_TICK_HISTORY;
+                else
+                    app->netobj.next_tick = 0;
+            }
         }
     }
 }

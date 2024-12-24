@@ -146,6 +146,11 @@ static void Game_ParseCmd(AppState *app, int argc, char** argv)
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {
     *appstate = SDL_calloc(1, sizeof(AppState));
+    {
+        void *aligned = AlignPointerUp(appstate, _Alignof(AppState));
+        Assert(aligned == appstate);
+    }
+    
     AppState *app = (AppState *)*appstate;
     if (!app)
     {
