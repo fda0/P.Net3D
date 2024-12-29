@@ -5,19 +5,19 @@ static const char *Net_Label(AppState *app)
 
 static Uint8 *Net_PayloadAlloc(AppState *app, Uint32 size)
 {
-    Uint8 *result = app->net.payload_buf + app->net.payload_buf_used;
+    Uint8 *result = app->net.packet_payload_buf + app->net.payload_used;
     {
         // return ptr to start of the buffer
         // on overflow
-        Uint8 *end = (app->net.payload_buf + sizeof(app->net.payload_buf));
+        Uint8 *end = (app->net.packet_payload_buf + sizeof(app->net.packet_payload_buf));
         if (end < (result + size))
         {
             Assert(false);
-            result = app->net.payload_buf;
-            app->net.send_err = true;
+            result = app->net.packet_payload_buf;
+            app->net.packet_err = true;
         }
     }
-    app->net.payload_buf_used += size;
+    app->net.payload_used += size;
     return result;
 }
 
@@ -26,88 +26,6 @@ static Uint8 *Net_PayloadMemcpy(AppState *app, void *data, Uint32 size)
     Uint8 *result = Net_PayloadAlloc(app, size);
     memcpy(result, data, size);
     return result;
-}
-
-static void Net_PayloadToPackets(AppState *app)
-{
-    // @todo(mg) add compression here
-
-    SDL_zeroa(app->net.sender_packet_slices);
-    bool packet_overflow = false;
-
-    // calculate packet_count with ceil-rounding
-    Uint32 needed_packet_count =
-        (app->net.payload_buf_used + NET_MAX_PAYLOAD_SIZE - 1) / NET_MAX_PAYLOAD_SIZE;
-
-    if (needed_packet_count > NET_MAX_PACKET_CHAIN_LENGTH)
-    {
-        packet_overflow = true;
-    }
-
-    Uint32 packet_index = 0;
-    if (!packet_overflow)
-    {
-        S8 payload = S8_Make(app->net.payload_buf, app->net.payload_buf_used);
-
-        while (payload.size)
-        {
-            // select index, bound check, advance count
-            if (packet_index >= ArrayCount(app->net.sender_packet_slices))
-            {
-                packet_overflow = true;
-                break;
-            }
-
-            // get payload, calc hash
-            S8 payload_chunk = S8_PrefixConsume(&payload, NET_MAX_PAYLOAD_SIZE);
-            Uint32 payload_hash = S8_Hash(0, payload_chunk);
-
-            // header calc
-            Net_PacketHeader header = {0};
-            header.magic_value = NET_MAGIC_VALUE;
-            header.packet_count = needed_packet_count;
-            header.packet_id = packet_index;
-            header.packet_payload_hash = (Uint32)payload_hash;
-            header.tick_id = app->tick_id;
-
-
-            S8 full_packet_slice = S8_Make(app->net.sender_packets_buf + NET_MAX_PACKET_SIZE * packet_index,
-                                           NET_MAX_PACKET_SIZE);
-
-            Uint64 total_needed_size = payload_chunk.size + sizeof(header);
-
-            // size checks
-            if (full_packet_slice.size < total_needed_size)
-            {
-                packet_overflow = true;
-                break;
-            }
-
-            // save slice
-            app->net.sender_packet_slices[packet_index] = S8_Prefix(full_packet_slice, total_needed_size);
-
-            // header copy
-            memcpy(full_packet_slice.str, &header, sizeof(header));
-            full_packet_slice = S8_Skip(full_packet_slice, sizeof(header));
-
-            // payload copy
-            memcpy(full_packet_slice.str, payload_chunk.str, payload_chunk.size);
-            full_packet_slice = S8_Skip(full_packet_slice, payload_chunk.size);
-
-            // advance
-            packet_index += 1;
-        }
-    }
-
-    if (packet_overflow)
-    {
-        SDL_Log("%s: Can't transform payload to packets. Error at packet %u / %u packets (max %u). Payload size: %u",
-                Net_Label(app),
-                packet_index,
-                needed_packet_count,
-                (Uint32)ArrayCount(app->net.sender_packet_slices),
-                app->net.payload_buf_used);
-    }
 }
 
 static void Net_SendS8(AppState *app, Net_User destination, S8 msg)
@@ -131,35 +49,42 @@ static void Net_SendS8(AppState *app, Net_User destination, S8 msg)
     //SDL_Delay(10);
 }
 
-static void Net_SendChain(AppState *app, Net_User destination)
+static void Net_RecalculatePacketHeader(AppState *app)
 {
-    ForArray(i, app->net.sender_packet_slices)
-    {
-        S8 slice = app->net.sender_packet_slices[i];
-        if (!slice.size)
-            break;
-        Net_SendS8(app, destination, slice);
-    }
-
+    S8 payload = S8_Make(app->net.packet_payload_buf, app->net.payload_used);
+    app->net.packet_header.magic_value = NET_MAGIC_VALUE;
+    app->net.packet_header.payload_hash = (Uint16)S8_Hash(0, payload);
 }
 
-static void Net_SendPayloadAndFlush(AppState *app)
+static S8 Net_GetPacketString(AppState *app)
 {
-    Net_PayloadToPackets(app);
+    // there should be no padding between these
+    static_assert(offsetof(AppState, net.packet_header) + sizeof(app->net.packet_header) ==
+                  offsetof(AppState, net.packet_payload_buf));
+
+    Uint64 total_size = sizeof(app->net.packet_header) + app->net.payload_used;
+    S8 result = S8_Make((Uint8 *)&app->net.packet_header, total_size);
+    return result;
+}
+
+static void Net_PacketSendAndReset(AppState *app)
+{
+    Net_RecalculatePacketHeader(app);
+    S8 packet = Net_GetPacketString(app);
 
     if (app->net.is_server)
     {
         ForU32(i, app->net.user_count)
         {
-            Net_SendChain(app, app->net.users[i]);
+            Net_SendS8(app, app->net.users[i], packet);
         }
     }
     else
     {
-        Net_SendChain(app, app->net.server_user);
+        Net_SendS8(app, app->net.server_user, packet);
     }
 
-    app->net.payload_buf_used = 0;
+    app->net.payload_used = 0;
 }
 
 static bool Net_ConsumeS8(S8 *msg, void *dest, Uint64 size)
@@ -235,17 +160,17 @@ static void Net_IterateSend(AppState *app)
     {
         if (is_client)
         {
-            Tick_Command cmd = {};
+            Net_Cmd cmd = {};
             cmd.tick_id = app->tick_id;
-            cmd.kind = Tick_Cmd_NetworkTest;
+            cmd.kind = NetCmd_NetworkTest;
             Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
-            Tick_NetworkTest test;
+            Net_Payload_NetworkTest test;
             ForArray(i, test.numbers)
                 test.numbers[i] = i + 1;
 
             Net_PayloadMemcpy(app, &test, sizeof(test));
-            Net_SendPayloadAndFlush(app);
+            Net_PacketSendAndReset(app);
         }
     }
 
@@ -253,9 +178,9 @@ static void Net_IterateSend(AppState *app)
     {
         if (is_server)
         {
-            Tick_Command cmd = {};
+            Net_Cmd cmd = {};
             cmd.tick_id = app->tick_id;
-            cmd.kind = Tick_Cmd_ObjHistory;
+            cmd.kind = NetCmd_ObjHistory;
             Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
             Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
@@ -287,16 +212,16 @@ static void Net_IterateSend(AppState *app)
 
         if (is_client)
         {
-            Tick_Command cmd = {};
+            Net_Cmd cmd = {};
             cmd.tick_id = app->tick_id;
-            cmd.kind = Tick_Cmd_Ping;
+            cmd.kind = NetCmd_Ping;
             Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
             Tick_Ping ping = {0};
             Net_PayloadMemcpy(app, &ping, sizeof(ping));
         }
 
-        Net_SendPayloadAndFlush(app);
+        Net_PacketSendAndReset(app);
     }
 }
 
@@ -305,15 +230,15 @@ static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
     S8 msg = full_message;
     while (msg.size)
     {
-        Tick_Command cmd;
+        Net_Cmd cmd;
         Net_ConsumeS8(&msg, &cmd, sizeof(cmd));
 
-        if (cmd.kind == Tick_Cmd_Ping)
+        if (cmd.kind == NetCmd_Ping)
         {
             Tick_Ping ping = {0};
             Net_ConsumeS8(&msg, &ping, sizeof(ping));
         }
-        else if (cmd.kind == Tick_Cmd_ObjHistory)
+        else if (cmd.kind == NetCmd_ObjHistory)
         {
             Tick_NetworkObjHistory history;
             Net_ConsumeS8(&msg, &history, sizeof(history));
@@ -382,9 +307,9 @@ static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
                              &fill_index,
                              history.states, ArrayCount(history.states));
         }
-        else if (cmd.kind == Tick_Cmd_NetworkTest)
+        else if (cmd.kind == NetCmd_NetworkTest)
         {
-            Tick_NetworkTest test;
+            Net_Payload_NetworkTest test;
             Net_ConsumeS8(&msg, &test, sizeof(test));
 
             ForArray(i, test.numbers)
@@ -404,9 +329,11 @@ static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
     }
 }
 
-static void Net_ReceivePacket(AppState *app, S8 msg)
+static void Net_ReceivePacket(AppState *app, S8 packet)
 {
-    if (msg.size < sizeof(Net_PacketHeader))
+    (void)app;
+
+    if (packet.size < sizeof(Net_PacketHeader))
     {
         NET_VERBOSE_LOG("%s: packet rejected - it's too small, size: %llu",
                         Net_Label(app), msg.size);
@@ -414,9 +341,9 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
     }
 
     Net_PacketHeader header;
-    Net_ConsumeS8(&msg, &header, sizeof(header));
+    Net_ConsumeS8(&packet, &header, sizeof(header));
 
-    if (!msg.size)
+    if (!packet.size)
     {
         NET_VERBOSE_LOG("%s: packet rejected - empty payload",
                         Net_Label(app));
@@ -429,135 +356,18 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
                         Net_Label(app), (Uint32)header.magic_value, NET_MAGIC_VALUE);
         return;
     }
-    if (header.packet_count > NET_MAX_PACKET_CHAIN_LENGTH)
-    {
-        NET_VERBOSE_LOG("%s: packet rejected - packet_count too large: %u, max: %u",
-                        Net_Label(app), (Uint32)header.packet_count, NET_MAX_PACKET_CHAIN_LENGTH);
-        return;
-    }
-    if (header.packet_id >= NET_MAX_PACKET_CHAIN_LENGTH)
-    {
-        NET_VERBOSE_LOG("%s: packet rejected - packet_id too large: %u, max: %u",
-                        Net_Label(app), (Uint32)header.packet_id, NET_MAX_PACKET_CHAIN_LENGTH-1);
-        return;
-    }
-
-    Uint32 best_chain_index = ~0u;
-    {
-        Uint64 lowest_tick = header.tick_id;
-        ForArray(i, app->net.receiver_chains)
-        {
-            Uint64 chain_tick = app->net.receiver_chains[i].tick_id;
-
-            if (chain_tick == header.tick_id)
-            {
-                best_chain_index = i;
-                break;
-            }
-
-            if (lowest_tick > chain_tick)
-            {
-                best_chain_index = i;
-                lowest_tick = chain_tick;
-            }
-        }
-    }
-
-    if (best_chain_index >= ArrayCount(app->net.receiver_chains))
-    {
-        NET_VERBOSE_LOG("%s: packet rejected - too old (tick id: %llu), "
-                        "all chains are filled with newer packets",
-                        Net_Label(app), header.tick_id);
-        return;
-    }
 
     // validate hash
-    Uint64 hash64 = S8_Hash(0, msg);
-    Uint32 hash32 = (Uint32)hash64;
-    if (hash32 != header.packet_payload_hash)
+    Uint64 hash64 = S8_Hash(0, packet);
+    Uint16 hash16 = (Uint16)hash64;
+    if (hash16 != header.payload_hash)
     {
         NET_VERBOSE_LOG("%s: packet rejected - invalid hash: %u; calculated: %u",
-                        Net_Label(app), header.packet_payload_hash, hash32);
+                        Net_Label(app), header.packet_payload_hash, hash16);
         return;
     }
 
-    Net_PacketChain *chain = app->net.receiver_chains + best_chain_index;
-    // clear if tick_id doesnt match
-    if (chain->tick_id != header.tick_id)
-    {
-        chain->tick_id = header.tick_id;
-        chain->packet_count = header.packet_count;
-        SDL_zeroa(chain->packet_sizes);
-    }
-
-    if (chain->packet_count == header.tick_id)
-    {
-        NET_VERBOSE_LOG("%s: packet rejected - packet count (%u) doesn't match previous chain packet count (%u)",
-                        Net_Label(app), (Uint8)chain->packet_count, (Uint8)header.packet_count);
-        return;
-    }
-
-    // store into packet_slot
-    S8 packet_buf = Net_GetChainBuffer(chain, header.packet_id);
-
-    if (header.packet_id + 1 < header.packet_count)
-    {
-        if (packet_buf.size != msg.size)
-        {
-            NET_VERBOSE_LOG("%s: packet (%u / %u) rejected - packet buffer (size: %ullB) "
-                            "has to match msg (size: %ullB) exactly",
-                            Net_Label(app), (Uint32)header.packet_id,
-                            (Uint32)header.packet_count, packet_buf.size, msg.size);
-            return;
-        }
-    }
-
-    if (packet_buf.size < msg.size)
-    {
-        NET_VERBOSE_LOG("%s: packet rejected - packet buffer (size: %ullB) overflow; msg size: %ullB",
-                        Net_Label(app), packet_buf.size, msg.size);
-        return;
-    }
-
-    chain->packet_sizes[header.packet_id] = msg.size;
-    memcpy(packet_buf.str, msg.str, msg.size);
-
-    // log
-    {
-        NET_VERBOSE_LOG("%s: saved packet id: %u (count %u); tick_id: %llu",
-                        Net_Label(app), (Uint32)header.packet_id,
-                        (Uint32)header.packet_count,
-                        header.tick_id);
-    }
-
-
-    // are all packets in the chain ready?
-    bool is_chain_incomplete = false;
-    Uint64 chain_packet_total_size = 0;
-    ForU32(i, chain->packet_count)
-    {
-        if (chain->packet_sizes[i])
-        {
-            chain_packet_total_size += chain->packet_sizes[i];
-        }
-        else
-        {
-            is_chain_incomplete = true;
-            break;
-        }
-    }
-
-    if (!is_chain_incomplete)
-    {
-        {
-            NET_VERBOSE_LOG("%s: completed packets (count: %u); tick_id: %llu",
-                            Net_Label(app), (Uint32)header.packet_count,
-                            header.tick_id);
-        }
-
-        S8 complete_payload = S8_Make(chain->packet_buf, chain_packet_total_size);
-        Net_ProcessReceivedMessage(app, complete_payload);
-    }
+    Net_ProcessReceivedMessage(app, packet);
 }
 
 static void Net_IterateReceive(AppState *app)

@@ -45,18 +45,17 @@ typedef struct
 
 typedef enum
 {
-    Tick_Cmd_None,
-    Tick_Cmd_Ping,
-    Tick_Cmd_Input,
-    Tick_Cmd_ObjHistory,
-    Tick_Cmd_NetworkTest,
-} Tick_CommandKind;
+    NetCmd_None,
+    NetCmd_Ping,
+    NetCmd_ObjHistory,
+    NetCmd_NetworkTest,
+} Net_CmdKind;
 
 typedef struct
 {
     Uint64 tick_id; // this is already send via packet header
-    Tick_CommandKind kind;
-} Tick_Command;
+    Net_CmdKind kind;
+} Net_Cmd;
 
 typedef struct
 {
@@ -88,8 +87,8 @@ typedef struct
 
 typedef struct
 {
-    Uint32 numbers[1024 * 32];
-} Tick_NetworkTest;
+    Uint32 numbers[290];
+} Net_Payload_NetworkTest;
 
 typedef struct
 {
@@ -161,14 +160,10 @@ typedef struct
         Net_User server_user;
 
         // msg payload
-        bool send_err; // set on internal buffer overflow errors etc
-        Uint8 payload_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network payload construction
-        Uint32 payload_buf_used;
-
-        Uint8 sender_packets_buf[NET_MAX_PACKET_CHAIN_LENGTH * NET_MAX_PACKET_SIZE];
-        S8 sender_packet_slices[NET_MAX_PACKET_CHAIN_LENGTH];
-
-        Net_PacketChain receiver_chains[8]; // is trying to 8 udp packet chains at a time; idk if thats too much? too little?
+        bool packet_err; // set on internal buffer overflow errors etc
+        Net_PacketHeader packet_header;
+        Uint8 packet_payload_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network payload construction
+        Uint32 payload_used;
     } net;
 
     // debug
