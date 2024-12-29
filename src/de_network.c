@@ -1,3 +1,13 @@
+static bool Net_IsServer(AppState *app)
+{
+    return app->net.is_server;
+}
+
+static bool Net_IsClient(AppState *app)
+{
+    return !app->net.is_server;
+}
+
 static const char *Net_Label(AppState *app)
 {
     return app->net.is_server ? "SERVER" : "CLIENT";
@@ -174,55 +184,56 @@ static void Net_IterateSend(AppState *app)
         }
     }
 
-    if (1)
+    if (is_server)
     {
-        if (is_server)
+#if 1
+        Assert(0); // @todo
+#else
+        Net_Cmd cmd = {};
+        cmd.tick_id = app->tick_id;
+        cmd.kind = NetCmd_ObjHistory;
+        Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+
+        Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
+
+        Uint8 *payload_start = 0;
+        Uint8 *payload_end = 0;
+
+        // copy range (next..ArrayCount)
         {
-            Net_Cmd cmd = {};
-            cmd.tick_id = app->tick_id;
-            cmd.kind = NetCmd_ObjHistory;
-            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
-
-            Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
-
-            Uint8 *payload_start = 0;
-            Uint8 *payload_end = 0;
-
-            // copy range (next..ArrayCount)
-            {
-                Uint64 start = state_index;
-                Uint64 states_to_copy = ArrayCount(app->netobj.states) - start;
-                Uint64 copy_size = states_to_copy*sizeof(Tick_NetworkObjState);
-                payload_start = Net_PayloadMemcpy(app, app->netobj.states + start, copy_size);
-                payload_end = payload_start + copy_size;
-            }
-
-            if (state_index > 0) // copy range [0..next)
-            {
-                Uint64 states_to_copy = state_index;
-                Uint64 copy_size = states_to_copy*sizeof(Tick_NetworkObjState);
-                payload_end = Net_PayloadMemcpy(app, app->netobj.states, copy_size);
-                payload_end += copy_size;
-            }
-
-            S8 payload_objs = S8_Range(payload_start, payload_end);
-            Uint64 hash = S8_Hash(0, payload_objs);
-            Net_PayloadMemcpy(app, &hash, sizeof(hash));
+            Uint64 start = state_index;
+            Uint64 states_to_copy = ArrayCount(app->netobj.states) - start;
+            Uint64 copy_size = states_to_copy*sizeof(Tick_NetworkObjState);
+            payload_start = Net_PayloadMemcpy(app, app->netobj.states + start, copy_size);
+            payload_end = payload_start + copy_size;
         }
 
-        if (is_client)
+        if (state_index > 0) // copy range [0..next)
         {
-            Net_Cmd cmd = {};
-            cmd.tick_id = app->tick_id;
-            cmd.kind = NetCmd_Ping;
-            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
-
-            Tick_Ping ping = {0};
-            Net_PayloadMemcpy(app, &ping, sizeof(ping));
+            Uint64 states_to_copy = state_index;
+            Uint64 copy_size = states_to_copy*sizeof(Tick_NetworkObjState);
+            payload_end = Net_PayloadMemcpy(app, app->netobj.states, copy_size);
+            payload_end += copy_size;
         }
 
-        Net_PacketSendAndReset(app);
+        S8 payload_objs = S8_Range(payload_start, payload_end);
+        Uint64 hash = S8_Hash(0, payload_objs);
+        Net_PayloadMemcpy(app, &hash, sizeof(hash));
+#endif
     }
+
+    if (is_client)
+    {
+        Net_Cmd cmd = {};
+        cmd.tick_id = app->tick_id;
+        cmd.kind = NetCmd_Ping;
+        Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+
+        Tick_Ping ping = {0};
+        Net_PayloadMemcpy(app, &ping, sizeof(ping));
+    }
+
+    Net_PacketSendAndReset(app);
 }
 
 static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
@@ -238,8 +249,11 @@ static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
             Tick_Ping ping = {0};
             Net_ConsumeS8(&msg, &ping, sizeof(ping));
         }
-        else if (cmd.kind == NetCmd_ObjHistory)
+        else if (cmd.kind == NetCmd_ObjUpdate)
         {
+#if 1
+            Assert(0); // @todo
+#else
             Tick_NetworkObjHistory history;
             Net_ConsumeS8(&msg, &history, sizeof(history));
 
@@ -306,6 +320,7 @@ static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
                              app->netobj.states, ArrayCount(app->netobj.states),
                              &fill_index,
                              history.states, ArrayCount(history.states));
+#endif
         }
         else if (cmd.kind == NetCmd_NetworkTest)
         {

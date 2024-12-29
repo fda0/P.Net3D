@@ -47,7 +47,7 @@ typedef enum
 {
     NetCmd_None,
     NetCmd_Ping,
-    NetCmd_ObjHistory,
+    NetCmd_ObjUpdate,
     NetCmd_NetworkTest,
 } Net_CmdKind;
 
@@ -70,25 +70,37 @@ typedef struct
 
 typedef struct
 {
-    Object obj;
-    Uint32 network_slot;
-} Tick_NetworkObj;
+    Uint32 numbers[290];
+} Net_Payload_NetworkTest;
+
+typedef struct
+{
+    Uint64 obj_id;
+    Object ticks[NET_MAX_TICK_HISTORY]; // circle buf
+    Uint64 latest_server_tick;
+} Client_NetworkObjectTicks;
+
+typedef struct
+{
+    Client_NetworkObjectTicks netobjticks[NET_MAX_NETWORK_OBJECTS];
+    Uint64 next_playback_tick;
+
+    // stores last 32 tick bumps (how much newer the server's tick was compared to our previous latest server tick) to adjust network delay
+    Uint64 tick_bump_history[32]; // size of this should have inv corelation to our network poll rate
+    Uint64 tick_bump_history_next;
+    Uint64 tick_bump_correction;
+} ClientState;
 
 typedef struct
 {
     Object objs[NET_MAX_NETWORK_OBJECTS];
-} Tick_NetworkObjState;
+} ServerTickSnapshot;
 
 typedef struct
 {
-    Tick_NetworkObjState states[NET_MAX_TICK_HISTORY];
-    Uint64 total_hash;
-} Tick_NetworkObjHistory;
-
-typedef struct
-{
-    Uint32 numbers[290];
-} Net_Payload_NetworkTest;
+    ServerTickSnapshot snaps[NET_MAX_TICK_HISTORY]; // circle buffer
+    Uint64 next_tick;
+} ServerState;
 
 typedef struct
 {
@@ -110,17 +122,8 @@ typedef struct
     Uint64 tick_input_min;
     Uint64 tick_input_max; // one past last
 
-    struct
-    {
-        Tick_NetworkObjState states[NET_MAX_TICK_HISTORY];
-        Uint64 next_tick;
-        Uint64 latest_server_at_tick;
-
-        // stores last 32 tick bumps (how much newer the server's tick was compared to our previous latest server tick) to adjust network delay
-        Uint64 tick_bump_history[32]; // size of this should have inv corelation to our network poll rate
-        Uint64 tick_bump_history_next;
-        Uint64 tick_bump_correction;
-    } netobj;
+    ClientState client;
+    ServerState server;
 
     // time
     Uint64 frame_id;

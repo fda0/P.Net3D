@@ -39,7 +39,7 @@ static void Tick_AdvanceSimulation(AppState *app)
 
     // player input
     {
-        Object *player = Object_Network(app, app->player_network_slot);
+        Object *player = Object_FromNetSlot(app, app->player_network_slot);
         if (!Object_IsZero(app, player))
         {
             float player_speed = 200.f * TIME_STEP;
@@ -203,54 +203,75 @@ static void Tick_AdvanceSimulation(AppState *app)
 
 
     // save networked objects state
+    if (Net_IsServer(app))
     {
-        Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
-        app->netobj.next_tick += 1;
-        Tick_NetworkObjState *state = app->netobj.states + state_index;
+        Uint64 snap_index = app->server.next_tick % ArrayCount(app->server.snaps);
+        app->server.next_tick += 1;
+        ServerTickSnapshot *snap = app->server.snaps + snap_index;
 
-        static_assert(ArrayCount(state->objs) == ArrayCount(app->network_ids));
-        ForArray(i, state->objs)
+        static_assert(ArrayCount(snap->objs) == ArrayCount(app->network_ids));
+        ForArray(i, snap->objs)
         {
-            Object *dst = state->objs + i;
-            Object *src = Object_Network(app, i);
+            Object *dst = snap->objs + i;
+            Object *src = Object_FromNetSlot(app, i);
             memcpy(dst, src, sizeof(Object));
         }
     }
 }
 
+static void Tick_Playback(AppState *app)
+{
+    // @todo query oldest object tick on client side
+    // @todo
+
+    Uint64 oldest_tick_from_server = ~0ull;
+    ForArray(obj_i, app->client.netobjticks)
+    {
+        Client_NetworkObjectTicks *netobj = app->client.netobjticks + obj_i;
+        if (netobj->latest_server_tick < oldest_tick_from_server)
+        {
+            oldest_tick_from_server = netobj->latest_server_tick;
+        }
+    }
+
+    if (oldest_tick_from_server < app->client.next_playback_tick)
+    {
+        SDL_Log("%s: Ran out of tick playback state; "
+                "next_playback_tick: %llu, "
+                "oldest_tick_from_server: %llu, "
+                "tick_bump_correction: %llu",
+                Net_Label(app),
+                app->client.next_playback_tick,
+                oldest_tick_from_server,
+                app->client.tick_bump_correction);
+        return;
+    }
+
+    ForArray(net_slot, app->client.netobjticks)
+    {
+        Object *net_obj = Object_FromNetSlot(app, net_slot);
+        Object interpolated = {0};
+        Assert(0); // Client_InterpolateNetworkObject(app, net_slot, app->client.next_playback_tick);
+        *net_obj = interpolated;
+    }
+    app->client.next_playback_tick += 1;
+}
+
 static void Tick_Iterate(AppState *app)
 {
-    if (app->net.is_server)
+    if (Net_IsServer(app))
     {
         Tick_AdvanceSimulation(app);
     }
-    else
+
+    if (Net_IsClient(app))
     {
-        //Tick_PlaybackSimulation(app);
-        // playback game at double speed when in the process of correcting the delay
-        ForU64(tick_bump_correction_iteration, 2)
+        Tick_Playback(app);
+
+        if (app->client.tick_bump_correction)
         {
-            if (app->netobj.next_tick < app->netobj.latest_server_at_tick)
-            {
-                Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
-                app->netobj.next_tick += 1;
-                Tick_NetworkObjState *state = app->netobj.states + state_index;
-
-                ForArray(i, app->network_ids)
-                {
-                    Assert(i < ArrayCount(state->objs));
-                    *Object_Network(app, i) = state->objs[i];
-                }
-
-                if (!app->netobj.tick_bump_correction)
-                    break;
-                app->netobj.tick_bump_correction -= 1;
-            }
-            else
-            {
-                SDL_Log("%s: Ran out of tick playback state; server latest tick: %llu, tick_bump_correction: %llu",
-                        Net_Label(app), app->netobj.latest_server_at_tick, app->netobj.tick_bump_correction);
-            }
+            Tick_Playback(app);
+            app->client.tick_bump_correction -= 1;
         }
     }
 }

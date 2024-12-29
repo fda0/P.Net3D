@@ -243,7 +243,7 @@ static void Game_Iterate(AppState *app)
 
     // move camera
     {
-        Object *player = Object_Network(app, app->player_network_slot);
+        Object *player = Object_FromNetSlot(app, app->player_network_slot);
         app->camera_p = player->p;
     }
 
