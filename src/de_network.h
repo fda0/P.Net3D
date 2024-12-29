@@ -2,7 +2,7 @@
 #define NET_MAGIC_VALUE 0xfda0
 #define NET_MAX_TICK_HISTORY (TICK_RATE) // 1 second of history
 #define NET_MAX_NETWORK_OBJECTS 16
-#define NET_MAX_PACKET_SIZE (32768/64)
+#define NET_MAX_PACKET_SIZE (1200)
 #define NET_MAX_PAYLOAD_SIZE (NET_MAX_PACKET_SIZE - sizeof(Net_PacketHeader))
 #define NET_MAX_PACKET_CHAIN_LENGTH 64
 #define NET_SIMULATE_PACKETLOSS 0 // doesn't seem to work on localhost

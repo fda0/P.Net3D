@@ -241,7 +241,7 @@ static void Tick_Iterate(AppState *app)
                     Assert(i < ArrayCount(state->objs));
                     *Object_Network(app, i) = state->objs[i];
                 }
-                
+
                 if (!app->netobj.tick_bump_correction)
                     break;
                 app->netobj.tick_bump_correction -= 1;

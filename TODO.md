@@ -1,3 +1,12 @@
+# networking big picture plan
+1. Send only "latest" state and use interpolation
+2. Compression - compressed Object representation (used in game and for network)
+3. Network compression - delta encoding - between state that`s ACKed by client and server state
+  - special "no changes" path that can bulk update many Objects
+4. Net quality - monitoring network congestion, targeting a different level of updates per second
+5. Udp packet size fixed to 1200 bytes?
+
+# networking issues
 - networking does a lot of copying between heap and stack to get around alignment requirements
   - this causes stack overflow errors currently - quick workaround was to bump stack size of the game to 32MB on msvc. @todo modify stack size on all targets or reduce copying in the networking code
 

@@ -150,7 +150,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
         void *aligned = AlignPointerUp(appstate, _Alignof(AppState));
         Assert(aligned == appstate);
     }
-    
+
     AppState *app = (AppState *)*appstate;
     if (!app)
     {

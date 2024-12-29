@@ -112,11 +112,13 @@ static void Net_PayloadToPackets(AppState *app)
 
 static void Net_SendS8(AppState *app, Net_User destination, S8 msg)
 {
+    Assert(msg.size < 1280); // that seems to be a realistic reasonable max size? https://gafferongames.com/post/packet_fragmentation_and_reassembly/
+
     bool send_res = SDLNet_SendDatagram(app->net.socket,
                                         destination.address,
                                         destination.port,
                                         msg.str, msg.size);
-    
+
     if (!send_res)
     {
         NET_VERBOSE_LOG("%s: Sending buffer of size %lluB to %s:%d; %s",
@@ -125,7 +127,7 @@ static void Net_SendS8(AppState *app, Net_User destination, S8 msg)
                         (int)destination.port,
                         send_res ? "success" : "fail");
     }
-    
+
     //SDL_Delay(10);
 }
 
@@ -214,12 +216,12 @@ static void Net_IterateSend(AppState *app)
     bool is_server = app->net.is_server;
     bool is_client = !app->net.is_server;
     if (app->net.err) return;
-    
+
     if (is_server && !app->net.user_count)
     {
         return;
     }
-    
+
     {
         // hacky temporary network activity rate-limitting
         static Uint64 last_timestamp = 0;
@@ -229,7 +231,7 @@ static void Net_IterateSend(AppState *app)
     }
 
     // send network test
-    if (0)
+    if (1)
     {
         if (is_client)
         {
@@ -237,11 +239,11 @@ static void Net_IterateSend(AppState *app)
             cmd.tick_id = app->tick_id;
             cmd.kind = Tick_Cmd_NetworkTest;
             Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
-            
+
             Tick_NetworkTest test;
             ForArray(i, test.numbers)
                 test.numbers[i] = i + 1;
-            
+
             Net_PayloadMemcpy(app, &test, sizeof(test));
             Net_SendPayloadAndFlush(app);
         }
@@ -260,7 +262,7 @@ static void Net_IterateSend(AppState *app)
 
             Uint8 *payload_start = 0;
             Uint8 *payload_end = 0;
-            
+
             // copy range (next..ArrayCount)
             {
                 Uint64 start = state_index;
@@ -277,7 +279,7 @@ static void Net_IterateSend(AppState *app)
                 payload_end = Net_PayloadMemcpy(app, app->netobj.states, copy_size);
                 payload_end += copy_size;
             }
-            
+
             S8 payload_objs = S8_Range(payload_start, payload_end);
             Uint64 hash = S8_Hash(0, payload_objs);
             Net_PayloadMemcpy(app, &hash, sizeof(hash));
@@ -319,7 +321,7 @@ static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
             S8 states_string = S8_Make((Uint8 *)history.states, sizeof(history.states));
             Uint64 states_hash = S8_Hash(0, states_string);
             Assert(history.total_hash == states_hash);
-            
+
             if (cmd.tick_id < app->netobj.latest_server_at_tick)
             {
                 // the msg we recieved now is older than the last message
@@ -519,7 +521,7 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
 
     chain->packet_sizes[header.packet_id] = msg.size;
     memcpy(packet_buf.str, msg.str, msg.size);
-    
+
     // log
     {
         NET_VERBOSE_LOG("%s: saved packet id: %u (count %u); tick_id: %llu",
@@ -527,7 +529,7 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
                         (Uint32)header.packet_count,
                         header.tick_id);
     }
-    
+
 
     // are all packets in the chain ready?
     bool is_chain_incomplete = false;
@@ -552,7 +554,7 @@ static void Net_ReceivePacket(AppState *app, S8 msg)
                             Net_Label(app), (Uint32)header.packet_count,
                             header.tick_id);
         }
-        
+
         S8 complete_payload = S8_Make(chain->packet_buf, chain_packet_total_size);
         Net_ProcessReceivedMessage(app, complete_payload);
     }
