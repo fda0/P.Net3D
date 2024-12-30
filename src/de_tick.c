@@ -243,55 +243,6 @@ static Object Object_Lerp(Object prev, Object next, float t)
     return result;
 }
 
-static Object Client_LerpNetObject(AppState *app, Uint64 net_slot, Uint64 tick_id)
-{
-    Assert(net_slot < ArrayCount(app->client.obj_snaps));
-    Client_Snapshot *snap = app->client.obj_snaps + net_slot;
-
-    Assert(tick_id <= snap->latest_server_tick &&
-           tick_id >= snap->oldest_server_tick);
-
-    Object *exact_obj = Client_SnapshotObjectAtTick(snap, tick_id);
-    if (exact_obj->flags) // exact object found
-        return *exact_obj;
-
-    // find nearest prev_id/next_id objects
-    Uint64 prev_id = tick_id;
-    Uint64 next_id = tick_id;
-    while (prev_id > snap->oldest_server_tick)
-    {
-        prev_id -= 1;
-        if (Object_IsInit(Client_SnapshotObjectAtTick(snap, prev_id)))
-            break;
-    }
-    while (next_id < snap->latest_server_tick)
-    {
-        next_id += 1;
-        if (Object_IsInit(Client_SnapshotObjectAtTick(snap, next_id)))
-            break;
-    }
-
-    Object *prev = Client_SnapshotObjectAtTick(snap, prev_id);
-    Object *next = Client_SnapshotObjectAtTick(snap, next_id);
-
-    // handle cases where we can't interpolate
-    if (!Object_IsInit(prev) && !Object_IsInit(next)) // disaster
-        return *exact_obj;
-
-    if (!Object_IsInit(prev))
-        return *next;
-
-    if (!Object_IsInit(next))
-        return *prev;
-
-    // do the interpolation
-    Uint64 id_range = next_id - prev_id;
-    Uint64 id_offset = tick_id - prev_id;
-    float t = (float)id_offset / (float)id_range;
-    Object result = Object_Lerp(*prev, *next, t);
-    return result;
-}
-
 static void Tick_Playback(AppState *app)
 {
     Uint64 smallest_latest_server_tick = ~0ull;
@@ -311,28 +262,75 @@ static void Tick_Playback(AppState *app)
 
     if (biggest_oldest_server_tick > app->client.next_playback_tick)
     {
-        SDL_Log("%s: Server is ahead of the client; "
-                "client's next_playback_tick: %llu, "
-                "biggest_oldest_server_tick: %llu, "
-                "bumping client's next_playback_tick",
-                Net_Label(app),
-                app->client.next_playback_tick,
-                biggest_oldest_server_tick);
+        LOG(LogFlags_NetTick,
+            "%s: Server is too ahead from the client; "
+            "client's next_playback_tick: %llu, "
+            "biggest_oldest_server_tick: %llu, "
+            "playback delay: %llu, "
+            "playback catchup %d, "
+            "bumping client's next_playback_tick",
+            Net_Label(app),
+            app->client.next_playback_tick,
+            biggest_oldest_server_tick,
+            app->client.current_playback_delay,
+            (int)app->client.playback_tick_catchup);
 
         app->client.next_playback_tick = biggest_oldest_server_tick;
     }
 
     if (smallest_latest_server_tick < app->client.next_playback_tick)
     {
-        SDL_Log("%s: Ran out of tick playback state; "
-                "next_playback_tick: %llu, "
-                "smallest_latest_server_tick: %llu, "
-                "tick_bump_correction: %llu",
-                Net_Label(app),
-                app->client.next_playback_tick,
-                smallest_latest_server_tick,
-                app->client.tick_bump_correction);
+        LOG(LogFlags_NetTick,
+            "%s: Ran out of tick playback state; "
+            "next_playback_tick: %llu, "
+            "smallest_latest_server_tick: %llu, "
+            "playback delay: %llu, "
+            "playback catchup %d",
+            Net_Label(app),
+            app->client.next_playback_tick,
+            smallest_latest_server_tick,
+            app->client.current_playback_delay,
+            (int)app->client.playback_tick_catchup);
         return;
+    }
+
+    // playback delay catchup calculations
+    {
+        app->client.current_playback_delay = smallest_latest_server_tick - app->client.next_playback_tick;
+
+        if (app->client.prev_smallest_latest_server_tick !=
+            smallest_latest_server_tick)
+        {
+            // save the delta
+            Sint64 delta = smallest_latest_server_tick - app->client.prev_smallest_latest_server_tick;
+            app->client.latest_deltas[app->client.latest_delta_index] = delta;
+            app->client.latest_delta_index = (app->client.latest_delta_index + 1) % ArrayCount(app->client.latest_deltas);
+
+            // find biggest recent delta
+            Sint16 biggest_delta = 0;
+            ForArray(i, app->client.latest_deltas)
+            {
+                if (app->client.latest_deltas[i] > biggest_delta)
+                    biggest_delta = app->client.latest_deltas[i];
+            }
+
+            Sint16 target_playback_delay = biggest_delta + biggest_delta/8 + 1;
+            if (target_playback_delay < app->client.current_playback_delay)
+            {
+                app->client.playback_tick_catchup = app->client.current_playback_delay - target_playback_delay;
+
+                LOG(LogFlags_NetCatchup,
+                    "%s: Current playback delay: %llu, "
+                    " Setting playback catchup to %d, ",
+                    Net_Label(app),
+                    app->client.current_playback_delay,
+                    (int)app->client.playback_tick_catchup);
+            }
+            else
+            {
+                app->client.playback_tick_catchup = 0;
+            }
+        }
     }
 
     ForArray(net_slot, app->client.obj_snaps)
@@ -355,10 +353,10 @@ static void Tick_Iterate(AppState *app)
     {
         Tick_Playback(app);
 
-        if (app->client.tick_bump_correction)
+        if (app->client.playback_tick_catchup > 0)
         {
             Tick_Playback(app);
-            app->client.tick_bump_correction -= 1;
+            app->client.playback_tick_catchup -= 1;
         }
     }
 }

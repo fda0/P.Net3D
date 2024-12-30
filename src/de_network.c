@@ -49,11 +49,12 @@ static void Net_SendS8(AppState *app, Net_User destination, S8 msg)
 
     if (!send_res)
     {
-        NET_VERBOSE_LOG("%s: Sending buffer of size %lluB to %s:%d; %s",
-                        Net_Label(app), msg.size,
-                        SDLNet_GetAddressString(destination.address),
-                        (int)destination.port,
-                        send_res ? "success" : "fail");
+        LOG(LogFlags_NetSend,
+            "%s: Sending buffer of size %lluB to %s:%d; %s",
+            Net_Label(app), msg.size,
+            SDLNet_GetAddressString(destination.address),
+            (int)destination.port,
+            send_res ? "success" : "fail");
     }
 
     //SDL_Delay(10);
@@ -160,7 +161,7 @@ static void Net_IterateSend(AppState *app)
     {
         // hacky temporary network activity rate-limitting
         static Uint64 last_timestamp = 0;
-        if (app->frame_time < last_timestamp + 8)
+        if (app->frame_time < last_timestamp + 1)
             return;
         last_timestamp = app->frame_time;
     }
@@ -231,118 +232,6 @@ static void Net_IterateSend(AppState *app)
     }
 }
 
-static Object *Client_SnapshotObjectAtTick(Client_Snapshot *snap, Uint64 tick_id)
-{
-    Uint64 state_index = tick_id % ArrayCount(snap->tick_states);
-    return snap->tick_states + state_index;
-}
-
-static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
-                                        Uint64 insert_at_tick_id, Object insert_obj)
-{
-    // function returns true on error
-    Uint64 last_to_first_tick_offset = NET_MAX_TICK_HISTORY - 1;
-
-    if (insert_at_tick_id < snap->latest_server_tick)
-    {
-        SDL_Log("%s: Rejecting snapshot insert (in the middle) - "
-                "latest server tick: %llu; "
-                "insert tick: %llu; "
-                "diff: %llu (max: %llu)",
-                Net_Label(app), snap->latest_server_tick, insert_at_tick_id,
-                snap->latest_server_tick - insert_at_tick_id);
-        return true;
-    }
-
-    Sint64 delta_from_latest = (Sint64)insert_at_tick_id - (Sint64)snap->latest_server_tick;
-    if (delta_from_latest > 0)
-    {
-        // save new latest server tick
-        snap->latest_server_tick = insert_at_tick_id;
-    }
-
-    Uint64 minimum_server_tick = (snap->latest_server_tick >= last_to_first_tick_offset ?
-                                  snap->latest_server_tick - last_to_first_tick_offset :
-                                  0);
-
-    if (insert_at_tick_id < minimum_server_tick)
-    {
-        Assert(delta_from_latest <= 0);
-        SDL_Log("%s: Rejecting snapshot insert (underflow) - "
-                "latest server tick: %llu; "
-                "insert tick: %llu; "
-                "diff: %llu (max: %llu)",
-                Net_Label(app), snap->latest_server_tick, insert_at_tick_id,
-                insert_at_tick_id - snap->latest_server_tick,
-                (Uint64)NET_MAX_TICK_HISTORY);
-        return true;
-    }
-
-    if (delta_from_latest > 0)
-    {
-        // tick_id is newer than latest_server_at_tick
-        // zero-out the gap between newly inserted object and previous latest server tick
-
-        if (delta_from_latest >= NET_MAX_TICK_HISTORY)
-        {
-            // optimized branch
-            // tick_id is much-newer than latest_server_at_tick
-            // we can safely clear the whole circle buffer
-            SDL_zeroa(snap->tick_states);
-        }
-        else
-        {
-            Uint64 clearing_start = insert_at_tick_id - delta_from_latest + 1;
-            for (Uint64 i = clearing_start;
-                 i < insert_at_tick_id;
-                 i += 1)
-            {
-                Object *obj = Client_SnapshotObjectAtTick(snap, i);
-                SDL_zerop(obj);
-            }
-        }
-
-
-        // recalculate oldest_server_tick
-        if (snap->oldest_server_tick < minimum_server_tick)
-        {
-            // find new oldest
-            for (Uint64 i = minimum_server_tick;
-                 i < insert_at_tick_id;
-                 i += 1)
-            {
-                Object *obj = Client_SnapshotObjectAtTick(snap, i);
-                if (obj->flags)
-                {
-                    snap->oldest_server_tick = i;
-                    break;
-                }
-            }
-
-            // failed to find oldest
-            if (snap->oldest_server_tick < minimum_server_tick)
-            {
-                snap->oldest_server_tick = insert_at_tick_id;
-            }
-        }
-    }
-
-    // update oldest if inserted obj is older than oldest
-    if (snap->oldest_server_tick > insert_at_tick_id)
-    {
-        snap->oldest_server_tick = insert_at_tick_id;
-    }
-
-    // insert object
-    {
-        Object *insert_at_obj = Client_SnapshotObjectAtTick(snap, insert_at_tick_id);
-        *insert_at_obj = insert_obj;
-    }
-
-    Assert(snap->oldest_server_tick >= minimum_server_tick);
-    return false; // no error
-}
-
 static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
 {
     S8 msg = full_message;
@@ -373,15 +262,17 @@ static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
 
             if (update.net_slot >= NET_MAX_NETWORK_OBJECTS)
             {
-                SDL_Log("%s: Rejecting payload - net slot overflow: %u",
-                        Net_Label(app), update.net_slot);
+                LOG(LogFlags_NetPayload,
+                    "%s: Rejecting payload - net slot overflow: %u",
+                    Net_Label(app), update.net_slot);
                 return;
             }
 
             if (app->client.next_playback_tick > cmd.tick_id)
             {
-                SDL_Log("%s: Rejecting payload - cmd tick at: %llu < next playback tick: %llu",
-                        Net_Label(app), cmd.tick_id, app->client.next_playback_tick);
+                LOG(LogFlags_NetPayload,
+                    "%s: Rejecting payload - cmd tick at: %llu < next playback tick: %llu",
+                    Net_Label(app), cmd.tick_id, app->client.next_playback_tick);
                 return;
             }
 
@@ -404,8 +295,9 @@ static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
         }
         else
         {
-            SDL_Log("%s: Unsupported cmd kind: %d",
-                    Net_Label(app), (int)cmd.kind);
+            LOG(LogFlags_NetPayload,
+                "%s: Unsupported cmd kind: %d",
+                Net_Label(app), (int)cmd.kind);
             return;
         }
     }
@@ -415,8 +307,9 @@ static void Net_ReceivePacket(AppState *app, S8 packet)
 {
     if (packet.size < sizeof(Net_PacketHeader))
     {
-        NET_VERBOSE_LOG("%s: packet rejected - it's too small, size: %llu",
-                        Net_Label(app), msg.size);
+        LOG(LogFlags_NetPacket,
+            "%s: packet rejected - it's too small, size: %llu",
+            Net_Label(app), packet.size);
         return;
     }
 
@@ -425,15 +318,17 @@ static void Net_ReceivePacket(AppState *app, S8 packet)
 
     if (!packet.size)
     {
-        NET_VERBOSE_LOG("%s: packet rejected - empty payload",
-                        Net_Label(app));
+        LOG(LogFlags_NetPacket,
+            "%s: packet rejected - empty payload",
+            Net_Label(app));
         return;
     }
 
     if (header.magic_value != NET_MAGIC_VALUE)
     {
-        NET_VERBOSE_LOG("%s: packet rejected - invalid magic value: %u; expected: %u",
-                        Net_Label(app), (Uint32)header.magic_value, NET_MAGIC_VALUE);
+        LOG(LogFlags_NetPacket,
+            "%s: packet rejected - invalid magic value: %u; expected: %u",
+            Net_Label(app), (Uint32)header.magic_value, NET_MAGIC_VALUE);
         return;
     }
 
@@ -442,8 +337,9 @@ static void Net_ReceivePacket(AppState *app, S8 packet)
     Uint16 hash16 = (Uint16)hash64;
     if (hash16 != header.payload_hash)
     {
-        NET_VERBOSE_LOG("%s: packet rejected - invalid hash: %u; calculated: %u",
-                        Net_Label(app), header.packet_payload_hash, hash16);
+        LOG(LogFlags_NetPacket,
+            "%s: packet rejected - invalid hash: %u; calculated: %u",
+            Net_Label(app), header.payload_hash, hash16);
         return;
     }
 
@@ -459,7 +355,7 @@ static void Net_IterateReceive(AppState *app)
     {
         // hacky temporary network activity rate-limitting
         static Uint64 last_timestamp = 0;
-        if (app->frame_time < last_timestamp + 1)
+        if (app->frame_time < last_timestamp + 200)
             return;
         last_timestamp = app->frame_time;
     }
@@ -471,19 +367,21 @@ static void Net_IterateReceive(AppState *app)
         if (!receive) break;
         if (!dgram) break;
 
-        NET_VERBOSE_LOG("%s: got %d-byte datagram from %s:%d",
-                        Net_Label(app),
-                        (int)dgram->buflen,
-                        SDLNet_GetAddressString(dgram->addr),
-                        (int)dgram->port);
+        LOG(LogFlags_NetDatagram,
+            "%s: got %d-byte datagram from %s:%d",
+            Net_Label(app),
+            (int)dgram->buflen,
+            SDLNet_GetAddressString(dgram->addr),
+            (int)dgram->port);
 
         if (is_client)
         {
             if (!Net_UserMatchAddrPort(app->net.server_user, dgram->addr, dgram->port))
             {
-                SDL_Log("%s: dgram rejected - received from non-server address %s:%d",
-                        Net_Label(app),
-                        SDLNet_GetAddressString(dgram->addr), (int)dgram->port);
+                LOG(LogFlags_NetDatagram,
+                    "%s: dgram rejected - received from non-server address %s:%d",
+                    Net_Label(app),
+                    SDLNet_GetAddressString(dgram->addr), (int)dgram->port);
                 goto datagram_cleanup;
             }
         }
@@ -493,8 +391,9 @@ static void Net_IterateReceive(AppState *app)
         {
             if (!Net_FindUser(app, dgram->addr, dgram->port))
             {
-                SDL_Log("%s: saving user with port: %d",
-                        Net_Label(app), (int)dgram->port);
+                LOG(LogFlags_NetInfo,
+                    "%s: saving user with port: %d",
+                    Net_Label(app), (int)dgram->port);
                 Net_AddUser(app, dgram->addr, dgram->port);
             }
         }
@@ -512,13 +411,15 @@ static void Net_Init(AppState *app)
     bool is_server = app->net.is_server;
     bool is_client = !app->net.is_server;
 
-    SDL_Log(is_server ? "Launching as server" : "Launching as client");
+    LOG(LogFlags_NetInfo,
+        is_server ? "Launching as server" : "Launching as client");
 
     if (is_client)
     {
         const char *hostname = "localhost";
-        SDL_Log("%s: Resolving server hostname '%s' ...",
-                Net_Label(app), hostname);
+        LOG(LogFlags_NetInfo,
+            "%s: Resolving server hostname '%s' ...",
+            Net_Label(app), hostname);
         app->net.server_user.address = SDLNet_ResolveHostname(hostname);
         app->net.server_user.port = NET_DEFAULT_SEVER_PORT;
         if (app->net.server_user.address)
@@ -533,8 +434,9 @@ static void Net_Init(AppState *app)
         if (!app->net.server_user.address)
         {
             app->net.err = true;
-            SDL_Log("%s: Failed to resolve server hostname '%s'",
-                    Net_Label(app), hostname);
+            LOG(LogFlags_NetInfo,
+                "%s: Failed to resolve server hostname '%s'",
+                Net_Label(app), hostname);
         }
     }
 
@@ -543,18 +445,21 @@ static void Net_Init(AppState *app)
     if (!app->net.socket)
     {
         app->net.err = true;
-        SDL_Log("%s: Failed to create socket",
-                Net_Label(app));
+        LOG(LogFlags_NetInfo,
+            "%s: Failed to create socket",
+            Net_Label(app));
     }
     else
     {
-        SDL_Log("%s: Created socket",
-                Net_Label(app));
+        LOG(LogFlags_NetInfo,
+            "%s: Created socket",
+            Net_Label(app));
 
 #if NET_SIMULATE_PACKETLOSS
         SDLNet_SimulateDatagramPacketLoss(app->net.socket, NET_SIMULATE_PACKETLOSS);
-        SDL_Log("%s: Simulating packetloss: %d",
-                Net_Label(app), NET_SIMULATE_PACKETLOSS);
+        LOG(LogFlags_NetInfo,
+            "%s: Simulating packetloss: %d",
+            Net_Label(app), NET_SIMULATE_PACKETLOSS);
 #endif
     }
 }

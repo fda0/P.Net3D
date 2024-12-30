@@ -264,6 +264,7 @@ static void Game_Init(AppState *app)
         //app->debug.fixed_dt = 0.1f;
         //app->debug.single_tick_stepping = true;
         app->debug.draw_collision_box = true;
+        app->log_filter &= ~(LogFlags_NetDatagram);
     }
 
     Net_Init(app);
@@ -272,7 +273,7 @@ static void Game_Init(AppState *app)
     app->object_count += 1; // reserve object under index 0 as special 'nil' value
     app->sprite_count += 1; // reserve sprite under index 0 as special 'nil' value
     app->camera_range = 500;
-    app->tick_id = NET_MAX_TICK_HISTORY;
+    app->tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
 
     // this assumes we run the game from build directory
     // @todo in the future we should force CWD or query demongus absolute path etc

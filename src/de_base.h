@@ -5,3 +5,6 @@
 #define Swap(a, b) do { typeof(a) tmp = a; a = b; b = tmp; } while (0)
 
 #define Assert(Expr) SDL_assert(Expr) // @todo(mg) this might be compiled out for release builds
+
+struct AppState;
+typedef struct AppState AppState;

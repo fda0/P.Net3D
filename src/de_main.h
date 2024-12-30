@@ -12,33 +12,6 @@ typedef struct
     Col_Normals collision_normals;
 } Sprite;
 
-typedef enum {
-    ObjectFlag_Draw          = (1 << 0),
-    ObjectFlag_Move          = (1 << 1),
-    ObjectFlag_Collide       = (1 << 2),
-} Object_Flags;
-
-typedef struct
-{
-    Uint32 flags;
-    V2 p; // position of center
-    V2 dp; // change of p
-    V2 prev_p; // position from the last frame
-
-    // visuals
-    Uint32 sprite_id;
-    ColorF sprite_color;
-
-    float sprite_animation_t;
-    Uint32 sprite_animation_index;
-    Uint32 sprite_frame_index;
-
-    Uint32 some_number;
-
-    // temp
-    bool has_collision;
-} Object;
-
 typedef struct
 {
     SDLNet_Address *address;
@@ -89,20 +62,24 @@ typedef struct
 
 typedef struct
 {
-    Object tick_states[NET_MAX_TICK_HISTORY]; // circle buf
-    Uint64 latest_server_tick; // latest
+    Object tick_states[NET_CLIENT_MAX_SNAPSHOTS]; // circle buf
+    Uint64 latest_server_tick;
     Uint64 oldest_server_tick;
+    Uint64 recent_lerp_start_tick;
+    Uint64 recent_lerp_end_tick;
 } Client_Snapshot;
 
 typedef struct
 {
     Client_Snapshot obj_snaps[NET_MAX_NETWORK_OBJECTS];
     Uint64 next_playback_tick;
+    Uint64 current_playback_delay;
 
-    // stores last 32 tick bumps (how much newer the server's tick was compared to our previous latest server tick) to adjust network delay
-    Uint64 tick_bump_history[32]; // size of this should have inv corelation to our network poll rate
-    Uint64 tick_bump_history_next;
-    Uint64 tick_bump_correction;
+    // stores positive deltas from latest; used to speed up playback and catch up to server on stable connections
+    Uint64 prev_smallest_latest_server_tick;
+    Sint16 latest_deltas[32];
+    Sint16 latest_delta_index;
+    Sint16 playback_tick_catchup;
 } ClientState;
 
 typedef struct
@@ -116,7 +93,29 @@ typedef struct
     Uint64 next_tick;
 } ServerState;
 
-typedef struct
+typedef enum
+{
+    LogFlags_Idk         = (1 << 0),
+    LogFlags_NetInfo     = (1 << 1),
+    LogFlags_NetDatagram = (1 << 2),
+    LogFlags_NetSend     = (1 << 3),
+    LogFlags_NetPacket   = (1 << 4),
+    LogFlags_NetPayload  = (1 << 5),
+    LogFlags_NetClient   = (1 << 6),
+    LogFlags_NetTick     = (1 << 7),
+    LogFlags_NetCatchup  = (1 << 8),
+} Log_Flags;
+
+// @note disable logging
+//#define LOG(FLAGS, ...) do{ (void)(FLAGS); if(0){ SDL_Log(__VA_ARGS__); }}while(0)
+
+// @note disable logging but use printf for compiler checks
+//#define LOG(FLAGS, ...) do{ (void)(FLAGS); if(0){ printf(__VA_ARGS__); }}while(0)
+
+// @note enable logging
+#define LOG(FLAGS, ...) do{ if(((FLAGS) & app->log_filter) == (FLAGS)){ SDL_Log(__VA_ARGS__); }}while(0)
+
+struct AppState
 {
     // SDL, window stuff
     SDL_Window* window;
@@ -125,6 +124,8 @@ typedef struct
     int window_px, window_py; // initial window px, py specified by cmd options, 0 if wasn't set
     bool window_on_top;
     bool window_borderless;
+
+    Uint32 log_filter; // active log filer flags
 
     // user input
     V2 mouse;
@@ -196,4 +197,4 @@ typedef struct
 
         bool draw_texture_box;
     } debug;
-} AppState;
+};

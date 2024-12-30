@@ -19,11 +19,14 @@
 #include "de_vertices.h"
 #include "de_string.h"
 #include "de_util.h"
+#include "de_object.h"
 #include "de_network.h"
 #include "de_main.h"
+
 #include "de_tests.c"
 #include "de_sprite.c"
 #include "de_object.c"
+#include "de_client.c"
 #include "de_network.c"
 #include "de_tick.c"
 #include "de_main.c"
@@ -134,12 +137,12 @@ static void Game_ParseCmd(AppState *app, int argc, char** argv)
 
             if (!found_number)
             {
-                SDL_Log("%s needs to be followed by positive number", arg);
+                LOG(LogFlags_Idk, "%s needs to be followed by positive number", arg);
             }
         }
         else
         {
-            SDL_Log("Unhandled argument: %s", arg);
+            LOG(LogFlags_Idk, "Unhandled argument: %s", arg);
         }
     }
 }
@@ -158,6 +161,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to allocate appstate", SDL_GetError(), NULL);
         return SDL_APP_FAILURE;
     }
+    app->log_filter = ~0u;
     app->window_width = WINDOW_WIDTH;
     app->window_height = WINDOW_HEIGHT;
 
