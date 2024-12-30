@@ -12,7 +12,12 @@ static bool Object_IsZero(AppState *app, Object *obj)
 
 static bool Object_IsInit(Object *obj)
 {
-    return obj->flags != 0;
+    return obj->init;
+}
+
+static bool Object_HasData(Object *obj)
+{
+    return !!obj->flags;
 }
 
 static Object *Object_FromNetSlot(AppState *app, Uint32 network_slot)
@@ -42,6 +47,7 @@ static Object *Object_Create(AppState *app, Uint32 sprite_id, Uint32 flags)
 
     SDL_zerop(obj);
     obj->flags = flags;
+    obj->init = true;
     obj->sprite_id = sprite_id;
     obj->sprite_color = ColorF_RGB(1,1,1);
     return obj;

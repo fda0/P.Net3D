@@ -1,4 +1,5 @@
-typedef enum {
+typedef enum
+{
     ObjectFlag_Draw          = (1 << 0),
     ObjectFlag_Move          = (1 << 1),
     ObjectFlag_Collide       = (1 << 2),
@@ -7,6 +8,7 @@ typedef enum {
 typedef struct
 {
     Uint32 flags;
+    bool init;
     V2 p; // position of center
     V2 dp; // change of p
     V2 prev_p; // position from the last frame

@@ -264,14 +264,16 @@ static void Tick_Playback(AppState *app)
     {
         LOG(LogFlags_NetTick,
             "%s: Server is too ahead from the client; "
-            "client's next_playback_tick: %llu, "
             "biggest_oldest_server_tick: %llu, "
+            "smallest_latest_server_tick: %llu, "
+            "client's next_playback_tick: %llu, "
             "playback delay: %llu, "
             "playback catchup %d, "
-            "bumping client's next_playback_tick",
+            "[bumping client's next_playback_tick]",
             Net_Label(app),
-            app->client.next_playback_tick,
             biggest_oldest_server_tick,
+            smallest_latest_server_tick,
+            app->client.next_playback_tick,
             app->client.current_playback_delay,
             (int)app->client.playback_tick_catchup);
 

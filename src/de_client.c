@@ -13,7 +13,7 @@ static Object Client_LerpNetObject(AppState *app, Uint64 net_slot, Uint64 tick_i
            tick_id >= snap->oldest_server_tick);
 
     Object *exact_obj = Client_SnapshotObjectAtTick(snap, tick_id);
-    if (exact_obj->flags) // exact object found
+    if (Object_IsInit(exact_obj)) // exact object found
         return *exact_obj;
 
     // find nearest prev_id/next_id objects
@@ -137,7 +137,7 @@ static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
                  i += 1)
             {
                 Object *obj = Client_SnapshotObjectAtTick(snap, i);
-                if (obj->flags)
+                if (Object_IsInit(obj))
                 {
                     snap->oldest_server_tick = i;
                     break;

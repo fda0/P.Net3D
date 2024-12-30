@@ -56,8 +56,6 @@ static void Net_SendS8(AppState *app, Net_User destination, S8 msg)
             (int)destination.port,
             send_res ? "success" : "fail");
     }
-
-    //SDL_Delay(10);
 }
 
 static void Net_RecalculatePacketHeader(AppState *app)
@@ -191,7 +189,7 @@ static void Net_IterateSend(AppState *app)
         {
             Object *net_obj = Object_FromNetSlot(app, net_slot);
 
-            if (net_obj->flags)
+            if (Object_HasData(net_obj))
             {
                 Net_Cmd cmd = {};
                 cmd.tick_id = app->tick_id;
@@ -258,6 +256,7 @@ static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
                 Net_ObjEmpty empty;
                 Net_ConsumeS8(&msg, &empty, sizeof(empty));
                 update.net_slot = empty.net_slot;
+                update.obj.init = true;
             }
 
             if (update.net_slot >= NET_MAX_NETWORK_OBJECTS)
@@ -355,7 +354,7 @@ static void Net_IterateReceive(AppState *app)
     {
         // hacky temporary network activity rate-limitting
         static Uint64 last_timestamp = 0;
-        if (app->frame_time < last_timestamp + 200)
+        if (app->frame_time < last_timestamp + 1)
             return;
         last_timestamp = app->frame_time;
     }
