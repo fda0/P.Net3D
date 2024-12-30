@@ -1,7 +1,7 @@
 // ---
 // Constants
 // ---
-#define TICK_RATE 16
+#define TICK_RATE 120
 #define TIME_STEP (1.f / (float)TICK_RATE)
 
 typedef struct
@@ -48,6 +48,7 @@ typedef enum
     NetCmd_None,
     NetCmd_Ping,
     NetCmd_ObjUpdate,
+    NetCmd_ObjEmpty,
     NetCmd_NetworkTest,
 } Net_CmdKind;
 
@@ -70,19 +71,31 @@ typedef struct
 
 typedef struct
 {
+    Uint32 net_slot;
+    Object obj;
+} Net_ObjUpdate;
+
+typedef struct
+{
+    Uint32 net_slot;
+} Net_ObjEmpty;
+
+typedef struct
+{
     Uint32 numbers[290];
 } Net_Payload_NetworkTest;
 
 typedef struct
 {
     Uint64 obj_id;
-    Object ticks[NET_MAX_TICK_HISTORY]; // circle buf
-    Uint64 latest_server_tick;
-} Client_NetworkObjectTicks;
+    Object tick_states[NET_MAX_TICK_HISTORY]; // circle buf
+    Uint64 latest_server_tick; // latest
+    Uint64 oldest_server_tick;
+} Client_Snapshot;
 
 typedef struct
 {
-    Client_NetworkObjectTicks netobjticks[NET_MAX_NETWORK_OBJECTS];
+    Client_Snapshot snaps[NET_MAX_NETWORK_OBJECTS];
     Uint64 next_playback_tick;
 
     // stores last 32 tick bumps (how much newer the server's tick was compared to our previous latest server tick) to adjust network delay

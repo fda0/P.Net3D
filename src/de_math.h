@@ -145,6 +145,11 @@ static V2 V2_Normalize(V2 a)
     return a;
 }
 
+static V2 V2_Lerp(V2 a, V2 b, float t)
+{
+    return (V2){LerpF(a.x, b.x, t), LerpF(a.y, b.y, t)};
+}
+
 static V2 V2_RotateClockwise90(V2 a)
 {
     // rotation matrix

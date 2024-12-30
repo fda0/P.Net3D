@@ -219,39 +219,126 @@ static void Tick_AdvanceSimulation(AppState *app)
     }
 }
 
+static Object Object_Lerp(Object prev, Object next, float t)
+{
+    Object result = prev;
+
+    result.p = V2_Lerp(prev.p, next.p, t);
+    result.dp = V2_Lerp(prev.dp, next.dp, t);
+    result.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
+    result.sprite_color = ColorF_Lerp(prev.sprite_color, next.sprite_color, t);
+    result.sprite_animation_t = LerpF(prev.sprite_animation_t, next.sprite_animation_t, t);
+
+    result.sprite_animation_index = (Uint32)RoundF(LerpF((float)prev.sprite_animation_index,
+                                                         (float)next.sprite_animation_index, t));
+    result.sprite_frame_index = (Uint32)RoundF(LerpF((float)prev.sprite_frame_index,
+                                                     (float)next.sprite_frame_index, t));
+    result.has_collision = (Uint32)RoundF(LerpF((float)prev.has_collision,
+                                                (float)next.has_collision, t));
+
+    return result;
+}
+
+static Object Client_LerpNetObject(AppState *app, Uint64 net_slot, Uint64 tick_id)
+{
+    Assert(net_slot < ArrayCount(app->client.snaps));
+    Client_Snapshot *snap = app->client.snaps + net_slot;
+
+    Assert(tick_id <= snap->latest_server_tick &&
+           tick_id >= snap->oldest_server_tick);
+
+    Object *exact_obj = Client_SnapshotObjectAtTick(snap, tick_id);
+    if (exact_obj->flags) // exact object found
+        return *exact_obj;
+
+    // find nearest prev_id/next_id objects
+    Uint64 prev_id = tick_id;
+    Uint64 next_id = tick_id;
+    while (prev_id > snap->oldest_server_tick)
+    {
+        prev_id -= 1;
+        if (Client_SnapshotObjectAtTick(snap, prev_id)->flags)
+            break;
+    }
+    while (next_id < snap->latest_server_tick)
+    {
+        next_id += 1;
+        if (Client_SnapshotObjectAtTick(snap, next_id)->flags)
+            break;
+    }
+
+    Object *prev = Client_SnapshotObjectAtTick(snap, prev_id);
+    Object *next = Client_SnapshotObjectAtTick(snap, next_id);
+
+    // handle cases where we can't interpolate
+    if (!prev->flags && !next->flags) // disaster
+        return *exact_obj;
+
+    if (!prev->flags)
+        return *next;
+
+    if (!next->flags)
+        return *prev;
+
+    // do the interpolation
+    Uint64 id_range = next_id - prev_id;
+    Uint64 id_offset = tick_id - prev_id;
+    float t = (float)id_offset / (float)id_range;
+    Object result = Object_Lerp(*prev, *next, t);
+    return result;
+
+}
+
 static void Tick_Playback(AppState *app)
 {
     // @todo query oldest object tick on client side
     // @todo
 
-    Uint64 oldest_tick_from_server = ~0ull;
-    ForArray(obj_i, app->client.netobjticks)
+    Uint64 smallest_latest_server_tick = ~0ull;
+    Uint64 biggest_oldest_server_tick = 0;
+    ForArray(obj_i, app->client.snaps)
     {
-        Client_NetworkObjectTicks *netobj = app->client.netobjticks + obj_i;
-        if (netobj->latest_server_tick < oldest_tick_from_server)
+        Client_Snapshot *snap = app->client.snaps + obj_i;
+        if (snap->latest_server_tick < smallest_latest_server_tick)
         {
-            oldest_tick_from_server = netobj->latest_server_tick;
+            smallest_latest_server_tick = snap->latest_server_tick;
+        }
+        if (snap->oldest_server_tick > biggest_oldest_server_tick)
+        {
+            biggest_oldest_server_tick = snap->oldest_server_tick;
         }
     }
 
-    if (oldest_tick_from_server < app->client.next_playback_tick)
+    if (biggest_oldest_server_tick > app->client.next_playback_tick)
+    {
+        SDL_Log("%s: Server is ahead of the client; "
+                "client's next_playback_tick: %llu, "
+                "biggest_oldest_server_tick: %llu, "
+                "bumping client's next_playback_tick",
+                Net_Label(app),
+                app->client.next_playback_tick,
+                biggest_oldest_server_tick);
+
+        app->client.next_playback_tick = biggest_oldest_server_tick;
+    }
+
+    if (smallest_latest_server_tick < app->client.next_playback_tick)
     {
         SDL_Log("%s: Ran out of tick playback state; "
                 "next_playback_tick: %llu, "
-                "oldest_tick_from_server: %llu, "
+                "smallest_latest_server_tick: %llu, "
                 "tick_bump_correction: %llu",
                 Net_Label(app),
                 app->client.next_playback_tick,
-                oldest_tick_from_server,
+                smallest_latest_server_tick,
                 app->client.tick_bump_correction);
         return;
     }
 
-    ForArray(net_slot, app->client.netobjticks)
+    ForArray(net_slot, app->client.snaps)
     {
         Object *net_obj = Object_FromNetSlot(app, net_slot);
-        Object interpolated = {0};
-        Assert(0); // Client_InterpolateNetworkObject(app, net_slot, app->client.next_playback_tick);
+        Object interpolated = Client_LerpNetObject(app, net_slot, app->client.next_playback_tick);
         *net_obj = interpolated;
     }
     app->client.next_playback_tick += 1;

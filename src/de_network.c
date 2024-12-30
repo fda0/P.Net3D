@@ -77,7 +77,7 @@ static S8 Net_GetPacketString(AppState *app)
     return result;
 }
 
-static void Net_PacketSendAndReset(AppState *app)
+static void Net_PacketSendAndResetPayload(AppState *app)
 {
     Net_RecalculatePacketHeader(app);
     S8 packet = Net_GetPacketString(app);
@@ -160,7 +160,7 @@ static void Net_IterateSend(AppState *app)
     {
         // hacky temporary network activity rate-limitting
         static Uint64 last_timestamp = 0;
-        if (app->frame_time < last_timestamp + 900)
+        if (app->frame_time < last_timestamp + 10)
             return;
         last_timestamp = app->frame_time;
     }
@@ -180,46 +180,42 @@ static void Net_IterateSend(AppState *app)
                 test.numbers[i] = i + 1;
 
             Net_PayloadMemcpy(app, &test, sizeof(test));
-            Net_PacketSendAndReset(app);
+            Net_PacketSendAndResetPayload(app);
         }
     }
 
     if (is_server)
     {
-#if 1
-        Assert(0); // @todo
-#else
-        Net_Cmd cmd = {};
-        cmd.tick_id = app->tick_id;
-        cmd.kind = NetCmd_ObjHistory;
-        Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
-
-        Uint64 state_index = app->netobj.next_tick % ArrayCount(app->netobj.states);
-
-        Uint8 *payload_start = 0;
-        Uint8 *payload_end = 0;
-
-        // copy range (next..ArrayCount)
+        ForU32(net_slot, NET_MAX_NETWORK_OBJECTS)
         {
-            Uint64 start = state_index;
-            Uint64 states_to_copy = ArrayCount(app->netobj.states) - start;
-            Uint64 copy_size = states_to_copy*sizeof(Tick_NetworkObjState);
-            payload_start = Net_PayloadMemcpy(app, app->netobj.states + start, copy_size);
-            payload_end = payload_start + copy_size;
-        }
+            Object *net_obj = Object_FromNetSlot(app, net_slot);
 
-        if (state_index > 0) // copy range [0..next)
-        {
-            Uint64 states_to_copy = state_index;
-            Uint64 copy_size = states_to_copy*sizeof(Tick_NetworkObjState);
-            payload_end = Net_PayloadMemcpy(app, app->netobj.states, copy_size);
-            payload_end += copy_size;
-        }
+            if (net_obj->flags)
+            {
+                Net_Cmd cmd = {};
+                cmd.tick_id = app->tick_id;
+                cmd.kind = NetCmd_ObjUpdate;
+                Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
-        S8 payload_objs = S8_Range(payload_start, payload_end);
-        Uint64 hash = S8_Hash(0, payload_objs);
-        Net_PayloadMemcpy(app, &hash, sizeof(hash));
-#endif
+                Net_ObjUpdate update = {0};
+                update.net_slot = net_slot;
+                update.obj = *net_obj;
+                Net_PayloadMemcpy(app, &update, sizeof(update));
+            }
+            else
+            {
+                Net_Cmd cmd = {};
+                cmd.tick_id = app->tick_id;
+                cmd.kind = NetCmd_ObjEmpty;
+                Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+
+                Net_ObjEmpty update = {0};
+                update.net_slot = net_slot;
+                Net_PayloadMemcpy(app, &update, sizeof(update));
+            }
+
+            Net_PacketSendAndResetPayload(app);
+        }
     }
 
     if (is_client)
@@ -233,7 +229,105 @@ static void Net_IterateSend(AppState *app)
         Net_PayloadMemcpy(app, &ping, sizeof(ping));
     }
 
-    Net_PacketSendAndReset(app);
+    Net_PacketSendAndResetPayload(app);
+}
+
+static Object *Client_SnapshotObjectAtTick(Client_Snapshot *snap, Uint64 tick_id)
+{
+    Uint64 state_index = tick_id % ArrayCount(snap->tick_states);
+    return snap->tick_states + state_index;
+}
+
+static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
+                                        Uint64 insert_at_tick_id, Object insert_obj)
+{
+    // function returns true on error
+    Uint64 last_to_first_tick_offset = NET_MAX_TICK_HISTORY - 1;
+
+    bool new_latest = (insert_at_tick_id > snap->latest_server_tick);
+    if (new_latest)
+    {
+        // save new latest server tick
+        snap->latest_server_tick = insert_at_tick_id;
+    }
+
+    Uint64 minimum_server_tick = (snap->latest_server_tick >= last_to_first_tick_offset ?
+                                  snap->latest_server_tick - last_to_first_tick_offset :
+                                  0);
+
+    if (insert_at_tick_id < minimum_server_tick)
+    {
+        SDL_Log("%s: Rejecting snapshot insert (underflow) - "
+                "latest server tick: %llu; "
+                "insert tick: %llu; "
+                "diff: %llu (max: %llu)",
+                Net_Label(app), snap->latest_server_tick, insert_at_tick_id,
+                insert_at_tick_id - snap->latest_server_tick,
+                (Uint64)NET_MAX_TICK_HISTORY);
+        return true;
+    }
+
+    if (new_latest)
+    {
+        // tick_id is newer than latest_server_at_tick
+        // zero-out the gap between newly inserted object and previous latest server tick
+
+        if (insert_at_tick_id > (snap->latest_server_tick + NET_MAX_TICK_HISTORY))
+        {
+            // tick_id is much-newer than latest_server_at_tick
+            // we can safely clear the whole circle buffer
+            SDL_zeroa(snap->tick_states);
+        }
+        else
+        {
+            for (Uint64 i = snap->latest_server_tick + 1;
+                 i < insert_at_tick_id;
+                 i += 1)
+            {
+                Object *obj = Client_SnapshotObjectAtTick(snap, i);
+                SDL_zerop(obj);
+            }
+        }
+
+
+        // recalculate oldest_server_tick
+        if (snap->oldest_server_tick < minimum_server_tick)
+        {
+            // find new oldest
+            for (Uint64 i = minimum_server_tick;
+                 i < insert_at_tick_id;
+                 i += 1)
+            {
+                Object *obj = Client_SnapshotObjectAtTick(snap, i);
+                if (obj->flags)
+                {
+                    snap->oldest_server_tick = i;
+                    break;
+                }
+            }
+
+            // failed to find oldest
+            if (snap->oldest_server_tick < minimum_server_tick)
+            {
+                snap->oldest_server_tick = insert_at_tick_id;
+            }
+        }
+    }
+
+    // update oldest if inserted obj is older than oldest
+    if (snap->oldest_server_tick > insert_at_tick_id)
+    {
+        snap->oldest_server_tick = insert_at_tick_id;
+    }
+
+    // insert object
+    {
+        Object *insert_at_obj = Client_SnapshotObjectAtTick(snap, insert_at_tick_id);
+        *insert_at_obj = insert_obj;
+    }
+
+    Assert(snap->oldest_server_tick >= minimum_server_tick);
+    return false; // no error
 }
 
 static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
@@ -251,76 +345,49 @@ static void Net_ProcessReceivedMessage(AppState *app, S8 full_message)
         }
         else if (cmd.kind == NetCmd_ObjUpdate)
         {
-#if 1
-            Assert(0); // @todo
-#else
-            Tick_NetworkObjHistory history;
-            Net_ConsumeS8(&msg, &history, sizeof(history));
+            Net_ObjUpdate update;
+            Net_ConsumeS8(&msg, &update, sizeof(update));
 
-            S8 states_string = S8_Make((Uint8 *)history.states, sizeof(history.states));
-            Uint64 states_hash = S8_Hash(0, states_string);
-            Assert(history.total_hash == states_hash);
-
-            if (cmd.tick_id < app->netobj.latest_server_at_tick)
+            if (update.net_slot >= NET_MAX_NETWORK_OBJECTS)
             {
-                // the msg we recieved now is older than the last message
-                // from the server
-                // let's drop the message?
-                SDL_Log("%s: Dropping message with old tick_id: %llu, already received tick_id: %llu",
-                        Net_Label(app), cmd.tick_id, app->netobj.latest_server_at_tick);
+                SDL_Log("%s: Rejecting packet - net slot overflow: %u",
+                        Net_Label(app), update.net_slot);
                 return;
             }
 
-            Uint64 server_tick_bump = cmd.tick_id - app->netobj.latest_server_at_tick;
-            app->netobj.latest_server_at_tick = cmd.tick_id;
-
-            // adjusting tick playback delay
+            if (app->client.next_playback_tick > cmd.tick_id)
             {
-                Uint64 bump_index = app->netobj.tick_bump_history_next %
-                    ArrayCount(app->netobj.tick_bump_history);
-                app->netobj.tick_bump_history_next += 1;
-
-                app->netobj.tick_bump_history[bump_index] = server_tick_bump;
-
-                Uint64 biggest_tick_bump = 0;
-                ForArray(i, app->netobj.tick_bump_history)
-                {
-                    biggest_tick_bump = Max(app->netobj.tick_bump_history[i],
-                                            biggest_tick_bump);
-                }
-
-                Uint64 target_tick_delta = biggest_tick_bump + biggest_tick_bump/8 + 1;
-                Uint64 current_tick_delta = app->netobj.latest_server_at_tick -
-                    app->netobj.next_tick;
-
-                app->netobj.tick_bump_correction = 0;
-                if (current_tick_delta > target_tick_delta)
-                    app->netobj.tick_bump_correction = current_tick_delta - target_tick_delta;
-
-                if (app->netobj.tick_bump_correction)
-                {
-                    NET_VERBOSE_LOG("%s DELAY_ADJUSTMENT: biggest: %llu; target: %llu; "
-                                    "current: %llu, correction: %llu",
-                                    Net_Label(app), biggest_tick_bump, target_tick_delta,
-                                    current_tick_delta, app->netobj.tick_bump_correction);
-                }
+                SDL_Log("%s: Rejecting packet - packet tick at: %llu < next playback tick: %llu",
+                        Net_Label(app), cmd.tick_id, app->client.next_playback_tick);
+                return;
             }
 
-            // truncate next_tick; server state is too ahead
-            if (app->netobj.next_tick + ArrayCount(app->netobj.states) <=
-                app->netobj.latest_server_at_tick)
+            Assert(update.net_slot < ArrayCount(app->client.snaps));
+            Client_Snapshot *snap = app->client.snaps + update.net_slot;
+            Client_InsertSnapshotObject(app, snap, cmd.tick_id, update.obj);
+        }
+        else if (cmd.kind == NetCmd_ObjEmpty)
+        {
+            Net_ObjEmpty update;
+            Net_ConsumeS8(&msg, &update, sizeof(update));
+
+            if (update.net_slot >= NET_MAX_NETWORK_OBJECTS)
             {
-                app->netobj.next_tick =
-                    app->netobj.latest_server_at_tick - ArrayCount(app->netobj.states) + 1;
+                SDL_Log("%s: Rejecting packet - net slot overflow: %u",
+                        Net_Label(app), update.net_slot);
+                return;
             }
 
+            if (app->client.next_playback_tick > cmd.tick_id)
+            {
+                SDL_Log("%s: Rejecting packet - packet tick at: %llu < next playback tick: %llu",
+                        Net_Label(app), cmd.tick_id, app->client.next_playback_tick);
+                return;
+            }
 
-            Uint64 fill_index = app->netobj.latest_server_at_tick + 1;
-            CircleBufferFill(sizeof(Tick_NetworkObjState),
-                             app->netobj.states, ArrayCount(app->netobj.states),
-                             &fill_index,
-                             history.states, ArrayCount(history.states));
-#endif
+            Assert(update.net_slot < ArrayCount(app->client.snaps));
+            Client_Snapshot *snap = app->client.snaps + update.net_slot;
+            Client_InsertSnapshotObject(app, snap, cmd.tick_id, (Object){0});
         }
         else if (cmd.kind == NetCmd_NetworkTest)
         {
