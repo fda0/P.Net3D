@@ -45,6 +45,7 @@ static void Tick_AdvanceSimulation(AppState *app)
             float player_speed = 200.f * TIME_STEP;
             player->dp = V2_Scale(input->move_dir, player_speed);
         }
+        player->some_number += 1;
     }
 
     // movement & collision
@@ -223,26 +224,29 @@ static Object Object_Lerp(Object prev, Object next, float t)
 {
     Object result = prev;
 
-    result.p = V2_Lerp(prev.p, next.p, t);
-    result.dp = V2_Lerp(prev.dp, next.dp, t);
-    result.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
-    result.sprite_color = ColorF_Lerp(prev.sprite_color, next.sprite_color, t);
-    result.sprite_animation_t = LerpF(prev.sprite_animation_t, next.sprite_animation_t, t);
+    if (1)
+    {
+        result.p = V2_Lerp(prev.p, next.p, t);
+        result.dp = V2_Lerp(prev.dp, next.dp, t);
+        result.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
+        result.sprite_color = ColorF_Lerp(prev.sprite_color, next.sprite_color, t);
+        result.sprite_animation_t = LerpF(prev.sprite_animation_t, next.sprite_animation_t, t);
 
-    result.sprite_animation_index = (Uint32)RoundF(LerpF((float)prev.sprite_animation_index,
-                                                         (float)next.sprite_animation_index, t));
-    result.sprite_frame_index = (Uint32)RoundF(LerpF((float)prev.sprite_frame_index,
-                                                     (float)next.sprite_frame_index, t));
-    result.has_collision = (Uint32)RoundF(LerpF((float)prev.has_collision,
-                                                (float)next.has_collision, t));
+        result.sprite_animation_index = (Uint32)RoundF(LerpF((float)prev.sprite_animation_index,
+                                                             (float)next.sprite_animation_index, t));
+        result.sprite_frame_index = (Uint32)RoundF(LerpF((float)prev.sprite_frame_index,
+                                                         (float)next.sprite_frame_index, t));
+        result.has_collision = (Uint32)RoundF(LerpF((float)prev.has_collision,
+                                                    (float)next.has_collision, t));
+    }
 
     return result;
 }
 
 static Object Client_LerpNetObject(AppState *app, Uint64 net_slot, Uint64 tick_id)
 {
-    Assert(net_slot < ArrayCount(app->client.snaps));
-    Client_Snapshot *snap = app->client.snaps + net_slot;
+    Assert(net_slot < ArrayCount(app->client.obj_snaps));
+    Client_Snapshot *snap = app->client.obj_snaps + net_slot;
 
     Assert(tick_id <= snap->latest_server_tick &&
            tick_id >= snap->oldest_server_tick);
@@ -257,13 +261,13 @@ static Object Client_LerpNetObject(AppState *app, Uint64 net_slot, Uint64 tick_i
     while (prev_id > snap->oldest_server_tick)
     {
         prev_id -= 1;
-        if (Client_SnapshotObjectAtTick(snap, prev_id)->flags)
+        if (Object_IsInit(Client_SnapshotObjectAtTick(snap, prev_id)))
             break;
     }
     while (next_id < snap->latest_server_tick)
     {
         next_id += 1;
-        if (Client_SnapshotObjectAtTick(snap, next_id)->flags)
+        if (Object_IsInit(Client_SnapshotObjectAtTick(snap, next_id)))
             break;
     }
 
@@ -271,13 +275,13 @@ static Object Client_LerpNetObject(AppState *app, Uint64 net_slot, Uint64 tick_i
     Object *next = Client_SnapshotObjectAtTick(snap, next_id);
 
     // handle cases where we can't interpolate
-    if (!prev->flags && !next->flags) // disaster
+    if (!Object_IsInit(prev) && !Object_IsInit(next)) // disaster
         return *exact_obj;
 
-    if (!prev->flags)
+    if (!Object_IsInit(prev))
         return *next;
 
-    if (!next->flags)
+    if (!Object_IsInit(next))
         return *prev;
 
     // do the interpolation
@@ -286,19 +290,15 @@ static Object Client_LerpNetObject(AppState *app, Uint64 net_slot, Uint64 tick_i
     float t = (float)id_offset / (float)id_range;
     Object result = Object_Lerp(*prev, *next, t);
     return result;
-
 }
 
 static void Tick_Playback(AppState *app)
 {
-    // @todo query oldest object tick on client side
-    // @todo
-
     Uint64 smallest_latest_server_tick = ~0ull;
     Uint64 biggest_oldest_server_tick = 0;
-    ForArray(obj_i, app->client.snaps)
+    ForArray(obj_i, app->client.obj_snaps)
     {
-        Client_Snapshot *snap = app->client.snaps + obj_i;
+        Client_Snapshot *snap = app->client.obj_snaps + obj_i;
         if (snap->latest_server_tick < smallest_latest_server_tick)
         {
             smallest_latest_server_tick = snap->latest_server_tick;
@@ -335,7 +335,7 @@ static void Tick_Playback(AppState *app)
         return;
     }
 
-    ForArray(net_slot, app->client.snaps)
+    ForArray(net_slot, app->client.obj_snaps)
     {
         Object *net_obj = Object_FromNetSlot(app, net_slot);
         Object interpolated = Client_LerpNetObject(app, net_slot, app->client.next_playback_tick);

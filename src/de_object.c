@@ -10,6 +10,11 @@ static bool Object_IsZero(AppState *app, Object *obj)
     return obj == app->object_pool + 0;
 }
 
+static bool Object_IsInit(Object *obj)
+{
+    return obj->flags != 0;
+}
+
 static Object *Object_FromNetSlot(AppState *app, Uint32 network_slot)
 {
     if (network_slot >= ArrayCount(app->network_ids))

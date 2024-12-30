@@ -33,6 +33,8 @@ typedef struct
     Uint32 sprite_animation_index;
     Uint32 sprite_frame_index;
 
+    Uint32 some_number;
+
     // temp
     bool has_collision;
 } Object;
@@ -87,7 +89,6 @@ typedef struct
 
 typedef struct
 {
-    Uint64 obj_id;
     Object tick_states[NET_MAX_TICK_HISTORY]; // circle buf
     Uint64 latest_server_tick; // latest
     Uint64 oldest_server_tick;
@@ -95,7 +96,7 @@ typedef struct
 
 typedef struct
 {
-    Client_Snapshot snaps[NET_MAX_NETWORK_OBJECTS];
+    Client_Snapshot obj_snaps[NET_MAX_NETWORK_OBJECTS];
     Uint64 next_playback_tick;
 
     // stores last 32 tick bumps (how much newer the server's tick was compared to our previous latest server tick) to adjust network delay
