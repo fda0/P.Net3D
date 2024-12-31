@@ -26,6 +26,12 @@ static Tick_Input *Tick_PollInput(AppState *app)
     return input;
 }
 
+static Tick_Input *Tick_InputAtTick(AppState *app, Uint64 tick)
+{
+    Uint64 index = tick % ArrayCount(app->tick_input_buf);
+    return app->tick_input_buf + index;
+}
+
 static void Tick_AdvanceSimulation(AppState *app)
 {
     Tick_Input *input = Tick_PollInput(app);
@@ -200,23 +206,6 @@ static void Tick_AdvanceSimulation(AppState *app)
 
         obj->sprite_animation_index %= ArrayCount(frame_index_map);
         obj->sprite_frame_index = frame_index_map[obj->sprite_animation_index];
-    }
-
-
-    // save networked objects state
-    if (Net_IsServer(app))
-    {
-        Uint64 snap_index = app->server.next_tick % ArrayCount(app->server.snaps);
-        app->server.next_tick += 1;
-        ServerTickSnapshot *snap = app->server.snaps + snap_index;
-
-        static_assert(ArrayCount(snap->objs) == ArrayCount(app->network_ids));
-        ForArray(i, snap->objs)
-        {
-            Object *dst = snap->objs + i;
-            Object *src = Object_FromNetSlot(app, i);
-            memcpy(dst, src, sizeof(Object));
-        }
     }
 }
 

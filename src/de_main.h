@@ -1,9 +1,3 @@
-// ---
-// Constants
-// ---
-#define TICK_RATE 120
-#define TIME_STEP (1.f / (float)TICK_RATE)
-
 typedef struct
 {
     SDL_Texture *tex;
@@ -32,18 +26,12 @@ typedef struct
     Sint16 latest_deltas[32];
     Sint16 latest_delta_index;
     Sint16 playback_tick_catchup;
-} ClientState;
+} Client_State;
 
 typedef struct
 {
-    Object objs[NET_MAX_NETWORK_OBJECTS];
-} ServerTickSnapshot;
-
-typedef struct
-{
-    ServerTickSnapshot snaps[NET_MAX_TICK_HISTORY]; // circle buffer
-    Uint64 next_tick;
-} ServerState;
+    Tick_Input player_inputs[NET_MAX_PLAYERS][NET_MAX_INPUT_TICKS]; // @todo
+} Server_State;
 
 typedef enum
 {
@@ -85,12 +73,12 @@ struct AppState
     bool keyboard[SDL_SCANCODE_COUNT]; // true == key is down
 
     // circular buffer with tick inputs
-    Tick_Input tick_input_buf[NET_MAX_TICK_HISTORY];
+    Tick_Input tick_input_buf[NET_MAX_INPUT_TICKS];
     Uint64 tick_input_min;
     Uint64 tick_input_max; // one past last
 
-    ClientState client;
-    ServerState server;
+    Client_State client;
+    Server_State server;
 
     // time
     Uint64 frame_id;

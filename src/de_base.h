@@ -8,3 +8,6 @@
 
 struct AppState;
 typedef struct AppState AppState;
+
+#define TICK_RATE 128
+#define TIME_STEP (1.f / (float)TICK_RATE)

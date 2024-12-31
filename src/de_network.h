@@ -1,9 +1,14 @@
 #define NET_DEFAULT_SEVER_PORT 21037
 #define NET_MAGIC_VALUE 0xfda0
-#define NET_MAX_TICK_HISTORY (TICK_RATE) // 1 second of history
-#define NET_CLIENT_MAX_SNAPSHOTS (TICK_RATE)
-#define NET_MAX_NETWORK_OBJECTS 6
-#define NET_MAX_PACKET_SIZE (1200)
+
+#define NET_MAX_TICK_HISTORY TICK_RATE // 1 second of history
+#define NET_CLIENT_MAX_SNAPSHOTS TICK_RATE
+#define NET_MAX_NETWORK_OBJECTS 24
+
+#define NET_MAX_INPUT_TICKS (TICK_RATE/4)
+#define NET_MAX_PLAYERS 10
+
+#define NET_MAX_PACKET_SIZE 1200
 #define NET_MAX_PAYLOAD_SIZE (NET_MAX_PACKET_SIZE - sizeof(Net_PacketHeader))
 #define NET_SIMULATE_PACKETLOSS 0 // doesn't seem to work on localhost
 
@@ -20,6 +25,7 @@ typedef enum
     NetCmd_ObjUpdate,
     NetCmd_ObjEmpty,
     NetCmd_NetworkTest,
+    NetCmd_Inputs,
 } Net_CmdKind;
 
 typedef struct
@@ -30,9 +36,9 @@ typedef struct
 
 typedef struct
 {
-    V2 move_dir;
-    // action buttons etc will be added here
-} Tick_Input;
+    Tick_Input ticks[NET_MAX_INPUT_TICKS];
+    Uint16 tick_count;
+} Net_Inputs;
 
 typedef struct
 {
@@ -54,7 +60,6 @@ typedef struct
 {
     Uint32 numbers[290];
 } Net_Payload_NetworkTest;
-
 
 #pragma pack(push, 1)
 typedef struct

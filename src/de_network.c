@@ -219,14 +219,47 @@ static void Net_IterateSend(AppState *app)
 
     if (is_client)
     {
-        Net_Cmd cmd = {};
-        cmd.tick_id = app->tick_id;
-        cmd.kind = NetCmd_Ping;
-        Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+        {
+            Net_Cmd cmd = {};
+            cmd.tick_id = app->tick_id;
+            cmd.kind = NetCmd_Ping;
+            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
-        Net_Ping ping = {0};
-        Net_PayloadMemcpy(app, &ping, sizeof(ping));
-        Net_PacketSendAndResetPayload(app);
+            Net_Ping ping = {0};
+            Net_PayloadMemcpy(app, &ping, sizeof(ping));
+            Net_PacketSendAndResetPayload(app);
+        }
+
+
+        {
+            Net_Cmd cmd = {};
+            cmd.tick_id = app->tick_id;
+            cmd.kind = NetCmd_Inputs;
+            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+
+            Net_Inputs inputs = {0};
+            Uint16 tick_count = 0;
+
+            for (Uint64 i = app->tick_input_min;
+                 i < app->tick_input_max;
+                 i += 1)
+            {
+                if (tick_count >= ArrayCount(inputs.ticks))
+                {
+                    Assert(false);
+                    break;
+                }
+
+                Tick_Input *input = Tick_InputAtTick(app, i);
+                inputs.ticks[tick_count] = *input;
+                tick_count += 1;
+            }
+
+            inputs.tick_count = tick_count;
+
+            Net_PayloadMemcpy(app, &inputs, sizeof(inputs));
+            Net_PacketSendAndResetPayload(app);
+        }
     }
 }
 
@@ -291,6 +324,13 @@ static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
                 bool compare = loaded == expected;
                 Assert(compare);
             }
+        }
+        else if (cmd.kind == NetCmd_Inputs)
+        {
+            Net_Inputs inputs;
+            Net_ConsumeS8(&msg, &inputs, sizeof(inputs));
+
+
         }
         else
         {

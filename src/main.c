@@ -20,6 +20,7 @@
 #include "de_string.h"
 #include "de_util.h"
 #include "de_object.h"
+#include "de_tick.h"
 #include "de_network.h"
 #include "de_main.h"
 
