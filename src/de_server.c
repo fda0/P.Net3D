@@ -52,22 +52,65 @@ static void Server_PlayerInputBufferInsert(Server_PlayerInputBuffer *in_buf,
             in_buf->circle_inputs[current] = net_input;
         }
     }
+
+    in_buf->latest_client_tick_id = net_msg_tick_id;
 }
 
-static Tick_Input Server_PopPlayerInput(AppState *app, Uint32 player_index)
+static Uint64 Server_PlayerInputBuffer_ItemCount(Server_PlayerInputBuffer *input)
+{
+    Assert(input->playback_index_min <= input->playback_index_max);
+    return input->playback_index_max - input->playback_index_min;
+}
+
+static Tick_Input Server_PlayerInputBuffer_Pop(Server_PlayerInputBuffer *input)
 {
     Tick_Input result = {};
-
-    if (player_index < ArrayCount(app->server.player_inputs))
+    if (input->playback_index_min < input->playback_index_max)
     {
-        Server_PlayerInputBuffer *input = app->server.player_inputs + player_index;
-        if (input->playback_index_min < input->playback_index_max)
-        {
-            Uint64 min = input->playback_index_min % ArrayCount(input->circle_inputs);
-            result = input->circle_inputs[min];
-            input->playback_index_min += 1;
-        }
+        Uint64 min = input->playback_index_min % ArrayCount(input->circle_inputs);
+        result = input->circle_inputs[min];
+        input->playback_index_min += 1;
+    }
+    return result;
+}
 
+static Tick_Input Server_PlayerInputBuffer_Extrapolate(Server_PlayerInputBuffer *input)
+{
+    Tick_Input result = {};
+    if (input->playback_index_min == 0)
+        return result;
+
+    Uint64 playback_index_prev = input->playback_index_min - 1;
+    Uint64 index = playback_index_prev % ArrayCount(input->circle_inputs);
+
+    result = input->circle_inputs[index];
+    // @todo clear one-off actions here
+    return result;
+}
+
+static Tick_Input Server_GetPlayerInput(AppState *app, Uint32 player_index)
+{
+    Tick_Input result = {};
+    if (player_index >= ArrayCount(app->server.player_inputs))
+        return result;
+
+    Server_PlayerInputBuffer *input = app->server.player_inputs + player_index;
+    Uint64 count = Server_PlayerInputBuffer_ItemCount(input);
+
+    if (count > 2) // @todo this value should be dynamic and aim to be stable, simillary to how client handles playback
+    {
+        Tick_Input a = Server_PlayerInputBuffer_Pop(input);
+        Tick_Input b = Server_PlayerInputBuffer_Pop(input);
+        result.move_dir = V2_Add(a.move_dir, b.move_dir);
+        result = Tick_NormalizeInput(result);
+    }
+    else if (count > 0)
+    {
+        result = Server_PlayerInputBuffer_Pop(input);
+    }
+    else
+    {
+        result = Server_PlayerInputBuffer_Extrapolate(input);
     }
 
     return result;

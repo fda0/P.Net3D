@@ -22,7 +22,7 @@ static void Tick_AdvanceSimulation(AppState *app)
     // apply player input
     ForArray(player_index, app->server.player_keys)
     {
-        Tick_Input input = Server_PopPlayerInput(app, player_index);
+        Tick_Input input = Server_GetPlayerInput(app, player_index);
 
         Object_Key player_key = app->server.player_keys[player_index];
         Object *player = Object_Get(app, player_key, ObjCategory_Net);
