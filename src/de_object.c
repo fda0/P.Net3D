@@ -58,7 +58,7 @@ static bool Object_HasAnyFlag(Object *obj, Uint32 flag)
 }
 static bool Object_HasAllFlags(Object *obj, Uint32 flags)
 {
-    return (obj->flags & flags) == obj->flags;
+    return (obj->flags & flags) == flags;
 }
 
 static Object *Object_FromNetIndex(AppState *app, Uint32 net_index)
@@ -110,7 +110,12 @@ static Object *Object_Create(AppState *app, Object_Category category, Uint32 spr
     if (!obj)
         return Object_GetNil();
 
+    // init object
     SDL_zerop(obj);
+
+    obj->key.made_at_tick = app->tick_id;
+    obj->key.index = ((Uint64)obj - (Uint64)app->all_objects) / sizeof(*obj);
+
     obj->flags = flags;
     obj->init = true;
     obj->sprite_id = sprite_id;

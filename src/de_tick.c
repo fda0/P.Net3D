@@ -48,6 +48,7 @@ static void Tick_AdvanceSimulation(AppState *app)
     {
         Object *obj = app->all_objects + obj_index;
         if (!Object_HasAnyFlag(obj, ObjectFlag_Move)) continue;
+
         Sprite *obj_sprite = Sprite_Get(app, obj->sprite_id);
 
         // move object
@@ -65,9 +66,10 @@ static void Tick_AdvanceSimulation(AppState *app)
 
             ForArray(obstacle_index, app->all_objects)
             {
-                Object *obstacle = app->all_objects + obj_index;
-                if (!Object_HasAnyFlag(obj, ObjectFlag_Collide)) continue;
+                Object *obstacle = app->all_objects + obstacle_index;
+                if (!Object_HasAnyFlag(obstacle, ObjectFlag_Collide)) continue;
                 if (obj == obstacle) continue;
+
                 Sprite *obstacle_sprite = Sprite_Get(app, obstacle->sprite_id);
 
                 Col_Vertices obstacle_verts = obstacle_sprite->collision_vertices;
@@ -184,11 +186,15 @@ static void Tick_AdvanceSimulation(AppState *app)
         }
         obj->sprite_animation_t += anim_speed;
 
-        float period = 1.f;
-        while (obj->sprite_animation_t > period)
         {
-            obj->sprite_animation_t -= period;
-            obj->sprite_animation_index += 1;
+            float period = 1.f;
+            Uint32 loop_iterations = 0;
+            while (obj->sprite_animation_t > period)
+            {
+                obj->sprite_animation_t -= period;
+                obj->sprite_animation_index += 1;
+                if (++loop_iterations > 128) break;
+            }
         }
 
         obj->sprite_animation_index %= ArrayCount(frame_index_map);
@@ -333,8 +339,6 @@ static void Tick_Iterate(AppState *app)
 
     if (Net_IsClient(app))
     {
-        Client_PollInput(app);
-
         Tick_Playback(app);
         if (app->client.playback_tick_catchup > 0)
         {

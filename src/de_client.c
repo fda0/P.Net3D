@@ -173,13 +173,18 @@ static Tick_Input *Client_PollInput(AppState *app)
 {
     // select slot from circular buffer
     Uint64 current = app->client.tick_input_max % ArrayCount(app->client.circle_inputs);
+
+    // advance min
     {
-        app->client.tick_input_max += 1;
-        Uint64 max = app->client.tick_input_max % ArrayCount(app->client.circle_inputs);
         Uint64 min = app->client.tick_input_min % ArrayCount(app->client.circle_inputs);
-        if (min == max)
+        if (app->client.tick_input_min != app->client.tick_input_max &&
+            min == current)
+        {
             app->client.tick_input_min += 1;
+        }
     }
+    // advance max
+    app->client.tick_input_max += 1;
 
     Tick_Input *input = app->client.circle_inputs + current;
 

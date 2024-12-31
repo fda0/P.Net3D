@@ -76,21 +76,29 @@ static S8 Net_GetPacketString(AppState *app)
     return result;
 }
 
-static void Net_PacketSendAndResetPayload(AppState *app)
+static void Net_PacketSendAndResetPayload(AppState *app,
+                                          Net_User *destination /* null for broadcast */)
 {
     Net_RecalculatePacketHeader(app);
     S8 packet = Net_GetPacketString(app);
 
-    if (app->net.is_server)
+    if (destination)
     {
-        ForU32(i, app->server.user_count)
-        {
-            Net_SendS8(app, app->server.users[i], packet);
-        }
+        Net_SendS8(app, *destination, packet);
     }
     else
     {
-        Net_SendS8(app, app->net.server_user, packet);
+        if (app->net.is_server)
+        {
+            ForU32(i, app->server.user_count)
+            {
+                Net_SendS8(app, app->server.users[i], packet);
+            }
+        }
+        else
+        {
+            Net_SendS8(app, app->net.server_user, packet);
+        }
     }
 
     app->net.payload_used = 0;
@@ -179,12 +187,46 @@ static void Net_IterateSend(AppState *app)
                 test.numbers[i] = i + 1;
 
             Net_PayloadMemcpy(app, &test, sizeof(test));
-            Net_PacketSendAndResetPayload(app);
+            Net_PacketSendAndResetPayload(app, 0);
         }
     }
 
     if (is_server)
     {
+        // create player characters and send them to users
+        ForU32(user_index, app->server.user_count)
+        {
+            Net_User *user = app->server.users + user_index;
+            if (user->address)
+            {
+                AssertBounds(user_index, app->server.player_keys);
+                Object_Key *player_key = app->server.player_keys + user_index;
+
+                if (!player_key->made_at_tick)
+                {
+                    Object *player = Object_CreatePlayer(app);
+                    if (!Object_IsNil(player))
+                    {
+                        player->p.x = -100.f + user_index * 25.f;
+                        player->sprite_color.g = (user_index & 1) ? 1.f : 0.f;
+                        player->sprite_color.b = (user_index & 2) ? 1.f : 0.f;
+                    }
+                    *player_key = player->key;
+                }
+
+                Net_Cmd cmd = {};
+                cmd.tick_id = app->tick_id;
+                cmd.kind = NetCmd_AssignPlayerKey;
+                Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+
+                Net_AssignPlayerKey assign = {0};
+                assign.player_key = *player_key;
+                Net_PayloadMemcpy(app, &assign, sizeof(assign));
+
+                Net_PacketSendAndResetPayload(app, user);
+            }
+        }
+
         ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
         {
             Object *net_obj = Object_FromNetIndex(app, net_index);
@@ -213,7 +255,7 @@ static void Net_IterateSend(AppState *app)
                 Net_PayloadMemcpy(app, &update, sizeof(update));
             }
 
-            Net_PacketSendAndResetPayload(app);
+            Net_PacketSendAndResetPayload(app, 0);
         }
     }
 
@@ -227,11 +269,13 @@ static void Net_IterateSend(AppState *app)
 
             Net_Ping ping = {0};
             Net_PayloadMemcpy(app, &ping, sizeof(ping));
-            Net_PacketSendAndResetPayload(app);
+            Net_PacketSendAndResetPayload(app, 0);
         }
 
 
         {
+            Client_PollInput(app);
+
             Net_Cmd cmd = {};
             cmd.tick_id = app->tick_id;
             cmd.kind = NetCmd_Inputs;
@@ -258,7 +302,7 @@ static void Net_IterateSend(AppState *app)
             inputs.input_count = input_count;
 
             Net_PayloadMemcpy(app, &inputs, sizeof(inputs));
-            Net_PacketSendAndResetPayload(app);
+            Net_PacketSendAndResetPayload(app, 0);
         }
     }
 }
@@ -333,6 +377,16 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
             Assert(player_id < ArrayCount(app->server.player_inputs));
             Server_PlayerInputBuffer *in_buf = app->server.player_inputs + player_id;
             Server_PlayerInputBufferInsert(in_buf, &in_net, cmd.tick_id);
+        }
+        else if (cmd.kind == NetCmd_AssignPlayerKey)
+        {
+            Net_AssignPlayerKey assign;
+            Net_ConsumeS8(&msg, &assign, sizeof(assign));
+
+            if (app->client.player_key_latest_tick_id < cmd.tick_id)
+            {
+                app->client.player_key = assign.player_key;
+            }
         }
         else
         {

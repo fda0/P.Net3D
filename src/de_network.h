@@ -25,6 +25,7 @@ typedef enum
     NetCmd_ObjEmpty,
     NetCmd_NetworkTest,
     NetCmd_Inputs,
+    NetCmd_AssignPlayerKey,
 } Net_CmdKind;
 
 typedef struct
@@ -59,6 +60,11 @@ typedef struct
 {
     Uint32 numbers[290];
 } Net_Payload_NetworkTest;
+
+typedef struct
+{
+    Object_Key player_key;
+} Net_AssignPlayerKey;
 
 #pragma pack(push, 1)
 typedef struct

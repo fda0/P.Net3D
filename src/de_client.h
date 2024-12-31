@@ -26,4 +26,5 @@ typedef struct
 
     //
     Object_Key player_key;
+    Uint64 player_key_latest_tick_id;
 } Client_State;
