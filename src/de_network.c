@@ -185,9 +185,9 @@ static void Net_IterateSend(AppState *app)
 
     if (is_server)
     {
-        ForU32(net_slot, NET_MAX_NETWORK_OBJECTS)
+        ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
         {
-            Object *net_obj = Object_FromNetSlot(app, net_slot);
+            Object *net_obj = Object_FromNetIndex(app, net_index);
 
             if (Object_HasData(net_obj))
             {
@@ -197,7 +197,7 @@ static void Net_IterateSend(AppState *app)
                 Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
                 Net_ObjUpdate update = {0};
-                update.net_slot = net_slot;
+                update.net_index = net_index;
                 update.obj = *net_obj;
                 Net_PayloadMemcpy(app, &update, sizeof(update));
             }
@@ -209,7 +209,7 @@ static void Net_IterateSend(AppState *app)
                 Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
                 Net_ObjEmpty update = {0};
-                update.net_slot = net_slot;
+                update.net_index = net_index;
                 Net_PayloadMemcpy(app, &update, sizeof(update));
             }
 
@@ -270,7 +270,7 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
     {
         Net_Cmd cmd;
         Net_ConsumeS8(&msg, &cmd, sizeof(cmd));
-        
+
         if (cmd.kind == NetCmd_Ping)
         {
             Net_Ping ping = {0};
@@ -288,18 +288,18 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
             {
                 Net_ObjEmpty empty;
                 Net_ConsumeS8(&msg, &empty, sizeof(empty));
-                update.net_slot = empty.net_slot;
+                update.net_index = empty.net_index;
                 update.obj.init = true;
             }
-            
-            if (update.net_slot >= NET_MAX_NETWORK_OBJECTS)
+
+            if (update.net_index >= OBJ_MAX_NETWORK_OBJECTS)
             {
                 LOG(LogFlags_NetPayload,
-                    "%s: Rejecting payload(%d) - net slot overflow: %u",
-                    Net_Label(app), cmd.kind, update.net_slot);
+                    "%s: Rejecting payload(%d) - net index overflow: %u",
+                    Net_Label(app), cmd.kind, update.net_index);
                 continue;
             }
-            
+
             if (app->client.next_playback_tick > cmd.tick_id)
             {
                 LOG(LogFlags_NetPayload,
@@ -307,16 +307,16 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
                     Net_Label(app), cmd.kind, cmd.tick_id, app->client.next_playback_tick);
                 continue;
             }
-            
-            Assert(update.net_slot < ArrayCount(app->client.obj_snaps));
-            Client_Snapshot *snap = app->client.obj_snaps + update.net_slot;
+
+            Assert(update.net_index < ArrayCount(app->client.obj_snaps));
+            Client_Snapshot *snap = app->client.obj_snaps + update.net_index;
             Client_InsertSnapshotObject(app, snap, cmd.tick_id, update.obj);
         }
         else if (cmd.kind == NetCmd_NetworkTest)
         {
             Net_Payload_NetworkTest test;
             Net_ConsumeS8(&msg, &test, sizeof(test));
-            
+
             ForArray(i, test.numbers)
             {
                 Uint32 loaded = test.numbers[i];
@@ -329,7 +329,7 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
         {
             Net_Inputs in_net;
             Net_ConsumeS8(&msg, &in_net, sizeof(in_net));
-            
+
             Assert(player_id < ArrayCount(app->server.player_inputs));
             Server_PlayerInputBuffer *in_buf = app->server.player_inputs + player_id;
             Server_PlayerInputBufferInsert(in_buf, &in_net, cmd.tick_id);
@@ -428,7 +428,7 @@ static void Net_IterateReceive(AppState *app)
         }
 
         Uint16 player_id = 0;
-        
+
         // save user
         if (is_server)
         {

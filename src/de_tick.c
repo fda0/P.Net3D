@@ -10,41 +10,50 @@ static Tick_Input Tick_NormalizeInput(Tick_Input input)
 
 static void Tick_AdvanceSimulation(AppState *app)
 {
-    Tick_Input *input = 0;
-    Assert(0);
-
     // update prev_p
-    ForU32(obj_id, app->object_count)
+    ForArray(obj_index, app->all_objects)
     {
-        Object *obj = app->object_pool + obj_id;
+        Object *obj = app->all_objects + obj_index;
+        if (!Object_HasAnyFlag(obj, ObjectFlag_Move)) continue;
+
         obj->prev_p = obj->p;
     }
 
-    // player input
+    // apply player input
+    ForArray(player_index, app->server.player_keys)
     {
-        Object *player = Object_FromNetSlot(app, app->player_network_slot);
-        if (!Object_IsZero(app, player))
-        {
-            float player_speed = 200.f * TIME_STEP;
-            player->dp = V2_Scale(input->move_dir, player_speed);
-        }
+        Tick_Input input = Server_PopPlayerInput(app, player_index);
+
+        Object_Key player_key = app->server.player_keys[player_index];
+        Object *player = Object_Get(app, player_key, ObjCategory_Net);
+        if (Object_IsNil(player))
+            continue;
+
+        float player_speed = 200.f * TIME_STEP;
+        player->dp = V2_Scale(input.move_dir, player_speed);
         player->some_number += 1;
     }
 
     // movement & collision
-    ForU32(obj_id, app->object_count)
+    ForArray(obj_index, app->all_objects)
     {
-        Object *obj = app->object_pool + obj_id;
+        Object *obj = app->all_objects + obj_index;
+        if (!Object_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_Collide)) continue;
+
+        // reset debug flag
         obj->has_collision = false;
     }
-    ForU32(obj_id, app->object_count)
+
+    ForArray(obj_index, app->all_objects)
     {
-        Object *obj = app->object_pool + obj_id;
-        if (!(obj->flags & ObjectFlag_Move)) continue;
+        Object *obj = app->all_objects + obj_index;
+        if (!Object_HasAnyFlag(obj, ObjectFlag_Move)) continue;
         Sprite *obj_sprite = Sprite_Get(app, obj->sprite_id);
 
+        // move object
         obj->p = V2_Add(obj->p, obj->dp);
 
+        // check collision
         ForU32(collision_iteration, 8) // support up to 8 overlapping wall collisions
         {
             float closest_obstacle_separation_dist = FLT_MAX;
@@ -54,10 +63,10 @@ static void Tick_AdvanceSimulation(AppState *app)
             Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj->p);
             V2 obj_center = Vertices_Average(obj_verts.arr, ArrayCount(obj_verts.arr));
 
-            ForU32(obstacle_id, app->object_count)
+            ForArray(obstacle_index, app->all_objects)
             {
-                Object *obstacle = app->object_pool + obstacle_id;
-                if (!(obstacle->flags & ObjectFlag_Collide)) continue;
+                Object *obstacle = app->all_objects + obj_index;
+                if (!Object_HasAnyFlag(obj, ObjectFlag_Collide)) continue;
                 if (obj == obstacle) continue;
                 Sprite *obstacle_sprite = Sprite_Get(app, obstacle->sprite_id);
 
@@ -147,13 +156,14 @@ static void Tick_AdvanceSimulation(AppState *app)
                 break;
             }
         } // collision_iteration
-    } // obj_id
+    } // obj_index
 
 
     // animate textures
-    ForU32(obj_id, app->object_count)
+    ForArray(obj_index, app->all_objects)
     {
-        Object *obj = app->object_pool + obj_id;
+        Object *obj = app->all_objects + obj_index;
+        if (!Object_HasAnyFlag(obj, ObjectFlag_Draw)) continue;
         if (Sprite_Get(app, obj->sprite_id)->tex_frames <= 1) continue;
 
         Uint32 frame_index_map[8] =
@@ -305,10 +315,10 @@ static void Tick_Playback(AppState *app)
         }
     }
 
-    ForArray(net_slot, app->client.obj_snaps)
+    ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
     {
-        Object *net_obj = Object_FromNetSlot(app, net_slot);
-        Object interpolated = Client_LerpNetObject(app, net_slot, app->client.next_playback_tick);
+        Object *net_obj = Object_FromNetIndex(app, net_index);
+        Object interpolated = Client_LerpNetObject(app, net_index, app->client.next_playback_tick);
         *net_obj = interpolated;
     }
     app->client.next_playback_tick += 1;
@@ -324,7 +334,7 @@ static void Tick_Iterate(AppState *app)
     if (Net_IsClient(app))
     {
         Client_PollInput(app);
-        
+
         Tick_Playback(app);
         if (app->client.playback_tick_catchup > 0)
         {

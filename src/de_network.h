@@ -3,7 +3,6 @@
 
 #define NET_MAX_TICK_HISTORY TICK_RATE // 1 second of history
 #define NET_CLIENT_MAX_SNAPSHOTS TICK_RATE
-#define NET_MAX_NETWORK_OBJECTS 24
 
 #define NET_MAX_INPUT_TICKS (TICK_RATE/4)
 #define NET_MAX_PLAYERS 10
@@ -47,13 +46,13 @@ typedef struct
 
 typedef struct
 {
-    Uint32 net_slot;
+    Uint32 net_index;
     Object obj;
 } Net_ObjUpdate;
 
 typedef struct
 {
-    Uint32 net_slot;
+    Uint32 net_index;
 } Net_ObjEmpty;
 
 typedef struct

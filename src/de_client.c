@@ -4,10 +4,10 @@ static Object *Client_SnapshotObjectAtTick(Client_Snapshot *snap, Uint64 tick_id
     return snap->tick_states + state_index;
 }
 
-static Object Client_LerpNetObject(AppState *app, Uint64 net_slot, Uint64 tick_id)
+static Object Client_LerpNetObject(AppState *app, Uint32 net_index, Uint64 tick_id)
 {
-    Assert(net_slot < ArrayCount(app->client.obj_snaps));
-    Client_Snapshot *snap = app->client.obj_snaps + net_slot;
+    Assert(net_index < ArrayCount(app->client.obj_snaps));
+    Client_Snapshot *snap = app->client.obj_snaps + net_index;
 
     Assert(tick_id <= snap->latest_server_tick &&
            tick_id >= snap->oldest_server_tick);
@@ -180,16 +180,16 @@ static Tick_Input *Client_PollInput(AppState *app)
         if (min == max)
             app->client.tick_input_min += 1;
     }
-    
+
     Tick_Input *input = app->client.circle_inputs + current;
-    
+
     V2 dir = {0};
     if (app->keyboard[SDL_SCANCODE_W] || app->keyboard[SDL_SCANCODE_UP])    dir.y += 1;
     if (app->keyboard[SDL_SCANCODE_S] || app->keyboard[SDL_SCANCODE_DOWN])  dir.y -= 1;
     if (app->keyboard[SDL_SCANCODE_A] || app->keyboard[SDL_SCANCODE_LEFT])  dir.x -= 1;
     if (app->keyboard[SDL_SCANCODE_D] || app->keyboard[SDL_SCANCODE_RIGHT]) dir.x += 1;
     input->move_dir = V2_Normalize(dir);
-    
+
     return input;
 }
 

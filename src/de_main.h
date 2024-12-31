@@ -56,10 +56,15 @@ struct AppState
     float tick_dt_accumulator;
 
     // objects
-    Object object_pool[4096];
-    Uint32 object_count;
-    Uint32 network_ids[NET_MAX_NETWORK_OBJECTS];
-    Uint32 player_network_slot;
+    union
+    {
+        struct
+        {
+            Object const_objects[OBJ_MAX_CONST_OBJECTS];
+            Object net_objects[OBJ_MAX_NETWORK_OBJECTS];
+        };
+        Object all_objects[OBJ_MAX_ALL_OBJECTS];
+    };
 
     // sprites
     Sprite sprite_pool[32];

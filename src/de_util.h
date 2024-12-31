@@ -9,7 +9,7 @@
 // Needed apis (Circle_ prefix?):
 // 1. Get element at tick;
 // 2. Clear range from tick to tick;
-// 3. 
+// 3.
 
 static void Circle_CopyFillRange(Uint64 elem_size,
                                  void *buf, Uint64 buf_elem_count, Uint64 *buf_elem_index,

@@ -11,5 +11,6 @@ typedef struct
 {
     Net_User users[NET_MAX_PLAYERS];
     Uint32 user_count;
+    Object_Key player_keys[NET_MAX_PLAYERS];
     Server_PlayerInputBuffer player_inputs[NET_MAX_PLAYERS];
 } Server_State;

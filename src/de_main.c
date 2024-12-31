@@ -52,9 +52,11 @@ static void Game_IssueDrawCommands(AppState *app)
         }
         V2 window_transform = (V2){app->window_width*0.5f, app->window_height*0.5f};
 
-        ForU32(object_index, app->object_count)
+        ForArray(obj_index, app->all_objects)
         {
-            Object *obj = app->object_pool + object_index;
+            Object *obj = app->all_objects + obj_index;
+            if (!(obj->flags & ObjectFlag_Draw)) continue;
+
             Sprite *sprite = Sprite_Get(app, obj->sprite_id);
 
             V2 verts[4];
@@ -113,10 +115,10 @@ static void Game_IssueDrawCommands(AppState *app)
 
         if (app->debug.draw_collision_box)
         {
-            ForU32(object_index, app->object_count)
+            ForArray(obj_index, app->all_objects)
             {
-                Object *obj = app->object_pool + object_index;
-                if (!(obj->flags & ObjectFlag_Collide)) continue;
+                Object *obj = app->all_objects + obj_index;
+                if (!Object_HasAllFlags(obj, ObjectFlag_Collide|ObjectFlag_Draw)) continue;
 
                 Sprite *sprite = Sprite_Get(app, obj->sprite_id);
 
@@ -243,8 +245,11 @@ static void Game_Iterate(AppState *app)
 
     // move camera
     {
-        Object *player = Object_FromNetSlot(app, app->player_network_slot);
-        app->camera_p = player->p;
+        Object *player = Object_Get(app, app->client.player_key, ObjCategory_Net);
+        if (!Object_IsNil(player))
+        {
+            app->camera_p = player->p;
+        }
     }
 
     Game_IssueDrawCommands(app);
@@ -252,7 +257,9 @@ static void Game_Iterate(AppState *app)
 
 static Object *Object_CreatePlayer(AppState *app)
 {
-    Object *player = Object_Create(app, app->sprite_dude_id, ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_Collide);
+    Object *player = Object_Create(app, ObjCategory_Net,
+                                   app->sprite_dude_id,
+                                   ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_Collide);
     player->sprite_color = ColorF_RGB(1, 0.1f, 0.1f);
     return player;
 }
@@ -270,7 +277,6 @@ static void Game_Init(AppState *app)
     Net_Init(app);
 
     app->frame_time = SDL_GetTicks();
-    app->object_count += 1; // reserve object under index 0 as special 'nil' value
     app->sprite_count += 1; // reserve sprite under index 0 as special 'nil' value
     app->camera_range = 500;
     app->tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
@@ -307,25 +313,18 @@ static void Game_Init(AppState *app)
         Object_Wall(app, (V2){0,-off}, (V2){length*0.5f, thickness});
 
         if (1) {
-            Object *ref = Object_Create(app, Sprite_IdFromPointer(app, sprite_ref),
+            Object *ref = Object_Create(app, ObjCategory_Const,
+                                        Sprite_IdFromPointer(app, sprite_ref),
                                         ObjectFlag_Draw|ObjectFlag_Collide);
             ref->p = (V2){0, off*0.5f};
             ref->sprite_color = ColorF_RGBA(1,1,1,1);
         }
         {
-            Object *crate = Object_Create(app, Sprite_IdFromPointer(app, sprite_crate),
+            Object *crate = Object_Create(app, ObjCategory_Const,
+                                          Sprite_IdFromPointer(app, sprite_crate),
                                           ObjectFlag_Draw|ObjectFlag_Collide);
             crate->p = (V2){0.5f*off, -0.5f*off};
             (void)crate;
         }
-    }
-
-    // add network objs
-    ForArray(i, app->network_ids)
-    {
-        if (app->net.is_server && i == 0)
-            app->network_ids[i] = Object_IdFromPointer(app, Object_CreatePlayer(app));
-        else
-            app->network_ids[i] = Object_IdFromPointer(app, Object_Create(app, 0, 0));
     }
 }

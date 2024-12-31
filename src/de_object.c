@@ -1,13 +1,45 @@
-static Object *Object_Get(AppState *app, Uint32 id)
+READ_ONLY static Object nil_object = {};
+
+static Object *Object_GetNil()
 {
-    Assert(app->object_count < ArrayCount(app->object_pool));
-    Assert(id < app->object_count);
-    return app->object_pool + id;
+    return &nil_object;
 }
 
-static bool Object_IsZero(AppState *app, Object *obj)
+static bool Object_IsNil(Object *obj)
 {
-    return obj == app->object_pool + 0;
+    return obj == &nil_object;
+}
+
+static bool Object_KeyMatch(Object_Key a, Object_Key b)
+{
+    return (a.made_at_tick == b.made_at_tick &&
+            a.index == b.index);
+}
+
+static Object *Object_Get(AppState *app, Object_Key key, Uint32 category_mask)
+{
+    Object *result = Object_GetNil();
+
+    bool index_in_valid_category = false;
+    {
+        Uint32 min = 0;
+        Uint32 max = OBJ_MAX_CONST_OBJECTS;
+        if (category_mask & ObjCategory_Const)
+            index_in_valid_category |= (key.index >= min && key.index < max);
+
+        min = max;
+        max += OBJ_MAX_NETWORK_OBJECTS;
+        if (category_mask & ObjCategory_Net)
+            index_in_valid_category |= (key.index >= min && key.index < max);
+    }
+
+    if (index_in_valid_category)
+    {
+        Object *obj = app->all_objects + key.index;
+        if (Object_KeyMatch(obj->key, key))
+            result = obj;
+    }
+    return result;
 }
 
 static bool Object_IsInit(Object *obj)
@@ -20,30 +52,63 @@ static bool Object_HasData(Object *obj)
     return !!obj->flags;
 }
 
-static Object *Object_FromNetSlot(AppState *app, Uint32 network_slot)
+static bool Object_HasAnyFlag(Object *obj, Uint32 flag)
 {
-    if (network_slot >= ArrayCount(app->network_ids))
-        return Object_Get(app, 0);
-
-    Uint32 id = app->network_ids[network_slot];
-    return Object_Get(app, id);
+    return !!(obj->flags & flag);
+}
+static bool Object_HasAllFlags(Object *obj, Uint32 flags)
+{
+    return (obj->flags & flags) == obj->flags;
 }
 
-// @info(mg) This function will probably be replaced in the future
-//           when we track 'key/index' in the object itself.
-static Uint32 Object_IdFromPointer(AppState *app, Object *obj)
+static Object *Object_FromNetIndex(AppState *app, Uint32 net_index)
 {
-    size_t byte_delta = (size_t)obj - (size_t)app->object_pool;
-    size_t id = byte_delta / sizeof(*obj);
-    Assert(id < ArrayCount(app->object_pool));
-    return (Uint32)id;
+    if (net_index > ArrayCount(app->net_objects))
+    {
+        return Object_GetNil();
+    }
+
+    return app->net_objects + net_index;
 }
 
-static Object *Object_Create(AppState *app, Uint32 sprite_id, Uint32 flags)
+static Object *Object_Create(AppState *app, Object_Category category, Uint32 sprite_id, Uint32 flags)
 {
-    Assert(app->object_count < ArrayCount(app->object_pool));
-    Object *obj = app->object_pool + app->object_count;
-    app->object_count += 1;
+    bool matched_category = false;
+    Object *obj = 0;
+
+    if (category & ObjCategory_Const)
+    {
+        Assert(!matched_category);
+        matched_category = true;
+
+        ForArray(i, app->const_objects)
+        {
+            Object *search = app->const_objects + i;
+            if (!Object_IsInit(search))
+            {
+                obj = search;
+                break;
+            }
+        }
+    }
+    if (category & ObjCategory_Net)
+    {
+        Assert(!matched_category);
+        matched_category = true;
+
+        ForArray(i, app->net_objects)
+        {
+            Object *search = app->net_objects + i;
+            if (!Object_IsInit(search))
+            {
+                obj = search;
+                break;
+            }
+        }
+    }
+
+    if (!obj)
+        return Object_GetNil();
 
     SDL_zerop(obj);
     obj->flags = flags;
@@ -63,7 +128,8 @@ static Object *Object_Wall(AppState *app, V2 p, V2 dim)
     collision_verts.arr[3] = (V2){-half_dim.x,  half_dim.y};
 
     Sprite *sprite = Sprite_CreateNoTex(app, collision_verts);
-    Object *obj = Object_Create(app, Sprite_IdFromPointer(app, sprite),
+    Object *obj = Object_Create(app, ObjCategory_Const,
+                                Sprite_IdFromPointer(app, sprite),
                                 ObjectFlag_Draw|ObjectFlag_Collide);
     obj->p = p;
 

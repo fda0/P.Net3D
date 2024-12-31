@@ -1,3 +1,7 @@
+#define OBJ_MAX_NETWORK_OBJECTS 24
+#define OBJ_MAX_CONST_OBJECTS 128
+#define OBJ_MAX_ALL_OBJECTS (OBJ_MAX_NETWORK_OBJECTS + OBJ_MAX_CONST_OBJECTS)
+
 typedef enum
 {
     ObjectFlag_Draw          = (1 << 0),
@@ -5,8 +9,23 @@ typedef enum
     ObjectFlag_Collide       = (1 << 2),
 } Object_Flags;
 
+typedef enum
+{
+    ObjCategory_Const = (1 << 0),
+    ObjCategory_Net   = (1 << 1),
+
+    ObjCategory_All = (ObjCategory_Const | ObjCategory_Net)
+} Object_Category;
+
 typedef struct
 {
+    Uint32 made_at_tick;
+    Uint32 index;
+} Object_Key;
+
+typedef struct
+{
+    Object_Key key;
     Uint32 flags;
     bool init;
     V2 p; // position of center
