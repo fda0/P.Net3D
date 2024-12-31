@@ -253,7 +253,7 @@ static void Game_Iterate(AppState *app)
 static Object *Object_CreatePlayer(AppState *app)
 {
     Object *player = Object_Create(app, app->sprite_dude_id, ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_Collide);
-    player->sprite_color = ColorF_RGB(1,1,1);
+    player->sprite_color = ColorF_RGB(1, 0.1f, 0.1f);
     return player;
 }
 
