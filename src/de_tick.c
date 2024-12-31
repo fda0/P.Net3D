@@ -305,6 +305,8 @@ static void Tick_Playback(AppState *app)
         {
             // save the delta
             Sint64 delta = smallest_latest_server_tick - app->client.prev_smallest_latest_server_tick;
+            app->client.prev_smallest_latest_server_tick = smallest_latest_server_tick;
+
             app->client.latest_deltas[app->client.latest_delta_index] = delta;
             app->client.latest_delta_index = (app->client.latest_delta_index + 1) % ArrayCount(app->client.latest_deltas);
 
@@ -316,16 +318,18 @@ static void Tick_Playback(AppState *app)
                     biggest_delta = app->client.latest_deltas[i];
             }
 
-            Sint16 target_playback_delay = biggest_delta + biggest_delta/8 + 1;
+            Sint16 target_playback_delay = biggest_delta + biggest_delta/64 + 1;
             if (target_playback_delay < app->client.current_playback_delay)
             {
                 app->client.playback_tick_catchup = app->client.current_playback_delay - target_playback_delay;
 
                 LOG(LogFlags_NetCatchup,
                     "%s: Current playback delay: %llu, "
+                    "Target playback delay: %d, "
                     " Setting playback catchup to %d, ",
                     Net_Label(app),
                     app->client.current_playback_delay,
+                    (int)target_playback_delay,
                     (int)app->client.playback_tick_catchup);
             }
             else

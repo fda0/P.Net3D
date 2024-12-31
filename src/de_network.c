@@ -159,7 +159,7 @@ static void Net_IterateSend(AppState *app)
     {
         // hacky temporary network activity rate-limitting
         static Uint64 last_timestamp = 0;
-        if (app->frame_time < last_timestamp + 1)
+        if (app->frame_time < last_timestamp + 16)
             return;
         last_timestamp = app->frame_time;
     }
@@ -354,7 +354,7 @@ static void Net_IterateReceive(AppState *app)
     {
         // hacky temporary network activity rate-limitting
         static Uint64 last_timestamp = 0;
-        if (app->frame_time < last_timestamp + 1)
+        if (app->frame_time < last_timestamp + 8)
             return;
         last_timestamp = app->frame_time;
     }
