@@ -14,54 +14,6 @@ typedef struct
 
 typedef struct
 {
-    SDLNet_Address *address;
-    Uint16 port;
-} Net_User;
-
-typedef enum
-{
-    NetCmd_None,
-    NetCmd_Ping,
-    NetCmd_ObjUpdate,
-    NetCmd_ObjEmpty,
-    NetCmd_NetworkTest,
-} Net_CmdKind;
-
-typedef struct
-{
-    Uint64 tick_id; // this is already send via packet header
-    Net_CmdKind kind;
-} Net_Cmd;
-
-typedef struct
-{
-    V2 move_dir;
-    // action buttons etc will be added here
-} Tick_Input;
-
-typedef struct
-{
-    Uint64 number;
-} Tick_Ping;
-
-typedef struct
-{
-    Uint32 net_slot;
-    Object obj;
-} Net_ObjUpdate;
-
-typedef struct
-{
-    Uint32 net_slot;
-} Net_ObjEmpty;
-
-typedef struct
-{
-    Uint32 numbers[290];
-} Net_Payload_NetworkTest;
-
-typedef struct
-{
     Object tick_states[NET_CLIENT_MAX_SNAPSHOTS]; // circle buf
     Uint64 latest_server_tick;
     Uint64 oldest_server_tick;

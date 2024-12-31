@@ -224,7 +224,7 @@ static void Net_IterateSend(AppState *app)
         cmd.kind = NetCmd_Ping;
         Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
-        Tick_Ping ping = {0};
+        Net_Ping ping = {0};
         Net_PayloadMemcpy(app, &ping, sizeof(ping));
         Net_PacketSendAndResetPayload(app);
     }
@@ -240,7 +240,7 @@ static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
 
         if (cmd.kind == NetCmd_Ping)
         {
-            Tick_Ping ping = {0};
+            Net_Ping ping = {0};
             Net_ConsumeS8(&msg, &ping, sizeof(ping));
         }
         else if (cmd.kind == NetCmd_ObjUpdate ||
