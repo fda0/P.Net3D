@@ -4,4 +4,4 @@ typedef struct
     // action buttons etc will be added here
 } Tick_Input;
 
-static Tick_Input *Tick_InputAtTick(AppState *app, Uint64 tick);
+static Tick_Input Tick_NormalizeInput(Tick_Input input);

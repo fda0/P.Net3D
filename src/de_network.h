@@ -21,7 +21,7 @@ typedef struct
 typedef enum
 {
     NetCmd_None,
-    NetCmd_Ping,
+    NetCmd_Ping = 10000,
     NetCmd_ObjUpdate,
     NetCmd_ObjEmpty,
     NetCmd_NetworkTest,
@@ -36,8 +36,8 @@ typedef struct
 
 typedef struct
 {
-    Tick_Input ticks[NET_MAX_INPUT_TICKS];
-    Uint16 tick_count;
+    Tick_Input inputs[NET_MAX_INPUT_TICKS];
+    Uint16 input_count;
 } Net_Inputs;
 
 typedef struct

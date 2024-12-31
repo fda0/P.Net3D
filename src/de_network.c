@@ -83,9 +83,9 @@ static void Net_PacketSendAndResetPayload(AppState *app)
 
     if (app->net.is_server)
     {
-        ForU32(i, app->net.user_count)
+        ForU32(i, app->server.user_count)
         {
-            Net_SendS8(app, app->net.users[i], packet);
+            Net_SendS8(app, app->server.users[i], packet);
         }
     }
     else
@@ -124,20 +124,20 @@ static bool Net_UserMatchAddrPort(Net_User a, SDLNet_Address *address, Uint16 po
 
 static Net_User *Net_FindUser(AppState *app, SDLNet_Address *address, Uint16 port)
 {
-    ForU32(i, app->net.user_count)
+    ForU32(i, app->server.user_count)
     {
-        if (Net_UserMatchAddrPort(app->net.users[i], address, port))
-            return app->net.users + i;
+        if (Net_UserMatchAddrPort(app->server.users[i], address, port))
+            return app->server.users + i;
     }
     return 0;
 }
 
 static Net_User *Net_AddUser(AppState *app, SDLNet_Address *address, Uint16 port)
 {
-    if (app->net.user_count < ArrayCount(app->net.users))
+    if (app->server.user_count < ArrayCount(app->server.users))
     {
-        Net_User *user = app->net.users + app->net.user_count;
-        app->net.user_count += 1;
+        Net_User *user = app->server.users + app->server.user_count;
+        app->server.user_count += 1;
         user->address = SDLNet_RefAddress(address);
         user->port = port;
         return user;
@@ -151,7 +151,7 @@ static void Net_IterateSend(AppState *app)
     bool is_client = !app->net.is_server;
     if (app->net.err) return;
 
-    if (is_server && !app->net.user_count)
+    if (is_server && !app->server.user_count)
     {
         return;
     }
@@ -238,24 +238,24 @@ static void Net_IterateSend(AppState *app)
             Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
 
             Net_Inputs inputs = {0};
-            Uint16 tick_count = 0;
+            Uint16 input_count = 0;
 
-            for (Uint64 i = app->tick_input_min;
-                 i < app->tick_input_max;
+            for (Uint64 i = app->client.tick_input_min;
+                 i < app->client.tick_input_max;
                  i += 1)
             {
-                if (tick_count >= ArrayCount(inputs.ticks))
+                if (input_count >= ArrayCount(inputs.inputs))
                 {
                     Assert(false);
                     break;
                 }
 
-                Tick_Input *input = Tick_InputAtTick(app, i);
-                inputs.ticks[tick_count] = *input;
-                tick_count += 1;
+                Tick_Input *input = Client_InputAtTick(app, i);
+                inputs.inputs[input_count] = *input;
+                input_count += 1;
             }
 
-            inputs.tick_count = tick_count;
+            inputs.input_count = input_count;
 
             Net_PayloadMemcpy(app, &inputs, sizeof(inputs));
             Net_PacketSendAndResetPayload(app);
@@ -263,14 +263,14 @@ static void Net_IterateSend(AppState *app)
     }
 }
 
-static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
+static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_message)
 {
     S8 msg = full_message;
     while (msg.size)
     {
         Net_Cmd cmd;
         Net_ConsumeS8(&msg, &cmd, sizeof(cmd));
-
+        
         if (cmd.kind == NetCmd_Ping)
         {
             Net_Ping ping = {0};
@@ -291,23 +291,23 @@ static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
                 update.net_slot = empty.net_slot;
                 update.obj.init = true;
             }
-
+            
             if (update.net_slot >= NET_MAX_NETWORK_OBJECTS)
             {
                 LOG(LogFlags_NetPayload,
-                    "%s: Rejecting payload - net slot overflow: %u",
-                    Net_Label(app), update.net_slot);
-                return;
+                    "%s: Rejecting payload(%d) - net slot overflow: %u",
+                    Net_Label(app), cmd.kind, update.net_slot);
+                continue;
             }
-
+            
             if (app->client.next_playback_tick > cmd.tick_id)
             {
                 LOG(LogFlags_NetPayload,
-                    "%s: Rejecting payload - cmd tick at: %llu < next playback tick: %llu",
-                    Net_Label(app), cmd.tick_id, app->client.next_playback_tick);
-                return;
+                    "%s: Rejecting payload(%d) - cmd tick at: %llu < next playback tick: %llu",
+                    Net_Label(app), cmd.kind, cmd.tick_id, app->client.next_playback_tick);
+                continue;
             }
-
+            
             Assert(update.net_slot < ArrayCount(app->client.obj_snaps));
             Client_Snapshot *snap = app->client.obj_snaps + update.net_slot;
             Client_InsertSnapshotObject(app, snap, cmd.tick_id, update.obj);
@@ -316,7 +316,7 @@ static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
         {
             Net_Payload_NetworkTest test;
             Net_ConsumeS8(&msg, &test, sizeof(test));
-
+            
             ForArray(i, test.numbers)
             {
                 Uint32 loaded = test.numbers[i];
@@ -327,22 +327,24 @@ static void Net_ProcessReceivedPayload(AppState *app, S8 full_message)
         }
         else if (cmd.kind == NetCmd_Inputs)
         {
-            Net_Inputs inputs;
-            Net_ConsumeS8(&msg, &inputs, sizeof(inputs));
-
-
+            Net_Inputs in_net;
+            Net_ConsumeS8(&msg, &in_net, sizeof(in_net));
+            
+            Assert(player_id < ArrayCount(app->server.player_inputs));
+            Server_PlayerInputBuffer *in_buf = app->server.player_inputs + player_id;
+            Server_PlayerInputBufferInsert(in_buf, &in_net, cmd.tick_id);
         }
         else
         {
             LOG(LogFlags_NetPayload,
-                "%s: Unsupported cmd kind: %d",
+                "%s: Unsupported payload cmd kind: %d",
                 Net_Label(app), (int)cmd.kind);
             return;
         }
     }
 }
 
-static void Net_ReceivePacket(AppState *app, S8 packet)
+static void Net_ReceivePacket(AppState *app, Uint16 player_id, S8 packet)
 {
     if (packet.size < sizeof(Net_PacketHeader))
     {
@@ -382,7 +384,7 @@ static void Net_ReceivePacket(AppState *app, S8 packet)
         return;
     }
 
-    Net_ProcessReceivedPayload(app, packet);
+    Net_ProcessReceivedPayload(app, player_id, packet);
 }
 
 static void Net_IterateReceive(AppState *app)
@@ -425,20 +427,23 @@ static void Net_IterateReceive(AppState *app)
             }
         }
 
+        Uint16 player_id = 0;
+        
         // save user
         if (is_server)
         {
-            if (!Net_FindUser(app, dgram->addr, dgram->port))
+            Net_User *user = Net_FindUser(app, dgram->addr, dgram->port);
+            if (!user)
             {
                 LOG(LogFlags_NetInfo,
                     "%s: saving user with port: %d",
                     Net_Label(app), (int)dgram->port);
-                Net_AddUser(app, dgram->addr, dgram->port);
+                user = Net_AddUser(app, dgram->addr, dgram->port);
             }
         }
 
         S8 packet = S8_Make(dgram->buf, dgram->buflen);
-        Net_ReceivePacket(app, packet);
+        Net_ReceivePacket(app, player_id, packet);
 
         datagram_cleanup:
         SDLNet_DestroyDatagram(dgram);

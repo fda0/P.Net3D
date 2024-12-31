@@ -2,39 +2,16 @@
 // Physics update tick
 // @todo this should run on a separate thread
 //
-static Tick_Input *Tick_PollInput(AppState *app)
+static Tick_Input Tick_NormalizeInput(Tick_Input input)
 {
-    // select slot from circular buffer
-    Uint64 current = app->tick_input_max % ArrayCount(app->tick_input_buf);
-    {
-        app->tick_input_max += 1;
-        Uint64 max = app->tick_input_max % ArrayCount(app->tick_input_buf);
-        Uint64 min = app->tick_input_min % ArrayCount(app->tick_input_buf);
-        if (min == max)
-            app->tick_input_min += 1;
-    }
-
-    Tick_Input *input = app->tick_input_buf + current;
-
-    V2 dir = {0};
-    if (app->keyboard[SDL_SCANCODE_W] || app->keyboard[SDL_SCANCODE_UP])    dir.y += 1;
-    if (app->keyboard[SDL_SCANCODE_S] || app->keyboard[SDL_SCANCODE_DOWN])  dir.y -= 1;
-    if (app->keyboard[SDL_SCANCODE_A] || app->keyboard[SDL_SCANCODE_LEFT])  dir.x -= 1;
-    if (app->keyboard[SDL_SCANCODE_D] || app->keyboard[SDL_SCANCODE_RIGHT]) dir.x += 1;
-    input->move_dir = V2_Normalize(dir);
-
+    input.move_dir = V2_Normalize(V2_ZeroOutNan(input.move_dir));
     return input;
-}
-
-static Tick_Input *Tick_InputAtTick(AppState *app, Uint64 tick)
-{
-    Uint64 index = tick % ArrayCount(app->tick_input_buf);
-    return app->tick_input_buf + index;
 }
 
 static void Tick_AdvanceSimulation(AppState *app)
 {
-    Tick_Input *input = Tick_PollInput(app);
+    Tick_Input *input = 0;
+    Assert(0);
 
     // update prev_p
     ForU32(obj_id, app->object_count)
@@ -346,12 +323,13 @@ static void Tick_Iterate(AppState *app)
 
     if (Net_IsClient(app))
     {
+        Client_PollInput(app);
+        
         Tick_Playback(app);
-
         if (app->client.playback_tick_catchup > 0)
         {
-            Tick_Playback(app);
             app->client.playback_tick_catchup -= 1;
+            Tick_Playback(app);
         }
     }
 }

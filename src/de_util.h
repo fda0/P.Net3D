@@ -2,9 +2,18 @@
 // Helpers that didn't find a better place
 // live in this file for now
 //
-static void CircleBufferFill(Uint64 elem_size,
-                             void *buf, Uint64 buf_elem_count, Uint64 *buf_elem_index,
-                             void *copy_src, Uint64 copy_src_elem_count)
+
+// @todo
+// Turns out I'm using circle buffers a lot in this project;
+// Perhaps it would be nice to create helpers for working with them;
+// Needed apis (Circle_ prefix?):
+// 1. Get element at tick;
+// 2. Clear range from tick to tick;
+// 3. 
+
+static void Circle_CopyFillRange(Uint64 elem_size,
+                                 void *buf, Uint64 buf_elem_count, Uint64 *buf_elem_index,
+                                 void *copy_src, Uint64 copy_src_elem_count)
 {
     if (copy_src_elem_count > buf_elem_count)
     {

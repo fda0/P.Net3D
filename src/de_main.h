@@ -6,33 +6,6 @@ typedef struct
     Col_Normals collision_normals;
 } Sprite;
 
-typedef struct
-{
-    Object tick_states[NET_CLIENT_MAX_SNAPSHOTS]; // circle buf
-    Uint64 latest_server_tick;
-    Uint64 oldest_server_tick;
-    Uint64 recent_lerp_start_tick;
-    Uint64 recent_lerp_end_tick;
-} Client_Snapshot;
-
-typedef struct
-{
-    Client_Snapshot obj_snaps[NET_MAX_NETWORK_OBJECTS];
-    Uint64 next_playback_tick;
-    Uint64 current_playback_delay;
-
-    // stores positive deltas from latest; used to speed up playback and catch up to server on stable connections
-    Uint64 prev_smallest_latest_server_tick;
-    Sint16 latest_deltas[32];
-    Sint16 latest_delta_index;
-    Sint16 playback_tick_catchup;
-} Client_State;
-
-typedef struct
-{
-    Tick_Input player_inputs[NET_MAX_PLAYERS][NET_MAX_INPUT_TICKS]; // @todo
-} Server_State;
-
 typedef enum
 {
     LogFlags_Idk         = (1 << 0),
@@ -72,11 +45,6 @@ struct AppState
     SDL_MouseButtonFlags mouse_keys;
     bool keyboard[SDL_SCANCODE_COUNT]; // true == key is down
 
-    // circular buffer with tick inputs
-    Tick_Input tick_input_buf[NET_MAX_INPUT_TICKS];
-    Uint64 tick_input_min;
-    Uint64 tick_input_max; // one past last
-
     Client_State client;
     Server_State server;
 
@@ -113,8 +81,6 @@ struct AppState
         bool is_server;
         SDLNet_DatagramSocket *socket;
 
-        Net_User users[16];
-        Uint32 user_count;
         Net_User server_user;
 
         // msg payload

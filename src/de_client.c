@@ -167,3 +167,34 @@ static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
     Assert(snap->oldest_server_tick >= minimum_server_tick);
     return false; // no error
 }
+
+
+static Tick_Input *Client_PollInput(AppState *app)
+{
+    // select slot from circular buffer
+    Uint64 current = app->client.tick_input_max % ArrayCount(app->client.circle_inputs);
+    {
+        app->client.tick_input_max += 1;
+        Uint64 max = app->client.tick_input_max % ArrayCount(app->client.circle_inputs);
+        Uint64 min = app->client.tick_input_min % ArrayCount(app->client.circle_inputs);
+        if (min == max)
+            app->client.tick_input_min += 1;
+    }
+    
+    Tick_Input *input = app->client.circle_inputs + current;
+    
+    V2 dir = {0};
+    if (app->keyboard[SDL_SCANCODE_W] || app->keyboard[SDL_SCANCODE_UP])    dir.y += 1;
+    if (app->keyboard[SDL_SCANCODE_S] || app->keyboard[SDL_SCANCODE_DOWN])  dir.y -= 1;
+    if (app->keyboard[SDL_SCANCODE_A] || app->keyboard[SDL_SCANCODE_LEFT])  dir.x -= 1;
+    if (app->keyboard[SDL_SCANCODE_D] || app->keyboard[SDL_SCANCODE_RIGHT]) dir.x += 1;
+    input->move_dir = V2_Normalize(dir);
+    
+    return input;
+}
+
+static Tick_Input *Client_InputAtTick(AppState *app, Uint64 tick)
+{
+    Uint64 index = tick % ArrayCount(app->client.circle_inputs);
+    return app->client.circle_inputs + index;
+}

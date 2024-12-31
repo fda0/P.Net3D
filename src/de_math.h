@@ -144,6 +144,12 @@ static V2 V2_Normalize(V2 a)
     }
     return a;
 }
+static V2 V2_ZeroOutNan(V2 a)
+{
+    if (a.x != a.x) a.x = 0.f;
+    if (a.y != a.y) a.y = 0.f;
+    return a;
+}
 
 static V2 V2_Lerp(V2 a, V2 b, float t)
 {
