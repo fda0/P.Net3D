@@ -144,6 +144,10 @@ static void Game_ParseCmd(AppState *app, int argc, char** argv)
                 LOG(LogFlags_Idk, "%s needs to be followed by positive number", arg);
             }
         }
+        else if (0 == strcmp(arg, "-autolayout"))
+        {
+            app->window_autolayout = true;
+        }
         else
         {
             LOG(LogFlags_Idk, "Unhandled argument: %s", arg);

@@ -447,7 +447,11 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
         }
         else if (head.kind == NetSendKind_WindowLayout)
         {
-            Assert(0); // @todo
+            Net_SendWindowLayout layout;
+            Net_ConsumeS8(&msg, &layout, sizeof(layout));
+
+            Game_ProcessAutoLayout(app, head.tick_id,
+                                   layout.px, layout.py, layout.w, layout.h);
         }
         else
         {
