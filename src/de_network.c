@@ -386,6 +386,7 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
             if (app->client.player_key_latest_tick_id < cmd.tick_id)
             {
                 app->client.player_key = assign.player_key;
+                app->client.player_key_latest_tick_id = cmd.tick_id;
             }
         }
         else
@@ -493,6 +494,19 @@ static void Net_IterateReceive(AppState *app)
                     "%s: saving user with port: %d",
                     Net_Label(app), (int)dgram->port);
                 user = Net_AddUser(app, dgram->addr, dgram->port);
+            }
+
+            if (user)
+            {
+                Uint64 user_id = ((Uint64)user - (Uint64)app->server.users) / sizeof(Net_User);
+                if (user_id < NET_MAX_PLAYERS)
+                {
+                    player_id = user_id;
+                }
+                else
+                {
+                    Assert(0);
+                }
             }
         }
 
