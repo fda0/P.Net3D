@@ -177,12 +177,12 @@ static void Net_IterateSend(AppState *app)
     {
         if (is_client)
         {
-            Net_Cmd cmd = {};
-            cmd.tick_id = app->tick_id;
-            cmd.kind = NetCmd_NetworkTest;
-            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+            Net_SendHeader head = {};
+            head.tick_id = app->tick_id;
+            head.kind = NetSendKind_NetworkTest;
+            Net_PayloadMemcpy(app, &head, sizeof(head));
 
-            Net_Payload_NetworkTest test;
+            Net_SendNetworkTest test;
             ForArray(i, test.numbers)
                 test.numbers[i] = i + 1;
 
@@ -193,64 +193,120 @@ static void Net_IterateSend(AppState *app)
 
     if (is_server)
     {
-        // create player characters and send them to users
+        // iterate over connected users
         ForU32(user_index, app->server.user_count)
         {
             Net_User *user = app->server.users + user_index;
             if (user->address)
             {
-                AssertBounds(user_index, app->server.player_keys);
-                Object_Key *player_key = app->server.player_keys + user_index;
-
-                if (!player_key->made_at_tick)
+                // create player characters and send them to users
                 {
-                    Object *player = Object_CreatePlayer(app);
-                    if (!Object_IsNil(player))
+                    AssertBounds(user_index, app->server.player_keys);
+                    Object_Key *player_key = app->server.player_keys + user_index;
+
+                    if (!player_key->made_at_tick)
                     {
-                        player->p.x = -100.f + user_index * 25.f;
-                        player->sprite_color.g = (user_index & 1) ? 1.f : 0.f;
-                        player->sprite_color.b = (user_index & 2) ? 1.f : 0.f;
+                        Object *player = Object_CreatePlayer(app);
+                        if (!Object_IsNil(player))
+                        {
+                            player->p.x = -100.f + user_index * 25.f;
+                            player->sprite_color.g = (user_index & 1) ? 1.f : 0.f;
+                            player->sprite_color.b = (user_index & 2) ? 1.f : 0.f;
+                        }
+                        *player_key = player->key;
                     }
-                    *player_key = player->key;
+
+                    Net_SendHeader head = {};
+                    head.tick_id = app->tick_id;
+                    head.kind = NetSendKind_AssignPlayerKey;
+                    Net_PayloadMemcpy(app, &head, sizeof(head));
+
+                    Net_SendAssignPlayerKey assign = {0};
+                    assign.player_key = *player_key;
+                    Net_PayloadMemcpy(app, &assign, sizeof(assign));
+
+                    Net_PacketSendAndResetPayload(app, user);
                 }
 
-                Net_Cmd cmd = {};
-                cmd.tick_id = app->tick_id;
-                cmd.kind = NetCmd_AssignPlayerKey;
-                Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+                // calculate autolayout for clients
+                // @todo this should be done on iterate send!
+                if (app->window_autolayout)
+                {
+                    Uint32 window_count = 1 + app->server.user_count;
+                    Uint32 side_chunks = 1;
+                    ForU32(timeout, 8)
+                    {
+                        Uint32 total_chunks = side_chunks * side_chunks;
+                        if (total_chunks >= window_count)
+                            break;
+                        side_chunks += 1;
+                    }
 
-                Net_AssignPlayerKey assign = {0};
-                assign.player_key = *player_key;
-                Net_PayloadMemcpy(app, &assign, sizeof(assign));
+                    Uint32 win_x = app->init_window_px;
+                    Uint32 win_y = app->init_window_py;
+                    Uint32 win_w = app->init_window_width / side_chunks;
+                    Uint32 win_h = app->init_window_height / side_chunks;
 
-                Net_PacketSendAndResetPayload(app, user);
+                    // calc server window
+                    {
+                        Uint32 window_index = 0;
+                        Uint32 x = window_index / side_chunks;
+                        Uint32 y = window_index % side_chunks;
+
+                        Game_ProcessAutoLayout(app, app->tick_id,
+                                               win_x + x*win_w, win_y + y*win_h,
+                                               win_w, win_h);
+                    }
+
+                    // calc client window
+                    {
+                        Uint32 window_index = user_index + 1;
+                        Uint32 x = window_index / side_chunks;
+                        Uint32 y = window_index % side_chunks;
+
+                        Net_SendHeader head = {};
+                        head.tick_id = app->tick_id;
+                        head.kind = NetSendKind_WindowLayout;
+                        Net_PayloadMemcpy(app, &head, sizeof(head));
+
+                        Net_SendWindowLayout body = {0};
+                        body.px = win_x + x*win_w;
+                        body.py = win_y + y*win_h;
+                        body.w = win_w;
+                        body.h = win_h;
+                        Net_PayloadMemcpy(app, &body, sizeof(body));
+
+                        Net_PacketSendAndResetPayload(app, user);
+                    }
+                }
             }
         }
 
+        // iterate over network objects
         ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
         {
             Object *net_obj = Object_FromNetIndex(app, net_index);
 
             if (Object_HasData(net_obj))
             {
-                Net_Cmd cmd = {};
-                cmd.tick_id = app->tick_id;
-                cmd.kind = NetCmd_ObjUpdate;
-                Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+                Net_SendHeader head = {};
+                head.tick_id = app->tick_id;
+                head.kind = NetSendKind_ObjUpdate;
+                Net_PayloadMemcpy(app, &head, sizeof(head));
 
-                Net_ObjUpdate update = {0};
+                Net_SendObjUpdate update = {0};
                 update.net_index = net_index;
                 update.obj = *net_obj;
                 Net_PayloadMemcpy(app, &update, sizeof(update));
             }
             else
             {
-                Net_Cmd cmd = {};
-                cmd.tick_id = app->tick_id;
-                cmd.kind = NetCmd_ObjEmpty;
-                Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+                Net_SendHeader head = {};
+                head.tick_id = app->tick_id;
+                head.kind = NetSendKind_ObjEmpty;
+                Net_PayloadMemcpy(app, &head, sizeof(head));
 
-                Net_ObjEmpty update = {0};
+                Net_SendObjEmpty update = {0};
                 update.net_index = net_index;
                 Net_PayloadMemcpy(app, &update, sizeof(update));
             }
@@ -262,12 +318,12 @@ static void Net_IterateSend(AppState *app)
     if (is_client)
     {
         {
-            Net_Cmd cmd = {};
-            cmd.tick_id = app->tick_id;
-            cmd.kind = NetCmd_Ping;
-            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+            Net_SendHeader head = {};
+            head.tick_id = app->tick_id;
+            head.kind = NetSendKind_Ping;
+            Net_PayloadMemcpy(app, &head, sizeof(head));
 
-            Net_Ping ping = {0};
+            Net_SendPing ping = {0};
             Net_PayloadMemcpy(app, &ping, sizeof(ping));
             Net_PacketSendAndResetPayload(app, 0);
         }
@@ -276,12 +332,12 @@ static void Net_IterateSend(AppState *app)
         {
             Client_PollInput(app);
 
-            Net_Cmd cmd = {};
-            cmd.tick_id = app->tick_id;
-            cmd.kind = NetCmd_Inputs;
-            Net_PayloadMemcpy(app, &cmd, sizeof(cmd));
+            Net_SendHeader head = {};
+            head.tick_id = app->tick_id;
+            head.kind = NetSendKind_Inputs;
+            Net_PayloadMemcpy(app, &head, sizeof(head));
 
-            Net_Inputs inputs = {0};
+            Net_SendInputs inputs = {0};
             Uint16 input_count = 0;
 
             for (Uint64 i = app->client.tick_input_min;
@@ -312,25 +368,25 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
     S8 msg = full_message;
     while (msg.size)
     {
-        Net_Cmd cmd;
-        Net_ConsumeS8(&msg, &cmd, sizeof(cmd));
+        Net_SendHeader head;
+        Net_ConsumeS8(&msg, &head, sizeof(head));
 
-        if (cmd.kind == NetCmd_Ping)
+        if (head.kind == NetSendKind_Ping)
         {
-            Net_Ping ping = {0};
+            Net_SendPing ping = {0};
             Net_ConsumeS8(&msg, &ping, sizeof(ping));
         }
-        else if (cmd.kind == NetCmd_ObjUpdate ||
-                 cmd.kind == NetCmd_ObjEmpty)
+        else if (head.kind == NetSendKind_ObjUpdate ||
+                 head.kind == NetSendKind_ObjEmpty)
         {
-            Net_ObjUpdate update = {0};
-            if (cmd.kind == NetCmd_ObjUpdate)
+            Net_SendObjUpdate update = {0};
+            if (head.kind == NetSendKind_ObjUpdate)
             {
                 Net_ConsumeS8(&msg, &update, sizeof(update));
             }
             else
             {
-                Net_ObjEmpty empty;
+                Net_SendObjEmpty empty;
                 Net_ConsumeS8(&msg, &empty, sizeof(empty));
                 update.net_index = empty.net_index;
                 update.obj.init = true;
@@ -340,25 +396,25 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
             {
                 LOG(LogFlags_NetPayload,
                     "%s: Rejecting payload(%d) - net index overflow: %u",
-                    Net_Label(app), cmd.kind, update.net_index);
+                    Net_Label(app), head.kind, update.net_index);
                 continue;
             }
 
-            if (app->client.next_playback_tick > cmd.tick_id)
+            if (app->client.next_playback_tick > head.tick_id)
             {
                 LOG(LogFlags_NetPayload,
-                    "%s: Rejecting payload(%d) - cmd tick at: %llu < next playback tick: %llu",
-                    Net_Label(app), cmd.kind, cmd.tick_id, app->client.next_playback_tick);
+                    "%s: Rejecting payload(%d) - head tick at: %llu < next playback tick: %llu",
+                    Net_Label(app), head.kind, head.tick_id, app->client.next_playback_tick);
                 continue;
             }
 
             Assert(update.net_index < ArrayCount(app->client.obj_snaps));
             Client_Snapshot *snap = app->client.obj_snaps + update.net_index;
-            Client_InsertSnapshotObject(app, snap, cmd.tick_id, update.obj);
+            Client_InsertSnapshotObject(app, snap, head.tick_id, update.obj);
         }
-        else if (cmd.kind == NetCmd_NetworkTest)
+        else if (head.kind == NetSendKind_NetworkTest)
         {
-            Net_Payload_NetworkTest test;
+            Net_SendNetworkTest test;
             Net_ConsumeS8(&msg, &test, sizeof(test));
 
             ForArray(i, test.numbers)
@@ -369,31 +425,35 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
                 Assert(compare);
             }
         }
-        else if (cmd.kind == NetCmd_Inputs)
+        else if (head.kind == NetSendKind_Inputs)
         {
-            Net_Inputs in_net;
+            Net_SendInputs in_net;
             Net_ConsumeS8(&msg, &in_net, sizeof(in_net));
 
             Assert(player_id < ArrayCount(app->server.player_inputs));
             Server_PlayerInputBuffer *in_buf = app->server.player_inputs + player_id;
-            Server_PlayerInputBufferInsert(in_buf, &in_net, cmd.tick_id);
+            Server_PlayerInputBufferInsert(in_buf, &in_net, head.tick_id);
         }
-        else if (cmd.kind == NetCmd_AssignPlayerKey)
+        else if (head.kind == NetSendKind_AssignPlayerKey)
         {
-            Net_AssignPlayerKey assign;
+            Net_SendAssignPlayerKey assign;
             Net_ConsumeS8(&msg, &assign, sizeof(assign));
 
-            if (app->client.player_key_latest_tick_id < cmd.tick_id)
+            if (app->client.player_key_latest_tick_id < head.tick_id)
             {
                 app->client.player_key = assign.player_key;
-                app->client.player_key_latest_tick_id = cmd.tick_id;
+                app->client.player_key_latest_tick_id = head.tick_id;
             }
+        }
+        else if (head.kind == NetSendKind_WindowLayout)
+        {
+            Assert(0); // @todo
         }
         else
         {
             LOG(LogFlags_NetPayload,
-                "%s: Unsupported payload cmd kind: %d",
-                Net_Label(app), (int)cmd.kind);
+                "%s: Unsupported payload head kind: %d",
+                Net_Label(app), (int)head.kind);
             return;
         }
     }

@@ -1,5 +1,5 @@
 static void Server_PlayerInputBufferInsert(Server_PlayerInputBuffer *in_buf,
-                                           Net_Inputs *net_msg, Uint64 net_msg_tick_id)
+                                           Net_SendInputs *net_msg, Uint64 net_msg_tick_id)
 {
     // @threading - mutex?
 

@@ -132,10 +132,10 @@ static void Game_ParseCmd(AppState *app, int argc, char** argv)
                 if (number > 0)
                 {
                     found_number = true;
-                    if      (0 == strcmp(arg, "-w"))  app->window_width = number;
-                    else if (0 == strcmp(arg, "-h"))  app->window_height = number;
-                    else if (0 == strcmp(arg, "-px")) app->window_px = number;
-                    else if (0 == strcmp(arg, "-py")) app->window_py = number;
+                    if      (0 == strcmp(arg, "-w"))  app->init_window_width = number;
+                    else if (0 == strcmp(arg, "-h"))  app->init_window_height = number;
+                    else if (0 == strcmp(arg, "-px")) app->init_window_px = number;
+                    else if (0 == strcmp(arg, "-py")) app->init_window_py = number;
                 }
             }
 
@@ -166,8 +166,8 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
         return SDL_APP_FAILURE;
     }
     app->log_filter = ~0u;
-    app->window_width = WINDOW_WIDTH;
-    app->window_height = WINDOW_HEIGHT;
+    app->init_window_width = WINDOW_WIDTH;
+    app->init_window_height = WINDOW_HEIGHT;
 
     Game_ParseCmd(app, argc, argv);
 
@@ -187,6 +187,9 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
     window_flags |= (app->window_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
     window_flags |= (app->window_borderless ? SDL_WINDOW_BORDERLESS : 0);
 
+    app->window_width = app->init_window_width;
+    app->window_height = app->init_window_height;
+
     if (!SDL_CreateWindowAndRenderer("demongus",
                                      app->window_width, app->window_height,
                                      window_flags,
@@ -196,10 +199,10 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
         return SDL_APP_FAILURE;
     }
 
-    if (app->window_px || app->window_py)
+    if (app->init_window_px || app->init_window_py)
     {
-        int x = (app->window_px ? app->window_px : SDL_WINDOWPOS_UNDEFINED);
-        int y = (app->window_py ? app->window_py : SDL_WINDOWPOS_UNDEFINED);
+        int x = (app->init_window_px ? app->init_window_px : SDL_WINDOWPOS_UNDEFINED);
+        int y = (app->init_window_py ? app->init_window_py : SDL_WINDOWPOS_UNDEFINED);
         SDL_SetWindowPosition(app->window, x, y);
     }
 

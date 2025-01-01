@@ -19,52 +19,58 @@ typedef struct
 
 typedef enum
 {
-    NetCmd_None,
-    NetCmd_Ping = 10000,
-    NetCmd_ObjUpdate,
-    NetCmd_ObjEmpty,
-    NetCmd_NetworkTest,
-    NetCmd_Inputs,
-    NetCmd_AssignPlayerKey,
-} Net_CmdKind;
+    NetSendKind_None,
+    NetSendKind_Ping = 10000,
+    NetSendKind_ObjUpdate,
+    NetSendKind_ObjEmpty,
+    NetSendKind_NetworkTest,
+    NetSendKind_Inputs,
+    NetSendKind_AssignPlayerKey,
+    NetSendKind_WindowLayout,
+} Net_SendKind;
 
 typedef struct
 {
     Uint64 tick_id; // this is already send via packet header
-    Net_CmdKind kind;
-} Net_Cmd;
+    Net_SendKind kind;
+} Net_SendHeader;
 
 typedef struct
 {
     Tick_Input inputs[NET_MAX_INPUT_TICKS];
     Uint16 input_count;
-} Net_Inputs;
+} Net_SendInputs;
 
 typedef struct
 {
     Uint64 number;
-} Net_Ping;
+} Net_SendPing;
 
 typedef struct
 {
     Uint32 net_index;
     Object obj;
-} Net_ObjUpdate;
+} Net_SendObjUpdate;
 
 typedef struct
 {
     Uint32 net_index;
-} Net_ObjEmpty;
+} Net_SendObjEmpty;
 
 typedef struct
 {
     Uint32 numbers[290];
-} Net_Payload_NetworkTest;
+} Net_SendNetworkTest;
 
 typedef struct
 {
     Object_Key player_key;
-} Net_AssignPlayerKey;
+} Net_SendAssignPlayerKey;
+
+typedef struct
+{
+    Sint32 px, py, w, h;
+} Net_SendWindowLayout;
 
 #pragma pack(push, 1)
 typedef struct

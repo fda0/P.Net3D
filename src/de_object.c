@@ -123,7 +123,7 @@ static Object *Object_Create(AppState *app, Object_Category category, Uint32 spr
     return obj;
 }
 
-static Object *Object_Wall(AppState *app, V2 p, V2 dim)
+static Object *Object_CreateWall(AppState *app, V2 p, V2 dim)
 {
     V2 half_dim = V2_Scale(dim, 0.5f);
     Col_Vertices collision_verts = {0};
@@ -148,6 +148,16 @@ static Object *Object_Wall(AppState *app, V2 p, V2 dim)
     obj->sprite_color = ColorF_RGB(r, g, 0.5f);
     return obj;
 }
+
+static Object *Object_CreatePlayer(AppState *app)
+{
+    Object *player = Object_Create(app, ObjCategory_Net,
+                                   app->sprite_dude_id,
+                                   ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_Collide);
+    player->sprite_color = ColorF_RGB(1, 0.1f, 0.1f);
+    return player;
+}
+
 
 typedef struct
 {

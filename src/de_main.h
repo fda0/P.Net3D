@@ -33,10 +33,15 @@ struct AppState
     // SDL, window stuff
     SDL_Window* window;
     SDL_Renderer* renderer;
-    int window_width, window_height;
-    int window_px, window_py; // initial window px, py specified by cmd options, 0 if wasn't set
+
+    // window settings
+    Sint32 init_window_px, init_window_py; // 0 if wasn't set
+    Sint32 init_window_width, init_window_height;
+    Sint32 window_width, window_height;
     bool window_on_top;
     bool window_borderless;
+    bool window_autolayout;
+    Uint64 window_autolayout_latest_tick_id;
 
     Uint32 log_filter; // active log filer flags
 
@@ -109,3 +114,5 @@ struct AppState
         bool draw_texture_box;
     } debug;
 };
+
+static void Game_ProcessAutoLayout(AppState *app, Uint64 msg_tick, Sint32 px, Sint32 py, Sint32 w, Sint32 h);

@@ -201,6 +201,22 @@ static void Game_IssueDrawCommands(AppState *app)
     }
 }
 
+static void Game_SetWindowPosSize(AppState *app, Sint32 px, Sint32 py, Sint32 w, Sint32 h)
+{
+    SDL_SetWindowPosition(app->window, px, py);
+    SDL_SetWindowSize(app->window, w, h);
+}
+
+static void Game_ProcessAutoLayout(AppState *app, Uint64 msg_tick,
+                                   Sint32 px, Sint32 py, Sint32 w, Sint32 h)
+{
+    if (msg_tick <= app->window_autolayout_latest_tick_id)
+        return;
+
+    app->window_autolayout_latest_tick_id = msg_tick;
+    Game_SetWindowPosSize(app, px, py, w, h);
+}
+
 static void Game_Iterate(AppState *app)
 {
     Test_Iterate();
@@ -255,15 +271,6 @@ static void Game_Iterate(AppState *app)
     Game_IssueDrawCommands(app);
 }
 
-static Object *Object_CreatePlayer(AppState *app)
-{
-    Object *player = Object_Create(app, ObjCategory_Net,
-                                   app->sprite_dude_id,
-                                   ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_Collide);
-    player->sprite_color = ColorF_RGB(1, 0.1f, 0.1f);
-    return player;
-}
-
 static void Game_Init(AppState *app)
 {
     // init debug options
@@ -307,12 +314,13 @@ static void Game_Init(AppState *app)
         float thickness = 20.f;
         float length = 400.f;
         float off = length*0.5f - thickness*0.5f;
-        Object_Wall(app, (V2){off, 0}, (V2){thickness, length});
-        Object_Wall(app, (V2){-off, 0}, (V2){thickness, length});
-        Object_Wall(app, (V2){0, off}, (V2){length, thickness});
-        Object_Wall(app, (V2){0,-off}, (V2){length*0.5f, thickness});
+        Object_CreateWall(app, (V2){off, 0}, (V2){thickness, length});
+        Object_CreateWall(app, (V2){-off, 0}, (V2){thickness, length});
+        Object_CreateWall(app, (V2){0, off}, (V2){length, thickness});
+        Object_CreateWall(app, (V2){0,-off}, (V2){length*0.5f, thickness});
 
-        if (1) {
+        if (1)
+        {
             Object *ref = Object_Create(app, ObjCategory_Const,
                                         Sprite_IdFromPointer(app, sprite_ref),
                                         ObjectFlag_Draw|ObjectFlag_Collide);
