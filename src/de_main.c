@@ -4,23 +4,50 @@
 //           stuff when it's reasonable.
 //
 
-static void Game_VerticesCameraTransform(AppState *app, V2 verts[4], float camera_scale, V2 window_transform)
+static V2 Game_WorldToScreen(AppState *app, V2 pos)
+{
+    V2 window_transform = (V2){app->window_width*0.5f, app->window_height*0.5f};
+
+    // apply camera transform
+    pos.x -= app->camera_p.x;
+    pos.y -= app->camera_p.y;
+
+    pos.x *= app->camera_scale;
+    pos.y *= app->camera_scale;
+
+    pos.x += window_transform.x;
+    pos.y += window_transform.y;
+
+    // fix y axis direction to +Y up (SDL uses +Y down, -Y up)
+    pos.y = app->window_height - pos.y;
+    return pos;
+}
+
+static V2 Game_ScreenToWorld(AppState *app, V2 pos)
+{
+    V2 window_transform = (V2){app->window_width*0.5f, app->window_height*0.5f};
+
+    float scale_inv = 1.f / app->camera_scale;
+
+    // fix y axis direction to +Y up (SDL uses +Y down, -Y up)
+    pos.y = app->window_height - pos.y;
+
+    pos.x -= window_transform.x;
+    pos.y -= window_transform.y;
+
+    pos.x *= scale_inv;
+    pos.y *= scale_inv;
+
+    // apply camera transform
+    pos.x += app->camera_p.x;
+    pos.y += app->camera_p.y;
+    return pos;
+}
+
+static void Game_VerticesCameraTransform(AppState *app, V2 verts[4])
 {
     ForU32(i, 4)
-    {
-        // apply camera transform
-        verts[i].x -= app->camera_p.x;
-        verts[i].y -= app->camera_p.y;
-
-        verts[i].x *= camera_scale;
-        verts[i].y *= camera_scale;
-
-        verts[i].x += window_transform.x;
-        verts[i].y += window_transform.y;
-
-        // fix y axis direction to +Y up (SDL uses +Y down, -Y up)
-        verts[i].y = app->window_height - verts[i].y;
-    }
+        verts[i] = Game_WorldToScreen(app, verts[i]);
 }
 
 static void Game_IssueDrawCommands(AppState *app)
@@ -45,13 +72,6 @@ static void Game_IssueDrawCommands(AppState *app)
 
     // draw objects
     {
-        float camera_scale = 1.f;
-        {
-            float wh = Max(app->window_width, app->window_height); // pick bigger window dimension
-            camera_scale = wh / app->camera_range;
-        }
-        V2 window_transform = (V2){app->window_width*0.5f, app->window_height*0.5f};
-
         ForArray(obj_index, app->all_objects)
         {
             Object *obj = app->all_objects + obj_index;
@@ -78,7 +98,7 @@ static void Game_IssueDrawCommands(AppState *app)
             }
 
             Vertices_Offset(verts, ArrayCount(verts), obj->p);
-            Game_VerticesCameraTransform(app, verts, camera_scale, window_transform);
+            Game_VerticesCameraTransform(app, verts);
 
             SDL_FColor fcolor = ColorF_To_SDL_FColor(obj->sprite_color);
             SDL_Vertex sdl_verts[4];
@@ -126,7 +146,7 @@ static void Game_IssueDrawCommands(AppState *app)
                 static_assert(sizeof(verts) == sizeof(sprite->collision_vertices.arr));
                 memcpy(verts, sprite->collision_vertices.arr, sizeof(verts));
                 Vertices_Offset(verts, ArrayCount(verts), obj->p);
-                Game_VerticesCameraTransform(app, verts, camera_scale, window_transform);
+                Game_VerticesCameraTransform(app, verts);
 
                 ColorF color = ColorF_RGBA(1, 0, 0.8f, 0.8f);
                 if (obj->has_collision)
@@ -183,22 +203,6 @@ static void Game_IssueDrawCommands(AppState *app)
         SDL_SetRenderDrawColorFloat(app->renderer, color.r, color.g, color.b, color.a);
         SDL_RenderFillRect(app->renderer, &rect);
     }
-
-    // draw mouse
-    {
-        static float r = 0;
-        r += app->dt * 90.f;
-        if (r > 255) r = 0;
-        /* set the color to white */
-        SDL_SetRenderDrawColor(app->renderer, (int)r, 255 - (int)r, 255, 255);
-
-        float dim = 20;
-        SDL_FRect rect = {
-            app->mouse.x - 0.5f*dim, app->mouse.y - 0.5f*dim,
-            dim, dim
-        };
-        SDL_RenderFillRect(app->renderer, &rect);
-    }
 }
 
 static void Game_SetWindowPosSize(AppState *app, Sint32 px, Sint32 py, Sint32 w, Sint32 h)
@@ -216,6 +220,7 @@ static void Game_ProcessAutoLayout(AppState *app, Uint64 msg_tick,
     app->window_autolayout_latest_tick_id = msg_tick;
     Game_SetWindowPosSize(app, px, py, w, h);
 }
+
 
 static void Game_Iterate(AppState *app)
 {
@@ -265,6 +270,10 @@ static void Game_Iterate(AppState *app)
         if (!Object_IsNil(player))
         {
             app->camera_p = player->p;
+            {
+                float wh = Max(app->window_width, app->window_height); // pick bigger window dimension
+                app->camera_scale = wh / app->camera_range;
+            }
         }
     }
 
@@ -286,6 +295,7 @@ static void Game_Init(AppState *app)
     app->frame_time = SDL_GetTicks();
     app->sprite_count += 1; // reserve sprite under index 0 as special 'nil' value
     app->camera_range = 500;
+    app->camera_scale = 1.f;
     app->tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
 
     // this assumes we run the game from build directory
@@ -308,6 +318,8 @@ static void Game_Init(AppState *app)
         app->sprite_dude_id = Sprite_IdFromPointer(app, sprite_dude);
     }
     Sprite *sprite_ref = Sprite_Create(app, "../res/pxart/reference.png", 1);
+    Sprite *sprite_cross = Sprite_Create(app, "../res/pxart/cross.png", 1);
+
 
     // add walls
     {
@@ -334,5 +346,10 @@ static void Game_Init(AppState *app)
             crate->p = (V2){0.5f*off, -0.5f*off};
             (void)crate;
         }
+    }
+
+    // pathing marker
+    {
+        app->pathing_marker = Object_Create(app, ObjCategory_Const, Sprite_IdFromPointer(app, sprite_cross), 0)->key;
     }
 }

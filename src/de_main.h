@@ -45,20 +45,36 @@ struct AppState
 
     Uint32 log_filter; // active log filer flags
 
-    // user input
-    V2 mouse;
-    SDL_MouseButtonFlags mouse_keys;
-    bool keyboard[SDL_SCANCODE_COUNT]; // true == key is down
-
-    Client_State client;
-    Server_State server;
-
     // time
     Uint64 frame_id;
     Uint64 frame_time;
     float dt;
     Uint64 tick_id;
     float tick_dt_accumulator;
+
+    // user input
+    V2 mouse;
+    SDL_MouseButtonFlags mouse_keys;
+    bool keyboard[SDL_SCANCODE_COUNT]; // true == key is down
+
+    // networking
+    struct
+    {
+        bool err; // tracks if network is in error state
+        bool is_server;
+        SDLNet_DatagramSocket *socket;
+
+        Net_User server_user;
+
+        // msg payload
+        bool packet_err; // set on internal buffer overflow errors etc
+        Net_PacketHeader packet_header;
+        Uint8 packet_payload_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network payload construction
+        Uint32 payload_used;
+    } net;
+
+    Client_State client;
+    Server_State server;
 
     // objects
     union
@@ -77,28 +93,16 @@ struct AppState
     Uint32 sprite_overlay_id;
     Uint32 sprite_dude_id; // @todo better organization
 
+    // special objects
+    Object_Key pathing_marker;
+
     // camera
     V2 camera_p;
     // :: camera_range ::
     // how much of the world is visible in the camera
     // float camera_scale = Max(width, height) / camera_range
     float camera_range;
-
-    // networking
-    struct
-    {
-        bool err; // tracks if network is in error state
-        bool is_server;
-        SDLNet_DatagramSocket *socket;
-
-        Net_User server_user;
-
-        // msg payload
-        bool packet_err; // set on internal buffer overflow errors etc
-        Net_PacketHeader packet_header;
-        Uint8 packet_payload_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network payload construction
-        Uint32 payload_used;
-    } net;
+    float camera_scale; // calculated from camera_range and window dimensions
 
     // debug
     struct
@@ -116,3 +120,5 @@ struct AppState
 };
 
 static void Game_ProcessAutoLayout(AppState *app, Uint64 msg_tick, Sint32 px, Sint32 py, Sint32 w, Sint32 h);
+static V2 Game_WorldToScreen(AppState *app, V2 pos);
+static V2 Game_ScreenToWorld(AppState *app, V2 pos);

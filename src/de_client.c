@@ -186,14 +186,30 @@ static Tick_Input *Client_PollInput(AppState *app)
     // advance max
     app->client.tick_input_max += 1;
 
-    Tick_Input *input = app->client.circle_inputs + current;
+    V2 mouse_at_world_p = Game_ScreenToWorld(app, app->mouse);
 
     V2 dir = {0};
     if (app->keyboard[SDL_SCANCODE_W] || app->keyboard[SDL_SCANCODE_UP])    dir.y += 1;
     if (app->keyboard[SDL_SCANCODE_S] || app->keyboard[SDL_SCANCODE_DOWN])  dir.y -= 1;
     if (app->keyboard[SDL_SCANCODE_A] || app->keyboard[SDL_SCANCODE_LEFT])  dir.x -= 1;
     if (app->keyboard[SDL_SCANCODE_D] || app->keyboard[SDL_SCANCODE_RIGHT]) dir.x += 1;
+
+    Tick_Input *input = app->client.circle_inputs + current;
     input->move_dir = V2_Normalize(dir);
+
+    if (app->mouse_keys & SDL_BUTTON_LMASK)
+    {
+        input->is_pathing = true;
+        input->pathing_world_p = mouse_at_world_p;
+
+        Object *marker = Object_Get(app, app->pathing_marker, ObjCategory_Const);
+        if (!Object_IsNil(marker))
+        {
+            marker->flags |= ObjectFlag_Draw;
+            marker->p = input->pathing_world_p;
+            //marker->p = (V2){0};
+        }
+    }
 
     return input;
 }
