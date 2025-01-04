@@ -1,9 +1,8 @@
 typedef struct
 {
-    Tick_Input circle_inputs[NET_MAX_INPUT_TICKS];
-    // playback
-    Uint64 playback_index_min; // to-be-played index
-    Uint64 playback_index_max; // one past past input from the server
+    Tick_Input qbuf[NET_MAX_INPUT_TICKS];
+    RngU64 playback_range;
+    Tick_Input last_input;
     Uint64 latest_client_tick_id;
 } Server_PlayerInputBuffer;
 

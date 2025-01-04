@@ -168,7 +168,6 @@ static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
     return false; // no error
 }
 
-
 static Tick_Input *Client_PollInput(AppState *app)
 {
     // select slot from circular buffer

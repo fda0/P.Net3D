@@ -52,26 +52,55 @@ static void Circle_CopyFillRange(Uint64 elem_size,
 // Queue
 typedef struct
 {
-    Uint8 *buf;
-    Uint32 elem_size;
-    Uint32 elem_count;
     Uint64 min;
     Uint64 max; // one past last
-} Queue;
+} RngU64;
 
-static Uint8 *Queue_Push(Queue *q, Uint32 buf_size_check)
+static Uint8 *Queue_Push(void *buf, Uint64 elem_count, Uint64 elem_size,
+                         RngU64 *range)
 {
-    if (buf_size_check)
-        Assert(q->elem_size * q->elem_count == buf_size_check);
+    Assert(range->min <= range->max);
+    Uint64 current_index = range->max % elem_count;
 
-    Uint64 index = q->max % q->elem_count;
+    // truncate min if it overlaps with current
+    if (range->min != range->max) // check that queue is not empty
+    {
+        Uint64 min_index = range->min % elem_count;
+        if (min_index == current_index)
+        {
+            range->min += 1;
+        }
+    }
 
+    // advance max
+    range->max += 1;
 
-
-    Uint8 *res = q->buf + (index * q->elem_size);
+    Uint8 *res = (Uint8 *)buf + (current_index * elem_size);
     return res;
 }
 
-static Uint8 *Q_Pop(Queue *q)
+static Uint8 *Queue_Pop(void *buf, Uint64 elem_count, Uint64 elem_size,
+                        RngU64 *range)
 {
+    Assert(range->min <= range->max);
+    if (range->min >= range->max)
+        return 0;
+
+    Uint64 current_index = range->min % elem_count;
+
+    // advance min
+    range->min += 1;
+
+    Uint8 *res = (Uint8 *)buf + (current_index * elem_size);
+    return res;
 }
+
+static Uint64 RngU64_Count(RngU64 rng)
+{
+    if (rng.max < rng.min)
+        return 0;
+    return rng.max - rng.min;
+}
+
+#define Q_Push(Arr, RangePtr) (typeof(&*Arr))Queue_Push(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr)
+#define Q_Pop(Arr, RangePtr) (typeof(&*Arr))Queue_Pop(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr)

@@ -194,7 +194,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
     app->window_width = app->init_window_width;
     app->window_height = app->init_window_height;
 
-    if (!SDL_CreateWindowAndRenderer("demongus",
+    if (!SDL_CreateWindowAndRenderer("P Game",
                                      app->window_width, app->window_height,
                                      window_flags,
                                      &app->window, &app->renderer))
