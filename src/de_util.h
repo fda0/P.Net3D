@@ -48,3 +48,30 @@ static void Circle_CopyFillRange(Uint64 elem_size,
 
     *buf_elem_index = index_end;
 }
+
+// Queue
+typedef struct
+{
+    Uint8 *buf;
+    Uint32 elem_size;
+    Uint32 elem_count;
+    Uint64 min;
+    Uint64 max; // one past last
+} Queue;
+
+static Uint8 *Queue_Push(Queue *q, Uint32 buf_size_check)
+{
+    if (buf_size_check)
+        Assert(q->elem_size * q->elem_count == buf_size_check);
+
+    Uint64 index = q->max % q->elem_count;
+
+
+
+    Uint8 *res = q->buf + (index * q->elem_size);
+    return res;
+}
+
+static Uint8 *Q_Pop(Queue *q)
+{
+}

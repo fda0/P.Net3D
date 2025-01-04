@@ -253,9 +253,9 @@ static void Net_IterateSend(AppState *app)
                         Uint32 x = window_index / side_chunks;
                         Uint32 y = window_index % side_chunks;
 
-                        Game_ProcessAutoLayout(app, app->tick_id,
-                                               win_x + x*win_w, win_y + y*win_h,
-                                               win_w, win_h);
+                        Game_AutoLayoutApply(app, app->server.user_count,
+                                             win_x + x*win_w, win_y + y*win_h,
+                                             win_w, win_h);
                     }
 
                     // calc client window
@@ -270,6 +270,7 @@ static void Net_IterateSend(AppState *app)
                         Net_PayloadMemcpy(app, &head, sizeof(head));
 
                         Net_SendWindowLayout body = {0};
+                        body.user_count = app->server.user_count;
                         body.px = win_x + x*win_w;
                         body.py = win_y + y*win_h;
                         body.w = win_w;
@@ -450,8 +451,8 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
             Net_SendWindowLayout layout;
             Net_ConsumeS8(&msg, &layout, sizeof(layout));
 
-            Game_ProcessAutoLayout(app, head.tick_id,
-                                   layout.px, layout.py, layout.w, layout.h);
+            Game_AutoLayoutApply(app, layout.user_count,
+                                 layout.px, layout.py, layout.w, layout.h);
         }
         else
         {

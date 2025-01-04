@@ -211,13 +211,13 @@ static void Game_SetWindowPosSize(AppState *app, Sint32 px, Sint32 py, Sint32 w,
     SDL_SetWindowSize(app->window, w, h);
 }
 
-static void Game_ProcessAutoLayout(AppState *app, Uint64 msg_tick,
-                                   Sint32 px, Sint32 py, Sint32 w, Sint32 h)
+static void Game_AutoLayoutApply(AppState *app, Uint32 user_count,
+                                 Sint32 px, Sint32 py, Sint32 w, Sint32 h)
 {
-    if (msg_tick <= app->window_autolayout_latest_tick_id)
+    if (user_count == app->latest_autolayout_user_count)
         return;
 
-    app->window_autolayout_latest_tick_id = msg_tick;
+    app->latest_autolayout_user_count = user_count;
     Game_SetWindowPosSize(app, px, py, w, h);
 }
 
@@ -264,16 +264,33 @@ static void Game_Iterate(AppState *app)
 
     Net_IterateSend(app);
 
-    // move camera
+
+    // move camera; calculate camera scale
     {
+        // pos
         Object *player = Object_Get(app, app->client.player_key, ObjCategory_Net);
         if (!Object_IsNil(player))
         {
             app->camera_p = player->p;
-            {
-                float wh = Max(app->window_width, app->window_height); // pick bigger window dimension
-                app->camera_scale = wh / app->camera_range;
-            }
+        }
+
+        // scale
+        {
+            float wh = Max(app->window_width, app->window_height); // pick bigger window dimension
+            app->camera_scale = wh / app->camera_range;
+        }
+
+        app->world_mouse = Game_ScreenToWorld(app, app->mouse);
+    }
+
+    if (app->mouse_keys & SDL_BUTTON_RMASK)
+    {
+        Object *marker = Object_Get(app, app->pathing_marker, ObjCategory_Const);
+        if (!Object_IsNil(marker))
+        {
+            marker->flags |= ObjectFlag_Draw;
+            marker->p = app->world_mouse;
+            app->pathing_marker_set = true;
         }
     }
 

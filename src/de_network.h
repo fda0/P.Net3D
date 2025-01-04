@@ -69,6 +69,7 @@ typedef struct
 
 typedef struct
 {
+    Uint32 user_count;
     Sint32 px, py, w, h;
 } Net_SendWindowLayout;
 

@@ -40,8 +40,9 @@ struct AppState
     Sint32 window_width, window_height;
     bool window_on_top;
     bool window_borderless;
+
     bool window_autolayout;
-    Uint64 window_autolayout_latest_tick_id;
+    Uint32 latest_autolayout_user_count;
 
     Uint32 log_filter; // active log filer flags
 
@@ -54,8 +55,10 @@ struct AppState
 
     // user input
     V2 mouse;
+    V2 world_mouse;
     SDL_MouseButtonFlags mouse_keys;
     bool keyboard[SDL_SCANCODE_COUNT]; // true == key is down
+    bool pathing_marker_set;
 
     // networking
     struct
@@ -119,6 +122,13 @@ struct AppState
     } debug;
 };
 
-static void Game_ProcessAutoLayout(AppState *app, Uint64 msg_tick, Sint32 px, Sint32 py, Sint32 w, Sint32 h);
+typedef struct
+{
+    Uint32 x, y, w, h;
+} WindowLayoutData;
+
+static void Game_AutoLayoutApply(AppState *app, Uint32 user_count, Sint32 px, Sint32 py, Sint32 w, Sint32 h);
 static V2 Game_WorldToScreen(AppState *app, V2 pos);
 static V2 Game_ScreenToWorld(AppState *app, V2 pos);
+
+
