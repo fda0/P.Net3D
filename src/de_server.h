@@ -2,8 +2,9 @@ typedef struct
 {
     Tick_Input qbuf[NET_MAX_INPUT_TICKS];
     RngU64 playback_range;
-    Tick_Input last_input;
     Uint64 latest_client_tick_id;
+    Tick_Input last_input;
+    TickDeltas receive_deltas;
 } Server_PlayerInputBuffer;
 
 typedef struct

@@ -22,12 +22,12 @@ static void Tick_AdvanceSimulation(AppState *app)
     // apply player input
     ForArray(player_index, app->server.player_keys)
     {
-        Tick_Input input = Server_GetPlayerInput(app, player_index);
-
         Object_Key player_key = app->server.player_keys[player_index];
         Object *player = Object_Get(app, player_key, ObjCategory_Net);
         if (Object_IsNil(player))
             continue;
+
+        Tick_Input input = Server_GetPlayerInput(app, player_index);
 
         float player_speed = 200.f * TIME_STEP;
         player->dp = V2_Scale(input.move_dir, player_speed);
@@ -257,7 +257,7 @@ static void Tick_Playback(AppState *app)
             smallest_latest_server_tick,
             app->client.next_playback_tick,
             app->client.current_playback_delay,
-            (int)app->client.playback_tick_catchup);
+            (int)app->client.playable_tick_deltas.tick_catchup);
 
         app->client.next_playback_tick = biggest_oldest_server_tick;
     }
@@ -268,56 +268,33 @@ static void Tick_Playback(AppState *app)
             "%s: Ran out of tick playback state; "
             "next_playback_tick: %llu, "
             "smallest_latest_server_tick: %llu, "
-            "playback delay: %llu, "
+            "playback delay: %d, "
             "playback catchup %d",
             Net_Label(app),
             app->client.next_playback_tick,
             smallest_latest_server_tick,
-            app->client.current_playback_delay,
-            (int)app->client.playback_tick_catchup);
+            (int)app->client.current_playback_delay,
+            (int)app->client.playable_tick_deltas.tick_catchup);
         return;
     }
 
-    // playback delay catchup calculations
+    // calc current delay
     {
-        app->client.current_playback_delay = smallest_latest_server_tick - app->client.next_playback_tick;
+        Uint64 current_playback_delay_u64 = smallest_latest_server_tick - app->client.next_playback_tick;
+        app->client.current_playback_delay = Saturate_U64toU16(current_playback_delay_u64);
+    }
 
-        if (app->client.prev_smallest_latest_server_tick !=
-            smallest_latest_server_tick)
+    if (TickDeltas_AddTick(&app->client.playable_tick_deltas, smallest_latest_server_tick))
+    {
+        TickDeltas_UpdateCatchup(&app->client.playable_tick_deltas, app->client.current_playback_delay);
+        if (app->client.playable_tick_deltas.tick_catchup)
         {
-            // save the delta
-            Sint64 delta = smallest_latest_server_tick - app->client.prev_smallest_latest_server_tick;
-            app->client.prev_smallest_latest_server_tick = smallest_latest_server_tick;
-
-            app->client.latest_deltas[app->client.latest_delta_index] = delta;
-            app->client.latest_delta_index = (app->client.latest_delta_index + 1) % ArrayCount(app->client.latest_deltas);
-
-            // find biggest recent delta
-            Sint16 biggest_delta = 0;
-            ForArray(i, app->client.latest_deltas)
-            {
-                if (app->client.latest_deltas[i] > biggest_delta)
-                    biggest_delta = app->client.latest_deltas[i];
-            }
-
-            Sint16 target_playback_delay = biggest_delta + biggest_delta/64 + 1;
-            if (target_playback_delay < app->client.current_playback_delay)
-            {
-                app->client.playback_tick_catchup = app->client.current_playback_delay - target_playback_delay;
-
-                LOG(LogFlags_NetCatchup,
-                    "%s: Current playback delay: %llu, "
-                    "Target playback delay: %d, "
-                    " Setting playback catchup to %d, ",
-                    Net_Label(app),
-                    app->client.current_playback_delay,
-                    (int)target_playback_delay,
-                    (int)app->client.playback_tick_catchup);
-            }
-            else
-            {
-                app->client.playback_tick_catchup = 0;
-            }
+            LOG(LogFlags_NetCatchup,
+                "%s: Current playback delay: %llu, "
+                " Setting playback catchup to %d",
+                Net_Label(app),
+                app->client.current_playback_delay,
+                (int)app->client.playable_tick_deltas.tick_catchup);
         }
     }
 
@@ -340,9 +317,9 @@ static void Tick_Iterate(AppState *app)
     if (Net_IsClient(app))
     {
         Tick_Playback(app);
-        if (app->client.playback_tick_catchup > 0)
+        if (app->client.playable_tick_deltas.tick_catchup > 0)
         {
-            app->client.playback_tick_catchup -= 1;
+            app->client.playable_tick_deltas.tick_catchup -= 1;
             Tick_Playback(app);
         }
     }

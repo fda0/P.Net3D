@@ -170,29 +170,13 @@ static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
 
 static Tick_Input *Client_PollInput(AppState *app)
 {
-    // select slot from circular buffer
-    Uint64 current = app->client.tick_input_max % ArrayCount(app->client.circle_inputs);
-
-    // advance min
-    {
-        Uint64 min = app->client.tick_input_min % ArrayCount(app->client.circle_inputs);
-        if (app->client.tick_input_min != app->client.tick_input_max &&
-            min == current)
-        {
-            app->client.tick_input_min += 1;
-        }
-    }
-    // advance max
-    app->client.tick_input_max += 1;
-
-
     V2 dir = {0};
     if (app->keyboard[SDL_SCANCODE_W] || app->keyboard[SDL_SCANCODE_UP])    dir.y += 1;
     if (app->keyboard[SDL_SCANCODE_S] || app->keyboard[SDL_SCANCODE_DOWN])  dir.y -= 1;
     if (app->keyboard[SDL_SCANCODE_A] || app->keyboard[SDL_SCANCODE_LEFT])  dir.x -= 1;
     if (app->keyboard[SDL_SCANCODE_D] || app->keyboard[SDL_SCANCODE_RIGHT]) dir.x += 1;
 
-    Tick_Input *input = app->client.circle_inputs + current;
+    Tick_Input *input = Q_Push(app->client.inputs_qbuf, &app->client.inputs_range);
     input->move_dir = V2_Normalize(dir);
 
     if (app->pathing_marker_set)
@@ -203,10 +187,4 @@ static Tick_Input *Client_PollInput(AppState *app)
     }
 
     return input;
-}
-
-static Tick_Input *Client_InputAtTick(AppState *app, Uint64 tick)
-{
-    Uint64 index = tick % ArrayCount(app->client.circle_inputs);
-    return app->client.circle_inputs + index;
 }

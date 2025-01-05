@@ -11,18 +11,13 @@ typedef struct
 {
     Client_Snapshot obj_snaps[OBJ_MAX_NETWORK_OBJECTS];
     Uint64 next_playback_tick;
-    Uint64 current_playback_delay;
 
-    // stores positive deltas from latest; used to speed up playback and catch up to server on stable connections
-    Uint64 prev_smallest_latest_server_tick;
-    Sint16 latest_deltas[32];
-    Sint16 latest_delta_index;
-    Sint16 playback_tick_catchup;
+    Uint16 current_playback_delay;
+    TickDeltas playable_tick_deltas; // used to control playback catch-up
 
     // circular buffer with tick inputs
-    Tick_Input circle_inputs[NET_MAX_INPUT_TICKS];
-    Uint64 tick_input_min;
-    Uint64 tick_input_max; // one past last
+    Tick_Input inputs_qbuf[NET_MAX_INPUT_TICKS];
+    RngU64 inputs_range;
 
     //
     Object_Key player_key;

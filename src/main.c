@@ -26,6 +26,7 @@
 #include "de_server.h"
 #include "de_main.h"
 
+static AppState APP;
 #include "de_tests.c"
 #include "de_sprite.c"
 #include "de_object.c"
@@ -157,7 +158,9 @@ static void Game_ParseCmd(AppState *app, int argc, char** argv)
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {
-    *appstate = SDL_calloc(1, sizeof(AppState));
+    //*appstate = SDL_calloc(1, sizeof(AppState));
+    *appstate = &APP;
+
     {
         void *aligned = AlignPointerUp(appstate, _Alignof(AppState));
         Assert(aligned == appstate);

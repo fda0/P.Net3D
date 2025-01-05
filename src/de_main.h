@@ -26,7 +26,7 @@ typedef enum
 //#define LOG(FLAGS, ...) do{ (void)(FLAGS); if(0){ printf(__VA_ARGS__); }}while(0)
 
 // @note enable logging
-#define LOG(FLAGS, ...) do{ if(((FLAGS) & app->log_filter) == (FLAGS)){ SDL_Log(__VA_ARGS__); }}while(0)
+#define LOG(FLAGS, ...) do{ if(((FLAGS) & APP.log_filter) == (FLAGS)){ SDL_Log(__VA_ARGS__); }}while(0)
 
 struct AppState
 {

@@ -12,6 +12,10 @@ static const char *Net_Label(AppState *app)
 {
     return app->net.is_server ? "SERVER" : "CLIENT";
 }
+static const char *Net_Label2()
+{
+    return APP.net.is_server ? "SERVER" : "CLIENT";
+}
 
 static Uint8 *Net_PayloadAlloc(AppState *app, Uint32 size)
 {
@@ -341,8 +345,8 @@ static void Net_IterateSend(AppState *app)
             Net_SendInputs inputs = {0};
             Uint16 input_count = 0;
 
-            for (Uint64 i = app->client.tick_input_min;
-                 i < app->client.tick_input_max;
+            for (Uint64 i = app->client.inputs_range.min;
+                 i < app->client.inputs_range.max;
                  i += 1)
             {
                 if (input_count >= ArrayCount(inputs.inputs))
@@ -351,8 +355,16 @@ static void Net_IterateSend(AppState *app)
                     break;
                 }
 
-                Tick_Input *input = Client_InputAtTick(app, i);
-                inputs.inputs[input_count] = *input;
+                Tick_Input *peek = Q_PeekAt(app->client.inputs_qbuf,
+                                            &app->client.inputs_range,
+                                            i);
+                if (!peek)
+                {
+                    Assert(false);
+                    break;
+                }
+
+                inputs.inputs[input_count] = *peek;
                 input_count += 1;
             }
 
