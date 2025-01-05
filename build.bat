@@ -33,6 +33,7 @@ set clang_out=     -o
 
 :: --- Per-Build Settings -----------------------------------------------------
 set link_dll=-DLL
+set link_icon=icon.res
 if "%msvc%"=="1"    set only_compile=/c
 if "%clang%"=="1"   set only_compile=-c
 if "%msvc%"=="1"    set EHsc=/EHsc
@@ -56,6 +57,11 @@ if "%release%"=="1"   set compile=%compile_release%
 
 :: --- Prep Directories -------------------------------------------------------
 if not exist build mkdir build
+
+:: --- Produce Logo Icon File -------------------------------------------------
+pushd build
+%rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1
+popd
 
 :: --- Get Current Git Commit Id ----------------------------------------------
 for /f %%i in ('call git describe --always --dirty') do set compile=%compile% -DBUILD_GIT_HASH=\"%%i\"
@@ -88,7 +94,7 @@ if "%sdl%"=="1" (
 )
 
 pushd build
-if "%game%"=="1"    set didbuild=1 && %compile% ..\src\main.c    %compile_link% %out%pog.exe || exit /b 1
+if "%game%"=="1"    set didbuild=1 && %compile% ..\src\main.c    %compile_link% %link_icon% %out%pog.exe || exit /b 1
 popd
 
 :: --- Unset ------------------------------------------------------------------
