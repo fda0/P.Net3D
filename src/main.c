@@ -36,9 +36,9 @@ static AppState APP;
 #include "de_tick.c"
 #include "de_main.c"
 
-SDL_AppResult SDL_AppIterate(void* appstate)
+SDL_AppResult SDL_AppIterate(void *appstate)
 {
-    AppState* app = (AppState*)appstate;
+    AppState *app = (AppState*)appstate;
 
     // input
     {
@@ -61,9 +61,9 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     return SDL_APP_CONTINUE;
 }
 
-SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
+SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 {
-    AppState* app = (AppState*)appstate;
+    AppState *app = (AppState *)appstate;
 
     switch (event->type)
     {
@@ -101,7 +101,7 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
     return SDL_APP_CONTINUE;
 }
 
-static void Game_ParseCmd(AppState *app, int argc, char** argv)
+static void Game_ParseCmd(AppState *app, int argc, char **argv)
 {
     for (int i = 1; i < argc; i += 1)
     {
@@ -156,7 +156,7 @@ static void Game_ParseCmd(AppState *app, int argc, char** argv)
     }
 }
 
-SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
+SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
     //*appstate = SDL_calloc(1, sizeof(AppState));
     *appstate = &APP;
@@ -221,16 +221,14 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
     return SDL_APP_CONTINUE;
 }
 
-void SDL_AppQuit(void* appstate, SDL_AppResult result)
+void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
     (void)result;
+    (void)appstate;
 
     const char* error = SDL_GetError();
     if (error[0])
     {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s\n", error);
     }
-
-    // No need to check for null
-    SDL_free(appstate);
 }

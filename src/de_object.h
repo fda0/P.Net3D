@@ -42,6 +42,10 @@ typedef struct
 
     Uint32 some_number;
 
+    // input actions
+    bool is_pathing;
+    V2 pathing_dest_p;
+
     // temp
     bool has_collision;
 } Object;
