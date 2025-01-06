@@ -1,4 +1,4 @@
-static void Gpu_LoadShader(bool is_vertex)
+static SDL_GPUShader *Gpu_LoadShader(bool is_vertex)
 {
     SDL_GPUShaderCreateInfo createinfo;
     createinfo.num_samplers = 0;
@@ -42,5 +42,68 @@ static void Gpu_LoadShader(bool is_vertex)
     {
         Assert(0);
         // @todo report that user's gpu doesn't support anything we support
+        return 0;
     }
+
+    createinfo.stage = is_vertex ? SDL_GPU_SHADERSTAGE_VERTEX : SDL_GPU_SHADERSTAGE_FRAGMENT;
+    return SDL_CreateGPUShader(APP.gpu.device, &createinfo);
+}
+
+static void Gpu_Init()
+{
+    APP.gpu.vertex = Gpu_LoadShader(true);
+    APP.gpu.fragment = Gpu_LoadShader(false);
+
+    // create vertex buffer
+    {
+        SDL_GPUBufferCreateInfo buffer_desc = {0};
+        buffer_desc.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
+        buffer_desc.size = sizeof(g_vertex_data);
+        buffer_desc.props = 0;
+        APP.gpu.buf_vertex = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
+        Assert(APP.gpu.buf_vertex); // @todo report to user if this failed and exit program
+    }
+    SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.buf_vertex, "Vertex Buffer");
+
+    // transfer buffer stuff
+    {
+        SDL_GPUTransferBuffer *buf_transfer = 0;
+        // create transfer buffer
+        {
+            SDL_GPUTransferBufferCreateInfo transfer_buffer_desc;
+            transfer_buffer_desc.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+            transfer_buffer_desc.size = sizeof(g_vertex_data);
+            transfer_buffer_desc.props = 0;
+            buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &transfer_buffer_desc);
+            Assert(buf_transfer); // @todo report to user if this failed and exit program
+        }
+
+        // CPU -> GPU memory transfer
+        {
+            void *map = SDL_MapGPUTransferBuffer(APP.gpu.device, buf_transfer, false);
+            memcpy(map, g_vertex_data, sizeof(g_vertex_data));
+            SDL_UnmapGPUTransferBuffer(APP.gpu.device, buf_transfer);
+        }
+
+        {
+            SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+            SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+            SDL_GPUTransferBufferLocation buf_location = {0};
+            buf_location.transfer_buffer = buf_transfer;
+            buf_location.offset = 0;
+
+            SDL_GPUBufferRegion dst_region = {0};
+            dst_region.buffer = APP.gpu.buf_vertex;
+            dst_region.offset = 0;
+            dst_region.size = sizeof(g_vertex_data);
+
+            SDL_UploadToGPUBuffer(copy_pass, &buf_location, &dst_region, false);
+            SDL_EndGPUCopyPass(copy_pass);
+            SDL_SubmitGPUCommandBuffer(cmd);
+        }
+
+        SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
+    }
+
 }
