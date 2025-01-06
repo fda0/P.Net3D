@@ -7,6 +7,7 @@
 
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_net/SDL_net.h>
@@ -24,6 +25,7 @@
 #include "de_network.h"
 #include "de_client.h"
 #include "de_server.h"
+#include "de_gpu.h"
 #include "de_main.h"
 
 static AppState APP;
@@ -35,6 +37,10 @@ static AppState APP;
 #include "de_network.c"
 #include "de_tick.c"
 #include "de_main.c"
+
+#include "../gen/shader_game.vert.hx"
+#include "../gen/shader_game.frag.hx"
+#include "de_gpu.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
@@ -160,7 +166,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
     //*appstate = SDL_calloc(1, sizeof(AppState));
     *appstate = &APP;
-
     {
         void *aligned = AlignPointerUp(appstate, _Alignof(AppState));
         Assert(aligned == appstate);
@@ -172,7 +177,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to allocate appstate", SDL_GetError(), NULL);
         return SDL_APP_FAILURE;
     }
-    app->log_filter = ~0u;
+    app->log_filter = ~(U32)LogFlags_NetAll;
     app->init_window_width = WINDOW_WIDTH;
     app->init_window_height = WINDOW_HEIGHT;
 
@@ -212,6 +217,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
         int y = (app->init_window_py ? app->init_window_py : SDL_WINDOWPOS_UNDEFINED);
         SDL_SetWindowPosition(app->window, x, y);
     }
+
+    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(app->window));
+    SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
 
     SDL_ShowWindow(app->window);
 

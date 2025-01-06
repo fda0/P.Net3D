@@ -17,6 +17,7 @@ typedef enum
     LogFlags_NetClient   = (1 << 6),
     LogFlags_NetTick     = (1 << 7),
     LogFlags_NetCatchup  = (1 << 8),
+    LogFlags_NetAll      = (0xff << 1),
 } Log_Flags;
 
 // @note disable logging
@@ -33,6 +34,7 @@ struct AppState
     // SDL, window stuff
     SDL_Window* window;
     SDL_Renderer* renderer;
+    Gpu_State gpu;
 
     // window settings
     Sint32 init_window_px, init_window_py; // 0 if wasn't set

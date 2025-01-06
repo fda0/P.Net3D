@@ -100,7 +100,8 @@ if "%game%"=="1" (
     %rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1
 
     :: --- Precompile shaders -------------------------------------------------
-    echo todo - precompile shaders
+    dxc ..\src\shader_game.hlsl /E ShaderGameVS /T vs_6_0 /Fh ..\gen\shader_game.vert.hx || exit /b 1
+    dxc ..\src\shader_game.hlsl /E ShaderGamePS /T ps_6_0 /Fh ..\gen\shader_game.frag.hx || exit /b 1
 
     :: --- Compile game -------------------------------------------------------
     %compile% ..\src\main.c %compile_link% %link_icon% %out%pog.exe || exit /b 1

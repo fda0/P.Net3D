@@ -17,7 +17,7 @@ struct VSOutput
     float4 Position : SV_Position;
 };
 
-VSOutput VSMain(VSInput input)
+VSOutput ShaderGameVS(VSInput input)
 {
     VSOutput output;
     output.Color = float4(input.Color, 1.0f);
@@ -25,7 +25,7 @@ VSOutput VSMain(VSInput input)
     return output;
 }
 
-float4 PSMain(VSOutput input) : SV_Target0
+float4 ShaderGamePS(VSOutput input) : SV_Target0
 {
     return input.Color;
 }
