@@ -1,3 +1,7 @@
+// ---
+// Preprocessor switches
+// ---
+
 // detect compiler
 #ifdef _MSC_VER
     #define COMPILER_MSVC 1
@@ -35,6 +39,22 @@
 #if OS_WINDOWS == OS_LINUX
     #error "OS_WINDOWS is equal to OS_LINUX"
 #endif
+
+// ---
+// Types
+// ---
+typedef Uint8 U8;
+typedef Uint16 U16;
+typedef Uint32 U32;
+typedef Uint64 U64;
+typedef Sint8 I8;
+typedef Sint16 I16;
+typedef Sint32 I32;
+typedef Sint64 I64;
+
+// ---
+// Macros
+// ---
 
 // Loop macros
 #define ArrayCount(Array) (sizeof(Array)/sizeof(Array[0]))

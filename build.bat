@@ -58,15 +58,10 @@ if "%release%"=="1"   set compile=%compile_release%
 :: --- Prep Directories -------------------------------------------------------
 if not exist build mkdir build
 
-:: --- Produce Logo Icon File -------------------------------------------------
-pushd build
-%rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1
-popd
-
 :: --- Get Current Git Commit Id ----------------------------------------------
 for /f %%i in ('call git describe --always --dirty') do set compile=%compile% -DBUILD_GIT_HASH=\"%%i\"
 
-:: --- Build Everything (@build_targets) --------------------------------------
+:: --- Build SDL --------------------------------------
 if "%sdl%"=="1" (
     if exist libs\SDL (
         rem SDL build docs: https://github.com/libsdl-org/SDL/blob/main/docs/README-cmake.md
@@ -79,22 +74,32 @@ if "%sdl%"=="1" (
         rem            Would be nice to fix this :)
 
         pushd libs\SDL
-        (cmake -S . -B build\win -DSDL_STATIC=ON && cmake --build build\win) || exit /b 1
+        (call cmake -S . -B build\win -DSDL_STATIC=ON && call cmake --build build\win) || exit /b 1
         popd
         pushd libs\SDL_image
-        (cmake -S . -B build\win -DSDLIMAGE_VENDORED=OFF -DBUILD_SHARED_LIBS=OFF "-DSDL3_DIR=..\SDL\build\win" && cmake --build build\win) || exit /b 1
+        (call cmake -S . -B build\win -DSDLIMAGE_VENDORED=OFF -DBUILD_SHARED_LIBS=OFF "-DSDL3_DIR=..\SDL\build\win" && call cmake --build build\win) || exit /b 1
         popd
         pushd libs\SDL_net
-        (cmake -S . -B build\win -DBUILD_SHARED_LIBS=OFF "-DSDL3_DIR=..\SDL\build\win" && cmake --build build\win) || exit /b 1
+        (call cmake -S . -B build\win -DBUILD_SHARED_LIBS=OFF "-DSDL3_DIR=..\SDL\build\win" && call cmake --build build\win) || exit /b 1
+        set didbuild=1
         popd
     ) else (
         echo "SDL directory not found! Make sure to initialize git submodules."
     )
-    echo "todo - build sdl"
 )
 
 pushd build
-if "%game%"=="1"    set didbuild=1 && %compile% ..\src\main.c    %compile_link% %link_icon% %out%pog.exe || exit /b 1
+if "%game%"=="1" (
+    :: --- Produce Logo Icon File ---------------------------------------------
+    %rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1
+
+    :: --- Precompile shaders -------------------------------------------------
+    echo todo - precompile shaders
+
+    :: --- Compile game -------------------------------------------------------
+    %compile% ..\src\main.c %compile_link% %link_icon% %out%pog.exe || exit /b 1
+    set didbuild=1
+)
 popd
 
 :: --- Unset ------------------------------------------------------------------
