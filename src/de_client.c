@@ -177,13 +177,14 @@ static Tick_Input *Client_PollInput(AppState *app)
     if (app->keyboard[SDL_SCANCODE_D] || app->keyboard[SDL_SCANCODE_RIGHT]) dir.x += 1;
 
     Tick_Input *input = Q_Push(app->client.inputs_qbuf, &app->client.inputs_range);
-    input->move_dir = V2_Normalize(dir);
+    SDL_zerop(input);
 
+    input->move_dir = V2_Normalize(dir);
     if (app->pathing_marker_set)
     {
         app->pathing_marker_set = false;
         input->is_pathing = true;
-        input->pathing_world_p = Object_Get(app, app->pathing_marker, ObjCategory_Const)->p;
+        input->pathing_world_p = Object_Get(app, app->pathing_marker, ObjCategory_Local)->p;
     }
 
     return input;

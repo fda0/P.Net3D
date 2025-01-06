@@ -5,12 +5,12 @@ typedef struct
     Uint64 latest_client_tick_id;
     Tick_Input last_input;
     TickDeltas receive_deltas;
-} Server_PlayerInputBuffer;
+} Server_PlayerInputs;
 
 typedef struct
 {
     Net_User users[NET_MAX_PLAYERS];
     Uint32 user_count;
     Object_Key player_keys[NET_MAX_PLAYERS];
-    Server_PlayerInputBuffer player_inputs[NET_MAX_PLAYERS];
+    Server_PlayerInputs player_inputs[NET_MAX_PLAYERS];
 } Server_State;

@@ -11,11 +11,11 @@ typedef enum
 
 typedef enum
 {
-    ObjCategory_Const = (1 << 0),
+    ObjCategory_Local = (1 << 0),
     ObjCategory_Net   = (1 << 1),
 
-    ObjCategory_All = (ObjCategory_Const | ObjCategory_Net)
-} Object_Category;
+    ObjCategory_All = (ObjCategory_Local | ObjCategory_Net)
+} Obj_Category;
 
 typedef struct
 {

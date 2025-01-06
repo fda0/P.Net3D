@@ -285,7 +285,7 @@ static void Game_Iterate(AppState *app)
 
     if (app->mouse_keys & SDL_BUTTON_RMASK)
     {
-        Object *marker = Object_Get(app, app->pathing_marker, ObjCategory_Const);
+        Object *marker = Object_Get(app, app->pathing_marker, ObjCategory_Local);
         if (!Object_IsNil(marker))
         {
             marker->flags |= ObjectFlag_Draw;
@@ -350,14 +350,14 @@ static void Game_Init(AppState *app)
 
         if (1)
         {
-            Object *ref = Object_Create(app, ObjCategory_Const,
+            Object *ref = Object_Create(app, ObjCategory_Local,
                                         Sprite_IdFromPointer(app, sprite_ref),
                                         ObjectFlag_Draw|ObjectFlag_Collide);
             ref->p = (V2){0, off*0.5f};
             ref->sprite_color = ColorF_RGBA(1,1,1,1);
         }
         {
-            Object *crate = Object_Create(app, ObjCategory_Const,
+            Object *crate = Object_Create(app, ObjCategory_Local,
                                           Sprite_IdFromPointer(app, sprite_crate),
                                           ObjectFlag_Draw|ObjectFlag_Collide);
             crate->p = (V2){0.5f*off, -0.5f*off};
@@ -367,6 +367,6 @@ static void Game_Init(AppState *app)
 
     // pathing marker
     {
-        app->pathing_marker = Object_Create(app, ObjCategory_Const, Sprite_IdFromPointer(app, sprite_cross), 0)->key;
+        app->pathing_marker = Object_Create(app, ObjCategory_Local, Sprite_IdFromPointer(app, sprite_cross), 0)->key;
     }
 }

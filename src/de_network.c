@@ -444,8 +444,8 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
             Net_ConsumeS8(&msg, &in_net, sizeof(in_net));
 
             Assert(player_id < ArrayCount(app->server.player_inputs));
-            Server_PlayerInputBuffer *in_buf = app->server.player_inputs + player_id;
-            Server_PlayerInputBufferInsert(in_buf, &in_net, head.tick_id);
+            Server_PlayerInputs *pi = app->server.player_inputs + player_id;
+            Server_InsertPlayerInput(pi, &in_net, head.tick_id);
         }
         else if (head.kind == NetSendKind_AssignPlayerKey)
         {

@@ -58,7 +58,6 @@ struct AppState
     V2 world_mouse;
     SDL_MouseButtonFlags mouse_keys;
     bool keyboard[SDL_SCANCODE_COUNT]; // true == key is down
-    bool pathing_marker_set;
 
     // networking
     struct
@@ -98,6 +97,7 @@ struct AppState
 
     // special objects
     Object_Key pathing_marker;
+    bool pathing_marker_set;
 
     // camera
     V2 camera_p;

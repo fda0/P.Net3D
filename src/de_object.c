@@ -24,7 +24,7 @@ static Object *Object_Get(AppState *app, Object_Key key, Uint32 category_mask)
     {
         Uint32 min = 0;
         Uint32 max = OBJ_MAX_CONST_OBJECTS;
-        if (category_mask & ObjCategory_Const)
+        if (category_mask & ObjCategory_Local)
             index_in_valid_category |= (key.index >= min && key.index < max);
 
         min = max;
@@ -71,12 +71,12 @@ static Object *Object_FromNetIndex(AppState *app, Uint32 net_index)
     return app->net_objects + net_index;
 }
 
-static Object *Object_Create(AppState *app, Object_Category category, Uint32 sprite_id, Uint32 flags)
+static Object *Object_Create(AppState *app, Obj_Category category, Uint32 sprite_id, Uint32 flags)
 {
     bool matched_category = false;
     Object *obj = 0;
 
-    if (category & ObjCategory_Const)
+    if (category & ObjCategory_Local)
     {
         Assert(!matched_category);
         matched_category = true;
@@ -133,7 +133,7 @@ static Object *Object_CreateWall(AppState *app, V2 p, V2 dim)
     collision_verts.arr[3] = (V2){-half_dim.x,  half_dim.y};
 
     Sprite *sprite = Sprite_CreateNoTex(app, collision_verts);
-    Object *obj = Object_Create(app, ObjCategory_Const,
+    Object *obj = Object_Create(app, ObjCategory_Local,
                                 Sprite_IdFromPointer(app, sprite),
                                 ObjectFlag_Draw|ObjectFlag_Collide);
     obj->p = p;

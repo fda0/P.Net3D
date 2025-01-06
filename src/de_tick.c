@@ -34,7 +34,6 @@ static void Tick_AdvanceSimulation(AppState *app)
             player->is_pathing = true;
             player->pathing_dest_p = input.pathing_world_p;
         }
-
         if (input.move_dir.x || input.move_dir.y)
         {
             player->is_pathing = false;
@@ -45,19 +44,19 @@ static void Tick_AdvanceSimulation(AppState *app)
         {
             V2 dir = V2_Sub(player->pathing_dest_p, player->p);
             float len_sq = V2_LengthSq(dir);
-            if (len_sq < 1.f)
-            {
-                player->is_pathing = false;
-            }
-            else
+            if (len_sq > 1.f)
             {
                 float len_inv = 1.f / SqrtF(len_sq);
                 dir = V2_Scale(dir, len_inv);
                 player_dir = dir;
             }
+            else
+            {
+                player->is_pathing = false;
+            }
         }
 
-        float player_speed = 200.f * TIME_STEP;
+        float player_speed = 60.f * TIME_STEP;
         player->dp = V2_Scale(player_dir, player_speed);
         player->some_number += 1;
     }
