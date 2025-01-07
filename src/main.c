@@ -195,13 +195,42 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
         return SDL_APP_FAILURE;
     }
 
-    SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE|SDL_WINDOW_HIDDEN;
+    SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
     window_flags |= (app->window_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
     window_flags |= (app->window_borderless ? SDL_WINDOW_BORDERLESS : 0);
 
     app->window_width = app->init_window_width;
     app->window_height = app->init_window_height;
 
+#if 1
+    APP.gpu.device =
+        SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV |
+                            SDL_GPU_SHADERFORMAT_DXIL |
+                            SDL_GPU_SHADERFORMAT_MSL,
+                            /* debug mode */ false,
+                            /* const char * name*/ 0);
+
+    if (!APP.gpu.device)
+    {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUCreateDevice failed", SDL_GetError(), 0);
+        return SDL_APP_FAILURE;
+    }
+
+    APP.window = SDL_CreateWindow("P Game", app->window_width, app->window_height, window_flags);
+    if (!APP.window)
+    {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "CreateWindow failed", SDL_GetError(), 0);
+        return SDL_APP_FAILURE;
+    }
+
+    if (!SDL_ClaimWindowForGPUDevice(APP.gpu.device, APP.window))
+    {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUClaimWindow failed", SDL_GetError(), 0);
+        return SDL_APP_FAILURE;
+    }
+
+
+#else
     if (!SDL_CreateWindowAndRenderer("P Game",
                                      app->window_width, app->window_height,
                                      window_flags,
@@ -210,6 +239,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to create window/renderer", SDL_GetError(), NULL);
         return SDL_APP_FAILURE;
     }
+#endif
 
     if (app->init_window_px || app->init_window_py)
     {
@@ -220,6 +250,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
     const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(app->window));
     SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
+
+    Gpu_Init();
 
     SDL_ShowWindow(app->window);
 

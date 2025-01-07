@@ -106,6 +106,30 @@ static SDL_GPUTexture *Gpu_CreateResolveTexture(Uint32 width, Uint32 height)
     return result;
 }
 
+static void Gpu_ProcessWindowResize()
+{
+    U32 draw_width, draw_height;
+    SDL_GetWindowSizeInPixels(APP.window, (int *)&draw_height, (int *)&draw_width);
+
+    if (APP.gpu.window_state.draw_width != draw_width ||
+        APP.gpu.window_state.draw_height != draw_height)
+    {
+        if (APP.gpu.window_state.tex_depth)
+            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.window_state.tex_depth);
+        if (APP.gpu.window_state.tex_msaa)
+            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.window_state.tex_msaa);
+        if (APP.gpu.window_state.tex_resolve)
+            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.window_state.tex_resolve);
+
+        APP.gpu.window_state.tex_depth = Gpu_CreateDepthTexture(draw_width, draw_height);
+        APP.gpu.window_state.tex_msaa = Gpu_CreateMSAATexture(draw_width, draw_height);
+        APP.gpu.window_state.tex_resolve = Gpu_CreateResolveTexture(draw_width, draw_height);
+    }
+
+    APP.gpu.window_state.draw_width = draw_width;
+    APP.gpu.window_state.draw_height = draw_height;
+}
+
 static void Gpu_Init()
 {
     {
@@ -237,11 +261,87 @@ static void Gpu_Init()
         SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
     }
 
+    Gpu_ProcessWindowResize();
+}
+
+static void Gpu_Iterate()
+{
+    SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+    Assert(cmd); // @todo
+
+    SDL_GPUTexture *swapchainTexture;
+    U32 draw_width, draw_height;
+    bool res = SDL_WaitAndAcquireGPUSwapchainTexture(cmd, APP.window, &swapchainTexture, &draw_width, &draw_height);
+    Assert(res); // @todo
+
+    if (!swapchainTexture)
     {
-        Uint32 drawablew, drawableh;
-        SDL_GetWindowSizeInPixels(APP.window, (int*) &drawablew, (int*) &drawableh);
-        APP.gpu.window_state.tex_depth = Gpu_CreateDepthTexture(drawablew, drawableh);
-        APP.gpu.window_state.tex_msaa = Gpu_CreateMSAATexture(drawablew, drawableh);
-        APP.gpu.window_state.tex_resolve = Gpu_CreateResolveTexture(drawablew, drawableh);
+        /* Swapchain is unavailable, cancel work */
+        SDL_CancelGPUCommandBuffer(cmd);
+        return;
     }
+
+    Gpu_ProcessWindowResize();
+
+    SDL_GPUColorTargetInfo color_target = {};
+    color_target.clear_color.a = 1.0f;
+
+    bool tex_msaa = false;
+    if (tex_msaa)
+    {
+        color_target.load_op = SDL_GPU_LOADOP_CLEAR;
+        color_target.store_op = SDL_GPU_STOREOP_RESOLVE;
+        color_target.texture = APP.gpu.window_state.tex_msaa;
+        color_target.resolve_texture = APP.gpu.window_state.tex_resolve;
+        color_target.cycle = true;
+        color_target.cycle_resolve_texture = true;
+    }
+    else
+    {
+        color_target.load_op = SDL_GPU_LOADOP_CLEAR;
+        color_target.store_op = SDL_GPU_STOREOP_STORE;
+        color_target.texture = swapchainTexture;
+    }
+
+    SDL_GPUDepthStencilTargetInfo depth_target = {};
+    depth_target.clear_depth = 1.0f;
+    depth_target.load_op = SDL_GPU_LOADOP_CLEAR;
+    depth_target.store_op = SDL_GPU_STOREOP_DONT_CARE;
+    depth_target.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
+    depth_target.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
+    depth_target.texture = APP.gpu.window_state.tex_depth;
+    depth_target.cycle = true;
+
+    SDL_GPUBufferBinding vertex_binding = {};
+    vertex_binding.buffer = APP.gpu.buf_vertex;
+    vertex_binding.offset = 0;
+
+    //SDL_PushGPUVertexUniformData(cmd, 0, matrix_final, sizeof(matrix_final));
+
+    SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
+    SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipeline);
+    SDL_BindGPUVertexBuffers(pass, 0, &vertex_binding, 1);
+    SDL_DrawGPUPrimitives(pass, 36, 1, 0, 0);
+    SDL_EndGPURenderPass(pass);
+
+#if 0
+    if (render_state.sample_count > SDL_GPU_SAMPLECOUNT_1)
+    {
+        SDL_zero(blit_info);
+        blit_info.source.texture = winstate->tex_resolve;
+        blit_info.source.w = drawablew;
+        blit_info.source.h = drawableh;
+
+        blit_info.destination.texture = swapchainTexture;
+        blit_info.destination.w = drawablew;
+        blit_info.destination.h = drawableh;
+
+        blit_info.load_op = SDL_GPU_LOADOP_DONT_CARE;
+        blit_info.filter = SDL_GPU_FILTER_LINEAR;
+
+        SDL_BlitGPUTexture(cmd, &blit_info);
+    }
+#endif
+
+    SDL_SubmitGPUCommandBuffer(cmd);
 }
