@@ -1,11 +1,16 @@
 typedef struct
 {
+    SDL_GPUTexture *tex_depth, *tex_msaa, *tex_resolve;
+} Gpu_WindowState;
+
+typedef struct
+{
     SDL_GPUDevice *device;
-
-    SDL_GPUShader *vertex;
-    SDL_GPUShader *fragment;
-
     SDL_GPUBuffer *buf_vertex;
+    SDL_GPUSampleCount sample_count;
+    SDL_GPUGraphicsPipeline *pipeline;
+
+    Gpu_WindowState window_state;
 } Gpu_State;
 
 
