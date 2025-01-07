@@ -16,13 +16,6 @@ static SDL_GPUShader *Gpu_LoadShader(bool is_vertex)
         createinfo.entrypoint = is_vertex ? "ShaderGameVS" : "ShaderGamePS";
     }
 #if 0
-    else if (format & SDL_GPU_SHADERFORMAT_DXBC)
-    {
-        createinfo.format = SDL_GPU_SHADERFORMAT_DXBC;
-        createinfo.code = is_vertex ? D3D11_CubeVert : D3D11_CubeFrag;
-        createinfo.code_size = is_vertex ? SDL_arraysize(D3D11_CubeVert) : SDL_arraysize(D3D11_CubeFrag);
-        createinfo.entrypoint = is_vertex ? "VSMain" : "PSMain";
-    }
     else if (format & SDL_GPU_SHADERFORMAT_METALLIB)
     {
         createinfo.format = SDL_GPU_SHADERFORMAT_METALLIB;
