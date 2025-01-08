@@ -59,10 +59,12 @@ SDL_AppResult SDL_AppIterate(void *appstate)
         }
     }
 
-    SDL_SetRenderDrawColor(app->renderer, 64, 64, 64, 255);
-    SDL_RenderClear(app->renderer);
-    Game_Iterate(app);
-    SDL_RenderPresent(app->renderer);
+    //SDL_SetRenderDrawColor(app->renderer, 64, 64, 64, 255);
+    //SDL_RenderClear(app->renderer);
+    //Game_Iterate(app);
+    //SDL_RenderPresent(app->renderer);
+
+    Gpu_Iterate();
 
     return SDL_APP_CONTINUE;
 }
@@ -204,9 +206,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
 #if 1
     APP.gpu.device =
-        SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV |
-                            SDL_GPU_SHADERFORMAT_DXIL |
-                            SDL_GPU_SHADERFORMAT_MSL,
+        SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL,
                             /* debug mode */ false,
                             /* const char * name*/ 0);
 
@@ -228,7 +228,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUClaimWindow failed", SDL_GetError(), 0);
         return SDL_APP_FAILURE;
     }
-
 
 #else
     if (!SDL_CreateWindowAndRenderer("P Game",
@@ -255,7 +254,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
     SDL_ShowWindow(app->window);
 
+#if 0
     SDL_SetRenderDrawBlendMode(app->renderer, SDL_BLENDMODE_BLEND);
+#endif
     Game_Init(app);
 
     return SDL_APP_CONTINUE;

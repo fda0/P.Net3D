@@ -208,15 +208,17 @@ static void Gpu_Init()
 
         // setup pipeline
         {
-            SDL_GPUColorTargetDescription color_target_desc = {};
-            color_target_desc.format =
-                SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window);
+            SDL_GPUColorTargetDescription color_target_desc = {
+                .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
+            };
 
-            SDL_GPUVertexBufferDescription vertex_buffer_desc = {};
-            vertex_buffer_desc.slot = 0;
-            vertex_buffer_desc.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
-            vertex_buffer_desc.instance_step_rate = 0;
-            vertex_buffer_desc.pitch = sizeof(VertexData);
+            SDL_GPUVertexBufferDescription vertex_buffer_desc = {
+                .slot = 0,
+                .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                .instance_step_rate = 0,
+                .pitch = sizeof(VertexData),
+            };
+
 
             SDL_GPUVertexAttribute vertex_attributes[2] = {};
             vertex_attributes[0].buffer_slot = 0;
@@ -229,29 +231,37 @@ static void Gpu_Init()
             vertex_attributes[1].location = 1;
             vertex_attributes[1].offset = sizeof(float) * 3;
 
-            SDL_GPUGraphicsPipelineCreateInfo pipelinedesc = {};
-            pipelinedesc.target_info.num_color_targets = 1;
-            pipelinedesc.target_info.color_target_descriptions = &color_target_desc;
-            pipelinedesc.target_info.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
-            pipelinedesc.target_info.has_depth_stencil_target = true;
-
-            pipelinedesc.depth_stencil_state.enable_depth_test = true;
-            pipelinedesc.depth_stencil_state.enable_depth_write = true;
-            pipelinedesc.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL;
-
-            pipelinedesc.multisample_state.sample_count = APP.gpu.sample_count;
-
-            pipelinedesc.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
-
-            pipelinedesc.vertex_shader = vertex_shader;
-            pipelinedesc.fragment_shader = fragment_shader;
-
-            pipelinedesc.vertex_input_state.num_vertex_buffers = 1;
-            pipelinedesc.vertex_input_state.vertex_buffer_descriptions = &vertex_buffer_desc;
-            pipelinedesc.vertex_input_state.num_vertex_attributes = 2;
-            pipelinedesc.vertex_input_state.vertex_attributes = (SDL_GPUVertexAttribute*) &vertex_attributes;
-
-            pipelinedesc.props = 0;
+            SDL_GPUGraphicsPipelineCreateInfo pipelinedesc =
+            {
+                .target_info =
+                {
+                    .num_color_targets = 1,
+                    .color_target_descriptions = &color_target_desc,
+                    .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
+                    .has_depth_stencil_target = true,
+                },
+                .depth_stencil_state =
+                {
+                    .enable_depth_test = true,
+                    .enable_depth_write = true,
+                    .compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
+                },
+                .multisample_state =
+                {
+                    .sample_count = APP.gpu.sample_count,
+                },
+                .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+                .vertex_shader = vertex_shader,
+                .fragment_shader = fragment_shader,
+                .vertex_input_state =
+                {
+                    .num_vertex_buffers = 1,
+                    .vertex_buffer_descriptions = &vertex_buffer_desc,
+                    .num_vertex_attributes = 2,
+                    .vertex_attributes = (SDL_GPUVertexAttribute*)&vertex_attributes
+                },
+                .props = 0
+            };
 
             APP.gpu.pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipelinedesc);
             Assert(APP.gpu.pipeline); // @todo report user to error and exit program on fail
@@ -269,12 +279,12 @@ static void Gpu_Iterate()
     SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
     Assert(cmd); // @todo
 
-    SDL_GPUTexture *swapchainTexture;
+    SDL_GPUTexture *swapchain_tex;
     U32 draw_width, draw_height;
-    bool res = SDL_WaitAndAcquireGPUSwapchainTexture(cmd, APP.window, &swapchainTexture, &draw_width, &draw_height);
+    bool res = SDL_WaitAndAcquireGPUSwapchainTexture(cmd, APP.window, &swapchain_tex, &draw_width, &draw_height);
     Assert(res); // @todo
 
-    if (!swapchainTexture)
+    if (!swapchain_tex)
     {
         /* Swapchain is unavailable, cancel work */
         SDL_CancelGPUCommandBuffer(cmd);
@@ -283,8 +293,15 @@ static void Gpu_Iterate()
 
     Gpu_ProcessWindowResize();
 
-    SDL_GPUColorTargetInfo color_target = {};
-    color_target.clear_color.a = 1.0f;
+    SDL_GPUColorTargetInfo color_target = {
+        .clear_color =
+        {
+            .r = 0.6f,
+            .g = 0.6f,
+            .b = 0.8f,
+            .a = 1.0f,
+        },
+    };
 
     bool tex_msaa = false;
     if (tex_msaa)
@@ -300,23 +317,55 @@ static void Gpu_Iterate()
     {
         color_target.load_op = SDL_GPU_LOADOP_CLEAR;
         color_target.store_op = SDL_GPU_STOREOP_STORE;
-        color_target.texture = swapchainTexture;
+        color_target.texture = swapchain_tex;
     }
 
-    SDL_GPUDepthStencilTargetInfo depth_target = {};
-    depth_target.clear_depth = 1.0f;
-    depth_target.load_op = SDL_GPU_LOADOP_CLEAR;
-    depth_target.store_op = SDL_GPU_STOREOP_DONT_CARE;
-    depth_target.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
-    depth_target.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
-    depth_target.texture = APP.gpu.window_state.tex_depth;
-    depth_target.cycle = true;
+    SDL_GPUDepthStencilTargetInfo depth_target = {
+        .clear_depth = 1.0f,
+        .load_op = SDL_GPU_LOADOP_CLEAR,
+        .store_op = SDL_GPU_STOREOP_DONT_CARE,
+        .stencil_load_op = SDL_GPU_LOADOP_DONT_CARE,
+        .stencil_store_op = SDL_GPU_STOREOP_DONT_CARE,
+        .texture = APP.gpu.window_state.tex_depth,
+        .cycle = true,
+    };
 
-    SDL_GPUBufferBinding vertex_binding = {};
-    vertex_binding.buffer = APP.gpu.buf_vertex;
-    vertex_binding.offset = 0;
+    SDL_GPUBufferBinding vertex_binding = {
+        .buffer = APP.gpu.buf_vertex,
+        .offset = 0,
+    };
 
-    //SDL_PushGPUVertexUniformData(cmd, 0, matrix_final, sizeof(matrix_final));
+    float matrix_final[16];
+    {
+        float matrix_rotate[16], matrix_modelview[16], matrix_perspective[16];
+        rotate_matrix((float)APP.gpu.window_state.angle_x, 1.0f, 0.0f, 0.0f, matrix_modelview);
+        rotate_matrix((float)APP.gpu.window_state.angle_y, 0.0f, 1.0f, 0.0f, matrix_rotate);
+
+        multiply_matrix(matrix_rotate, matrix_modelview, matrix_modelview);
+
+        rotate_matrix((float)APP.gpu.window_state.angle_z, 0.0f, 1.0f, 0.0f, matrix_rotate);
+
+        multiply_matrix(matrix_rotate, matrix_modelview, matrix_modelview);
+
+        /* Pull the camera back from the cube */
+        matrix_modelview[14] -= 2.5f;
+
+        perspective_matrix(45.0f, (float)draw_width/draw_height, 0.01f, 100.0f, matrix_perspective);
+        multiply_matrix(matrix_perspective, matrix_modelview, (float*) &matrix_final);
+
+        APP.gpu.window_state.angle_x += 3;
+        APP.gpu.window_state.angle_y += 2;
+        APP.gpu.window_state.angle_z += 1;
+
+        if(APP.gpu.window_state.angle_x >= 360) APP.gpu.window_state.angle_x -= 360;
+        if(APP.gpu.window_state.angle_x < 0) APP.gpu.window_state.angle_x += 360;
+        if(APP.gpu.window_state.angle_y >= 360) APP.gpu.window_state.angle_y -= 360;
+        if(APP.gpu.window_state.angle_y < 0) APP.gpu.window_state.angle_y += 360;
+        if(APP.gpu.window_state.angle_z >= 360) APP.gpu.window_state.angle_z -= 360;
+        if(APP.gpu.window_state.angle_z < 0) APP.gpu.window_state.angle_z += 360;
+
+    }
+    SDL_PushGPUVertexUniformData(cmd, 0, matrix_final, sizeof(matrix_final));
 
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
     SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipeline);
@@ -332,7 +381,7 @@ static void Gpu_Iterate()
         blit_info.source.w = drawablew;
         blit_info.source.h = drawableh;
 
-        blit_info.destination.texture = swapchainTexture;
+        blit_info.destination.texture = swapchain_tex;
         blit_info.destination.w = drawablew;
         blit_info.destination.h = drawableh;
 

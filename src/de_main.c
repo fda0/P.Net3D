@@ -127,10 +127,12 @@ static void Game_IssueDrawCommands(AppState *app)
                 sdl_verts[3].tex_coord = (SDL_FPoint){0, tex_y0};
             }
 
+#if 0
             int indices[] = { 0, 1, 3, 1, 2, 3 };
             SDL_RenderGeometry(app->renderer, sprite->tex,
                                sdl_verts, ArrayCount(sdl_verts),
                                indices, ArrayCount(indices));
+#endif
         }
 
         if (app->debug.draw_collision_box)
@@ -183,10 +185,12 @@ static void Game_IssueDrawCommands(AppState *app)
                     sdl_verts[3].tex_coord = (SDL_FPoint){0, tex_y0};
                 }
 
+#if 0
                 int indices[] = { 0, 1, 3, 1, 2, 3 };
                 SDL_RenderGeometry(app->renderer, overlay_sprite->tex,
                                    sdl_verts, ArrayCount(sdl_verts),
                                    indices, ArrayCount(indices));
+#endif
             }
         }
     }
@@ -200,8 +204,12 @@ static void Game_IssueDrawCommands(AppState *app)
         if (!app->net.is_server) rect.x = 40;
 
         ColorF color = app->net.err ? red : green;
+#if 0
         SDL_SetRenderDrawColorFloat(app->renderer, color.r, color.g, color.b, color.a);
         SDL_RenderFillRect(app->renderer, &rect);
+#else
+        (void)color;
+#endif
     }
 }
 

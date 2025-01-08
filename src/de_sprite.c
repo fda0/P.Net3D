@@ -83,10 +83,18 @@ static Sprite *Sprite_Create(AppState *app, const char *texture_path, Uint32 tex
     if (tex_frames == 0)
         tex_frames = 1;
 
+#if 0
     SDL_Texture *tex = IMG_LoadTexture(app->renderer, texture_path);
     SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_NEAREST);
 
     V2 tex_half_dim = {(float)tex->w, (float)tex->h};
+#else
+    (void)texture_path;
+    SDL_Texture *tex = 0;
+
+    V2 tex_half_dim = {50, 20};
+#endif
+
     tex_half_dim.y /= (float)tex_frames;
     tex_half_dim = V2_Scale(tex_half_dim, 0.5f);
 
