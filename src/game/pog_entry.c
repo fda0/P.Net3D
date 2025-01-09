@@ -16,6 +16,7 @@
 #define WINDOW_WIDTH 854
 
 #include "de_base.h"
+#include "de_constants.h"
 #include "de_math.h"
 #include "de_vertices.h"
 #include "de_string.h"
