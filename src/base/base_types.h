@@ -1,3 +1,6 @@
+#include <stdint.h>
+#include <stdbool.h>
+
 // ---
 // Preprocessor switches
 // ---
@@ -40,17 +43,32 @@
     #error "OS_WINDOWS is equal to OS_LINUX"
 #endif
 
+// Read only memory attribute - taken from EpicGamesExt/raddebugger
+#if COMPILER_MSVC || (COMPILER_CLANG && OS_WIN)
+#pragma section(".rdata$", read)
+#define READ_ONLY __declspec(allocate(".rdata$"))
+#elif (COMPILER_CLANG && OS_LIN)
+#define READ_ONLY __attribute__((section(".rodata")))
+#else
+// NOTE(rjf): I don't know of a useful way to do this in GCC land.
+// __attribute__((section(".rodata"))) looked promising, but it introduces a
+// strange warning about malformed section attributes, and it doesn't look
+// like writing to that section reliably produces access violations, strangely
+// enough. (It does on Clang)
+#define READ_ONLY
+#endif
+
 // ---
 // Types
 // ---
-typedef Uint8 U8;
-typedef Uint16 U16;
-typedef Uint32 U32;
-typedef Uint64 U64;
-typedef Sint8 I8;
-typedef Sint16 I16;
-typedef Sint32 I32;
-typedef Sint64 I64;
+typedef uint8_t U8;
+typedef uint16_t U16;
+typedef uint32_t U32;
+typedef uint64_t U64;
+typedef int8_t I8;
+typedef int16_t I16;
+typedef int32_t I32;
+typedef int64_t I64;
 
 // ---
 // Macros
@@ -58,9 +76,9 @@ typedef Sint64 I64;
 
 // Loop macros
 #define ArrayCount(Array) (sizeof(Array)/sizeof(Array[0]))
-#define ForU64(I, Size) for (Uint32 I = 0; I < (Size); I += 1)
-#define ForU32(I, Size) for (Uint32 I = 0; I < (Size); I += 1)
-#define ForU16(I, Size) for (Uint16 I = 0; I < (Size); I += 1)
+#define ForU64(I, Size) for (U32 I = 0; I < (Size); I += 1)
+#define ForU32(I, Size) for (U32 I = 0; I < (Size); I += 1)
+#define ForU16(I, Size) for (U16 I = 0; I < (Size); I += 1)
 #define ForArray(I, Array) ForU64(I, ArrayCount(Array))
 
 // Asserts
@@ -69,18 +87,4 @@ typedef Sint64 I64;
 
 // Other helpers
 #define Swap(a, b) do { typeof(a) tmp = a; a = b; b = tmp; } while (0)
-
-// Read only memory attribute - taken from EpicGamesExt/raddebugger
-#if COMPILER_MSVC || (COMPILER_CLANG && OS_WIN)
-    #pragma section(".rdata$", read)
-    #define READ_ONLY __declspec(allocate(".rdata$"))
-#elif (COMPILER_CLANG && OS_LIN)
-    #define READ_ONLY __attribute__((section(".rodata")))
-#else
-    // NOTE(rjf): I don't know of a useful way to do this in GCC land.
-    // __attribute__((section(".rodata"))) looked promising, but it introduces a
-    // strange warning about malformed section attributes, and it doesn't look
-    // like writing to that section reliably produces access violations, strangely
-    // enough. (It does on Clang)
-    #define READ_ONLY
-#endif
+#define ModuloPow2(X, Y) ((X) & ((Y)-1))

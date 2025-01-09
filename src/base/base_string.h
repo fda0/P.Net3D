@@ -1,7 +1,7 @@
 typedef struct
 {
-    Uint8 *str;
-    Uint64 size;
+    U8 *str;
+    U64 size;
 } S8;
 #define PrintS8(s) (int)(s).size, (s).str
 
@@ -15,19 +15,19 @@ typedef enum {
 } S8_MatchFlags;
 
 typedef struct {
-    Uint64 index : 63;
-    Uint64 found : 1;
+    U64 index : 63;
+    U64 found : 1;
 } S8_FindResult;
 
 static S8 S8_MakeScanCstr(const char *cstr)
 {
     S8 result = {0};
-    result.str = (Uint8 *)cstr;
+    result.str = (U8 *)cstr;
     while (cstr[result.size]) result.size += 1;
     return result;
 }
 
-static S8 S8_Make(Uint8 *str, Uint64 size)
+static S8 S8_Make(U8 *str, U64 size)
 {
     S8 string;
     string.str = str;
@@ -35,20 +35,20 @@ static S8 S8_Make(Uint8 *str, Uint64 size)
     return string;
 }
 
-static S8 S8_Range(Uint8 *first, Uint8 *last)
+static S8 S8_Range(U8 *first, U8 *last)
 {
     S8 string = {
         first,
-        (Uint64)(last - first)
+        (U64)(last - first)
     };
     return string;
 }
-static S8 S8_Substring(S8 str, Uint64 min, Uint64 max)
+static S8 S8_Substring(S8 str, U64 min, U64 max)
 {
     if (max > str.size) max = str.size;
     if (min > str.size) min = str.size;
     if (min > max) {
-        Uint64 swap = min;
+        U64 swap = min;
         min = max;
         max = swap;
     }
@@ -56,35 +56,35 @@ static S8 S8_Substring(S8 str, Uint64 min, Uint64 max)
     str.str += min;
     return str;
 }
-static S8 S8_Skip(S8 str, Uint64 distance)
+static S8 S8_Skip(S8 str, U64 distance)
 {
     distance = (distance > str.size ? str.size : distance);
     str.str += distance;
     str.size -= distance;
     return str;
 }
-static S8 S8_Chop(S8 str, Uint64 distance_from_back)
+static S8 S8_Chop(S8 str, U64 distance_from_back)
 {
     distance_from_back = (distance_from_back > str.size ? str.size : distance_from_back);
     str.size -= distance_from_back;
     return str;
 }
-static S8 S8_Prefix(S8 str, Uint64 size)
+static S8 S8_Prefix(S8 str, U64 size)
 {
     size = (size > str.size ? str.size : size);
     str.size = size;
     return str;
 }
-static S8 S8_Suffix(S8 str, Uint64 size)
+static S8 S8_Suffix(S8 str, U64 size)
 {
     size = (size > str.size ? str.size : size);
-    Uint64 distance = str.size - size;
+    U64 distance = str.size - size;
     str.str += distance;
     str.size = size;
     return str;
 }
 
-static S8 S8_PrefixConsume(S8 *str, Uint64 size)
+static S8 S8_PrefixConsume(S8 *str, U64 size)
 {
     S8 res = *str;
     size = (size > res.size ? res.size : size);
@@ -99,40 +99,40 @@ static S8 S8_PrefixConsume(S8 *str, Uint64 size)
 //
 // ByteIs
 //
-static bool ByteIsAlphaUpper(Uint8 c)
+static bool ByteIsAlphaUpper(U8 c)
 {
     return c >= 'A' && c <= 'Z';
 }
-static bool ByteIsAlphaLower(Uint8 c)
+static bool ByteIsAlphaLower(U8 c)
 {
     return c >= 'a' && c <= 'z';
 }
-static bool ByteIsAlpha(Uint8 c)
+static bool ByteIsAlpha(U8 c)
 {
     return ByteIsAlphaUpper(c) || ByteIsAlphaLower(c);
 }
-static bool ByteIsDigit(Uint8 c)
+static bool ByteIsDigit(U8 c)
 {
     return (c >= '0' && c <= '9');
 }
-static bool ByteIsAlphaNumeric(Uint8 c)
+static bool ByteIsAlphaNumeric(U8 c)
 {
     return ByteIsAlphaUpper(c) || ByteIsAlphaLower(c) || ByteIsDigit(c);
 }
-static bool ByteIsUnreservedSymbol(Uint8 c)
+static bool ByteIsUnreservedSymbol(U8 c)
 {
     return (c == '~' || c == '!' || c == '$' || c == '%' || c == '^' ||
             c == '&' || c == '*' || c == '-' || c == '=' || c == '+' ||
             c == '<' || c == '.' || c == '>' || c == '/' || c == '?' ||
             c == '|');
 }
-static bool ByteIsReservedSymbol(Uint8 c)
+static bool ByteIsReservedSymbol(U8 c)
 {
     return (c == '{' || c == '}' || c == '(' || c == ')' || c == '\\' ||
             c == '[' || c == ']' || c == '#' || c == ',' || c == ';'  ||
             c == ':' || c == '@');
 }
-static bool ByteIsWhite(Uint8 c)
+static bool ByteIsWhite(U8 c)
 {
     return c == ' ' || c == '\r' || c == '\t' || c == '\f' || c == '\v' || c == '\n';
 }
@@ -140,15 +140,15 @@ static bool ByteIsWhite(Uint8 c)
 //
 // CharTo
 //
-static Uint8 ByteToUpper(Uint8 c)
+static U8 ByteToUpper(U8 c)
 {
     return (c >= 'a' && c <= 'z') ? ('A' + (c - 'a')) : c;
 }
-static Uint8 ByteToLower(Uint8 c)
+static U8 ByteToLower(U8 c)
 {
     return (c >= 'A' && c <= 'Z') ? ('a' + (c - 'A')) : c;
 }
-static Uint8 ByteToForwardSlash(Uint8 c)
+static U8 ByteToForwardSlash(U8 c)
 {
     return (c == '\\' ? '/' : c);
 }
@@ -162,7 +162,7 @@ static bool S8_Match(S8 a, S8 b, S8_MatchFlags flags)
     if (a.size == b.size || flags & S8Match_RightSideSloppy)
     {
         result = true;
-        for (Uint64 i = 0; i < a.size && i < b.size; i += 1)
+        for (U64 i = 0; i < a.size && i < b.size; i += 1)
         {
             bool match = (a.str[i] == b.str[i]);
 
@@ -196,10 +196,10 @@ static bool S8_EndsWith(S8 haystack, S8 needle, S8_MatchFlags flags)
 //
 // S8_Find
 //
-static S8_FindResult S8_Find(S8 str, S8 substring, Uint64 start_pos, S8_MatchFlags flags)
+static S8_FindResult S8_Find(S8 str, S8 substring, U64 start_pos, S8_MatchFlags flags)
 {
     S8_FindResult result = {};
-    for (Uint64 i = start_pos; i < str.size; i += 1)
+    for (U64 i = start_pos; i < str.size; i += 1)
     {
         if (i + substring.size <= str.size)
         {
@@ -219,11 +219,11 @@ static S8_FindResult S8_Find(S8 str, S8 substring, Uint64 start_pos, S8_MatchFla
     return result;
 }
 
-static Uint64 S8_Count(S8 str, S8 substring, Uint64 start_pos, S8_MatchFlags flags)
+static U64 S8_Count(S8 str, S8 substring, U64 start_pos, S8_MatchFlags flags)
 {
     flags &= ~S8Match_FindLast; // clear FindLast flag, doesn't work here
 
-    Uint64 counter = 0;
+    U64 counter = 0;
     for (;;)
     {
         S8_FindResult find = S8_Find(str, substring, start_pos, flags);
@@ -285,7 +285,20 @@ static S8 S8_ConsumeUntilBack(S8 *haystack, S8 needle, S8_MatchFlags flags)
 //
 // Misc
 //
-static Uint64 S8_Hash(Uint64 seed, S8 string)
+static U64 HashU64(U64 seed, void *data, U64 size)
+{
+    // Idk where I even got this from;
+    // most probably there are better cheap hash functions out there
+    U8 *d = (U8 *)data;
+    U64 res = seed;
+    ForU64(i, size)
+    {
+        res = ((res << 5) + res) + d[i];
+    }
+    return res;
+}
+
+static U64 S8_Hash(U64 seed, S8 string)
 {
     return HashU64(seed, string.str, string.size);
 }

@@ -15,11 +15,12 @@
 #define WINDOW_HEIGHT 640
 #define WINDOW_WIDTH 854
 
-#include "de_base.h"
+#include "base_types.h"
+#include "base_math.h"
+#include "base_string.h"
 #include "de_constants.h"
 #include "de_math.h"
 #include "de_vertices.h"
-#include "de_string.h"
 #include "de_util.h"
 #include "de_object.h"
 #include "de_tick.h"
