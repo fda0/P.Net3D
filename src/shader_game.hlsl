@@ -1,6 +1,4 @@
-#define REG(reg, space) register(reg, space)
-
-cbuffer UBO : REG(b0, space1)
+cbuffer UBO : register(b0, space1)
 {
     float4x4 ModelViewProj;
 };
