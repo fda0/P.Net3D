@@ -73,6 +73,10 @@ typedef int64_t I64;
 // ---
 // Macros
 // ---
+// Sizes
+#define Kilobyte(X) ((X)*1024)
+#define Megabyte(X) (Kilobyte(X)*1024)
+#define Gigabyte(X) (Megabyte(X)*1024)
 
 // Loop macros
 #define ArrayCount(Array) (sizeof(Array)/sizeof(Array[0]))
