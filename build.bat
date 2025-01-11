@@ -109,7 +109,7 @@ if "%game%"=="1" (
 
     :: --- Metaprogram --------------------------------------------------------
     %compile% ..\src\meta\meta_entry.c %compile_link% %out%meta.exe || exit /b 1
-    meta.exe
+    meta.exe || exit /b 1
 
     :: --- Produce Logo Icon File ---------------------------------------------
     %rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1

@@ -1,5 +1,4 @@
 typedef struct
 {
-    float x, y, z;
-    float r, g, b;
+    V3 p, color;
 } Rdr_Vertex;
