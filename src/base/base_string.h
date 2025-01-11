@@ -3,9 +3,8 @@ typedef struct
     U8 *str;
     U64 size;
 } S8;
-#define PrintS8(s) (int)(s).size, (s).str
-
-#define S8_CstrLit(CStrLiteral) S8_Make(CStrLiteral, sizeof(CStrLiteral)-1)
+#define S8Print(s) (int)(s).size, (s).str
+#define S8Lit(CStrLiteral) S8_Make((U8 *)CStrLiteral, sizeof(CStrLiteral)-1)
 
 typedef enum {
     S8Match_FindLast         = (1 << 0),
@@ -138,7 +137,7 @@ static bool ByteIsWhite(U8 c)
 }
 
 //
-// CharTo
+// ByteTo
 //
 static U8 ByteToUpper(U8 c)
 {

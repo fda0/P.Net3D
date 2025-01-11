@@ -16,11 +16,11 @@ typedef struct
 } Meta_State;
 static Meta_State M;
 
-enum
+enum M_LogType
 {
     M_LogIdk = (1 << 0),
     M_LogErr = (1 << 1),
-    M_LogObj = (1 << 2),
+    M_LogObjDebug = (1 << 2),
 };
 
 // logging enable/disable
@@ -53,7 +53,7 @@ static S8 M_LoadFile(const char *file_path, bool exit_on_err)
 int main()
 {
     // init
-    M.log_filter = ~0u;
+    M.log_filter = ~(U32)(M_LogObjDebug);
     M.tmp = Arena_MakeInside(arena_memory_buffer, sizeof(arena_memory_buffer));
 
     // work
