@@ -66,11 +66,17 @@ static void Pr_Add(Printer *p, S8 str)
     }
 
     memcpy(p->buf + p->used, str.str, str.size);
+    p->used += str.size;
 }
 
 static void Pr_AddCstr(Printer *p, const char *cstr)
 {
     Pr_Add(p, S8_MakeScanCstr(cstr));
+}
+
+static void Pr_AddPrinter(Printer *p, Printer *copy)
+{
+    Pr_Add(p, Pr_S8(copy));
 }
 
 

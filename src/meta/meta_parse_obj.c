@@ -133,14 +133,33 @@ static bool M_IsNumberObjTokenKind(M_ObjTokenKind kind, bool allow_float)
     return false;
 }
 
-static void M_ParseObj(const char *path)
+static void M_Pr_AddObjTokenNumber(Printer *pr, M_ObjToken t)
+{
+    Pr_Add(pr, t.text);
+    if (t.kind == M_ObjToken_Float)
+        Pr_Add(pr, S8Lit("f"));
+}
+
+static void M_ParseObj(const char *path, Printer *out)
 {
     U64 tmp_used = M.tmp->used; // save tmp arena used
 
+    S8 model_name = S8_MakeScanCstr(path);
+    {
+        S8_FindResult slash = S8_Find(model_name, S8Lit("/"), 0, S8Match_FindLast|S8Match_SlashInsensitive);
+        if (slash.found)
+        {
+            model_name = S8_Skip(model_name, slash.index + 1);
+        }
+        S8_FindResult dot = S8_Find(model_name, S8Lit("."), 0, 0);
+        if (dot.found)
+        {
+            model_name = S8_Prefix(model_name, dot.index);
+        }
+    }
+
     Printer pr_vrt = Pr_Alloc(M.tmp, Megabyte(1));
     Printer pr_ind = Pr_Alloc(M.tmp, Megabyte(1));
-    (void)pr_vrt;
-    (void)pr_ind;
 
     M_ObjParser parser = M_LoadObjFile(path);
     ForU64(timeout, 1024*1024)
@@ -175,9 +194,19 @@ static void M_ParseObj(const char *path)
                 M_LogObjToken(M_LogErr, num2);
             }
 
-            (void)num0;
-            (void)num1;
-            (void)num2;
+            Printer *pr = (is_vrt ? &pr_vrt : &pr_ind);
+            Pr_Add(pr, S8Lit("  "));
+            M_Pr_AddObjTokenNumber(pr, num0);
+            Pr_Add(pr, S8Lit(", "));
+            M_Pr_AddObjTokenNumber(pr, num1);
+            Pr_Add(pr, S8Lit(", "));
+            M_Pr_AddObjTokenNumber(pr, num2);
+            Pr_Add(pr, S8Lit(","));
+            if (is_vrt)
+            {
+                Pr_Add(pr, S8Lit(" /* colors: */ 1.f, 1.f, 1.f,"));
+            }
+            Pr_Add(pr, S8Lit("\n"));
         }
         else
         {
@@ -185,6 +214,21 @@ static void M_ParseObj(const char *path)
             M_LogObjParser(M_LogErr, &parser);
             exit(1);
         }
+    }
+
+    Pr_AddCstr(out, "// Model: "); Pr_Add(out, model_name); Pr_AddCstr(out, "\n");
+    Pr_AddCstr(out, "static Rdr_Vertex Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_vrt[] =\n{\n");
+    Pr_AddPrinter(out, &pr_vrt);
+    Pr_AddCstr(out, "};\n\n");
+    Pr_AddCstr(out, "static U32 Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_ind[] =\n{\n");
+    Pr_AddPrinter(out, &pr_ind);
+    Pr_AddCstr(out, "};\n\n");
+
+    if (pr_vrt.err || pr_ind.err || out->err)
+    {
+        M_LOG(M_LogErr, "[OBJ PARSE] Printer vrt err: %u, Printer ind err: %u, Printer out err: %u",
+              pr_vrt.err, pr_ind.err, out->err);
+        exit(1);
     }
 
     Arena_Reset(M.tmp, tmp_used); // restore tmp arena used

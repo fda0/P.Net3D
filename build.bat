@@ -115,8 +115,8 @@ if "%game%"=="1" (
     %rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1
 
     :: --- Precompile shaders -------------------------------------------------
-    dxc ..\src\shader\shader_game.hlsl /E ShaderGameVS /T vs_6_0 /Fh ..\src\gen\shader_game.vert.hx || exit /b 1
-    dxc ..\src\shader\shader_game.hlsl /E ShaderGamePS /T ps_6_0 /Fh ..\src\gen\shader_game.frag.hx || exit /b 1
+    dxc ..\src\shader\shader_game.hlsl /E ShaderGameVS /T vs_6_0 /Fh ..\src\gen\gen_shader_game.vert.hx || exit /b 1
+    dxc ..\src\shader\shader_game.hlsl /E ShaderGamePS /T ps_6_0 /Fh ..\src\gen\gen_shader_game.frag.hx || exit /b 1
 
     :: --- Compile game -------------------------------------------------------
     %compile% ..\src\game\pog_entry.c %compile_link_game% %link_icon% %out%pog.exe || exit /b 1

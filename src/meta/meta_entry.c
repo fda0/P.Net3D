@@ -36,7 +36,7 @@ static S8 M_LoadFile(const char *file_path, bool exit_on_err)
     void *data = SDL_LoadFile(file_path, &size);
     if (exit_on_err && !data)
     {
-        M_LOG(M_LogErr, "Failed to load file %s, exiting", file_path);
+        M_LOG(M_LogErr, "Failed to load file %s", file_path);
         exit(1);
     }
 
@@ -48,6 +48,16 @@ static S8 M_LoadFile(const char *file_path, bool exit_on_err)
     return result;
 }
 
+static void M_SaveFile(const char *file_path, S8 data)
+{
+    bool success = SDL_SaveFile(file_path, data.str, data.size);
+    if (!success)
+    {
+        M_LOG(M_LogErr, "Failed to save to file %s", file_path);
+        exit(1);
+    }
+}
+
 #include "meta_parse_obj.c"
 
 int main()
@@ -57,7 +67,16 @@ int main()
     M.tmp = Arena_MakeInside(arena_memory_buffer, sizeof(arena_memory_buffer));
 
     // work
-    M_ParseObj("../res/models/teapot.obj");
+    {
+        U64 tmp_used = M.tmp->used; // save tmp arena used
+
+        Printer pr_out = Pr_Alloc(M.tmp, Megabyte(1));
+        M_ParseObj("../res/models/teapot.obj", &pr_out);
+        M_SaveFile("../src/gen/gen_models.hx", Pr_S8(&pr_out));
+
+        Arena_Reset(M.tmp, tmp_used); // restore tmp arena used
+    }
+
 
     // exit
     M_LOG(M_LogIdk, "Success");

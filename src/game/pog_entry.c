@@ -27,6 +27,7 @@
 #include "de_network.h"
 #include "de_client.h"
 #include "de_server.h"
+#include "de_render_vertex.h"
 #include "de_gpu.h"
 #include "de_main.h"
 
@@ -40,8 +41,9 @@ static AppState APP;
 #include "de_tick.c"
 #include "de_main.c"
 
-#include "../gen/shader_game.vert.hx"
-#include "../gen/shader_game.frag.hx"
+#include "gen_shader_game.vert.hx"
+#include "gen_shader_game.frag.hx"
+#include "gen_models.hx"
 #include "de_gpu.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)
