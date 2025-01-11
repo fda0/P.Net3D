@@ -97,6 +97,8 @@ static void *AlignPointerUp(void *ptr, Uint64 alignment) {
 // ---
 // Vector math
 // ---
+
+// V2 basics
 typedef union
 {
     struct { float x, y; };
@@ -127,6 +129,16 @@ static float V2_Inner(V2 a, V2 b)
 {
     return a.x*b.x + a.y*b.y;
 }
+static V2 V2_NanToZero(V2 a)
+{
+    if (a.x != a.x) a.x = 0.f;
+    if (a.y != a.y) a.y = 0.f;
+    return a;
+}
+static V2 V2_Lerp(V2 a, V2 b, float t)
+{
+    return (V2){LerpF(a.x, b.x, t), LerpF(a.y, b.y, t)};
+}
 static float V2_LengthSq(V2 a)
 {
     return V2_Inner(a, a);
@@ -144,18 +156,68 @@ static V2 V2_Normalize(V2 a)
     }
     return a;
 }
-static V2 V2_ZeroOutNan(V2 a)
+
+// V3 basics
+typedef union
+{
+    struct { float x, y, z; };
+    float E[3];
+} V3;
+
+static V3 V3_Scale(V3 a, float scale)
+{
+    return (V3){a.x*scale, a.y*scale, a.z*scale};
+}
+static V3 V3_Add(V3 a, V3 b)
+{
+    return (V3){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+static V3 V3_Sub(V3 a, V3 b)
+{
+    return (V3){a.x - b.x, a.y - b.y, a.z - b.z};
+}
+static V3 V3_Mul(V3 a, V3 b)
+{
+    return (V3){a.x * b.x, a.y * b.y, a.z * b.z};
+}
+static V3 V3_Reverse(V3 a)
+{
+    return (V3){-a.x, -a.y, -a.z};
+}
+static float V3_Inner(V3 a, V3 b)
+{
+    return a.x*b.x + a.y*b.y + a.z*b.z;
+}
+static V3 V3_NanToZero(V3 a)
 {
     if (a.x != a.x) a.x = 0.f;
     if (a.y != a.y) a.y = 0.f;
+    if (a.z != a.z) a.z = 0.f;
+    return a;
+}
+static V3 V3_Lerp(V3 a, V3 b, float t)
+{
+    return (V3){LerpF(a.x, b.x, t), LerpF(a.y, b.y, t), LerpF(a.z, b.z, t)};
+}
+static float V3_LengthSq(V3 a)
+{
+    return V3_Inner(a, a);
+}
+static float V3_Length(V3 a)
+{
+    return SqrtF(V3_LengthSq(a));
+}
+static V3 V3_Normalize(V3 a)
+{
+    float length = V3_Length(a);
+    if (length) {
+        float length_inv = 1.f / length;
+        a = V3_Scale(a, length_inv);
+    }
     return a;
 }
 
-static V2 V2_Lerp(V2 a, V2 b, float t)
-{
-    return (V2){LerpF(a.x, b.x, t), LerpF(a.y, b.y, t)};
-}
-
+// Additional V2 math
 static V2 V2_RotateClockwise90(V2 a)
 {
     // rotation matrix

@@ -4,7 +4,7 @@
 //
 static Tick_Input Tick_NormalizeInput(Tick_Input input)
 {
-    input.move_dir = V2_Normalize(V2_ZeroOutNan(input.move_dir));
+    input.move_dir = V2_Normalize(V2_NanToZero(input.move_dir));
     return input;
 }
 
