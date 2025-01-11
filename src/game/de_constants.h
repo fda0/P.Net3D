@@ -5,3 +5,8 @@
 // App forward declares
 struct AppState;
 typedef struct AppState AppState;
+
+//#define MODEL_VERTEX_ARR g_vertex_data
+#define MODEL_VERTEX_ARR Model_teapot_vrt
+
+#define MODEL_INDEX_ARR Model_teapot_ind

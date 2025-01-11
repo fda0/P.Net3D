@@ -8,13 +8,13 @@ typedef struct
 typedef struct
 {
     SDL_GPUDevice *device;
-    SDL_GPUBuffer *buf_vertex;
+    SDL_GPUBuffer *buf_vrt;
+    SDL_GPUBuffer *buf_ind;
     SDL_GPUSampleCount sample_count;
     SDL_GPUGraphicsPipeline *pipeline;
 
     Gpu_WindowState window_state;
 } Gpu_State;
-
 
 typedef struct VertexData
 {
@@ -22,7 +22,7 @@ typedef struct VertexData
     float red, green, blue;  /* intensity 0 to 1 (alpha is always 1). */
 } VertexData;
 
-static const VertexData g_vertex_data[] =
+static VertexData g_vertex_data[] =
 {
     /* Front face. */
     /* Bottom left */

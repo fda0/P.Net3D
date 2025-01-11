@@ -113,6 +113,49 @@ static void Gpu_ProcessWindowResize()
     APP.gpu.window_state.draw_height = draw_height;
 }
 
+static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U64 data_size)
+{
+    // create transfer buffer
+    SDL_GPUTransferBuffer *buf_transfer = 0;
+    {
+        SDL_GPUTransferBufferCreateInfo transfer_buffer_desc;
+        transfer_buffer_desc.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        transfer_buffer_desc.size = data_size;
+        transfer_buffer_desc.props = 0;
+        buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &transfer_buffer_desc);
+        Assert(buf_transfer); // @todo report
+    }
+
+    // CPU memory -> GPU memory
+    {
+        void *map = SDL_MapGPUTransferBuffer(APP.gpu.device, buf_transfer, false);
+        memcpy(map, data, data_size);
+        SDL_UnmapGPUTransferBuffer(APP.gpu.device, buf_transfer);
+    }
+
+    // GPU memory -> GPU buffers
+    {
+        SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+        SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+        SDL_GPUTransferBufferLocation buf_location = {
+            .transfer_buffer = buf_transfer,
+            .offset = 0,
+        };
+        SDL_GPUBufferRegion dst_region = {
+            .buffer = gpu_buffer,
+            .offset = 0,
+            .size = data_size,
+        };
+        SDL_UploadToGPUBuffer(copy_pass, &buf_location, &dst_region, false);
+
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(cmd);
+    }
+
+    SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
+}
+
 static void Gpu_Init()
 {
     {
@@ -121,55 +164,32 @@ static void Gpu_Init()
 
         // create vertex buffer
         {
-            SDL_GPUBufferCreateInfo buffer_desc = {0};
-            buffer_desc.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
-            buffer_desc.size = sizeof(g_vertex_data);
-            buffer_desc.props = 0;
-            APP.gpu.buf_vertex = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-            Assert(APP.gpu.buf_vertex); // @todo report to user if this failed and exit program
+            SDL_GPUBufferCreateInfo buffer_desc = {
+                .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+                .size = sizeof(MODEL_VERTEX_ARR),
+                .props = 0,
+            };
+            APP.gpu.buf_vrt = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
+            Assert(APP.gpu.buf_vrt); // @todo report
+            SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.buf_vrt, "Vertex Buffer");
         }
-        SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.buf_vertex, "Vertex Buffer");
 
-        // transfer buffer stuff
+        // create index buffer
         {
-            SDL_GPUTransferBuffer *buf_transfer = 0;
-            // create transfer buffer
-            {
-                SDL_GPUTransferBufferCreateInfo transfer_buffer_desc;
-                transfer_buffer_desc.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-                transfer_buffer_desc.size = sizeof(g_vertex_data);
-                transfer_buffer_desc.props = 0;
-                buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &transfer_buffer_desc);
-                Assert(buf_transfer); // @todo report to user if this failed and exit program
-            }
-
-            // CPU -> GPU memory transfer
-            {
-                void *map = SDL_MapGPUTransferBuffer(APP.gpu.device, buf_transfer, false);
-                memcpy(map, g_vertex_data, sizeof(g_vertex_data));
-                SDL_UnmapGPUTransferBuffer(APP.gpu.device, buf_transfer);
-            }
-
-            {
-                SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-                SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
-
-                SDL_GPUTransferBufferLocation buf_location = {0};
-                buf_location.transfer_buffer = buf_transfer;
-                buf_location.offset = 0;
-
-                SDL_GPUBufferRegion dst_region = {0};
-                dst_region.buffer = APP.gpu.buf_vertex;
-                dst_region.offset = 0;
-                dst_region.size = sizeof(g_vertex_data);
-
-                SDL_UploadToGPUBuffer(copy_pass, &buf_location, &dst_region, false);
-                SDL_EndGPUCopyPass(copy_pass);
-                SDL_SubmitGPUCommandBuffer(cmd);
-            }
-
-            SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
+            SDL_GPUBufferCreateInfo buffer_desc = {
+                .usage = SDL_GPU_BUFFERUSAGE_INDEX,
+                .size = sizeof(MODEL_VERTEX_ARR),
+                .props = 0,
+            };
+            APP.gpu.buf_ind = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
+            Assert(APP.gpu.buf_ind); // @todo report
+            SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.buf_ind, "Index Buffer");
         }
+
+        // transfer buffer stuff;
+        // @todo merge transfers into one mapping, two memcpy calls
+        Gpu_TransferBuffer(APP.gpu.buf_vrt, MODEL_VERTEX_ARR, sizeof(MODEL_VERTEX_ARR));
+        Gpu_TransferBuffer(APP.gpu.buf_ind, MODEL_INDEX_ARR, sizeof(MODEL_INDEX_ARR));
 
         APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_1;
 
@@ -195,25 +215,6 @@ static void Gpu_Init()
                 .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
             };
 
-            SDL_GPUVertexBufferDescription vertex_buffer_desc = {
-                .slot = 0,
-                .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-                .instance_step_rate = 0,
-                .pitch = sizeof(VertexData),
-            };
-
-
-            SDL_GPUVertexAttribute vertex_attributes[2] = {};
-            vertex_attributes[0].buffer_slot = 0;
-            vertex_attributes[0].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
-            vertex_attributes[0].location = 0;
-            vertex_attributes[0].offset = 0;
-
-            vertex_attributes[1].buffer_slot = 0;
-            vertex_attributes[1].format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
-            vertex_attributes[1].location = 1;
-            vertex_attributes[1].offset = sizeof(float) * 3;
-
             SDL_GPUGraphicsPipelineCreateInfo pipelinedesc =
             {
                 .target_info =
@@ -233,16 +234,38 @@ static void Gpu_Init()
                 {
                     .sample_count = APP.gpu.sample_count,
                 },
-                .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-                .vertex_shader = vertex_shader,
-                .fragment_shader = fragment_shader,
                 .vertex_input_state =
                 {
                     .num_vertex_buffers = 1,
-                    .vertex_buffer_descriptions = &vertex_buffer_desc,
+                    .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[])
+                    {
+                        {
+                            .slot = 0,
+                            .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                            .instance_step_rate = 0,
+                            .pitch = sizeof(VertexData),
+                        },
+                    },
                     .num_vertex_attributes = 2,
-                    .vertex_attributes = (SDL_GPUVertexAttribute*)&vertex_attributes
+                    .vertex_attributes = (SDL_GPUVertexAttribute[])
+                    {
+                        {
+                            .buffer_slot = 0,
+                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                            .location = 0,
+                            .offset = 0,
+                        },
+                        {
+                            .buffer_slot = 0,
+                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                            .location = 1,
+                            .offset = sizeof(float) * 3,
+                        },
+                    },
                 },
+                .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+                .vertex_shader = vertex_shader,
+                .fragment_shader = fragment_shader,
                 .props = 0
             };
 
@@ -313,10 +336,6 @@ static void Gpu_Iterate()
         .cycle = true,
     };
 
-    SDL_GPUBufferBinding vertex_binding = {
-        .buffer = APP.gpu.buf_vertex,
-        .offset = 0,
-    };
 
     float matrix_final[16];
     {
@@ -331,14 +350,14 @@ static void Gpu_Iterate()
         multiply_matrix(matrix_rotate, matrix_modelview, matrix_modelview);
 
         /* Pull the camera back from the cube */
-        matrix_modelview[14] -= 2.5f;
+        matrix_modelview[14] -= 2.5f * 10.f;
 
         perspective_matrix(45.0f, (float)draw_width/draw_height, 0.01f, 100.0f, matrix_perspective);
         multiply_matrix(matrix_perspective, matrix_modelview, (float*) &matrix_final);
 
-        APP.gpu.window_state.angle_x += 3;
-        APP.gpu.window_state.angle_y += 2;
-        APP.gpu.window_state.angle_z += 1;
+        APP.gpu.window_state.angle_x += 0.3f;
+        APP.gpu.window_state.angle_y += 0.2f;
+        APP.gpu.window_state.angle_z += 0.1f;
 
         if(APP.gpu.window_state.angle_x >= 360) APP.gpu.window_state.angle_x -= 360;
         if(APP.gpu.window_state.angle_x < 0) APP.gpu.window_state.angle_x += 360;
@@ -352,8 +371,22 @@ static void Gpu_Iterate()
 
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
     SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipeline);
-    SDL_BindGPUVertexBuffers(pass, 0, &vertex_binding, 1);
-    SDL_DrawGPUPrimitives(pass, 36, 1, 0, 0);
+    {
+        SDL_GPUBufferBinding binding_vrt = {
+            .buffer = APP.gpu.buf_vrt,
+            .offset = 0,
+        };
+        SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
+    }
+    {
+        SDL_GPUBufferBinding binding_ind = {
+            .buffer = APP.gpu.buf_ind,
+            .offset = 0,
+        };
+        SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+    }
+    SDL_DrawGPUIndexedPrimitives(pass, ArrayCount(MODEL_INDEX_ARR), 1, 0, 0, 0);
+    //SDL_DrawGPUPrimitives(pass, 36, 1, 0, 0);
     SDL_EndGPURenderPass(pass);
 
 #if 0

@@ -13,6 +13,8 @@ typedef struct
 {
     U32 log_filter;
     Arena *tmp;
+
+    U64 debug_color_index;
 } Meta_State;
 static Meta_State M;
 

@@ -271,6 +271,8 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
     (void)result;
     (void)appstate;
 
+    SDLNet_Quit();
+
     const char* error = SDL_GetError();
     if (error[0])
     {

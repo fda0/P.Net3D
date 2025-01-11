@@ -204,7 +204,25 @@ static void M_ParseObj(const char *path, Printer *out)
             Pr_Add(pr, S8Lit(","));
             if (is_vrt)
             {
-                Pr_Add(pr, S8Lit(" /* colors: */ 1.f, 1.f, 1.f,"));
+                Pr_Add(pr, S8Lit(" /* colors: */ "));
+                Pr_Add(pr, S8Lit("0.9f, 0.2f, "));
+
+                S8 values[] =
+                {
+                    S8Lit("1.f,"),
+                    S8Lit("0.9f,"),
+                    S8Lit("0.8f,"),
+                    S8Lit("0.7f,"),
+                    S8Lit("0.6f,"),
+                    S8Lit("0.5f,"),
+                    S8Lit("0.4f,"),
+                    S8Lit("0.3f,"),
+                    S8Lit("0.2f,"),
+                    S8Lit("0.1f,"),
+                    S8Lit("0.0f,"),
+                };
+                S8 value = values[M.debug_color_index++ % ArrayCount(values)];
+                Pr_Add(pr, value);
             }
             Pr_Add(pr, S8Lit("\n"));
         }
@@ -220,7 +238,7 @@ static void M_ParseObj(const char *path, Printer *out)
     Pr_AddCstr(out, "static Rdr_Vertex Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_vrt[] =\n{\n");
     Pr_AddPrinter(out, &pr_vrt);
     Pr_AddCstr(out, "};\n\n");
-    Pr_AddCstr(out, "static U32 Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_ind[] =\n{\n");
+    Pr_AddCstr(out, "static U16 Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_ind[] =\n{\n");
     Pr_AddPrinter(out, &pr_ind);
     Pr_AddCstr(out, "};\n\n");
 
