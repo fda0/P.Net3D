@@ -14,12 +14,12 @@ if "%clang%"=="1"   set msvc=0 && echo [clang compile]
 
 :: --- Unpack Command Line Build Arguments ------------------------------------
 set compile_common=
-if "%asan%"=="1"      set compile_additional=%compile_additional% -fsanitize=address && echo [asan enabled]
+if "%asan%"=="1" set compile_common=%compile_common% -fsanitize=address && echo [asan enabled]
 
 :: --- Compile/Link Line Definitions ------------------------------------------
 set include_paths=-I..\src\base\ -I..\src\game\ -I..\src\meta\ -I..\src\gen\
 set include_paths=%include_paths% -I..\libs\SDL\include\ -I..\libs\SDL_image\include\ -I..\libs\SDL_net\include\
-set compile_common=%compile_additional% %include_paths%
+set compile_common=%compile_common% %include_paths%
 
 set sdl_libs=..\libs\SDL\build\win\Debug\SDL3-static.lib ..\libs\SDL_image\build\win\Debug\SDL3_image-static.lib ..\libs\SDL_net\build\win\Debug\SDL3_net-static.lib
 
@@ -83,17 +83,17 @@ if "%sdl%"=="1" (
         set cmake_stage_two=cmake --build build\win
 
         pushd libs\SDL
-        %cmake_stage_one% && %cmake_stage_two% || exit /b 1
+        call %cmake_stage_one% && call %cmake_stage_two% || exit /b 1
         popd
 
         set cmake_stage_one=%cmake_stage_one% -DBUILD_SHARED_LIBS=OFF "-DSDL3_DIR=..\SDL\build\win"
 
         pushd libs\SDL_image
-        (%cmake_stage_one% -DSDLIMAGE_VENDORED=OFF && %cmake_stage_two%) || exit /b 1
+        call %cmake_stage_one% -DSDLIMAGE_VENDORED=OFF && call %cmake_stage_two% || exit /b 1
         popd
         
         pushd libs\SDL_net
-        (%cmake_stage_one% && %cmake_stage_two%) || exit /b 1
+        call %cmake_stage_one% && call %cmake_stage_two% || exit /b 1
         set didbuild=1
         popd
     ) else (
