@@ -51,8 +51,8 @@ static U8 *Arena_AllocateBytes(Arena *a, U64 bytes_to_allocate, U64 alignment, b
     return result;
 }
 
-#define Allocate(ARENA, TYPE, COUNT) Arena_AllocateBytes(ARENA, sizeof(TYPE)*COUNT, _Alignof(TYPE), false)
-#define AllocateZero(ARENA, TYPE, COUNT) Arena_AllocateBytes(ARENA, sizeof(TYPE)*COUNT, _Alignof(TYPE), true)
+#define Alloc(ARENA, TYPE, COUNT) Arena_AllocateBytes(ARENA, sizeof(TYPE)*COUNT, _Alignof(TYPE), false)
+#define AllocZeroed(ARENA, TYPE, COUNT) Arena_AllocateBytes(ARENA, sizeof(TYPE)*COUNT, _Alignof(TYPE), true)
 
 // ---
 // Reset

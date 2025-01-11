@@ -9,12 +9,12 @@ typedef struct
     U64 used;
     U64 cap;
     U32 err; // uses AsText_Error enum flags
-
-    inline Printer& Add(S8 text);
+#if 0 // @todo add missing things
     template <typename T> inline Printer& AddInt(T value, AsText_NumberSpec spec = {});
     inline Printer& AddPercentage(I0 dividend, I0 divisor);
     inline Printer& AddBytes(U0 value);
     inline Printer& AddF32(F32 value, AsText_NumberSpec spec = {});
+#endif
 } Printer;
 
 static void Pr_Reset(Printer *p)
@@ -43,7 +43,7 @@ static char *Pr_Cstr(Printer *p)
     else
     {
         p->err |= PrErr_Truncated;
-        p->buffer[p->used-1] = 0;
+        p->buf[p->used-1] = 0;
     }
     return (char *)p->buf;
 }
@@ -77,8 +77,16 @@ static void Pr_AddCstr(Printer *p, const char *cstr)
 //
 // Printer Makers
 //
-static Printer Pr_Make(U8 *buffer, U0 capacity) {
-    return {.buf = buffer, .cap = capacity};
+static Printer Pr_Make(U8 *buffer, U64 capacity)
+{
+    Printer res = {.buf = buffer, .cap = capacity};
+    return res;
+}
+
+static Printer Pr_Alloc(Arena *a, U64 capacity)
+{
+    Printer res = Pr_Make(Alloc(a, U8, capacity), capacity);
+    return res;
 }
 
 #define Pr_MakeOnStack(PrinterName, Size) \
