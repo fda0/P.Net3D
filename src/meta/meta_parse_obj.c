@@ -140,6 +140,54 @@ static void M_Pr_AddObjTokenNumber(Printer *pr, M_ObjToken t)
         Pr_Add(pr, S8Lit("f"));
 }
 
+static I32 M_ParseInt(S8 number)
+{
+    char buf[128];
+    if (number.size > ArrayCount(buf) - 1)
+        number.size = ArrayCount(buf) - 1;
+
+    memcpy(buf, number.str, number.size);
+    buf[number.size] = 0;
+
+    I32 result = SDL_atoi(buf);
+    return result;
+}
+
+static double M_ParseDouble(S8 number)
+{
+    char buf[128];
+    if (number.size > ArrayCount(buf) - 1)
+        number.size = ArrayCount(buf) - 1;
+
+    memcpy(buf, number.str, number.size);
+    buf[number.size] = 0;
+
+    double result = SDL_atof(buf);
+    return result;
+}
+
+static V3 M_ParseV3(S8 x, S8 y, S8 z)
+{
+    V3 res = {M_ParseDouble(x), M_ParseDouble(y), M_ParseDouble(z)};
+    return res;
+}
+
+static void M_Pr_AddFloat(Printer *p, float value)
+{
+    char buf[128];
+    snprintf(buf, sizeof(buf), "%f", value);
+    S8 string = S8_MakeScanCstr(buf);
+    Pr_Add(p, string);
+}
+
+static void M_Pr_AddU16(Printer *p, U16 value)
+{
+    char buf[128];
+    snprintf(buf, sizeof(buf), "%u", (U32)value);
+    S8 string = S8_MakeScanCstr(buf);
+    Pr_Add(p, string);
+}
+
 static void M_ParseObj(const char *path, Printer *out)
 {
     U64 tmp_used = M.tmp->used; // save tmp arena used
@@ -158,8 +206,14 @@ static void M_ParseObj(const char *path, Printer *out)
         }
     }
 
-    Printer pr_vrt = Pr_Alloc(M.tmp, Megabyte(1));
-    Printer pr_ind = Pr_Alloc(M.tmp, Megabyte(1));
+    SDL_zeroa(M.verts);
+    SDL_zeroa(M.inds);
+    SDL_zeroa(M.normals);
+    U64 vert_count = 0;
+    U64 ind_count = 0;
+
+    //Printer pr_vrt = Pr_Alloc(M.tmp, Megabyte(1));
+    //Printer pr_ind = Pr_Alloc(M.tmp, Megabyte(1));
 
     M_ObjParser parser = M_LoadObjFile(path);
     ForU64(timeout, 1024*1024)
@@ -194,37 +248,31 @@ static void M_ParseObj(const char *path, Printer *out)
                 M_LogObjToken(M_LogErr, num2);
             }
 
-            Printer *pr = (is_vrt ? &pr_vrt : &pr_ind);
-            Pr_Add(pr, S8Lit("  "));
-            M_Pr_AddObjTokenNumber(pr, num0);
-            Pr_Add(pr, S8Lit(", "));
-            M_Pr_AddObjTokenNumber(pr, num1);
-            Pr_Add(pr, S8Lit(", "));
-            M_Pr_AddObjTokenNumber(pr, num2);
-            Pr_Add(pr, S8Lit(","));
             if (is_vrt)
             {
-                Pr_Add(pr, S8Lit(" /* colors: */ "));
-                Pr_Add(pr, S8Lit("0.9f, 0.2f, "));
-
-                S8 values[] =
-                {
-                    S8Lit("1.f,"),
-                    S8Lit("0.9f,"),
-                    S8Lit("0.8f,"),
-                    S8Lit("0.7f,"),
-                    S8Lit("0.6f,"),
-                    S8Lit("0.5f,"),
-                    S8Lit("0.4f,"),
-                    S8Lit("0.3f,"),
-                    S8Lit("0.2f,"),
-                    S8Lit("0.1f,"),
-                    S8Lit("0.0f,"),
-                };
-                S8 value = values[M.debug_color_index++ % ArrayCount(values)];
-                Pr_Add(pr, value);
+                M_AssertAlways(vert_count + 3 <= ArrayCount(M.verts));
+                double n0 = M_ParseDouble(num0.text);
+                double n1 = M_ParseDouble(num1.text);
+                double n2 = M_ParseDouble(num2.text);
+                M.verts[vert_count + 0] = (float)n0;
+                M.verts[vert_count + 1] = (float)n1;
+                M.verts[vert_count + 2] = (float)n2;
+                vert_count += 3;
             }
-            Pr_Add(pr, S8Lit("\n"));
+            else
+            {
+                M_AssertAlways(ind_count + 3 <= ArrayCount(M.inds));
+                int n0 = M_ParseInt(num0.text);
+                int n1 = M_ParseInt(num1.text);
+                int n2 = M_ParseInt(num2.text);
+                M_AssertAlways(n0 >= 1 && (n0 & 0xffff) == n0);
+                M_AssertAlways(n1 >= 1 && (n1 & 0xffff) == n1);
+                M_AssertAlways(n2 >= 1 && (n2 & 0xffff) == n2);
+                M.inds[ind_count + 0] = (U16)(n0 - 1);
+                M.inds[ind_count + 1] = (U16)(n1 - 1);
+                M.inds[ind_count + 2] = (U16)(n2 - 1);
+                ind_count += 3;
+            }
         }
         else
         {
@@ -234,18 +282,90 @@ static void M_ParseObj(const char *path, Printer *out)
         }
     }
 
+    // calculate normals
+    for (U64 i = 0;
+         i + 3 <= ind_count;
+         i += 3)
+    {
+        I32 i0 = M.inds[i];
+        I32 i1 = M.inds[i + 1];
+        I32 i2 = M.inds[i + 2];
+        I32 vi0 = i0 * 3;
+        I32 vi1 = i1 * 3;
+        I32 vi2 = i2 * 3;
+        M_AssertAlways(vi0 + 3 <= vert_count);
+        M_AssertAlways(vi1 + 3 <= vert_count);
+        M_AssertAlways(vi2 + 3 <= vert_count);
+
+        V3 vert0 = {M.verts[vi0], M.verts[vi0 + 1], M.verts[vi0 + 2]};
+        V3 vert1 = {M.verts[vi1], M.verts[vi1 + 1], M.verts[vi1 + 2]};
+        V3 vert2 = {M.verts[vi2], M.verts[vi2 + 1], M.verts[vi2 + 2]};
+
+        V3 u = V3_Sub(vert1, vert0);
+        V3 v = V3_Sub(vert2, vert0);
+
+        V3 normal =
+        {
+            // formulas from: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal#Pseudo-code
+            u.y*v.z - u.z*v.y,
+            u.z*v.x - u.x*v.z,
+            u.x*v.y - u.y*v.x,
+        };
+
+        M.normals[vi0] += normal.x;
+        M.normals[vi0 + 1] += normal.y;
+        M.normals[vi0 + 2] += normal.z;
+
+        M.normals[vi1] += normal.x;
+        M.normals[vi1 + 1] += normal.y;
+        M.normals[vi1 + 2] += normal.z;
+
+        M.normals[vi2] += normal.x;
+        M.normals[vi2 + 1] += normal.y;
+        M.normals[vi2 + 2] += normal.z;
+    }
+
     Pr_AddCstr(out, "// Model: "); Pr_Add(out, model_name); Pr_AddCstr(out, "\n");
     Pr_AddCstr(out, "static Rdr_Vertex Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_vrt[] =\n{\n");
-    Pr_AddPrinter(out, &pr_vrt);
-    Pr_AddCstr(out, "};\n\n");
-    Pr_AddCstr(out, "static U16 Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_ind[] =\n{\n");
-    Pr_AddPrinter(out, &pr_ind);
+    for (U64 i = 0;
+         i + 3 <= vert_count;
+         i += 3)
+    {
+        Pr_AddCstr(out, "  ");
+        // vert
+        M_Pr_AddFloat(out, M.verts[i    ]); Pr_AddCstr(out, "f, ");
+        M_Pr_AddFloat(out, M.verts[i + 1]); Pr_AddCstr(out, "f, ");
+        M_Pr_AddFloat(out, M.verts[i + 2]); Pr_AddCstr(out, "f, ");
+
+        // color
+        Pr_Add(out, S8Lit("/*color*/0.9f, 0.4f, 0.1f, "));
+
+        // normals
+        Pr_Add(out, S8Lit("/*normal*/"));
+        V3 vert_normal = {M.normals[i], M.normals[i + 1], M.normals[i + 2]};
+        vert_normal = V3_Normalize(vert_normal);
+        M_Pr_AddFloat(out, vert_normal.x); Pr_AddCstr(out, "f, ");
+        M_Pr_AddFloat(out, vert_normal.y); Pr_AddCstr(out, "f, ");
+        M_Pr_AddFloat(out, vert_normal.z); Pr_AddCstr(out, "f,\n");
+    }
     Pr_AddCstr(out, "};\n\n");
 
-    if (pr_vrt.err || pr_ind.err || out->err)
+    Pr_AddCstr(out, "static U16 Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_ind[] =\n{\n");
+    for (U64 i = 0;
+         i + 3 <= ind_count;
+         i += 3)
     {
-        M_LOG(M_LogErr, "[OBJ PARSE] Printer vrt err: %u, Printer ind err: %u, Printer out err: %u",
-              pr_vrt.err, pr_ind.err, out->err);
+        Pr_AddCstr(out, "  ");
+        // data
+        M_Pr_AddU16(out, M.inds[i    ]); Pr_AddCstr(out, ", ");
+        M_Pr_AddU16(out, M.inds[i + 1]); Pr_AddCstr(out, ", ");
+        M_Pr_AddU16(out, M.inds[i + 2]); Pr_AddCstr(out, ",\n");
+    }
+    Pr_AddCstr(out, "};\n\n");
+
+    if (out->err)
+    {
+        M_LOG(M_LogErr, "[OBJ PARSE] Printer out err: %u", out->err);
         exit(1);
     }
 

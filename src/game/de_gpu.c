@@ -243,10 +243,10 @@ static void Gpu_Init()
                             .slot = 0,
                             .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
                             .instance_step_rate = 0,
-                            .pitch = sizeof(VertexData),
+                            .pitch = sizeof(Rdr_Vertex),
                         },
                     },
-                    .num_vertex_attributes = 2,
+                    .num_vertex_attributes = 3,
                     .vertex_attributes = (SDL_GPUVertexAttribute[])
                     {
                         {
@@ -260,6 +260,12 @@ static void Gpu_Init()
                             .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
                             .location = 1,
                             .offset = sizeof(float) * 3,
+                        },
+                        {
+                            .buffer_slot = 0,
+                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                            .location = 2,
+                            .offset = sizeof(float) * 6,
                         },
                     },
                 },

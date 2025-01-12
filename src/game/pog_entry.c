@@ -234,7 +234,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
     }
 
 #else
-    if (!SDL_CreateWindowAndRenderer("P Game",
+    if (!SDL_CreateWindowAndRenderer("P. Game",
                                      app->window_width, app->window_height,
                                      window_flags,
                                      &app->window, &app->renderer))

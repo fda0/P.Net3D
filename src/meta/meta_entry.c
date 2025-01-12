@@ -15,6 +15,11 @@ typedef struct
     Arena *tmp;
 
     U64 debug_color_index;
+
+#define M_MAX_OBJ_ELEM (1024 * 1024)
+    float verts[M_MAX_OBJ_ELEM];
+    U16 inds[M_MAX_OBJ_ELEM];
+    float normals[M_MAX_OBJ_ELEM];
 } Meta_State;
 static Meta_State M;
 
@@ -31,6 +36,8 @@ enum M_LogType
 #else
     #define M_LOG(FLAGS, ...) do{ (void)(FLAGS); if(0){ printf("[META] " __VA_ARGS__); }}while(0)
 #endif
+
+#define M_AssertAlways(...) Assert(__VA_ARGS__)
 
 static S8 M_LoadFile(const char *file_path, bool exit_on_err)
 {
