@@ -220,7 +220,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
         return SDL_APP_FAILURE;
     }
 
-    APP.window = SDL_CreateWindow("P Game", app->window_width, app->window_height, window_flags);
+    APP.window = SDL_CreateWindow("P. Game", app->window_width, app->window_height, window_flags);
     if (!APP.window)
     {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "CreateWindow failed", SDL_GetError(), 0);
@@ -234,7 +234,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
     }
 
 #else
-    if (!SDL_CreateWindowAndRenderer("P. Game",
+    if (!SDL_CreateWindowAndRenderer("P Game",
                                      app->window_width, app->window_height,
                                      window_flags,
                                      &app->window, &app->renderer))

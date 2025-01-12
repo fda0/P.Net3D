@@ -8,6 +8,7 @@ struct VSInput
     float3 Position : TEXCOORD0;
     float3 Color : TEXCOORD1;
     float3 Normal : TEXCOORD2;
+    uint InstanceIndex : SV_InstanceID;
 };
 
 struct VSOutput
@@ -33,7 +34,10 @@ VSOutput ShaderGameVS(VSInput input)
     rotation_mat[3][3] = 0.f;
     output.Normal = mul(rotation_mat, float4(input.Normal, 1.0f));
 
-    output.Position = mul(ModelViewProj, float4(input.Position, 1.0f));
+    float3 pos = input.Position;
+    pos.x += 3.f * float(input.InstanceIndex);
+    pos.z += 3.f * float(input.InstanceIndex);
+    output.Position = mul(ModelViewProj, float4(pos, 1.0f));
     return output;
 }
 

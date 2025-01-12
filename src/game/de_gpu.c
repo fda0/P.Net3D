@@ -356,7 +356,7 @@ static void Gpu_Iterate()
         multiply_matrix(matrix_rotate, matrix_modelview, matrix_modelview);
 
         /* Pull the camera back from the cube */
-        matrix_modelview[14] -= 2.5f * 3.f;
+        matrix_modelview[14] -= 5.f * 3.f;
 
         perspective_matrix(45.0f, (float)draw_width/draw_height, 0.01f, 100.0f, matrix_perspective);
         multiply_matrix(matrix_perspective, matrix_modelview, (float*) &matrix_final);
@@ -391,7 +391,7 @@ static void Gpu_Iterate()
         };
         SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
     }
-    SDL_DrawGPUIndexedPrimitives(pass, ArrayCount(MODEL_INDEX_ARR), 1, 0, 0, 0);
+    SDL_DrawGPUIndexedPrimitives(pass, ArrayCount(MODEL_INDEX_ARR), 2, 0, 0, 0);
     //SDL_DrawGPUPrimitives(pass, 36, 1, 0, 0);
     SDL_EndGPURenderPass(pass);
 
