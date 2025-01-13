@@ -138,14 +138,8 @@ rotate_matrix(float turns, float x, float y, float z, float *r)
 static void
 perspective_matrix(float fovy, float aspect, float znear, float zfar, float *r)
 {
-    int i;
-    float f;
-
-    f = 1.0f/SDL_tanf(fovy * 0.5f);
-
-    for (i = 0; i < 16; i++) {
-        r[i] = 0.0;
-    }
+    memset(r, 0, sizeof(float)*16);
+    float f = 1.0f/SDL_tanf(fovy * 0.5f);
 
     r[0] = f / aspect;
     r[5] = f;

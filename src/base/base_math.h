@@ -41,6 +41,11 @@ static float CosF(float turns)
     // @todo custom sincos that with turn input
     return SDL_cosf(turns*2.f*SDL_PI_F);
 }
+static float TanF(float turns)
+{
+    // @todo custom tan that with turn input
+    return SDL_tanf(turns*2.f*SDL_PI_F);
+}
 
 typedef struct
 {
@@ -382,9 +387,172 @@ static ColorF ColorF_ChangeA(ColorF f, float a)
 
 // ---
 // Matrix
+// Heavy duty matrix math fucs were ported from HandmadeMath.h
 // ---
 typedef union
 {
-    float elem[16];
+    // col-major
+    // 0 4 8 c
+    // 1 5 9 d
+    // 2 6 a e
+    // 3 7 b f
+    float elem[4][4]; // [x -> col][y -> row]
+    float flat[16];
     V4 cols[4];
-} Mat4x4;
+} Mat4;
+
+static Mat4 Mat4_Diagonal(float value)
+{
+    Mat4 res = {0};
+    res.elem[0][0] = value;
+    res.elem[1][1] = value;
+    res.elem[2][2] = value;
+    res.elem[3][3] = value;
+    return res;
+}
+
+static Mat4 Mat4_Transpose(Mat4 mat)
+{
+    // @todo sse
+    Mat4 res;
+    res.elem[0][0] = mat.elem[0][0];
+    res.elem[0][1] = mat.elem[1][0];
+    res.elem[0][2] = mat.elem[2][0];
+    res.elem[0][3] = mat.elem[3][0];
+    res.elem[1][0] = mat.elem[0][1];
+    res.elem[1][1] = mat.elem[1][1];
+    res.elem[1][2] = mat.elem[2][1];
+    res.elem[1][3] = mat.elem[3][1];
+    res.elem[2][0] = mat.elem[0][2];
+    res.elem[2][1] = mat.elem[1][2];
+    res.elem[2][2] = mat.elem[2][2];
+    res.elem[2][3] = mat.elem[3][2];
+    res.elem[3][0] = mat.elem[0][3];
+    res.elem[3][1] = mat.elem[1][3];
+    res.elem[3][2] = mat.elem[2][3];
+    res.elem[3][3] = mat.elem[3][3];
+    return res;
+}
+
+static V4 LinearCombineV4M4(V4 left, Mat4 right)
+{
+#if 0
+    // @todo sse
+    res.SSE = _mm_mul_ps(_mm_shuffle_ps(left.SSE, left.SSE, 0x00), right.cols[0].SSE);
+    res.SSE = _mm_add_ps(res.SSE, _mm_mul_ps(_mm_shuffle_ps(left.SSE, left.SSE, 0x55), right.cols[1].SSE));
+    res.SSE = _mm_add_ps(res.SSE, _mm_mul_ps(_mm_shuffle_ps(left.SSE, left.SSE, 0xaa), right.cols[2].SSE));
+    res.SSE = _mm_add_ps(res.SSE, _mm_mul_ps(_mm_shuffle_ps(left.SSE, left.SSE, 0xff), right.cols[3].SSE));
+    // @todo neon
+    res.NEON = vmulq_laneq_f32(right.cols[0].NEON, left.NEON, 0);
+    res.NEON = vfmaq_laneq_f32(res.NEON, right.cols[1].NEON, left.NEON, 1);
+    res.NEON = vfmaq_laneq_f32(res.NEON, right.cols[2].NEON, left.NEON, 2);
+    res.NEON = vfmaq_laneq_f32(res.NEON, right.cols[3].NEON, left.NEON, 3);
+#endif
+    V4 res;
+    res.x = left.E[0] * right.cols[0].x;
+    res.y = left.E[0] * right.cols[0].y;
+    res.z = left.E[0] * right.cols[0].z;
+    res.w = left.E[0] * right.cols[0].w;
+
+    res.x += left.E[1] * right.cols[1].x;
+    res.y += left.E[1] * right.cols[1].y;
+    res.z += left.E[1] * right.cols[1].z;
+    res.w += left.E[1] * right.cols[1].w;
+
+    res.x += left.E[2] * right.cols[2].x;
+    res.y += left.E[2] * right.cols[2].y;
+    res.z += left.E[2] * right.cols[2].z;
+    res.w += left.E[2] * right.cols[2].w;
+
+    res.x += left.E[3] * right.cols[3].x;
+    res.y += left.E[3] * right.cols[3].y;
+    res.z += left.E[3] * right.cols[3].z;
+    res.w += left.E[3] * right.cols[3].w;
+    return res;
+}
+
+static Mat4 Mat4_Mul(Mat4 left, Mat4 right)
+{
+    Mat4 res;
+    res.cols[0] = LinearCombineV4M4(right.cols[0], left);
+    res.cols[1] = LinearCombineV4M4(right.cols[1], left);
+    res.cols[2] = LinearCombineV4M4(right.cols[2], left);
+    res.cols[3] = LinearCombineV4M4(right.cols[3], left);
+    return res;
+}
+
+static Mat4 Mat4_Rotation_RH(float turns, V3 axis)
+{
+    axis = V3_Normalize(axis);
+    SinCosResult trig = SinCosF(turns);
+    float c1 = 1.f - trig.cos;
+
+    Mat4 res = Mat4_Diagonal(1.f);
+    res.elem[0][0] = (axis.x * axis.x * c1) + trig.cos;
+    res.elem[0][1] = (axis.x * axis.y * c1) + (axis.z * trig.sin);
+    res.elem[0][2] = (axis.x * axis.z * c1) - (axis.y * trig.sin);
+
+    res.elem[1][0] = (axis.y * axis.x * c1) - (axis.z * trig.sin);
+    res.elem[1][1] = (axis.y * axis.y * c1) + trig.cos;
+    res.elem[1][2] = (axis.y * axis.z * c1) + (axis.x * trig.sin);
+
+    res.elem[2][0] = (axis.z * axis.x * c1) + (axis.y * trig.sin);
+    res.elem[2][1] = (axis.z * axis.y * c1) - (axis.x * trig.sin);
+    res.elem[2][2] = (axis.z * axis.z * c1) + trig.cos;
+    return res;
+}
+
+static Mat4 Mat4_Translation(V3 move)
+{
+    Mat4 res = Mat4_Diagonal(1.f);
+    res.elem[3][0] = move.x;
+    res.elem[3][1] = move.y;
+    res.elem[3][2] = move.z;
+    return res;
+}
+
+// Produces a right-handed orthographic projection matrix with Z ranging from 0 to 1 (the DirectX convention).
+// Left, Right, Bottom, and Top specify the coordinates of their respective clipping planes.
+// Near and Far specify the distances to the near and far clipping planes.
+static Mat4 Mat4_Orthographic_RH_ZO(float left, float right, float bottom, float top, float near, float far)
+{
+    Mat4 res = {};
+    res.elem[0][0] = 2.0f / (right - left);
+    res.elem[1][1] = 2.0f / (top - bottom);
+    res.elem[2][2] = 1.0f / (near - far);
+    res.elem[3][3] = 1.0f;
+
+    res.elem[3][0] = (left + right) / (left - right);
+    res.elem[3][1] = (bottom + top) / (bottom - top);
+    res.elem[3][2] = (near) / (near - far);
+    return res;
+}
+
+static Mat4 Mat4_Perspective_RH_ZO(float fov_y, float aspect_ratio, float near, float far)
+{
+    // See https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
+    float cotangent = 1.0f / TanF(fov_y * 0.5f);
+
+    Mat4 res = {};
+    res.elem[0][0] = cotangent / aspect_ratio;
+    res.elem[1][1] = cotangent;
+    res.elem[2][3] = -1.0f;
+
+    res.elem[2][2] = (far) / (near - far);
+    res.elem[3][2] = (near * far) / (near - far);
+    return res;
+}
+
+static Mat4 Mat4_Perspective_RH_NO(float fov_y, float aspect_ratio, float near, float far)
+{
+    // See https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
+    float cotangent = 1.0f / TanF(fov_y * 0.5f);
+
+    Mat4 res = {};
+    res.elem[0][0] = cotangent / aspect_ratio;
+    res.elem[1][1] = cotangent;
+    res.elem[2][2] = (near + far) / (near - far);
+    res.elem[2][3] = -1.0f;
+    res.elem[3][2] = (2.0f * near * far) / (near - far);
+    return res;
+}
