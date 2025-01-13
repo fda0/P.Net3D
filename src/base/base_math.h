@@ -217,6 +217,67 @@ static V3 V3_Normalize(V3 a)
     return a;
 }
 
+// V4 basics
+typedef union
+{
+    struct { float x, y, z, w; };
+    float E[4];
+} V4;
+
+static V4 V4_Scale(V4 a, float scale)
+{
+    return (V4){a.x*scale, a.y*scale, a.z*scale, a.w*scale};
+}
+static V4 V4_Add(V4 a, V4 b)
+{
+    return (V4){a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};
+}
+static V4 V4_Sub(V4 a, V4 b)
+{
+    return (V4){a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
+}
+static V4 V4_Mul(V4 a, V4 b)
+{
+    return (V4){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w};
+}
+static V4 V4_Reverse(V4 a)
+{
+    return (V4){-a.x, -a.y, -a.z, -a.w};
+}
+static float V4_Inner(V4 a, V4 b)
+{
+    return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
+}
+static V4 V4_NanToZero(V4 a)
+{
+    if (a.x != a.x) a.x = 0.f;
+    if (a.y != a.y) a.y = 0.f;
+    if (a.z != a.z) a.z = 0.f;
+    if (a.w != a.w) a.w = 0.f;
+    return a;
+}
+static V4 V4_Lerp(V4 a, V4 b, float t)
+{
+    return (V4){LerpF(a.x, b.x, t), LerpF(a.y, b.y, t), LerpF(a.z, b.z, t), LerpF(a.w, b.w, t)};
+}
+static float V4_LengthSq(V4 a)
+{
+    return V4_Inner(a, a);
+}
+static float V4_Length(V4 a)
+{
+    return SqrtF(V4_LengthSq(a));
+}
+static V4 V4_Normalize(V4 a)
+{
+    float length = V4_Length(a);
+    if (length) {
+        float length_inv = 1.f / length;
+        a = V4_Scale(a, length_inv);
+    }
+    return a;
+}
+
 // Additional V2 math
 static V2 V2_RotateClockwise90(V2 a)
 {
@@ -318,3 +379,12 @@ static ColorF ColorF_ChangeA(ColorF f, float a)
     f.a = a;
     return f;
 }
+
+// ---
+// Matrix
+// ---
+typedef union
+{
+    float elem[16];
+    V4 cols[4];
+} Mat4x4;

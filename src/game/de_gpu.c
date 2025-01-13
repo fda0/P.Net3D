@@ -345,33 +345,31 @@ static void Gpu_Iterate()
 
     float matrix_final[16];
     {
+        APP.gpu.window_state.angle_x = 0.f;
+        APP.gpu.window_state.angle_y = 0.f;
+        APP.gpu.window_state.angle_z = 0.f;
+
         float matrix_rotate[16], matrix_modelview[16], matrix_perspective[16];
-        rotate_matrix((float)APP.gpu.window_state.angle_x, 1.0f, 0.0f, 0.0f, matrix_modelview);
-        rotate_matrix((float)APP.gpu.window_state.angle_y, 0.0f, 1.0f, 0.0f, matrix_rotate);
+        rotate_matrix(APP.gpu.window_state.angle_x, 1.0f, 0.0f, 0.0f, matrix_modelview);
 
+        rotate_matrix(APP.gpu.window_state.angle_y, 0.0f, 1.0f, 0.0f, matrix_rotate);
         multiply_matrix(matrix_rotate, matrix_modelview, matrix_modelview);
 
-        rotate_matrix((float)APP.gpu.window_state.angle_z, 0.0f, 1.0f, 0.0f, matrix_rotate);
-
+        rotate_matrix(APP.gpu.window_state.angle_z, 0.0f, 1.0f, 0.0f, matrix_rotate);
         multiply_matrix(matrix_rotate, matrix_modelview, matrix_modelview);
 
-        /* Pull the camera back from the cube */
+        // Pull the camera back from the cube
         matrix_modelview[14] -= 5.f * 3.f;
 
         perspective_matrix(45.0f, (float)draw_width/draw_height, 0.01f, 100.0f, matrix_perspective);
-        multiply_matrix(matrix_perspective, matrix_modelview, (float*) &matrix_final);
+        multiply_matrix(matrix_perspective, matrix_modelview, matrix_final);
 
         APP.gpu.window_state.angle_x += 0.3f;
         APP.gpu.window_state.angle_y += 0.2f;
         APP.gpu.window_state.angle_z += 0.1f;
-
-        if(APP.gpu.window_state.angle_x >= 360) APP.gpu.window_state.angle_x -= 360;
-        if(APP.gpu.window_state.angle_x < 0) APP.gpu.window_state.angle_x += 360;
-        if(APP.gpu.window_state.angle_y >= 360) APP.gpu.window_state.angle_y -= 360;
-        if(APP.gpu.window_state.angle_y < 0) APP.gpu.window_state.angle_y += 360;
-        if(APP.gpu.window_state.angle_z >= 360) APP.gpu.window_state.angle_z -= 360;
-        if(APP.gpu.window_state.angle_z < 0) APP.gpu.window_state.angle_z += 360;
-
+        APP.gpu.window_state.angle_x = WrapF(0.f, 360.f, APP.gpu.window_state.angle_x);
+        APP.gpu.window_state.angle_y = WrapF(0.f, 360.f, APP.gpu.window_state.angle_y);
+        APP.gpu.window_state.angle_z = WrapF(0.f, 360.f, APP.gpu.window_state.angle_z);
     }
     SDL_PushGPUVertexUniformData(cmd, 0, matrix_final, sizeof(matrix_final));
 
