@@ -65,7 +65,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
     //SDL_SetRenderDrawColor(app->renderer, 64, 64, 64, 255);
     //SDL_RenderClear(app->renderer);
-    //Game_Iterate(app);
+    Game_Iterate(app);
     //SDL_RenderPresent(app->renderer);
 
     Gpu_Iterate();

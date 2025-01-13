@@ -345,10 +345,23 @@ static void Gpu_Iterate()
 
     Mat4 matrix_final;
     {
+        APP.gpu.win_state.camera_rot = (V3){0.2f, 0, 0};
+
         Mat4 model_mat = Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.x, (V3){1,0,0});
         model_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.y, (V3){0,1,0}), model_mat);
         model_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.z, (V3){0,0,1}), model_mat);
-        model_mat = Mat4_Mul(Mat4_Translation((V3){0, 0, -15.f}), model_mat);
+
+        {
+            Object *player = Object_Get(&APP, APP.client.player_key, ObjCategory_Net);
+            V3 move = {};
+            if (!Object_IsNil(player))
+            {
+                move.x = player->p.x;
+                move.y = player->p.y;
+            }
+            move.z = -15.f;
+            model_mat = Mat4_Mul(Mat4_Translation(move), model_mat);
+        }
 
         Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.25f, (float)draw_width/draw_height, 0.01f, 100.f);
         matrix_final = Mat4_Mul(perspective_mat, model_mat);
