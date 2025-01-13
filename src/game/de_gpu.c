@@ -94,23 +94,23 @@ static void Gpu_ProcessWindowResize()
     U32 draw_width, draw_height;
     SDL_GetWindowSizeInPixels(APP.window, (int *)&draw_height, (int *)&draw_width);
 
-    if (APP.gpu.window_state.draw_width != draw_width ||
-        APP.gpu.window_state.draw_height != draw_height)
+    if (APP.gpu.win_state.draw_width != draw_width ||
+        APP.gpu.win_state.draw_height != draw_height)
     {
-        if (APP.gpu.window_state.tex_depth)
-            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.window_state.tex_depth);
-        if (APP.gpu.window_state.tex_msaa)
-            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.window_state.tex_msaa);
-        if (APP.gpu.window_state.tex_resolve)
-            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.window_state.tex_resolve);
+        if (APP.gpu.win_state.tex_depth)
+            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.win_state.tex_depth);
+        if (APP.gpu.win_state.tex_msaa)
+            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.win_state.tex_msaa);
+        if (APP.gpu.win_state.tex_resolve)
+            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.win_state.tex_resolve);
 
-        APP.gpu.window_state.tex_depth = Gpu_CreateDepthTexture(draw_width, draw_height);
-        APP.gpu.window_state.tex_msaa = Gpu_CreateMSAATexture(draw_width, draw_height);
-        APP.gpu.window_state.tex_resolve = Gpu_CreateResolveTexture(draw_width, draw_height);
+        APP.gpu.win_state.tex_depth = Gpu_CreateDepthTexture(draw_width, draw_height);
+        APP.gpu.win_state.tex_msaa = Gpu_CreateMSAATexture(draw_width, draw_height);
+        APP.gpu.win_state.tex_resolve = Gpu_CreateResolveTexture(draw_width, draw_height);
     }
 
-    APP.gpu.window_state.draw_width = draw_width;
-    APP.gpu.window_state.draw_height = draw_height;
+    APP.gpu.win_state.draw_width = draw_width;
+    APP.gpu.win_state.draw_height = draw_height;
 }
 
 static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U64 data_size)
@@ -320,8 +320,8 @@ static void Gpu_Iterate()
     {
         color_target.load_op = SDL_GPU_LOADOP_CLEAR;
         color_target.store_op = SDL_GPU_STOREOP_RESOLVE;
-        color_target.texture = APP.gpu.window_state.tex_msaa;
-        color_target.resolve_texture = APP.gpu.window_state.tex_resolve;
+        color_target.texture = APP.gpu.win_state.tex_msaa;
+        color_target.resolve_texture = APP.gpu.win_state.tex_resolve;
         color_target.cycle = true;
         color_target.cycle_resolve_texture = true;
     }
@@ -338,39 +338,27 @@ static void Gpu_Iterate()
         .store_op = SDL_GPU_STOREOP_DONT_CARE,
         .stencil_load_op = SDL_GPU_LOADOP_DONT_CARE,
         .stencil_store_op = SDL_GPU_STOREOP_DONT_CARE,
-        .texture = APP.gpu.window_state.tex_depth,
+        .texture = APP.gpu.win_state.tex_depth,
         .cycle = true,
     };
 
 
     Mat4 matrix_final;
     {
-        //APP.gpu.window_state.angle_x = 0.f;
-        //APP.gpu.window_state.angle_y = 0.f;
-        //APP.gpu.window_state.angle_z = 0.f;
-        Mat4 matrix_rotate, matrix_modelview, matrix_perspective;
+        Mat4 model_mat = Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.x, (V3){1,0,0});
+        model_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.y, (V3){0,1,0}), model_mat);
+        model_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.z, (V3){0,0,1}), model_mat);
+        model_mat = Mat4_Mul(Mat4_Translation((V3){0, 0, -15.f}), model_mat);
 
-        matrix_modelview = Mat4_Rotation_RH(APP.gpu.window_state.angle_x, (V3){1,0,0});
+        Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.25f, (float)draw_width/draw_height, 0.01f, 100.f);
+        matrix_final = Mat4_Mul(perspective_mat, model_mat);
 
-        matrix_rotate = Mat4_Rotation_RH(APP.gpu.window_state.angle_y, (V3){0,1,0});
-        matrix_modelview = Mat4_Mul(matrix_rotate, matrix_modelview);
-
-        matrix_rotate = Mat4_Rotation_RH(APP.gpu.window_state.angle_z, (V3){0,0,1});
-        matrix_modelview = Mat4_Mul(matrix_rotate, matrix_modelview);
-
-        // Pull the camera back from the cube
-        matrix_modelview.flat[14] -= 15.f;
-
-        matrix_perspective = Mat4_Perspective_RH_NO(0.25f, (float)draw_width/draw_height, 0.01f, 100.f);
-
-        matrix_final = Mat4_Mul(matrix_perspective, matrix_modelview);
-
-        APP.gpu.window_state.angle_x += 0.0006f;
-        APP.gpu.window_state.angle_y += 0.0004f;
-        APP.gpu.window_state.angle_z += 0.0002f;
-        APP.gpu.window_state.angle_x = WrapF(0.f, 1.f, APP.gpu.window_state.angle_x);
-        APP.gpu.window_state.angle_y = WrapF(0.f, 1.f, APP.gpu.window_state.angle_y);
-        APP.gpu.window_state.angle_z = WrapF(0.f, 1.f, APP.gpu.window_state.angle_z);
+        APP.gpu.win_state.camera_rot.x += 0.0006f;
+        APP.gpu.win_state.camera_rot.y += 0.0004f;
+        APP.gpu.win_state.camera_rot.z += 0.0002f;
+        APP.gpu.win_state.camera_rot.x = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.x);
+        APP.gpu.win_state.camera_rot.y = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.y);
+        APP.gpu.win_state.camera_rot.z = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.z);
     }
     SDL_PushGPUVertexUniformData(cmd, 0, matrix_final.flat, sizeof(matrix_final.flat));
 
@@ -398,7 +386,7 @@ static void Gpu_Iterate()
     if (render_state.sample_count > SDL_GPU_SAMPLECOUNT_1)
     {
         SDL_zero(blit_info);
-        blit_info.source.texture = winstate->tex_resolve;
+        blit_info.source.texture = win_state->tex_resolve;
         blit_info.source.w = drawablew;
         blit_info.source.h = drawableh;
 

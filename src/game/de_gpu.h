@@ -2,7 +2,7 @@ typedef struct
 {
     SDL_GPUTexture *tex_depth, *tex_msaa, *tex_resolve;
     U32 draw_width, draw_height;
-    float angle_x, angle_y, angle_z;
+    V3 camera_rot;
 } Gpu_WindowState;
 
 typedef struct
@@ -13,7 +13,7 @@ typedef struct
     SDL_GPUSampleCount sample_count;
     SDL_GPUGraphicsPipeline *pipeline;
 
-    Gpu_WindowState window_state;
+    Gpu_WindowState win_state;
 } Gpu_State;
 
 typedef struct VertexData
