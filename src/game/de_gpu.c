@@ -370,38 +370,35 @@ static void Gpu_Iterate()
         .cycle = true,
     };
 
-
-    Mat4 matrix_final;
     {
-        APP.gpu.win_state.camera_rot = (V3){0.17f, 0, 0};
+        APP.gpu.win_state.camera_rot = (V3){0.1f, 0.0f, 0.0f};
+        //APP.gpu.win_state.camera_rot.x += 0.0006f;
+        //APP.gpu.win_state.camera_rot.y += 0.0004f;
+        //APP.gpu.win_state.camera_rot.z += 0.0002f;
+        //APP.gpu.win_state.camera_rot.x = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.x);
+        //APP.gpu.win_state.camera_rot.y = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.y);
+        //APP.gpu.win_state.camera_rot.z = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.z);
 
-        Mat4 model_mat = Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.x, (V3){1,0,0});
-        model_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.y, (V3){0,1,0}), model_mat);
-        model_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.z, (V3){0,0,1}), model_mat);
+        Mat4 camera_rot_mat = Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.x, (V3){1,0,0});
+        camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.y, (V3){0,1,0}), camera_rot_mat);
+        camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.z, (V3){0,0,1}), camera_rot_mat);
 
+        V3 camera_move = {};
+        camera_move.z = -20.f;
+        Mat4 camera_move_mat = Mat4_Translation(camera_move);
+
+        // ----
+        Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.21f, (float)draw_width/draw_height, 0.01f, 1000.f);
+
+
+        Mat4 all_mats[] =
         {
-            Object *player = Object_Get(&APP, APP.client.player_key, ObjCategory_Net);
-            V3 move = {};
-            if (!Object_IsNil(player))
-            {
-                move.x = player->p.x;
-                move.y = player->p.y;
-            }
-            move.z = -25.f;
-            model_mat = Mat4_Mul(Mat4_Translation(move), model_mat);
-        }
-
-        Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.18f, (float)draw_width/draw_height, 0.01f, 100.f);
-        matrix_final = Mat4_Mul(perspective_mat, model_mat);
-
-        APP.gpu.win_state.camera_rot.x += 0.0006f;
-        APP.gpu.win_state.camera_rot.y += 0.0004f;
-        APP.gpu.win_state.camera_rot.z += 0.0002f;
-        APP.gpu.win_state.camera_rot.x = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.x);
-        APP.gpu.win_state.camera_rot.y = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.y);
-        APP.gpu.win_state.camera_rot.z = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.z);
+            camera_move_mat,
+            camera_rot_mat,
+            perspective_mat,
+        };
+        SDL_PushGPUVertexUniformData(cmd, 0, all_mats, sizeof(all_mats));
     }
-    SDL_PushGPUVertexUniformData(cmd, 0, matrix_final.flat, sizeof(matrix_final.flat));
 
     // render pass
     {

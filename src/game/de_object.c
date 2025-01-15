@@ -153,7 +153,7 @@ static Object *Object_CreatePlayer(AppState *app)
 {
     Object *player = Object_Create(app, ObjCategory_Net,
                                    app->sprite_dude_id,
-                                   ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_Collide);
+                                   ObjectFlag_Draw|ObjectFlag_Move /*|ObjectFlag_Collide*/ );
     player->sprite_color = ColorF_RGB(1, 0.1f, 0.1f);
     return player;
 }

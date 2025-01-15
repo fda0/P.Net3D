@@ -7,6 +7,7 @@ typedef struct
 typedef struct
 {
     Mat4 transform;
+    V4 color;
 } Rdr_ModelInstanceData;
 
 typedef struct

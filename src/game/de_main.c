@@ -128,16 +128,25 @@ static void Game_IssueDrawCommands(AppState *app)
             }
 
 #if 1
-            if (APP.rdr.instance_count < ArrayCount(APP.rdr.instance_data))
+            if (obj->flags & ObjectFlag_Move)
             {
-                Rdr_ModelInstanceData *inst_data = APP.rdr.instance_data + APP.rdr.instance_count;
-                APP.rdr.instance_count += 1;
+                if (APP.rdr.instance_count < ArrayCount(APP.rdr.instance_data))
+                {
+                    U32 instance_index = APP.rdr.instance_count;
+                    APP.rdr.instance_count += 1;
+                    Rdr_ModelInstanceData *inst_data = APP.rdr.instance_data + instance_index;
+                    SDL_zerop(inst_data);
 
-                V3 move = {};
-                move.x = obj->p.x;
-                move.x = obj->p.y;
-                move.z = -1.f * APP.rdr.instance_count;
-                inst_data->transform = Mat4_Translation(move);
+                    V3 move = {};
+                    //move.x = 0.25f * instance_index;
+                    move.x = obj->p.x*0.06f;
+                    move.z = -obj->p.y*0.06f;
+
+                    inst_data->transform = Mat4_Translation(move);
+                    inst_data->color.x = obj->sprite_color.r;
+                    inst_data->color.y = obj->sprite_color.g;
+                    inst_data->color.z = obj->sprite_color.b;
+                }
             }
 #else
             int indices[] = { 0, 1, 3, 1, 2, 3 };

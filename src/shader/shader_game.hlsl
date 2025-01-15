@@ -1,6 +1,8 @@
 cbuffer UBO : register(b0, space1)
 {
-    float4x4 ModelViewProj;
+    float4x4 CameraMoveProj;
+    float4x4 CameraRotationProj;
+    float4x4 PerspectiveProj;
 };
 
 struct VSInput
@@ -21,38 +23,57 @@ struct VSOutput
 struct VSModelInstanceData
 {
     float4x4 transform;
+    float4 color;
 };
 
 StructuredBuffer<VSModelInstanceData> InstanceBuffer : register(t0);
 
 VSOutput ShaderGameVS(VSInput input)
 {
-    float4x4 rotation_mat = ModelViewProj;
-    rotation_mat[3][0] = 0.f;
-    rotation_mat[3][1] = 0.f;
-    rotation_mat[3][2] = 0.f;
-    rotation_mat[3][3] = 0.f;
-    rotation_mat[0][3] = 0.f;
-    rotation_mat[1][3] = 0.f;
-    rotation_mat[2][3] = 0.f;
-    rotation_mat[3][3] = 0.f;
+    float4x4 shadow_mat = CameraRotationProj;
+    shadow_mat[3][0] = 0.f;
+    shadow_mat[3][1] = 0.f;
+    shadow_mat[3][2] = 0.f;
+    shadow_mat[3][3] = 0.f;
+    shadow_mat[0][3] = 0.f;
+    shadow_mat[1][3] = 0.f;
+    shadow_mat[2][3] = 0.f;
+    shadow_mat[3][3] = 0.f;
 
     VSModelInstanceData instance_data = InstanceBuffer[input.InstanceIndex];
 
     float3 pos = input.Position;
-    pos.x += 3.f * float(input.InstanceIndex);
-    pos.z += 3.f * float(input.InstanceIndex);
 
-    float4 color = float4(input.Color, 1.0f);
-    color.x = instance_data.transform[0][0];
-    color.z = instance_data.transform[1][1];
+    float4 color = float4(input.Color, 0.6f);
+    color.xyz = instance_data.color.xyz;
 
-    float4x4 modelTransform = instance_data.transform;
-    modelTransform = mul(modelTransform, ModelViewProj);
+    float4x4 idMat;
+    idMat[0][0] = 1.f;
+    idMat[0][1] = 0.f;
+    idMat[0][2] = 0.f;
+    idMat[0][3] = 0.f;
+    idMat[1][0] = 0.f;
+    idMat[1][1] = 1.f;
+    idMat[1][2] = 0.f;
+    idMat[1][3] = 0.f;
+    idMat[2][0] = 0.f;
+    idMat[2][1] = 0.f;
+    idMat[2][2] = 1.f;
+    idMat[2][3] = 0.f;
+    idMat[3][0] = 0.f;
+    idMat[3][1] = 0.f;
+    idMat[3][2] = 0.f;
+    idMat[3][3] = 1.f;
+
+    float4x4 modelTransform = idMat;
+    modelTransform = mul(instance_data.transform, modelTransform);
+    modelTransform = mul(CameraRotationProj, modelTransform);
+    modelTransform = mul(CameraMoveProj, modelTransform);
+    modelTransform = mul(PerspectiveProj, modelTransform);
 
     VSOutput output;
     output.Color = color;
-    output.Normal = mul(rotation_mat, float4(input.Normal, 1.0f));
+    output.Normal = mul(shadow_mat, float4(input.Normal, 1.0f));
     output.Position = mul(modelTransform, float4(pos, 1.0f));
     return output;
 }
