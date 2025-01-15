@@ -127,7 +127,19 @@ static void Game_IssueDrawCommands(AppState *app)
                 sdl_verts[3].tex_coord = (SDL_FPoint){0, tex_y0};
             }
 
-#if 0
+#if 1
+            if (APP.rdr.instance_count < ArrayCount(APP.rdr.instance_data))
+            {
+                Rdr_ModelInstanceData *inst_data = APP.rdr.instance_data + APP.rdr.instance_count;
+                APP.rdr.instance_count += 1;
+
+                V3 move = {};
+                move.x = obj->p.x;
+                move.x = obj->p.y;
+                move.z = -1.f * APP.rdr.instance_count;
+                inst_data->transform = Mat4_Translation(move);
+            }
+#else
             int indices[] = { 0, 1, 3, 1, 2, 3 };
             SDL_RenderGeometry(app->renderer, sprite->tex,
                                sdl_verts, ArrayCount(sdl_verts),

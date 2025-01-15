@@ -70,6 +70,11 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
     Gpu_Iterate();
 
+    // render cleanup
+    {
+        APP.rdr.instance_count = 0;
+    }
+
     return SDL_APP_CONTINUE;
 }
 
@@ -211,7 +216,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 #if 1
     APP.gpu.device =
         SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL,
-                            /* debug mode */ false,
+                            /* debug mode */ true,
                             /* const char * name*/ 0);
 
     if (!APP.gpu.device)

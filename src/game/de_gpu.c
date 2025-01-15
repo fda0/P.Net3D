@@ -2,7 +2,7 @@ static SDL_GPUShader *Gpu_LoadShader(bool is_vertex)
 {
     SDL_GPUShaderCreateInfo createinfo;
     createinfo.num_samplers = 0;
-    createinfo.num_storage_buffers = 0;
+    createinfo.num_storage_buffers = is_vertex ? 1 : 0;
     createinfo.num_storage_textures = 0;
     createinfo.num_uniform_buffers = is_vertex ? 1 : 0;
     createinfo.props = 0;
@@ -92,7 +92,7 @@ static SDL_GPUTexture *Gpu_CreateResolveTexture(Uint32 width, Uint32 height)
 static void Gpu_ProcessWindowResize()
 {
     U32 draw_width, draw_height;
-    SDL_GetWindowSizeInPixels(APP.window, (int *)&draw_height, (int *)&draw_width);
+    SDL_GetWindowSizeInPixels(APP.window, (int *)&draw_width, (int *)&draw_height);
 
     if (APP.gpu.win_state.draw_width != draw_width ||
         APP.gpu.win_state.draw_height != draw_height)
@@ -186,6 +186,18 @@ static void Gpu_Init()
             SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.buf_ind, "Index Buffer");
         }
 
+        // create storage buffer (per model instance data)
+        {
+            SDL_GPUBufferCreateInfo buffer_desc = {
+                .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+                .size = sizeof(APP.rdr.instance_data),
+                .props = 0,
+            };
+            APP.gpu.buf_instance_storage = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
+            Assert(APP.gpu.buf_instance_storage); // @todo report
+            SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.buf_instance_storage, "Per model instance storage buffer");
+        }
+
         // transfer buffer stuff;
         // @todo merge transfers into one mapping, two memcpy calls
         Gpu_TransferBuffer(APP.gpu.buf_vrt, MODEL_VERTEX_ARR, sizeof(MODEL_VERTEX_ARR));
@@ -236,15 +248,23 @@ static void Gpu_Init()
                 },
                 .vertex_input_state =
                 {
-                    .num_vertex_buffers = 1,
+                    .num_vertex_buffers = 2,
                     .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[])
                     {
                         {
                             .slot = 0,
+                            .pitch = sizeof(Rdr_Vertex),
                             .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
                             .instance_step_rate = 0,
-                            .pitch = sizeof(Rdr_Vertex),
                         },
+#if 1
+                        {
+                            .slot = 1,
+                            .pitch = sizeof(Rdr_ModelInstanceData),
+                            .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                            .instance_step_rate = 0,
+                        },
+#endif
                     },
                     .num_vertex_attributes = 3,
                     .vertex_attributes = (SDL_GPUVertexAttribute[])
@@ -305,6 +325,14 @@ static void Gpu_Iterate()
 
     Gpu_ProcessWindowResize();
 
+    // upload instance data
+    if (APP.rdr.instance_count)
+    {
+        Assert(APP.rdr.instance_count <= ArrayCount(APP.rdr.instance_data));
+        Gpu_TransferBuffer(APP.gpu.buf_instance_storage, APP.rdr.instance_data,
+                           APP.rdr.instance_count*sizeof(APP.rdr.instance_data[0]));
+    }
+
     SDL_GPUColorTargetInfo color_target = {
         .clear_color =
         {
@@ -345,7 +373,7 @@ static void Gpu_Iterate()
 
     Mat4 matrix_final;
     {
-        APP.gpu.win_state.camera_rot = (V3){0.2f, 0, 0};
+        APP.gpu.win_state.camera_rot = (V3){0.17f, 0, 0};
 
         Mat4 model_mat = Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.x, (V3){1,0,0});
         model_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.y, (V3){0,1,0}), model_mat);
@@ -359,11 +387,11 @@ static void Gpu_Iterate()
                 move.x = player->p.x;
                 move.y = player->p.y;
             }
-            move.z = -15.f;
+            move.z = -25.f;
             model_mat = Mat4_Mul(Mat4_Translation(move), model_mat);
         }
 
-        Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.25f, (float)draw_width/draw_height, 0.01f, 100.f);
+        Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.18f, (float)draw_width/draw_height, 0.01f, 100.f);
         matrix_final = Mat4_Mul(perspective_mat, model_mat);
 
         APP.gpu.win_state.camera_rot.x += 0.0006f;
@@ -375,25 +403,38 @@ static void Gpu_Iterate()
     }
     SDL_PushGPUVertexUniformData(cmd, 0, matrix_final.flat, sizeof(matrix_final.flat));
 
-    SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
-    SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipeline);
+    // render pass
     {
-        SDL_GPUBufferBinding binding_vrt = {
-            .buffer = APP.gpu.buf_vrt,
-            .offset = 0,
-        };
-        SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
+        SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
+        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipeline);
+
+        // bind vertex buffer
+        {
+            SDL_GPUBufferBinding binding_vrt = {
+                .buffer = APP.gpu.buf_vrt,
+                .offset = 0,
+            };
+            SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
+        }
+
+        // bind index buffer
+        {
+            SDL_GPUBufferBinding binding_ind = {
+                .buffer = APP.gpu.buf_ind,
+                .offset = 0,
+            };
+            SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+        }
+
+        // bind instance storage buffer
+        {
+            SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.buf_instance_storage, 1);
+        }
+
+        SDL_DrawGPUIndexedPrimitives(pass, ArrayCount(MODEL_INDEX_ARR), APP.rdr.instance_count, 0, 0, 0);
+        //SDL_DrawGPUPrimitives(pass, 36, 1, 0, 0);
+        SDL_EndGPURenderPass(pass);
     }
-    {
-        SDL_GPUBufferBinding binding_ind = {
-            .buffer = APP.gpu.buf_ind,
-            .offset = 0,
-        };
-        SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
-    }
-    SDL_DrawGPUIndexedPrimitives(pass, ArrayCount(MODEL_INDEX_ARR), 2, 0, 0, 0);
-    //SDL_DrawGPUPrimitives(pass, 36, 1, 0, 0);
-    SDL_EndGPURenderPass(pass);
 
 #if 0
     if (render_state.sample_count > SDL_GPU_SAMPLECOUNT_1)

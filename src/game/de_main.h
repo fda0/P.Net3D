@@ -35,6 +35,7 @@ struct AppState
     SDL_Window* window;
     //SDL_Renderer* renderer;
     Gpu_State gpu;
+    Rdr_State rdr;
 
     // window settings
     Sint32 init_window_px, init_window_py; // 0 if wasn't set

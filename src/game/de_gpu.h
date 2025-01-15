@@ -10,6 +10,7 @@ typedef struct
     SDL_GPUDevice *device;
     SDL_GPUBuffer *buf_vrt;
     SDL_GPUBuffer *buf_ind;
+    SDL_GPUBuffer *buf_instance_storage;
     SDL_GPUSampleCount sample_count;
     SDL_GPUGraphicsPipeline *pipeline;
 
