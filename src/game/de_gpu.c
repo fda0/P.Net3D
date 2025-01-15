@@ -47,7 +47,10 @@ static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
     };
 
     SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
-    SDL_DestroyProperties(props);
+
+    // These properties shouldn't be destroyed.
+    // SDL_DestroyProperties(props);
+    // They are used again when this depth texture is "cycled".
 
     Assert(result); // @todo report err
     return result;
