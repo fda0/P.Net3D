@@ -128,29 +128,39 @@ static void Game_IssueDrawCommands(AppState *app)
             }
 
 #if 1
-            if (obj->flags & ObjectFlag_Move)
+            if (APP.rdr.instance_count < ArrayCount(APP.rdr.instance_data))
             {
-                if (APP.rdr.instance_count < ArrayCount(APP.rdr.instance_data))
+                U32 instance_index = APP.rdr.instance_count;
+                APP.rdr.instance_count += 1;
+                Rdr_ModelInstanceData *inst_data = APP.rdr.instance_data + instance_index;
+                SDL_zerop(inst_data);
+
+                V3 move = {};
+                //move.x = 0.25f * instance_index;
+                move.x = obj->p.x*0.06f;
+                move.z = -obj->p.y*0.06f;
+                Mat4 move_mat = Mat4_Translation(move);
+                Mat4 rot_mat = Mat4_Rotation_RH(-0.06f, (V3){0,0,1});
+                if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
+                    rot_mat = Mat4_Diagonal(1.f);
+
+
+                if (obj->flags & ObjectFlag_Move)
                 {
-                    U32 instance_index = APP.rdr.instance_count;
-                    APP.rdr.instance_count += 1;
-                    Rdr_ModelInstanceData *inst_data = APP.rdr.instance_data + instance_index;
-                    SDL_zerop(inst_data);
-
-                    V3 move = {};
-                    //move.x = 0.25f * instance_index;
-                    move.x = obj->p.x*0.06f;
-                    move.z = -obj->p.y*0.06f;
-                    Mat4 move_mat = Mat4_Translation(move);
-                    Mat4 rot_mat = Mat4_Rotation_RH(-0.06f, (V3){0,0,1});
-                    if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
-                        rot_mat = Mat4_Diagonal(1.f);
-                    inst_data->transform = Mat4_Mul(move_mat, rot_mat);
-
                     inst_data->color.x = obj->sprite_color.r;
                     inst_data->color.y = obj->sprite_color.g;
                     inst_data->color.z = obj->sprite_color.b;
                 }
+                else
+                {
+                    inst_data->color.x = 0.f;
+                    inst_data->color.y = 0.f;
+                    inst_data->color.z = 1.f;
+
+                    rot_mat = Mat4_Rotation_RH(0.12f, (V3){0,0,1});
+                }
+
+                inst_data->transform = Mat4_Mul(move_mat, rot_mat);
             }
 #else
             int indices[] = { 0, 1, 3, 1, 2, 3 };

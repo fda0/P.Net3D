@@ -1,3 +1,5 @@
+#define GPU_DEPTH_CLEAR_FLOAT 1.0f
+
 static SDL_GPUShader *Gpu_LoadShader(bool is_vertex)
 {
     SDL_GPUShaderCreateInfo createinfo;
@@ -27,18 +29,26 @@ static SDL_GPUShader *Gpu_LoadShader(bool is_vertex)
 
 static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
 {
-    SDL_GPUTextureCreateInfo createinfo = {};
-    createinfo.type = SDL_GPU_TEXTURETYPE_2D;
-    createinfo.format = SDL_GPU_TEXTUREFORMAT_D16_UNORM;
-    createinfo.width = width;
-    createinfo.height = height;
-    createinfo.layer_count_or_depth = 1;
-    createinfo.num_levels = 1;
-    createinfo.sample_count = APP.gpu.sample_count;
-    createinfo.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
-    createinfo.props = 0;
+    SDL_PropertiesID props = SDL_CreateProperties();
+    SDL_SetFloatProperty(props,
+                         SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_DEPTH_FLOAT,
+                         GPU_DEPTH_CLEAR_FLOAT);
+
+    SDL_GPUTextureCreateInfo createinfo = {
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
+        .width = width,
+        .height = height,
+        .layer_count_or_depth = 1,
+        .num_levels = 1,
+        .sample_count = APP.gpu.sample_count,
+        .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+        .props = props,
+    };
 
     SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
+    SDL_DestroyProperties(props);
+
     Assert(result); // @todo report err
     return result;
 }
@@ -50,16 +60,17 @@ static SDL_GPUTexture *Gpu_CreateMSAATexture(Uint32 width, Uint32 height)
         return 0;
     }
 
-    SDL_GPUTextureCreateInfo createinfo = {};
-    createinfo.type = SDL_GPU_TEXTURETYPE_2D;
-    createinfo.format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window);
-    createinfo.width = width;
-    createinfo.height = height;
-    createinfo.layer_count_or_depth = 1;
-    createinfo.num_levels = 1;
-    createinfo.sample_count = APP.gpu.sample_count;
-    createinfo.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
-    createinfo.props = 0;
+    SDL_GPUTextureCreateInfo createinfo = {
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
+        .width = width,
+        .height = height,
+        .layer_count_or_depth = 1,
+        .num_levels = 1,
+        .sample_count = APP.gpu.sample_count,
+        .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
+        .props = 0,
+    };
 
     SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
     Assert(result); // @todo
@@ -73,16 +84,17 @@ static SDL_GPUTexture *Gpu_CreateResolveTexture(Uint32 width, Uint32 height)
         return 0;
     }
 
-    SDL_GPUTextureCreateInfo createinfo = {};
-    createinfo.type = SDL_GPU_TEXTURETYPE_2D;
-    createinfo.format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window);
-    createinfo.width = width;
-    createinfo.height = height;
-    createinfo.layer_count_or_depth = 1;
-    createinfo.num_levels = 1;
-    createinfo.sample_count = SDL_GPU_SAMPLECOUNT_1;
-    createinfo.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
-    createinfo.props = 0;
+    SDL_GPUTextureCreateInfo createinfo = {
+        .type = SDL_GPU_TEXTURETYPE_2D,
+        .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
+        .width = width,
+        .height = height,
+        .layer_count_or_depth = 1,
+        .num_levels = 1,
+        .sample_count = SDL_GPU_SAMPLECOUNT_1,
+        .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        .props = 0,
+    };
 
     SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
     Assert(result); // @todo
@@ -333,43 +345,6 @@ static void Gpu_Iterate()
                            APP.rdr.instance_count*sizeof(APP.rdr.instance_data[0]));
     }
 
-    SDL_GPUColorTargetInfo color_target = {
-        .clear_color =
-        {
-            .r = 0.6f,
-            .g = 0.6f,
-            .b = 0.8f,
-            .a = 1.0f,
-        },
-    };
-
-    bool tex_msaa = false;
-    if (tex_msaa)
-    {
-        color_target.load_op = SDL_GPU_LOADOP_CLEAR;
-        color_target.store_op = SDL_GPU_STOREOP_RESOLVE;
-        color_target.texture = APP.gpu.win_state.tex_msaa;
-        color_target.resolve_texture = APP.gpu.win_state.tex_resolve;
-        color_target.cycle = true;
-        color_target.cycle_resolve_texture = true;
-    }
-    else
-    {
-        color_target.load_op = SDL_GPU_LOADOP_CLEAR;
-        color_target.store_op = SDL_GPU_STOREOP_STORE;
-        color_target.texture = swapchain_tex;
-    }
-
-    SDL_GPUDepthStencilTargetInfo depth_target = {
-        .clear_depth = 1.0f,
-        .load_op = SDL_GPU_LOADOP_CLEAR,
-        .store_op = SDL_GPU_STOREOP_DONT_CARE,
-        .stencil_load_op = SDL_GPU_LOADOP_DONT_CARE,
-        .stencil_store_op = SDL_GPU_STOREOP_DONT_CARE,
-        .texture = APP.gpu.win_state.tex_depth,
-        .cycle = true,
-    };
-
     {
         APP.gpu.win_state.camera_rot = (V3){0.1f, 0.0f, 0.0f};
         //APP.gpu.win_state.camera_rot.x += 0.0006f;
@@ -398,6 +373,42 @@ static void Gpu_Iterate()
             perspective_mat,
         };
         SDL_PushGPUVertexUniformData(cmd, 0, all_mats, sizeof(all_mats));
+    }
+
+    SDL_GPUDepthStencilTargetInfo depth_target = {
+        .clear_depth = GPU_DEPTH_CLEAR_FLOAT,
+        .load_op = SDL_GPU_LOADOP_CLEAR,
+        .store_op = SDL_GPU_STOREOP_DONT_CARE,
+        .stencil_load_op = SDL_GPU_LOADOP_DONT_CARE,
+        .stencil_store_op = SDL_GPU_STOREOP_DONT_CARE,
+        .texture = APP.gpu.win_state.tex_depth,
+        .cycle = true,
+    };
+
+    SDL_GPUColorTargetInfo color_target = {
+        .clear_color =
+        {
+            .r = 0.6f,
+            .g = 0.6f,
+            .b = 0.8f,
+            .a = 1.0f,
+        },
+    };
+    bool tex_msaa = false;
+    if (tex_msaa)
+    {
+        color_target.load_op = SDL_GPU_LOADOP_CLEAR;
+        color_target.store_op = SDL_GPU_STOREOP_RESOLVE;
+        color_target.texture = APP.gpu.win_state.tex_msaa;
+        color_target.resolve_texture = APP.gpu.win_state.tex_resolve;
+        color_target.cycle = true;
+        color_target.cycle_resolve_texture = true;
+    }
+    else
+    {
+        color_target.load_op = SDL_GPU_LOADOP_CLEAR;
+        color_target.store_op = SDL_GPU_STOREOP_STORE;
+        color_target.texture = swapchain_tex;
     }
 
     // render pass
