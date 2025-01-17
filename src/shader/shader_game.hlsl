@@ -44,8 +44,8 @@ VSOutput ShaderGameVS(VSInput input)
 
     float3 pos = input.Position;
 
-    float4 color = float4(input.Color, 0.6f);
-    color.xyz = instance_data.color.xyz;
+    float4 color = float4(input.Color, 1.0f);
+    color = color * instance_data.color;
 
     float4x4 idMat;
     idMat[0][0] = 1.f;

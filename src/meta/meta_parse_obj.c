@@ -338,7 +338,7 @@ static void M_ParseObj(const char *path, Printer *out)
         M_Pr_AddFloat(out, M.verts[i + 2]); Pr_AddCstr(out, "f, ");
 
         // color
-        Pr_Add(out, S8Lit("/*color*/0.9f, 0.4f, 0.1f, "));
+        Pr_Add(out, S8Lit("/*color*/1.f, 1.f, 1.f, "));
 
         // normals
         Pr_Add(out, S8Lit("/*normal*/"));

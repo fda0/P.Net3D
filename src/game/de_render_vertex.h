@@ -15,4 +15,7 @@ typedef struct
 #define RDR_MAX_MODEL_INSTANCES 16
     Rdr_ModelInstanceData instance_data[RDR_MAX_MODEL_INSTANCES];
     U32 instance_count;
+
+    Rdr_Vertex wall_verts[1024 * 16];
+    U32 wall_vert_count;
 } Rdr_State;

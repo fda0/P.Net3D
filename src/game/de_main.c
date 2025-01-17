@@ -127,47 +127,68 @@ static void Game_IssueDrawCommands(AppState *app)
                 sdl_verts[3].tex_coord = (SDL_FPoint){0, tex_y0};
             }
 
-#if 1
-            if (APP.rdr.instance_count < ArrayCount(APP.rdr.instance_data))
+            V2 shader_scale = {0.006f, -0.006f};
+
+            if (obj->flags & ObjectFlag_Move)
             {
-                U32 instance_index = APP.rdr.instance_count;
-                APP.rdr.instance_count += 1;
-                Rdr_ModelInstanceData *inst_data = APP.rdr.instance_data + instance_index;
-                SDL_zerop(inst_data);
-
-                V3 move = {};
-                //move.x = 0.25f * instance_index;
-                move.x = obj->p.x*0.06f;
-                move.z = -obj->p.y*0.06f;
-                Mat4 move_mat = Mat4_Translation(move);
-                Mat4 rot_mat = Mat4_Rotation_RH(-0.06f, (V3){0,0,1});
-                if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
-                    rot_mat = Mat4_Diagonal(1.f);
-
-
-                if (obj->flags & ObjectFlag_Move)
+                if (APP.rdr.instance_count < ArrayCount(APP.rdr.instance_data))
                 {
-                    inst_data->color.x = obj->sprite_color.r;
-                    inst_data->color.y = obj->sprite_color.g;
-                    inst_data->color.z = obj->sprite_color.b;
-                }
-                else
-                {
-                    inst_data->color.x = 0.f;
-                    inst_data->color.y = 0.f;
-                    inst_data->color.z = 1.f;
+                    U32 instance_index = APP.rdr.instance_count;
+                    APP.rdr.instance_count += 1;
+                    Rdr_ModelInstanceData *inst_data = APP.rdr.instance_data + instance_index;
+                    SDL_zerop(inst_data);
 
-                    rot_mat = Mat4_Rotation_RH(0.12f, (V3){0,0,1});
-                }
+                    V3 move = {};
+                    move.x = obj->p.x * shader_scale.x;
+                    move.z = obj->p.y * shader_scale.y;
+                    Mat4 move_mat = Mat4_Translation(move);
+                    Mat4 rot_mat = Mat4_Rotation_RH(-0.06f, (V3){0,0,1});
+                    if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
+                        rot_mat = Mat4_Diagonal(1.f);
 
-                inst_data->transform = Mat4_Mul(move_mat, rot_mat);
+                    inst_data->transform = Mat4_Mul(move_mat, rot_mat);
+                }
             }
-#else
-            int indices[] = { 0, 1, 3, 1, 2, 3 };
-            SDL_RenderGeometry(app->renderer, sprite->tex,
-                               sdl_verts, ArrayCount(sdl_verts),
-                               indices, ArrayCount(indices));
-#endif
+            else
+            {
+                if (APP.rdr.wall_vert_count + 16 < ArrayCount(APP.rdr.wall_verts))
+                {
+                    V3 move = {};
+                    move.x = obj->p.x * shader_scale.x;
+                    move.z = obj->p.y * shader_scale.y;
+
+                    Rdr_Vertex *vrt_start = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
+                    U32 vrt_count = 8;
+                    APP.rdr.wall_vert_count += vrt_count;
+
+                    ForU32(i, vrt_count)
+                    {
+                        Rdr_Vertex *vrt = vrt_start + i;
+                        SDL_zerop(vrt);
+                        vrt->color = (V3){1,1,0};
+                        vrt->normal = (V3){1,0,0};
+                    }
+
+                    Col_Vertices col = sprite->collision_vertices;
+                    vrt_start[0].p = V3_Make_XZ_Y(col.arr[0], 0.f);
+                    vrt_start[1].p = V3_Make_XZ_Y(col.arr[1], 0.f);
+                    vrt_start[2].p = V3_Make_XZ_Y(col.arr[2], 0.f);
+                    vrt_start[3].p = V3_Make_XZ_Y(col.arr[3], 0.f);
+                    vrt_start[4].p = V3_Make_XZ_Y(col.arr[0], 1.f);
+                    vrt_start[5].p = V3_Make_XZ_Y(col.arr[1], 1.f);
+                    vrt_start[6].p = V3_Make_XZ_Y(col.arr[2], 1.f);
+                    vrt_start[7].p = V3_Make_XZ_Y(col.arr[3], 1.f);
+
+                    ForU32(i, vrt_count)
+                    {
+                        Rdr_Vertex *vrt = vrt_start + i;
+                        SDL_zerop(vrt);
+                        vrt->p.x *= shader_scale.x;
+                        vrt->p.y *= shader_scale.x;
+                        vrt->p.z *= shader_scale.y;
+                    }
+                }
+            }
         }
 
         if (app->debug.draw_collision_box)

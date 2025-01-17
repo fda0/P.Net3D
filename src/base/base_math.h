@@ -169,6 +169,15 @@ typedef union
     float E[3];
 } V3;
 
+static V3 V3_Make_XZ(V2 xz)
+{
+    return (V3){xz.x, 0.f, xz.y};
+}
+static V3 V3_Make_XZ_Y(V2 xz, float y)
+{
+    return (V3){xz.x, y, xz.y};
+}
+
 static V3 V3_Scale(V3 a, float scale)
 {
     return (V3){a.x*scale, a.y*scale, a.z*scale};
