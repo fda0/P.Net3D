@@ -169,8 +169,12 @@ static void Game_IssueDrawCommands(AppState *app)
                     {
                         Rdr_Vertex *vrt = vert_start + i;
                         SDL_zerop(vrt);
-                        vrt->color = (V3){1,1,0};
-                        vrt->normal = (V3){1,0,0};
+                        vrt->color = (V3){0.5f, 0.12f, 0};
+                        vrt->normal = (V3){1,1,0};
+                        if (i > 3)
+                        {
+                            vrt->color = (V3){0.67f, 0.45f, 0.05f};
+                        }
                     }
 
                     Col_Vertices col = sprite->collision_vertices;
@@ -178,10 +182,10 @@ static void Game_IssueDrawCommands(AppState *app)
                     vert_start[1].p = V3_Make_XZ_Y(col.arr[1], 0.f);
                     vert_start[2].p = V3_Make_XZ_Y(col.arr[2], 0.f);
                     vert_start[3].p = V3_Make_XZ_Y(col.arr[3], 0.f);
-                    vert_start[4].p = V3_Make_XZ_Y(col.arr[0], 80.f);
-                    vert_start[5].p = V3_Make_XZ_Y(col.arr[1], 80.f);
-                    vert_start[6].p = V3_Make_XZ_Y(col.arr[2], 80.f);
-                    vert_start[7].p = V3_Make_XZ_Y(col.arr[3], 80.f);
+                    vert_start[4].p = V3_Make_XZ_Y(col.arr[0], 40.f);
+                    vert_start[5].p = V3_Make_XZ_Y(col.arr[1], 40.f);
+                    vert_start[6].p = V3_Make_XZ_Y(col.arr[2], 40.f);
+                    vert_start[7].p = V3_Make_XZ_Y(col.arr[3], 40.f);
 
                     ForU32(i, vert_count)
                     {
@@ -412,7 +416,7 @@ static void Game_Init(AppState *app)
         float thickness = 20.f;
         float length = 400.f;
         float off = length*0.5f - thickness*0.5f;
-        Object_CreateWall(app, (V2){0, 0}, (V2){thickness, length});
+        Object_CreateWall(app, (V2){off, 0}, (V2){thickness, length});
         Object_CreateWall(app, (V2){-off, 0}, (V2){thickness, length});
         Object_CreateWall(app, (V2){0, off}, (V2){length, thickness});
         Object_CreateWall(app, (V2){0,-off}, (V2){length*0.5f, thickness});
