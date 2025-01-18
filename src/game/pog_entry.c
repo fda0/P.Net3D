@@ -73,6 +73,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     // render cleanup
     {
         APP.rdr.instance_count = 0;
+        APP.rdr.wall_vert_count = 0;
     }
 
     return SDL_APP_CONTINUE;

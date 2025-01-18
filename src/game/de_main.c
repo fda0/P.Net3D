@@ -127,7 +127,7 @@ static void Game_IssueDrawCommands(AppState *app)
                 sdl_verts[3].tex_coord = (SDL_FPoint){0, tex_y0};
             }
 
-            V2 shader_scale = {0.006f, -0.006f};
+            V2 shader_scale = {0.05f, -0.05f};
 
             if (obj->flags & ObjectFlag_Move)
             {
@@ -137,6 +137,10 @@ static void Game_IssueDrawCommands(AppState *app)
                     APP.rdr.instance_count += 1;
                     Rdr_ModelInstanceData *inst_data = APP.rdr.instance_data + instance_index;
                     SDL_zerop(inst_data);
+
+                    inst_data->color.x = obj->sprite_color.r;
+                    inst_data->color.y = obj->sprite_color.g;
+                    inst_data->color.z = obj->sprite_color.b;
 
                     V3 move = {};
                     move.x = obj->p.x * shader_scale.x;
@@ -151,38 +155,39 @@ static void Game_IssueDrawCommands(AppState *app)
             }
             else
             {
-                if (APP.rdr.wall_vert_count + 16 < ArrayCount(APP.rdr.wall_verts))
+                U32 vert_count = 8;
+                if (APP.rdr.wall_vert_count + vert_count <= ArrayCount(APP.rdr.wall_verts))
                 {
                     V3 move = {};
                     move.x = obj->p.x * shader_scale.x;
                     move.z = obj->p.y * shader_scale.y;
 
-                    Rdr_Vertex *vrt_start = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
-                    U32 vrt_count = 8;
-                    APP.rdr.wall_vert_count += vrt_count;
+                    Rdr_Vertex *vert_start = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
+                    APP.rdr.wall_vert_count += vert_count;
 
-                    ForU32(i, vrt_count)
+                    ForU32(i, vert_count)
                     {
-                        Rdr_Vertex *vrt = vrt_start + i;
+                        Rdr_Vertex *vrt = vert_start + i;
                         SDL_zerop(vrt);
                         vrt->color = (V3){1,1,0};
                         vrt->normal = (V3){1,0,0};
                     }
 
                     Col_Vertices col = sprite->collision_vertices;
-                    vrt_start[0].p = V3_Make_XZ_Y(col.arr[0], 0.f);
-                    vrt_start[1].p = V3_Make_XZ_Y(col.arr[1], 0.f);
-                    vrt_start[2].p = V3_Make_XZ_Y(col.arr[2], 0.f);
-                    vrt_start[3].p = V3_Make_XZ_Y(col.arr[3], 0.f);
-                    vrt_start[4].p = V3_Make_XZ_Y(col.arr[0], 1.f);
-                    vrt_start[5].p = V3_Make_XZ_Y(col.arr[1], 1.f);
-                    vrt_start[6].p = V3_Make_XZ_Y(col.arr[2], 1.f);
-                    vrt_start[7].p = V3_Make_XZ_Y(col.arr[3], 1.f);
+                    vert_start[0].p = V3_Make_XZ_Y(col.arr[0], 0.f);
+                    vert_start[1].p = V3_Make_XZ_Y(col.arr[1], 0.f);
+                    vert_start[2].p = V3_Make_XZ_Y(col.arr[2], 0.f);
+                    vert_start[3].p = V3_Make_XZ_Y(col.arr[3], 0.f);
+                    vert_start[4].p = V3_Make_XZ_Y(col.arr[0], 80.f);
+                    vert_start[5].p = V3_Make_XZ_Y(col.arr[1], 80.f);
+                    vert_start[6].p = V3_Make_XZ_Y(col.arr[2], 80.f);
+                    vert_start[7].p = V3_Make_XZ_Y(col.arr[3], 80.f);
 
-                    ForU32(i, vrt_count)
+                    ForU32(i, vert_count)
                     {
-                        Rdr_Vertex *vrt = vrt_start + i;
-                        SDL_zerop(vrt);
+                        Rdr_Vertex *vrt = vert_start + i;
+                        vrt->p.x += obj->p.x;
+                        vrt->p.z += obj->p.y;
                         vrt->p.x *= shader_scale.x;
                         vrt->p.y *= shader_scale.x;
                         vrt->p.z *= shader_scale.y;
@@ -407,7 +412,7 @@ static void Game_Init(AppState *app)
         float thickness = 20.f;
         float length = 400.f;
         float off = length*0.5f - thickness*0.5f;
-        Object_CreateWall(app, (V2){off, 0}, (V2){thickness, length});
+        Object_CreateWall(app, (V2){0, 0}, (V2){thickness, length});
         Object_CreateWall(app, (V2){-off, 0}, (V2){thickness, length});
         Object_CreateWall(app, (V2){0, off}, (V2){length, thickness});
         Object_CreateWall(app, (V2){0,-off}, (V2){length*0.5f, thickness});

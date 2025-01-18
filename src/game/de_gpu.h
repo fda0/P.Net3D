@@ -8,9 +8,14 @@ typedef struct
 typedef struct
 {
     SDL_GPUDevice *device;
-    SDL_GPUBuffer *buf_vrt;
-    SDL_GPUBuffer *buf_ind;
-    SDL_GPUBuffer *buf_instance_storage;
+    SDL_GPUBuffer *model_vert_buf;
+    SDL_GPUBuffer *model_indx_buf;
+    SDL_GPUBuffer *model_instance_buf;
+
+    SDL_GPUBuffer *wall_vert_buf;
+    SDL_GPUBuffer *wall_indx_buf;
+    SDL_GPUBuffer *wall_instance_buf;
+
     SDL_GPUSampleCount sample_count;
     SDL_GPUGraphicsPipeline *pipeline;
 
