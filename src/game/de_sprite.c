@@ -62,13 +62,13 @@ static void Sprite_RecalculateCollsionNormals(Sprite *sprite)
     }
 }
 
-static void Sprite_UpdateCollisionVertices(Sprite *sprite, Col_Vertices collision_vertices)
+static void Sprite_UpdateCollisionVertices(Sprite *sprite, CollisionVertices collision_vertices)
 {
     sprite->collision_vertices = collision_vertices;
     Sprite_RecalculateCollsionNormals(sprite);
 }
 
-static Sprite *Sprite_CreateNoTex(AppState *app, Col_Vertices collision_vertices)
+static Sprite *Sprite_CreateNoTex(AppState *app, CollisionVertices collision_vertices)
 {
     Assert(app->sprite_count < ArrayCount(app->sprite_pool));
     Sprite *sprite = app->sprite_pool + app->sprite_count;
@@ -98,7 +98,7 @@ static Sprite *Sprite_Create(AppState *app, const char *texture_path, Uint32 tex
     tex_half_dim.y /= (float)tex_frames;
     tex_half_dim = V2_Scale(tex_half_dim, 0.5f);
 
-    Col_Vertices default_col_verts = {0};
+    CollisionVertices default_col_verts = {0};
     default_col_verts.arr[0] = (V2){-tex_half_dim.x, -tex_half_dim.y};
     default_col_verts.arr[1] = (V2){ tex_half_dim.x, -tex_half_dim.y};
     default_col_verts.arr[2] = (V2){ tex_half_dim.x,  tex_half_dim.y};

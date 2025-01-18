@@ -87,7 +87,7 @@ static void Tick_AdvanceSimulation(AppState *app)
             float closest_obstacle_separation_dist = FLT_MAX;
             V2 closest_obstacle_wall_normal = {0};
 
-            Col_Vertices obj_verts = obj_sprite->collision_vertices;
+            CollisionVertices obj_verts = obj_sprite->collision_vertices;
             Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj->p);
             V2 obj_center = Vertices_Average(obj_verts.arr, ArrayCount(obj_verts.arr));
 
@@ -99,7 +99,7 @@ static void Tick_AdvanceSimulation(AppState *app)
 
                 Sprite *obstacle_sprite = Sprite_Get(app, obstacle->sprite_id);
 
-                Col_Vertices obstacle_verts = obstacle_sprite->collision_vertices;
+                CollisionVertices obstacle_verts = obstacle_sprite->collision_vertices;
                 Vertices_Offset(obstacle_verts.arr, ArrayCount(obstacle_verts.arr), obstacle->p);
                 V2 obstacle_center = Vertices_Average(obstacle_verts.arr, ArrayCount(obstacle_verts.arr));
 
@@ -112,12 +112,12 @@ static void Tick_AdvanceSimulation(AppState *app)
                 ForU32(sat_iteration, 2)
                 {
                     bool use_obj_normals = !sat_iteration;
-                    Col_Normals normals = (use_obj_normals ?
+                    CollisionNormals normals = (use_obj_normals ?
                                            obj_sprite->collision_normals :
                                            obstacle_sprite->collision_normals);
 
-                    Col_Projection proj_obj = CollisionProjection(normals, obj_verts);
-                    Col_Projection proj_obstacle = CollisionProjection(normals, obstacle_verts);
+                    CollisionProjection proj_obj = CalculateCollisionProjection(normals, obj_verts);
+                    CollisionProjection proj_obstacle = CalculateCollisionProjection(normals, obstacle_verts);
 
                     ForArray(i, proj_obj.arr)
                     {

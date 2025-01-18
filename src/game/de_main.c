@@ -177,7 +177,7 @@ static void Game_IssueDrawCommands(AppState *app)
                         }
                     }
 
-                    Col_Vertices col = sprite->collision_vertices;
+                    CollisionVertices col = sprite->collision_vertices;
                     vert_start[0].p = V3_Make_XZ_Y(col.arr[0], 0.f);
                     vert_start[1].p = V3_Make_XZ_Y(col.arr[1], 0.f);
                     vert_start[2].p = V3_Make_XZ_Y(col.arr[2], 0.f);
@@ -403,7 +403,7 @@ static void Game_Init(AppState *app)
 
     Sprite *sprite_dude = Sprite_Create(app, "../res/pxart/dude_walk.png", 5);
     {
-        sprite_dude->collision_vertices = Vertices_FromRect((V2){0}, (V2){20, 10});
+        sprite_dude->collision_vertices = CollisionVertices_FromRect((V2){0}, (V2){20, 10});
         Sprite_CollisionVerticesOffset(sprite_dude, (V2){0, -8});
         app->sprite_dude_id = Sprite_IdFromPointer(app, sprite_dude);
     }

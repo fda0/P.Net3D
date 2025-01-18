@@ -1,16 +1,16 @@
 typedef struct
 {
     V2 arr[4];
-} Col_Vertices;
-typedef Col_Vertices Col_Normals; // @todo rename?
+} CollisionVertices;
+typedef CollisionVertices CollisionNormals;
 
-static Col_Vertices Vertices_FromRect(V2 p, V2 dim)
+static CollisionVertices CollisionVertices_FromRect(V2 p, V2 dim)
 {
     V2 half_dim = V2_Scale(dim, 0.5f);
     V2 p0 = V2_Sub(p, half_dim);
     V2 p1 = V2_Add(p, half_dim);
 
-    Col_Vertices result = {0};
+    CollisionVertices result = {0};
     result.arr[0] = (V2){p0.x, p0.y};
     result.arr[1] = (V2){p1.x, p0.y};
     result.arr[2] = (V2){p1.x, p1.y};

@@ -126,7 +126,7 @@ static Object *Object_Create(AppState *app, Obj_Category category, Uint32 sprite
 static Object *Object_CreateWall(AppState *app, V2 p, V2 dim)
 {
     V2 half_dim = V2_Scale(dim, 0.5f);
-    Col_Vertices collision_verts = {0};
+    CollisionVertices collision_verts = {0};
     collision_verts.arr[0] = (V2){-half_dim.x, -half_dim.y};
     collision_verts.arr[1] = (V2){ half_dim.x, -half_dim.y};
     collision_verts.arr[2] = (V2){ half_dim.x,  half_dim.y};
@@ -162,11 +162,11 @@ static Object *Object_CreatePlayer(AppState *app)
 typedef struct
 {
     RngF arr[4];
-} Col_Projection;
+} CollisionProjection;
 
-static Col_Projection CollisionProjection(Col_Normals normals, Col_Vertices verts)
+static CollisionProjection CalculateCollisionProjection(CollisionNormals normals, CollisionVertices verts)
 {
-    Col_Projection result = {0};
+    CollisionProjection result = {0};
 
     static_assert(ArrayCount(result.arr) == ArrayCount(normals.arr));
     ForArray(normal_index, normals.arr)

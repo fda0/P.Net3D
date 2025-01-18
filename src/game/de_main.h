@@ -2,8 +2,8 @@ typedef struct
 {
     SDL_Texture *tex;
     Uint32 tex_frames;
-    Col_Vertices collision_vertices;
-    Col_Normals collision_normals;
+    CollisionVertices collision_vertices;
+    CollisionNormals collision_normals;
 } Sprite;
 
 typedef enum
