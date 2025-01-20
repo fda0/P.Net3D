@@ -1,25 +1,24 @@
-# demongus
-A game/engine. Initially inspired by [Among Us](https://store.steampowered.com/app/945360/Among_Us/).
-
-Requires SDL3
+# P.Net3D
+3D game/engine with networking. Continuation of previous project (2D) (https://github.com/fda0/demongus / https://github.com/poleonek/demongus).
+Uses SDL3 & SDL_net. Currently only on Windows is supported due to dependency on DirectX12. Adding Vulkan support should be relatively easy as the project uses SDL_gpu api to abstract GPU setup boilerplate.
 
 ## CLONING THE PROJECT
-This repository uses git submodules to include SDL3.
+Repository uses git submodules to include SDL3.
 
 To download the repo and SDL3 at the same time run:
 ```bash
-git clone --recurse-submodules git@github.com:poleonek/demongus.git
+git clone --recurse-submodules git@github.com:fda0/P.Net3D.git
 ```
 To clone repo and update submodules separately run:
 ```bash
-git clone git@github.com:poleonek/demongus.git
+git clone git@github.com:fda0/P.Net3D.git
 git submodule update --init --recursive
 ```
 
 ## BUILD
-On Linux: `./build.sh`
-
 On Windows: `./build.bat`
+
+On Linux: `./build.sh`
 
 Example commands:
 ```bash
@@ -30,19 +29,6 @@ Example commands:
 ```
 ```bash
 ./build.sh sdl game release
-```
-### Windows SDL build workaround
-Building CMake SDL from .bat file seems to be broken.
-What works from me is calling SDL build commands manually from Developer pwsh.exe (new powershell + cl compiler).
-Sorry about that, would be nice to fix this.
-```bat
-cd libs\SDL
-cmake -S . -B build\win -DSDL_STATIC=ON && cmake --build build\win
-cd ..\..
-
-cd libs\SDL_image
-cmake -S . -B build\win -DSDLIMAGE_VENDORED=OFF -DBUILD_SHARED_LIBS=OFF "-DSDL3_DIR=..\SDL\build\win" && cmake --build build\win
-cd ..\..
 ```
 
 # Resources

@@ -67,8 +67,8 @@ VSOutput ShaderGameVS(VSInput input)
 
     float4x4 modelTransform = idMat;
     modelTransform = mul(instance_data.transform, modelTransform);
-    modelTransform = mul(CameraRotationProj, modelTransform);
     modelTransform = mul(CameraMoveProj, modelTransform);
+    modelTransform = mul(CameraRotationProj, modelTransform);
     modelTransform = mul(PerspectiveProj, modelTransform);
 
     VSOutput output;

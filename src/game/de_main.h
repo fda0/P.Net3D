@@ -103,12 +103,8 @@ struct AppState
     bool pathing_marker_set;
 
     // camera
-    V2 camera_p;
-    // :: camera_range ::
-    // how much of the world is visible in the camera
-    // float camera_scale = Max(width, height) / camera_range
-    float camera_range;
-    float camera_scale; // calculated from camera_range and window dimensions
+    V3 camera_p;
+    V3 camera_rot;
 
     // debug
     struct
@@ -116,6 +112,8 @@ struct AppState
         float fixed_dt;
         bool single_tick_stepping;
         bool unpause_one_tick;
+
+        bool noclip_camera;
 
         bool draw_collision_box;
         float collision_sprite_animation_t;

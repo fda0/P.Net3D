@@ -2,7 +2,6 @@ typedef struct
 {
     SDL_GPUTexture *tex_depth, *tex_msaa, *tex_resolve;
     U32 draw_width, draw_height;
-    V3 camera_rot;
 } Gpu_WindowState;
 
 typedef struct

@@ -12,8 +12,10 @@ static V2 Game_WorldToScreen(AppState *app, V2 pos)
     pos.x -= app->camera_p.x;
     pos.y -= app->camera_p.y;
 
+#if 0
     pos.x *= app->camera_scale;
     pos.y *= app->camera_scale;
+#endif
 
     pos.x += window_transform.x;
     pos.y += window_transform.y;
@@ -27,7 +29,9 @@ static V2 Game_ScreenToWorld(AppState *app, V2 pos)
 {
     V2 window_transform = (V2){app->window_width*0.5f, app->window_height*0.5f};
 
+#if 0
     float scale_inv = 1.f / app->camera_scale;
+#endif
 
     // fix y axis direction to +Y up (SDL uses +Y down, -Y up)
     pos.y = app->window_height - pos.y;
@@ -35,8 +39,10 @@ static V2 Game_ScreenToWorld(AppState *app, V2 pos)
     pos.x -= window_transform.x;
     pos.y -= window_transform.y;
 
+#if 0
     pos.x *= scale_inv;
     pos.y *= scale_inv;
+#endif
 
     // apply camera transform
     pos.x += app->camera_p.x;
@@ -339,21 +345,26 @@ static void Game_Iterate(AppState *app)
 
 
     // move camera; calculate camera scale
+    if (APP.debug.noclip_camera)
     {
-        // pos
+        V3 camera_dir = {0};
+        if (app->keyboard[SDL_SCANCODE_I]) camera_dir.z += 1;
+        if (app->keyboard[SDL_SCANCODE_K]) camera_dir.z -= 1;
+        if (app->keyboard[SDL_SCANCODE_J]) camera_dir.x += 1;
+        if (app->keyboard[SDL_SCANCODE_L]) camera_dir.x -= 1;
+        if (app->keyboard[SDL_SCANCODE_U]) camera_dir.y += 1;
+        if (app->keyboard[SDL_SCANCODE_O]) camera_dir.y -= 1;
+        camera_dir = V3_Normalize(camera_dir);
+        camera_dir = V3_Scale(camera_dir, APP.dt * 10.f);
+        APP.camera_p = V3_Add(APP.camera_p, camera_dir);
+    }
+    else
+    {
         Object *player = Object_Get(app, app->client.player_key, ObjCategory_Net);
         if (!Object_IsNil(player))
         {
-            app->camera_p = player->p;
+            app->camera_p = V3_Make_XZ_Y(player->p, -10.f);
         }
-
-        // scale
-        {
-            float wh = Max(app->window_width, app->window_height); // pick bigger window dimension
-            app->camera_scale = wh / app->camera_range;
-        }
-
-        app->world_mouse = Game_ScreenToWorld(app, app->mouse);
     }
 
     if (app->mouse_keys & SDL_BUTTON_RMASK)
@@ -376,6 +387,7 @@ static void Game_Init(AppState *app)
     {
         //app->debug.fixed_dt = 0.1f;
         //app->debug.single_tick_stepping = true;
+        //app->debug.noclip_camera = true;
         app->debug.draw_collision_box = true;
         app->log_filter &= ~(LogFlags_NetDatagram);
     }
@@ -384,8 +396,16 @@ static void Game_Init(AppState *app)
 
     app->frame_time = SDL_GetTicks();
     app->sprite_count += 1; // reserve sprite under index 0 as special 'nil' value
+#if 1
+    // camera
+    {
+        app->camera_p = (V3){0, -10.f, -15.f};
+        app->camera_rot = (V3){0.1f, 0, 0};
+    }
+#else
     app->camera_range = 500;
     app->camera_scale = 1.f;
+#endif
     app->tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
 
     // this assumes we run the game from build directory

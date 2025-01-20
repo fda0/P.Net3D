@@ -423,26 +423,15 @@ static void Gpu_Iterate()
         Gpu_TransferBuffer(APP.gpu.wall_vert_buf, APP.rdr.wall_verts, sizeof(APP.rdr.wall_verts));
     }
 
+    // camera matrices
     {
-        APP.gpu.win_state.camera_rot = (V3){0.1f, 0.0f, 0.0f};
-        //APP.gpu.win_state.camera_rot.x += 0.0006f;
-        //APP.gpu.win_state.camera_rot.y += 0.0004f;
-        //APP.gpu.win_state.camera_rot.z += 0.0002f;
-        //APP.gpu.win_state.camera_rot.x = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.x);
-        //APP.gpu.win_state.camera_rot.y = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.y);
-        //APP.gpu.win_state.camera_rot.z = WrapF(0.f, 1.f, APP.gpu.win_state.camera_rot.z);
+        Mat4 camera_move_mat = Mat4_Translation(APP.camera_p);
 
-        Mat4 camera_rot_mat = Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.x, (V3){1,0,0});
-        camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.y, (V3){0,1,0}), camera_rot_mat);
-        camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.gpu.win_state.camera_rot.z, (V3){0,0,1}), camera_rot_mat);
+        Mat4 camera_rot_mat = Mat4_Rotation_RH(APP.camera_rot.x, (V3){1,0,0});
+        camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.y, (V3){0,1,0}), camera_rot_mat);
+        camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.z, (V3){0,0,1}), camera_rot_mat);
 
-        V3 camera_move = {};
-        camera_move.z = -20.f;
-        Mat4 camera_move_mat = Mat4_Translation(camera_move);
-
-        // ----
         Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.21f, (float)draw_width/draw_height, 0.01f, 1000.f);
-
 
         Mat4 all_mats[] =
         {
