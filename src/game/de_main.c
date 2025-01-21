@@ -348,12 +348,12 @@ static void Game_Iterate(AppState *app)
     if (APP.debug.noclip_camera)
     {
         V3 camera_dir = {0};
-        if (app->keyboard[SDL_SCANCODE_I]) camera_dir.z += 1;
-        if (app->keyboard[SDL_SCANCODE_K]) camera_dir.z -= 1;
-        if (app->keyboard[SDL_SCANCODE_J]) camera_dir.x += 1;
-        if (app->keyboard[SDL_SCANCODE_L]) camera_dir.x -= 1;
-        if (app->keyboard[SDL_SCANCODE_U]) camera_dir.y += 1;
-        if (app->keyboard[SDL_SCANCODE_O]) camera_dir.y -= 1;
+        if (app->keyboard[SDL_SCANCODE_I]) camera_dir.x += 1;
+        if (app->keyboard[SDL_SCANCODE_K]) camera_dir.x -= 1;
+        if (app->keyboard[SDL_SCANCODE_J]) camera_dir.y += 1;
+        if (app->keyboard[SDL_SCANCODE_L]) camera_dir.y -= 1;
+        if (app->keyboard[SDL_SCANCODE_U]) camera_dir.z -= 1;
+        if (app->keyboard[SDL_SCANCODE_O]) camera_dir.z += 1;
         camera_dir = V3_Normalize(camera_dir);
         camera_dir = V3_Scale(camera_dir, APP.dt * 10.f);
         APP.camera_p = V3_Add(APP.camera_p, camera_dir);
@@ -387,7 +387,7 @@ static void Game_Init(AppState *app)
     {
         //app->debug.fixed_dt = 0.1f;
         //app->debug.single_tick_stepping = true;
-        //app->debug.noclip_camera = true;
+        app->debug.noclip_camera = true;
         app->debug.draw_collision_box = true;
         app->log_filter &= ~(LogFlags_NetDatagram);
     }

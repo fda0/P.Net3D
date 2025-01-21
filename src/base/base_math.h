@@ -520,38 +520,6 @@ static Mat4 Mat4_Translation(V3 move)
     return res;
 }
 
-// Produces a right-handed orthographic projection matrix with Z ranging from 0 to 1 (the DirectX convention).
-// Left, Right, Bottom, and Top specify the coordinates of their respective clipping planes.
-// Near and Far specify the distances to the near and far clipping planes.
-static Mat4 Mat4_Orthographic_RH_ZO(float left, float right, float bottom, float top, float near, float far)
-{
-    Mat4 res = {};
-    res.elem[0][0] = 2.0f / (right - left);
-    res.elem[1][1] = 2.0f / (top - bottom);
-    res.elem[2][2] = 1.0f / (near - far);
-    res.elem[3][3] = 1.0f;
-
-    res.elem[3][0] = (left + right) / (left - right);
-    res.elem[3][1] = (bottom + top) / (bottom - top);
-    res.elem[3][2] = (near) / (near - far);
-    return res;
-}
-
-static Mat4 Mat4_Perspective_RH_ZO(float fov_y, float aspect_ratio, float near, float far)
-{
-    // See https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
-    float cotangent = 1.0f / TanF(fov_y * 0.5f);
-
-    Mat4 res = {};
-    res.elem[0][0] = cotangent / aspect_ratio;
-    res.elem[1][1] = cotangent;
-    res.elem[2][3] = -1.0f;
-
-    res.elem[2][2] = (far) / (near - far);
-    res.elem[3][2] = (near * far) / (near - far);
-    return res;
-}
-
 static Mat4 Mat4_Perspective_RH_NO(float fov_y, float aspect_ratio, float near, float far)
 {
     // See https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
