@@ -53,6 +53,7 @@ struct AppState
     Uint64 frame_id;
     Uint64 frame_time;
     float dt;
+    float at;
     Uint64 tick_id;
     float tick_dt_accumulator;
 

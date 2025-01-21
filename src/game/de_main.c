@@ -133,7 +133,7 @@ static void Game_IssueDrawCommands(AppState *app)
                 sdl_verts[3].tex_coord = (SDL_FPoint){0, tex_y0};
             }
 
-            V2 shader_scale = {0.05f, -0.05f};
+            float shader_scale = 0.05f;
 
             if (obj->flags & ObjectFlag_Move)
             {
@@ -149,8 +149,8 @@ static void Game_IssueDrawCommands(AppState *app)
                     inst_data->color.z = obj->sprite_color.b;
 
                     V3 move = {};
-                    move.x = obj->p.x * shader_scale.x;
-                    move.z = obj->p.y * shader_scale.y;
+                    move.x = obj->p.x * shader_scale;
+                    move.y = obj->p.y * shader_scale;
                     Mat4 move_mat = Mat4_Translation(move);
                     Mat4 rot_mat = Mat4_Rotation_RH(-0.06f, (V3){0,0,1});
                     if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
@@ -164,10 +164,6 @@ static void Game_IssueDrawCommands(AppState *app)
                 U32 vert_count = 8;
                 if (APP.rdr.wall_vert_count + vert_count <= ArrayCount(APP.rdr.wall_verts))
                 {
-                    V3 move = {};
-                    move.x = obj->p.x * shader_scale.x;
-                    move.z = obj->p.y * shader_scale.y;
-
                     Rdr_Vertex *vert_start = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
                     APP.rdr.wall_vert_count += vert_count;
 
@@ -184,23 +180,21 @@ static void Game_IssueDrawCommands(AppState *app)
                     }
 
                     CollisionVertices col = sprite->collision_vertices;
-                    vert_start[0].p = V3_Make_XZ_Y(col.arr[0], 0.f);
-                    vert_start[1].p = V3_Make_XZ_Y(col.arr[1], 0.f);
-                    vert_start[2].p = V3_Make_XZ_Y(col.arr[2], 0.f);
-                    vert_start[3].p = V3_Make_XZ_Y(col.arr[3], 0.f);
-                    vert_start[4].p = V3_Make_XZ_Y(col.arr[0], 40.f);
-                    vert_start[5].p = V3_Make_XZ_Y(col.arr[1], 40.f);
-                    vert_start[6].p = V3_Make_XZ_Y(col.arr[2], 40.f);
-                    vert_start[7].p = V3_Make_XZ_Y(col.arr[3], 40.f);
+                    vert_start[0].p = V3_Make_XY_Z(col.arr[0], 0.f);
+                    vert_start[1].p = V3_Make_XY_Z(col.arr[1], 0.f);
+                    vert_start[2].p = V3_Make_XY_Z(col.arr[2], 0.f);
+                    vert_start[3].p = V3_Make_XY_Z(col.arr[3], 0.f);
+                    vert_start[4].p = V3_Make_XY_Z(col.arr[0], 30.f);
+                    vert_start[5].p = V3_Make_XY_Z(col.arr[1], 30.f);
+                    vert_start[6].p = V3_Make_XY_Z(col.arr[2], 30.f);
+                    vert_start[7].p = V3_Make_XY_Z(col.arr[3], 30.f);
 
                     ForU32(i, vert_count)
                     {
                         Rdr_Vertex *vrt = vert_start + i;
                         vrt->p.x += obj->p.x;
-                        vrt->p.z += obj->p.y;
-                        vrt->p.x *= shader_scale.x;
-                        vrt->p.y *= shader_scale.x;
-                        vrt->p.z *= shader_scale.y;
+                        vrt->p.y += obj->p.y;
+                        vrt->p = V3_Scale(vrt->p, shader_scale);
                     }
                 }
             }
@@ -318,6 +312,8 @@ static void Game_Iterate(AppState *app)
         {
             app->dt = app->debug.fixed_dt;
         }
+
+        app->at = WrapF(0.f, 1000.f, app->at + app->dt);
     }
 
     Net_IterateReceive(app);
@@ -352,8 +348,8 @@ static void Game_Iterate(AppState *app)
         if (app->keyboard[SDL_SCANCODE_K]) camera_dir.x -= 1;
         if (app->keyboard[SDL_SCANCODE_J]) camera_dir.y += 1;
         if (app->keyboard[SDL_SCANCODE_L]) camera_dir.y -= 1;
-        if (app->keyboard[SDL_SCANCODE_U]) camera_dir.z -= 1;
         if (app->keyboard[SDL_SCANCODE_O]) camera_dir.z += 1;
+        if (app->keyboard[SDL_SCANCODE_U]) camera_dir.z -= 1;
         camera_dir = V3_Normalize(camera_dir);
         camera_dir = V3_Scale(camera_dir, APP.dt * 10.f);
         APP.camera_p = V3_Add(APP.camera_p, camera_dir);

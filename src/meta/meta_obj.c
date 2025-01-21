@@ -140,55 +140,7 @@ static void M_Pr_AddObjTokenNumber(Printer *pr, M_ObjToken t)
         Pr_Add(pr, S8Lit("f"));
 }
 
-static I32 M_ParseInt(S8 number)
-{
-    char buf[128];
-    if (number.size > ArrayCount(buf) - 1)
-        number.size = ArrayCount(buf) - 1;
-
-    memcpy(buf, number.str, number.size);
-    buf[number.size] = 0;
-
-    I32 result = SDL_atoi(buf);
-    return result;
-}
-
-static double M_ParseDouble(S8 number)
-{
-    char buf[128];
-    if (number.size > ArrayCount(buf) - 1)
-        number.size = ArrayCount(buf) - 1;
-
-    memcpy(buf, number.str, number.size);
-    buf[number.size] = 0;
-
-    double result = SDL_atof(buf);
-    return result;
-}
-
-static V3 M_ParseV3(S8 x, S8 y, S8 z)
-{
-    V3 res = {M_ParseDouble(x), M_ParseDouble(y), M_ParseDouble(z)};
-    return res;
-}
-
-static void M_Pr_AddFloat(Printer *p, float value)
-{
-    char buf[128];
-    snprintf(buf, sizeof(buf), "%f", value);
-    S8 string = S8_MakeScanCstr(buf);
-    Pr_Add(p, string);
-}
-
-static void M_Pr_AddU16(Printer *p, U16 value)
-{
-    char buf[128];
-    snprintf(buf, sizeof(buf), "%u", (U32)value);
-    S8 string = S8_MakeScanCstr(buf);
-    Pr_Add(p, string);
-}
-
-static void M_ParseObj(const char *path, Printer *out)
+static void M_ParseObj(const char *path, Printer *out, Mat4 vert_transform_matrix)
 {
     U64 tmp_used = M.tmp->used; // save tmp arena used
 
@@ -254,9 +206,13 @@ static void M_ParseObj(const char *path, Printer *out)
                 double n0 = M_ParseDouble(num0.text);
                 double n1 = M_ParseDouble(num1.text);
                 double n2 = M_ParseDouble(num2.text);
-                M.verts[vert_count + 0] = (float)n0;
-                M.verts[vert_count + 1] = (float)n1;
-                M.verts[vert_count + 2] = (float)n2;
+
+                V4 vec = {(float)n0, (float)n1, (float)n2, 1.f};
+                vec = V4_MulM4(vert_transform_matrix, vec);
+
+                M.verts[vert_count + 0] = vec.x;
+                M.verts[vert_count + 1] = vec.y;
+                M.verts[vert_count + 2] = vec.z;
                 vert_count += 3;
             }
             else
@@ -333,9 +289,9 @@ static void M_ParseObj(const char *path, Printer *out)
     {
         Pr_AddCstr(out, "  ");
         // vert
-        M_Pr_AddFloat(out, M.verts[i    ]); Pr_AddCstr(out, "f, ");
-        M_Pr_AddFloat(out, M.verts[i + 1]); Pr_AddCstr(out, "f, ");
-        M_Pr_AddFloat(out, M.verts[i + 2]); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, M.verts[i    ]); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, M.verts[i + 1]); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, M.verts[i + 2]); Pr_AddCstr(out, "f, ");
 
         // color
         Pr_Add(out, S8Lit("/*color*/1.f, 1.f, 1.f, "));
@@ -344,9 +300,9 @@ static void M_ParseObj(const char *path, Printer *out)
         Pr_Add(out, S8Lit("/*normal*/"));
         V3 vert_normal = {M.normals[i], M.normals[i + 1], M.normals[i + 2]};
         vert_normal = V3_Normalize(vert_normal);
-        M_Pr_AddFloat(out, vert_normal.x); Pr_AddCstr(out, "f, ");
-        M_Pr_AddFloat(out, vert_normal.y); Pr_AddCstr(out, "f, ");
-        M_Pr_AddFloat(out, vert_normal.z); Pr_AddCstr(out, "f,\n");
+        Pr_AddFloat(out, vert_normal.x); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, vert_normal.y); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, vert_normal.z); Pr_AddCstr(out, "f,\n");
     }
     Pr_AddCstr(out, "};\n\n");
 
@@ -357,9 +313,9 @@ static void M_ParseObj(const char *path, Printer *out)
     {
         Pr_AddCstr(out, "  ");
         // data
-        M_Pr_AddU16(out, M.inds[i    ]); Pr_AddCstr(out, ", ");
-        M_Pr_AddU16(out, M.inds[i + 1]); Pr_AddCstr(out, ", ");
-        M_Pr_AddU16(out, M.inds[i + 2]); Pr_AddCstr(out, ",\n");
+        Pr_AddU16(out, M.inds[i    ]); Pr_AddCstr(out, ", ");
+        Pr_AddU16(out, M.inds[i + 1]); Pr_AddCstr(out, ", ");
+        Pr_AddU16(out, M.inds[i + 2]); Pr_AddCstr(out, ",\n");
     }
     Pr_AddCstr(out, "};\n\n");
 

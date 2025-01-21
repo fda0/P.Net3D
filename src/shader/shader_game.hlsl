@@ -80,7 +80,7 @@ VSOutput ShaderGameVS(VSInput input)
 
 float4 ShaderGamePS(VSOutput input) : SV_Target0
 {
-    float3 sun_dir = normalize(float3(1.0f, 0.5f, -0.25f));
+    float3 sun_dir = normalize(float3(-1.0f, 0.5f, 0.25f));
     float3 sun_proj = dot(sun_dir, input.Normal.xyz);
 
     float4 result = input.Color;

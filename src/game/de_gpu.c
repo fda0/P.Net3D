@@ -425,7 +425,7 @@ static void Gpu_Iterate()
 
     // camera matrices
     {
-        Mat4 camera_move_mat = Mat4_Translation(APP.camera_p);
+        Mat4 camera_move_mat = Mat4_InvTranslation(Mat4_Translation(APP.camera_p));
 
         Mat4 camera_rot_mat = Mat4_Rotation_RH(APP.camera_rot.x, (V3){1,0,0});
         camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.y, (V3){0,1,0}), camera_rot_mat);

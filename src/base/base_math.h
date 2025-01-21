@@ -169,13 +169,21 @@ typedef union
     float E[3];
 } V3;
 
-static V3 V3_Make_XZ(V2 xz)
+static V3 V3_Make_XY_Z(V2 xy, float z)
 {
-    return (V3){xz.x, 0.f, xz.y};
+    return (V3){xy.x, xy.y, z};
 }
 static V3 V3_Make_XZ_Y(V2 xz, float y)
 {
     return (V3){xz.x, y, xz.y};
+}
+static V3 V3_Make_YX_Z(V2 xy, float z)
+{
+    return (V3){xy.y, xy.x, z};
+}
+static V3 V3_Make_ZY_X(V2 zy, float x)
+{
+    return (V3){zy.x, zy.y, x};
 }
 
 static V3 V3_Scale(V3 a, float scale)
@@ -396,7 +404,7 @@ static ColorF ColorF_ChangeA(ColorF f, float a)
 
 // ---
 // Matrix
-// Heavy duty matrix math fucs were ported from HandmadeMath.h
+// Heavy duty matrix math funcs were ported from HandmadeMath.h
 // ---
 typedef union
 {
@@ -418,6 +426,11 @@ static Mat4 Mat4_Diagonal(float value)
     res.elem[2][2] = value;
     res.elem[3][3] = value;
     return res;
+}
+
+static Mat4 Mat4_Identity()
+{
+    return Mat4_Diagonal(1.f);
 }
 
 static Mat4 Mat4_Transpose(Mat4 mat)
@@ -490,6 +503,12 @@ static Mat4 Mat4_Mul(Mat4 left, Mat4 right)
     return res;
 }
 
+static V4 V4_MulM4(Mat4 mat, V4 vec)
+{
+    return LinearCombineV4M4(vec, mat);
+}
+
+
 static Mat4 Mat4_Rotation_RH(float turns, V3 axis)
 {
     axis = V3_Normalize(axis);
@@ -520,6 +539,15 @@ static Mat4 Mat4_Translation(V3 move)
     return res;
 }
 
+static Mat4 Mat4_InvTranslation(Mat4 translation_mat)
+{
+    Mat4 res = translation_mat;
+    res.elem[3][0] = -res.elem[3][0];
+    res.elem[3][1] = -res.elem[3][1];
+    res.elem[3][2] = -res.elem[3][2];
+    return res;
+}
+
 static Mat4 Mat4_Perspective_RH_NO(float fov_y, float aspect_ratio, float near, float far)
 {
     // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
@@ -528,13 +556,13 @@ static Mat4 Mat4_Perspective_RH_NO(float fov_y, float aspect_ratio, float near, 
     float cotangent = 1.0f / TanF(fov_y * 0.5f);
 
     Mat4 res = {};
-    res.elem[1][0] = cotangent / aspect_ratio;
+    res.elem[1][0] = -cotangent / aspect_ratio;
 
-    res.elem[2][1] = -cotangent;
+    res.elem[2][1] = cotangent;
 
-    res.elem[0][2] = (near + far) / (near - far);
+    res.elem[0][2] = -(near + far) / (near - far);
     res.elem[3][2] = (2.0f * near * far) / (near - far);
 
-    res.elem[0][3] = -1.0f;
+    res.elem[0][3] = 1.0f;
     return res;
 }
