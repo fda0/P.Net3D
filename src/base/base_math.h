@@ -522,14 +522,19 @@ static Mat4 Mat4_Translation(V3 move)
 
 static Mat4 Mat4_Perspective_RH_NO(float fov_y, float aspect_ratio, float near, float far)
 {
-    // See https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
+    // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
+    // Modified to work with +x fordward, -y right, +z up coordinate system (same as Source engine).
+
     float cotangent = 1.0f / TanF(fov_y * 0.5f);
 
     Mat4 res = {};
-    res.elem[0][0] = cotangent / aspect_ratio;
-    res.elem[1][1] = cotangent;
-    res.elem[2][2] = (near + far) / (near - far);
-    res.elem[2][3] = -1.0f;
+    res.elem[1][0] = cotangent / aspect_ratio;
+
+    res.elem[2][1] = -cotangent;
+
+    res.elem[0][2] = (near + far) / (near - far);
     res.elem[3][2] = (2.0f * near * far) / (near - far);
+
+    res.elem[0][3] = -1.0f;
     return res;
 }

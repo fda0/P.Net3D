@@ -399,8 +399,8 @@ static void Game_Init(AppState *app)
 #if 1
     // camera
     {
-        app->camera_p = (V3){0, -10.f, -15.f};
-        app->camera_rot = (V3){0.1f, 0, 0};
+        //app->camera_p = (V3){0, -10.f, -15.f};
+        //app->camera_rot = (V3){0.1f, 0, 0};
     }
 #else
     app->camera_range = 500;
