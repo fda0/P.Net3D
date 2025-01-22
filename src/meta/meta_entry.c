@@ -23,7 +23,7 @@ int main()
         U64 tmp_used = M.tmp->used; // save tmp arena used
 
         Printer pr_out = Pr_Alloc(M.tmp, Megabyte(1));
-        M_ParseObj("../res/models/teapot.obj", &pr_out, Mat4_Rotation_RH(0.25f, (V3){1,0,0}));
+        M_ParseObj("../res/models/teapot.obj", &pr_out, (M_ModelSpec){.scale = 10.f, .rot_x = 0.25f});
         M_SaveFile("../src/gen/gen_models.hx", Pr_S8(&pr_out));
 
         Arena_Reset(M.tmp, tmp_used); // restore tmp arena used

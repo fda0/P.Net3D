@@ -1,8 +1,8 @@
 # P.Net3D
 3D game/engine with networking. Continuation of previous project (2D) (https://github.com/fda0/demongus / https://github.com/poleonek/demongus).
-Uses SDL3 & SDL_net. Currently only on Windows is supported due to dependency on DirectX12. Adding Vulkan support should be relatively easy as the project uses SDL_gpu api to abstract GPU setup boilerplate.
+Uses SDL3 & SDL_net. Currently only Windows is supported due to a dependency on DirectX12. Adding Vulkan support in the future should be relatively easy as the project uses SDL_gpu api to handle GPU boilerplate setup.
 
-## CLONING THE PROJECT
+## Cloning the project
 Repository uses git submodules to include SDL3.
 
 To download the repo and SDL3 at the same time run:
@@ -15,8 +15,8 @@ git clone git@github.com:fda0/P.Net3D.git
 git submodule update --init --recursive
 ```
 
-## BUILD
-On Windows: `./build.bat`
+## Build
+On Windows: `build.bat`
 
 On Linux: `./build.sh`
 
@@ -28,6 +28,7 @@ Example commands:
 ./build.sh game
 ```
 ```bash
+# todo
 ./build.sh sdl game release
 ```
 

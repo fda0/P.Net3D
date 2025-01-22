@@ -530,6 +530,24 @@ static Mat4 Mat4_Rotation_RH(float turns, V3 axis)
     return res;
 }
 
+static Mat4 Mat4_Scale(V3 scale)
+{
+    Mat4 res = Mat4_Diagonal(1.f);
+    res.elem[0][0] = scale.x;
+    res.elem[1][1] = scale.y;
+    res.elem[2][2] = scale.z;
+    return res;
+}
+
+static Mat4 Mat4_ScaleF(float scale)
+{
+    Mat4 res = Mat4_Diagonal(1.f);
+    res.elem[0][0] = scale;
+    res.elem[1][1] = scale;
+    res.elem[2][2] = scale;
+    return res;
+}
+
 static Mat4 Mat4_Translation(V3 move)
 {
     Mat4 res = Mat4_Diagonal(1.f);

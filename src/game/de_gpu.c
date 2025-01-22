@@ -431,7 +431,7 @@ static void Gpu_Iterate()
         camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.y, (V3){0,1,0}), camera_rot_mat);
         camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.z, (V3){0,0,1}), camera_rot_mat);
 
-        Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.21f, (float)draw_width/draw_height, 0.01f, 1000.f);
+        Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.21f, (float)draw_width/draw_height, 1.f, 1000.f);
 
         Mat4 all_mats[] =
         {

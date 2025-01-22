@@ -133,7 +133,7 @@ static void Game_IssueDrawCommands(AppState *app)
                 sdl_verts[3].tex_coord = (SDL_FPoint){0, tex_y0};
             }
 
-            float shader_scale = 0.05f;
+            float shader_scale = 1.f;
 
             if (obj->flags & ObjectFlag_Move)
             {
@@ -359,7 +359,8 @@ static void Game_Iterate(AppState *app)
         Object *player = Object_Get(app, app->client.player_key, ObjCategory_Net);
         if (!Object_IsNil(player))
         {
-            app->camera_p = V3_Make_XZ_Y(player->p, -10.f);
+            app->camera_p = V3_Make_XY_Z(player->p, 70.f);
+            app->camera_p.x -= 50.f;
         }
     }
 
@@ -383,7 +384,7 @@ static void Game_Init(AppState *app)
     {
         //app->debug.fixed_dt = 0.1f;
         //app->debug.single_tick_stepping = true;
-        app->debug.noclip_camera = true;
+        //app->debug.noclip_camera = true;
         app->debug.draw_collision_box = true;
         app->log_filter &= ~(LogFlags_NetDatagram);
     }
@@ -395,8 +396,8 @@ static void Game_Init(AppState *app)
 #if 1
     // camera
     {
-        //app->camera_p = (V3){0, -10.f, -15.f};
-        //app->camera_rot = (V3){0.1f, 0, 0};
+        app->camera_p = (V3){-50.f, 0, 70.f};
+        app->camera_rot = (V3){0, -0.1f, 0};
     }
 #else
     app->camera_range = 500;

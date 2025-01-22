@@ -1,5 +1,11 @@
 typedef struct
 {
+    float scale; // set to 1 if equal to 0
+    float rot_x, rot_y, rot_z;
+} M_ModelSpec;
+
+typedef struct
+{
     const char *path;
     S8 src;
     U64 at;
@@ -140,9 +146,20 @@ static void M_Pr_AddObjTokenNumber(Printer *pr, M_ObjToken t)
         Pr_Add(pr, S8Lit("f"));
 }
 
-static void M_ParseObj(const char *path, Printer *out, Mat4 vert_transform_matrix)
+static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 {
     U64 tmp_used = M.tmp->used; // save tmp arena used
+
+
+    Mat4 transform_mat = Mat4_Diagonal(1.f);
+    if (spec.scale)
+    {
+        transform_mat = Mat4_Mul(Mat4_ScaleF(spec.scale), transform_mat);
+    }
+    transform_mat = Mat4_Mul(Mat4_Rotation_RH(spec.rot_x, (V3){1,0,0}), transform_mat);
+    transform_mat = Mat4_Mul(Mat4_Rotation_RH(spec.rot_y, (V3){0,1,0}), transform_mat);
+    transform_mat = Mat4_Mul(Mat4_Rotation_RH(spec.rot_z, (V3){0,0,1}), transform_mat);
+
 
     S8 model_name = S8_MakeScanCstr(path);
     {
@@ -208,7 +225,7 @@ static void M_ParseObj(const char *path, Printer *out, Mat4 vert_transform_matri
                 double n2 = M_ParseDouble(num2.text);
 
                 V4 vec = {(float)n0, (float)n1, (float)n2, 1.f};
-                vec = V4_MulM4(vert_transform_matrix, vec);
+                vec = V4_MulM4(transform_mat, vec);
 
                 M.verts[vert_count + 0] = vec.x;
                 M.verts[vert_count + 1] = vec.y;
