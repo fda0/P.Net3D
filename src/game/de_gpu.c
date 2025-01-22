@@ -449,12 +449,6 @@ static void Gpu_Init()
                     .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
                     .instance_step_rate = 0,
                 },
-                {
-                    .slot = 1,
-                    .pitch = sizeof(Rdr_ModelInstanceData),
-                    .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-                    .instance_step_rate = 0,
-                },
             },
             .num_vertex_attributes = 3,
             .vertex_attributes = (SDL_GPUVertexAttribute[])
@@ -628,10 +622,6 @@ static void Gpu_Iterate()
                     .offset = 0,
                 };
                 SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
-            }
-            // bind instance storage buffer
-            {
-                SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.wall_instance_buf, 1);
             }
 
             SDL_DrawGPUIndexedPrimitives(pass, index_count, 1, 0, 0, 0);

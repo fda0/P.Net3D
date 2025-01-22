@@ -10,7 +10,6 @@ struct VSInput
     float3 Position : TEXCOORD0;
     float3 Color : TEXCOORD1;
     float3 Normal : TEXCOORD2;
-    uint InstanceIndex : SV_InstanceID;
 };
 
 struct VSOutput
@@ -19,14 +18,6 @@ struct VSOutput
     float4 Normal : TEXCOORD1;
     float4 Position : SV_Position;
 };
-
-struct VSModelInstanceData
-{
-    float4x4 transform;
-    float4 color;
-};
-
-StructuredBuffer<VSModelInstanceData> InstanceBuffer : register(t0);
 
 VSOutput ShaderWallVS(VSInput input)
 {
@@ -40,12 +31,9 @@ VSOutput ShaderWallVS(VSInput input)
     shadow_mat[2][3] = 0.f;
     shadow_mat[3][3] = 0.f;
 
-    VSModelInstanceData instance_data = InstanceBuffer[input.InstanceIndex];
-
     float3 pos = input.Position;
 
     float4 color = float4(input.Color, 1.0f);
-    color = color * instance_data.color;
 
     float4x4 idMat;
     idMat[0][0] = 1.f;
@@ -66,7 +54,6 @@ VSOutput ShaderWallVS(VSInput input)
     idMat[3][3] = 1.f;
 
     float4x4 modelTransform = idMat;
-    modelTransform = mul(instance_data.transform, modelTransform);
     modelTransform = mul(CameraMoveProj, modelTransform);
     modelTransform = mul(CameraRotationProj, modelTransform);
     modelTransform = mul(PerspectiveProj, modelTransform);
