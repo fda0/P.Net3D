@@ -1,32 +1,5 @@
 #define GPU_DEPTH_CLEAR_FLOAT 1.0f
 
-static SDL_GPUShader *Gpu_LoadShader(bool is_vertex)
-{
-    SDL_GPUShaderCreateInfo createinfo;
-    createinfo.num_samplers = 0;
-    createinfo.num_storage_buffers = is_vertex ? 1 : 0;
-    createinfo.num_storage_textures = 0;
-    createinfo.num_uniform_buffers = is_vertex ? 1 : 0;
-    createinfo.props = 0;
-
-    SDL_GPUShaderFormat format = SDL_GetGPUShaderFormats(APP.gpu.device);
-    if (format & SDL_GPU_SHADERFORMAT_DXIL)
-    {
-        createinfo.format = SDL_GPU_SHADERFORMAT_DXIL;
-        createinfo.code = is_vertex ? g_ShaderGameVS : g_ShaderGamePS;
-        createinfo.code_size = is_vertex ? sizeof(g_ShaderGameVS) : sizeof(g_ShaderGamePS);
-        createinfo.entrypoint = is_vertex ? "ShaderGameVS" : "ShaderGamePS";
-    }
-    else
-    {
-        Assert(0); // @todo report that user's gpu doesn't support anything we support
-        return 0;
-    }
-
-    createinfo.stage = is_vertex ? SDL_GPU_SHADERSTAGE_VERTEX : SDL_GPU_SHADERSTAGE_FRAGMENT;
-    return SDL_CreateGPUShader(APP.gpu.device, &createinfo);
-}
-
 static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
 {
     SDL_PropertiesID props = SDL_CreateProperties();
@@ -268,8 +241,41 @@ static void Gpu_Init()
         Gpu_TransferBuffer(APP.gpu.model_vert_buf, MODEL_VERTEX_ARR, sizeof(MODEL_VERTEX_ARR));
         Gpu_TransferBuffer(APP.gpu.model_indx_buf, MODEL_INDEX_ARR, sizeof(MODEL_INDEX_ARR));
 
-        SDL_GPUShader *vertex_shader = Gpu_LoadShader(true);
-        SDL_GPUShader *fragment_shader = Gpu_LoadShader(false);
+        SDL_GPUShader *vertex_shader = 0;
+        {
+            SDL_GPUShaderCreateInfo create_info =
+            {
+                .stage = SDL_GPU_SHADERSTAGE_VERTEX,
+                .num_samplers = 0,
+                .num_storage_buffers = 1,
+                .num_storage_textures = 0,
+                .num_uniform_buffers = 1,
+
+                .format = SDL_GPU_SHADERFORMAT_DXIL,
+                .code = g_ShaderModelVS,
+                .code_size = sizeof(g_ShaderModelVS),
+                .entrypoint = "ShaderGameVS",
+            };
+            vertex_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
+        }
+
+        SDL_GPUShader *fragment_shader = 0;
+        {
+            SDL_GPUShaderCreateInfo create_info =
+            {
+                .stage = SDL_GPU_SHADERSTAGE_FRAGMENT,
+                .num_samplers = 0,
+                .num_storage_buffers = 0,
+                .num_storage_textures = 0,
+                .num_uniform_buffers = 0,
+
+                .format = SDL_GPU_SHADERFORMAT_DXIL,
+                .code = g_ShaderModelPS,
+                .code_size = sizeof(g_ShaderModelPS),
+                .entrypoint = "ShaderGamePS",
+            };
+            fragment_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
+        }
 
         SDL_GPUGraphicsPipelineCreateInfo pipeline =
             Gpu_DefaultSDLPipeline(&color_desc, vertex_shader, fragment_shader);
@@ -393,8 +399,41 @@ static void Gpu_Init()
             Gpu_TransferBuffer(APP.gpu.wall_indx_buf, APP.rdr.wall_indices, sizeof(APP.rdr.wall_indices));
         }
 
-        SDL_GPUShader *vertex_shader = Gpu_LoadShader(true);
-        SDL_GPUShader *fragment_shader = Gpu_LoadShader(false);
+        SDL_GPUShader *vertex_shader = 0;
+        {
+            SDL_GPUShaderCreateInfo create_info =
+            {
+                .stage = SDL_GPU_SHADERSTAGE_VERTEX,
+                .num_samplers = 0,
+                .num_storage_buffers = 1,
+                .num_storage_textures = 0,
+                .num_uniform_buffers = 1,
+
+                .format = SDL_GPU_SHADERFORMAT_DXIL,
+                .code = g_ShaderWallVS,
+                .code_size = sizeof(g_ShaderWallVS),
+                .entrypoint = "ShaderGameVS",
+            };
+            vertex_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
+        }
+
+        SDL_GPUShader *fragment_shader = 0;
+        {
+            SDL_GPUShaderCreateInfo create_info =
+            {
+                .stage = SDL_GPU_SHADERSTAGE_FRAGMENT,
+                .num_samplers = 0,
+                .num_storage_buffers = 0,
+                .num_storage_textures = 0,
+                .num_uniform_buffers = 0,
+
+                .format = SDL_GPU_SHADERFORMAT_DXIL,
+                .code = g_ShaderWallPS,
+                .code_size = sizeof(g_ShaderWallPS),
+                .entrypoint = "ShaderGamePS",
+            };
+            fragment_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
+        }
 
         SDL_GPUGraphicsPipelineCreateInfo pipeline =
             Gpu_DefaultSDLPipeline(&color_desc, vertex_shader, fragment_shader);

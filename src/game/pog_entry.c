@@ -41,8 +41,10 @@ static AppState APP;
 #include "de_tick.c"
 #include "de_main.c"
 
-#include "gen_shader_game.vert.hx"
-#include "gen_shader_game.frag.hx"
+#include "gen_shader_model.vert.hx"
+#include "gen_shader_model.frag.hx"
+#include "gen_shader_wall.vert.hx"
+#include "gen_shader_wall.frag.hx"
 #include "gen_models.hx"
 #include "de_gpu.c"
 

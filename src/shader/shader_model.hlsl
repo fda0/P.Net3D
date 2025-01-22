@@ -28,7 +28,7 @@ struct VSModelInstanceData
 
 StructuredBuffer<VSModelInstanceData> InstanceBuffer : register(t0);
 
-VSOutput ShaderGameVS(VSInput input)
+VSOutput ShaderModelVS(VSInput input)
 {
     float4x4 shadow_mat = CameraRotationProj;
     shadow_mat[3][0] = 0.f;
@@ -78,7 +78,7 @@ VSOutput ShaderGameVS(VSInput input)
     return output;
 }
 
-float4 ShaderGamePS(VSOutput input) : SV_Target0
+float4 ShaderModelPS(VSOutput input) : SV_Target0
 {
     float3 sun_dir = normalize(float3(-1.0f, 0.5f, 0.25f));
     float3 sun_proj = dot(sun_dir, input.Normal.xyz);
