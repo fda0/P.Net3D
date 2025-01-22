@@ -171,15 +171,64 @@ static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U64 data_s
     SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
 }
 
+static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultSDLPipeline(SDL_GPUColorTargetDescription *color,
+                                                                SDL_GPUShader *vertex,
+                                                                SDL_GPUShader *fragment)
+{
+    SDL_GPUGraphicsPipelineCreateInfo pipeline =
+    {
+        .target_info =
+        {
+            .num_color_targets = 1,
+            .color_target_descriptions = color,
+            .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
+            .has_depth_stencil_target = true,
+        },
+        .depth_stencil_state =
+        {
+            .enable_depth_test = true,
+            .enable_depth_write = true,
+            .compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
+        },
+        .multisample_state =
+        {
+            .sample_count = APP.gpu.sample_count,
+        },
+        .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+        .vertex_shader = vertex,
+        .fragment_shader = fragment,
+        .props = 0
+    };
+    return pipeline;
+}
+
 static void Gpu_Init()
 {
+    APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    bool msaa = false;
+    if (msaa)
     {
-        SDL_GPUShader *vertex_shader = Gpu_LoadShader(true);
-        SDL_GPUShader *fragment_shader = Gpu_LoadShader(false);
+        SDL_GPUTextureFormat tex_format =
+            SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window);
 
-        //
-        // model
-        //
+        bool supports_msaa =
+            SDL_GPUTextureSupportsSampleCount(APP.gpu.device, tex_format,
+                                              SDL_GPU_SAMPLECOUNT_4);
+
+        if (supports_msaa)
+        {
+            APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_4;
+        }
+    }
+
+    SDL_GPUColorTargetDescription color_desc = {
+        .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
+    };
+
+    //
+    // model
+    //
+    {
         // create model vertex buffer
         {
             SDL_GPUBufferCreateInfo buffer_desc = {
@@ -219,9 +268,65 @@ static void Gpu_Init()
         Gpu_TransferBuffer(APP.gpu.model_vert_buf, MODEL_VERTEX_ARR, sizeof(MODEL_VERTEX_ARR));
         Gpu_TransferBuffer(APP.gpu.model_indx_buf, MODEL_INDEX_ARR, sizeof(MODEL_INDEX_ARR));
 
-        //
-        // wall
-        //
+        SDL_GPUShader *vertex_shader = Gpu_LoadShader(true);
+        SDL_GPUShader *fragment_shader = Gpu_LoadShader(false);
+
+        SDL_GPUGraphicsPipelineCreateInfo pipeline =
+            Gpu_DefaultSDLPipeline(&color_desc, vertex_shader, fragment_shader);
+
+        pipeline.vertex_input_state = (SDL_GPUVertexInputState)
+        {
+            .num_vertex_buffers = 2,
+            .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[])
+            {
+                {
+                    .slot = 0,
+                    .pitch = sizeof(Rdr_Vertex),
+                    .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                    .instance_step_rate = 0,
+                },
+                {
+                    .slot = 1,
+                    .pitch = sizeof(Rdr_ModelInstanceData),
+                    .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                    .instance_step_rate = 0,
+                },
+            },
+            .num_vertex_attributes = 3,
+            .vertex_attributes = (SDL_GPUVertexAttribute[])
+            {
+                {
+                    .buffer_slot = 0,
+                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                    .location = 0,
+                    .offset = 0,
+                },
+                {
+                    .buffer_slot = 0,
+                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                    .location = 1,
+                    .offset = sizeof(float) * 3,
+                },
+                {
+                    .buffer_slot = 0,
+                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                    .location = 2,
+                    .offset = sizeof(float) * 6,
+                },
+            },
+        };
+
+        APP.gpu.model_pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+        Assert(APP.gpu.model_pipeline); // @todo report user to error and exit program on fail
+
+        SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
+        SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
+    }
+
+    //
+    // wall
+    //
+    {
         // create wall vertex buffer
         {
             SDL_GPUBufferCreateInfo buffer_desc = {
@@ -288,101 +393,56 @@ static void Gpu_Init()
             Gpu_TransferBuffer(APP.gpu.wall_indx_buf, APP.rdr.wall_indices, sizeof(APP.rdr.wall_indices));
         }
 
-        APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_1;
+        SDL_GPUShader *vertex_shader = Gpu_LoadShader(true);
+        SDL_GPUShader *fragment_shader = Gpu_LoadShader(false);
 
-        bool msaa = false;
-        if (msaa)
+        SDL_GPUGraphicsPipelineCreateInfo pipeline =
+            Gpu_DefaultSDLPipeline(&color_desc, vertex_shader, fragment_shader);
+
+        pipeline.vertex_input_state = (SDL_GPUVertexInputState)
         {
-            SDL_GPUTextureFormat tex_format =
-                SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window);
-
-            bool supports_msaa =
-                SDL_GPUTextureSupportsSampleCount(APP.gpu.device, tex_format,
-                                                  SDL_GPU_SAMPLECOUNT_4);
-
-            if (supports_msaa)
+            .num_vertex_buffers = 2,
+            .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[])
             {
-                APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_4;
-            }
-        }
-
-        // setup pipeline
-        {
-            SDL_GPUColorTargetDescription color_target_desc = {
-                .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
-            };
-
-            SDL_GPUGraphicsPipelineCreateInfo pipelinedesc =
+                {
+                    .slot = 0,
+                    .pitch = sizeof(Rdr_Vertex),
+                    .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                    .instance_step_rate = 0,
+                },
+                {
+                    .slot = 1,
+                    .pitch = sizeof(Rdr_ModelInstanceData),
+                    .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                    .instance_step_rate = 0,
+                },
+            },
+            .num_vertex_attributes = 3,
+            .vertex_attributes = (SDL_GPUVertexAttribute[])
             {
-                .target_info =
                 {
-                    .num_color_targets = 1,
-                    .color_target_descriptions = &color_target_desc,
-                    .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
-                    .has_depth_stencil_target = true,
+                    .buffer_slot = 0,
+                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                    .location = 0,
+                    .offset = 0,
                 },
-                .depth_stencil_state =
                 {
-                    .enable_depth_test = true,
-                    .enable_depth_write = true,
-                    .compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
+                    .buffer_slot = 0,
+                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                    .location = 1,
+                    .offset = sizeof(float) * 3,
                 },
-                .multisample_state =
                 {
-                    .sample_count = APP.gpu.sample_count,
+                    .buffer_slot = 0,
+                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                    .location = 2,
+                    .offset = sizeof(float) * 6,
                 },
-                .vertex_input_state =
-                {
-                    .num_vertex_buffers = 2,
-                    .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[])
-                    {
-                        {
-                            .slot = 0,
-                            .pitch = sizeof(Rdr_Vertex),
-                            .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-                            .instance_step_rate = 0,
-                        },
-#if 1
-                        {
-                            .slot = 1,
-                            .pitch = sizeof(Rdr_ModelInstanceData),
-                            .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-                            .instance_step_rate = 0,
-                        },
-#endif
-                    },
-                    .num_vertex_attributes = 3,
-                    .vertex_attributes = (SDL_GPUVertexAttribute[])
-                    {
-                        {
-                            .buffer_slot = 0,
-                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
-                            .location = 0,
-                            .offset = 0,
-                        },
-                        {
-                            .buffer_slot = 0,
-                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
-                            .location = 1,
-                            .offset = sizeof(float) * 3,
-                        },
-                        {
-                            .buffer_slot = 0,
-                            .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
-                            .location = 2,
-                            .offset = sizeof(float) * 6,
-                        },
-                    },
-                },
-                .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-                .vertex_shader = vertex_shader,
-                .fragment_shader = fragment_shader,
-                .props = 0
-            };
+            },
+        };
 
-            APP.gpu.pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipelinedesc);
-            Assert(APP.gpu.pipeline); // @todo report user to error and exit program on fail
-        }
+        APP.gpu.wall_pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+        Assert(APP.gpu.wall_pipeline); // @todo report user to error and exit program on fail
 
         SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
         SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
@@ -481,10 +541,9 @@ static void Gpu_Iterate()
     // render pass
     {
         SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
-        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipeline);
 
         // model
-        if (1)
+        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.model_pipeline);
         {
             // bind vertex buffer
             {
@@ -511,7 +570,7 @@ static void Gpu_Iterate()
         }
 
         // walls
-        if (1)
+        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.wall_pipeline);
         {
             U32 index_count = (APP.rdr.wall_vert_count / 8) * 36;
 

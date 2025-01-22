@@ -15,8 +15,9 @@ typedef struct
     SDL_GPUBuffer *wall_indx_buf;
     SDL_GPUBuffer *wall_instance_buf;
 
-    SDL_GPUSampleCount sample_count;
-    SDL_GPUGraphicsPipeline *pipeline;
+    SDL_GPUGraphicsPipeline *model_pipeline;
+    SDL_GPUGraphicsPipeline *wall_pipeline;
 
+    SDL_GPUSampleCount sample_count;
     Gpu_WindowState win_state;
 } Gpu_State;
