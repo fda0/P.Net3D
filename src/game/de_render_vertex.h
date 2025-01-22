@@ -1,14 +1,20 @@
 typedef struct
 {
-    V3 p, color;
-    V3 normal;
-} Rdr_Vertex;
-
-typedef struct
-{
     Mat4 transform;
     V4 color;
 } Rdr_ModelInstanceData;
+
+typedef struct
+{
+    V3 p, color;
+    V3 normal;
+} Rdr_ModelVertex;
+
+typedef struct
+{
+    V3 p, color;
+    V3 normal;
+} Rdr_WallVertex;
 
 typedef struct
 {
@@ -17,6 +23,6 @@ typedef struct
     U32 instance_count;
 
     U16 wall_indices[1024 * 36];
-    Rdr_Vertex wall_verts[1024 * 8];
+    Rdr_WallVertex wall_verts[1024 * 8];
     U32 wall_vert_count;
 } Rdr_State;

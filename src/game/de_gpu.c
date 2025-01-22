@@ -287,7 +287,7 @@ static void Gpu_Init()
             {
                 {
                     .slot = 0,
-                    .pitch = sizeof(Rdr_Vertex),
+                    .pitch = sizeof(Rdr_ModelVertex),
                     .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
                     .instance_step_rate = 0,
                 },
@@ -440,12 +440,12 @@ static void Gpu_Init()
 
         pipeline.vertex_input_state = (SDL_GPUVertexInputState)
         {
-            .num_vertex_buffers = 2,
+            .num_vertex_buffers = 1,
             .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[])
             {
                 {
                     .slot = 0,
-                    .pitch = sizeof(Rdr_Vertex),
+                    .pitch = sizeof(Rdr_WallVertex),
                     .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
                     .instance_step_rate = 0,
                 },
@@ -609,7 +609,8 @@ static void Gpu_Iterate()
 
             // bind vertex buffer
             {
-                SDL_GPUBufferBinding binding_vrt = {
+                SDL_GPUBufferBinding binding_vrt =
+                {
                     .buffer = APP.gpu.wall_vert_buf,
                     .offset = 0,
                 };
@@ -617,12 +618,24 @@ static void Gpu_Iterate()
             }
             // bind index buffer
             {
-                SDL_GPUBufferBinding binding_ind = {
+                SDL_GPUBufferBinding binding_ind =
+                {
                     .buffer = APP.gpu.wall_indx_buf,
                     .offset = 0,
                 };
                 SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
             }
+#if 0 // @todo
+            // bind fragment sampler
+            {
+                SDL_GPUTextureSamplerBinding binding_sampl =
+                {
+                    .texture = Texture,
+                    .sampler = Sampler,
+                };
+                SDL_BindGPUFragmentSamplers(renderPass, 0, &binding_sampl, 1);
+            }
+#endif
 
             SDL_DrawGPUIndexedPrimitives(pass, index_count, 1, 0, 0, 0);
         }

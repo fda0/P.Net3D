@@ -164,12 +164,12 @@ static void Game_IssueDrawCommands(AppState *app)
                 U32 vert_count = 8;
                 if (APP.rdr.wall_vert_count + vert_count <= ArrayCount(APP.rdr.wall_verts))
                 {
-                    Rdr_Vertex *vert_start = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
+                    Rdr_WallVertex *vert_start = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
                     APP.rdr.wall_vert_count += vert_count;
 
                     ForU32(i, vert_count)
                     {
-                        Rdr_Vertex *vrt = vert_start + i;
+                        Rdr_WallVertex *vrt = vert_start + i;
                         SDL_zerop(vrt);
                         vrt->color = (V3){0.5f, 0.12f, 0};
                         vrt->normal = (V3){1,1,0};
@@ -191,7 +191,7 @@ static void Game_IssueDrawCommands(AppState *app)
 
                     ForU32(i, vert_count)
                     {
-                        Rdr_Vertex *vrt = vert_start + i;
+                        Rdr_WallVertex *vrt = vert_start + i;
                         vrt->p.x += obj->p.x;
                         vrt->p.y += obj->p.y;
                         vrt->p = V3_Scale(vrt->p, shader_scale);

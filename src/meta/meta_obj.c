@@ -299,7 +299,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
     }
 
     Pr_AddCstr(out, "// Model: "); Pr_Add(out, model_name); Pr_AddCstr(out, "\n");
-    Pr_AddCstr(out, "static Rdr_Vertex Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_vrt[] =\n{\n");
+    Pr_AddCstr(out, "static Rdr_ModelVertex Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_vrt[] =\n{\n");
     for (U64 i = 0;
          i + 3 <= vert_count;
          i += 3)
