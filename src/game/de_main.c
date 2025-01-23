@@ -161,46 +161,107 @@ static void Game_IssueDrawCommands(AppState *app)
             }
             else
             {
-                U32 vert_count = 8;
+                U32 face_count = 6;
+                U32 vertices_per_face = 3*2;
+                U32 vert_count = face_count * vertices_per_face;
+
                 if (APP.rdr.wall_vert_count + vert_count <= ArrayCount(APP.rdr.wall_verts))
                 {
-                    Rdr_WallVertex *vert_start = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
+                    Rdr_WallVertex *wall_verts = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
                     APP.rdr.wall_vert_count += vert_count;
 
                     ForU32(i, vert_count)
                     {
-                        Rdr_WallVertex *vrt = vert_start + i;
+                        Rdr_WallVertex *vrt = wall_verts + i;
                         SDL_zerop(vrt);
-                        vrt->color = (V3){0.5f, 0.12f, 0};
+                        vrt->color = (V3){0.95f, 0.7f, 0};
                         vrt->normal = (V3){1,1,0};
-                        if (i > 3)
+                    }
+
+                    {
+                        float height = 30.f;
+                        CollisionVertices col = sprite->collision_vertices;
+                        V3 cube_verts[8] =
                         {
-                            vrt->color = (V3){0.67f, 0.45f, 0.05f};
+                            V3_Make_XY_Z(col.arr[0], 0.f),
+                            V3_Make_XY_Z(col.arr[1], 0.f),
+                            V3_Make_XY_Z(col.arr[2], 0.f),
+                            V3_Make_XY_Z(col.arr[3], 0.f),
+                            V3_Make_XY_Z(col.arr[0], height),
+                            V3_Make_XY_Z(col.arr[1], height),
+                            V3_Make_XY_Z(col.arr[2], height),
+                            V3_Make_XY_Z(col.arr[3], height),
+                        };
+
+                        U32 i = 0;
+                        // front
+                        wall_verts[i++].p = cube_verts[0];
+                        wall_verts[i++].p = cube_verts[1];
+                        wall_verts[i++].p = cube_verts[4];
+                        wall_verts[i++].p = cube_verts[1];
+                        wall_verts[i++].p = cube_verts[5];
+                        wall_verts[i++].p = cube_verts[4];
+                        // bottom
+                        wall_verts[i++].p = cube_verts[3];
+                        wall_verts[i++].p = cube_verts[2];
+                        wall_verts[i++].p = cube_verts[0];
+                        wall_verts[i++].p = cube_verts[2];
+                        wall_verts[i++].p = cube_verts[1];
+                        wall_verts[i++].p = cube_verts[0];
+                        // back
+                        wall_verts[i++].p = cube_verts[7];
+                        wall_verts[i++].p = cube_verts[6];
+                        wall_verts[i++].p = cube_verts[3];
+                        wall_verts[i++].p = cube_verts[6];
+                        wall_verts[i++].p = cube_verts[2];
+                        wall_verts[i++].p = cube_verts[3];
+                        // top
+                        wall_verts[i++].p = cube_verts[4];
+                        wall_verts[i++].p = cube_verts[5];
+                        wall_verts[i++].p = cube_verts[7];
+                        wall_verts[i++].p = cube_verts[5];
+                        wall_verts[i++].p = cube_verts[6];
+                        wall_verts[i++].p = cube_verts[7];
+                        // left
+                        wall_verts[i++].p = cube_verts[4];
+                        wall_verts[i++].p = cube_verts[7];
+                        wall_verts[i++].p = cube_verts[0];
+                        wall_verts[i++].p = cube_verts[7];
+                        wall_verts[i++].p = cube_verts[3];
+                        wall_verts[i++].p = cube_verts[0];
+                        // right
+                        wall_verts[i++].p = cube_verts[6];
+                        wall_verts[i++].p = cube_verts[5];
+                        wall_verts[i++].p = cube_verts[2];
+                        wall_verts[i++].p = cube_verts[5];
+                        wall_verts[i++].p = cube_verts[1];
+                        wall_verts[i++].p = cube_verts[2];
+                        Assert(i == vert_count);
+                    }
+
+                    V2 face_uvs[6] =
+                    {
+                        (V2){0, 0},
+                        (V2){1, 0},
+                        (V2){0, 1},
+                        (V2){1, 0},
+                        (V2){1, 1},
+                        (V2){0, 1},
+                    };
+
+                    ForU32(face_i, face_count)
+                    {
+                        ForU32(vert_i, vertices_per_face)
+                        {
+                            Rdr_WallVertex *vrt = wall_verts + (vert_i + face_i * vertices_per_face);
+                            AssertBounds(vert_i, face_uvs);
+                            vrt->uv = face_uvs[vert_i];
                         }
                     }
 
-                    CollisionVertices col = sprite->collision_vertices;
-                    vert_start[0].p = V3_Make_XY_Z(col.arr[0], 0.f);
-                    vert_start[1].p = V3_Make_XY_Z(col.arr[1], 0.f);
-                    vert_start[2].p = V3_Make_XY_Z(col.arr[2], 0.f);
-                    vert_start[3].p = V3_Make_XY_Z(col.arr[3], 0.f);
-                    vert_start[4].p = V3_Make_XY_Z(col.arr[0], 30.f);
-                    vert_start[5].p = V3_Make_XY_Z(col.arr[1], 30.f);
-                    vert_start[6].p = V3_Make_XY_Z(col.arr[2], 30.f);
-                    vert_start[7].p = V3_Make_XY_Z(col.arr[3], 30.f);
-
-                    vert_start[0].uv = (V2){0,0};
-                    vert_start[1].uv = (V2){1,0};
-                    vert_start[2].uv = (V2){1,1};
-                    vert_start[3].uv = (V2){0,1};
-                    vert_start[4].uv = (V2){0,1};
-                    vert_start[5].uv = (V2){1,1};
-                    vert_start[6].uv = (V2){1,0};
-                    vert_start[7].uv = (V2){0,0};
-
                     ForU32(i, vert_count)
                     {
-                        Rdr_WallVertex *vrt = vert_start + i;
+                        Rdr_WallVertex *vrt = wall_verts + i;
                         vrt->p.x += obj->p.x;
                         vrt->p.y += obj->p.y;
                         vrt->p = V3_Scale(vrt->p, shader_scale);

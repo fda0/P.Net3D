@@ -387,17 +387,6 @@ static void Gpu_Init()
             Assert(APP.gpu.wall_vert_buf); // @todo report
             SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.wall_vert_buf, "Wall vertex buffer");
         }
-        // create wall index buffer
-        {
-            SDL_GPUBufferCreateInfo buffer_desc = {
-                .usage = SDL_GPU_BUFFERUSAGE_INDEX,
-                .size = sizeof(APP.rdr.wall_indices),
-                .props = 0,
-            };
-            APP.gpu.wall_indx_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-            Assert(APP.gpu.wall_indx_buf); // @todo report
-            SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.wall_indx_buf, "Wall index buffer");
-        }
         // create wall per instance storage buffer
         {
             SDL_GPUBufferCreateInfo buffer_desc = {
@@ -414,32 +403,6 @@ static void Gpu_Init()
             noop_instance_data.transform = Mat4_Diagonal(1.f);
             noop_instance_data.color = (V4){1,1,1,1};
             Gpu_TransferBuffer(APP.gpu.wall_instance_buf, &noop_instance_data, sizeof(noop_instance_data));
-        }
-
-        // prepare wall indices
-        {
-            U16 indices[36] =
-            {
-                0,1,4, 1,4,5,
-                0,1,2, 0,3,2,
-                1,2,6, 1,6,5,
-                4,5,7, 5,6,7,
-                3,7,6, 2,3,6,
-                0,4,7, 0,7,3,
-            };
-
-            U32 indices_per_cube = 36;
-            ForU32(i, ArrayCount(APP.rdr.wall_indices) / indices_per_cube)
-            {
-                U16 *idx = APP.rdr.wall_indices + (i * indices_per_cube);
-                U32 off = i * 8;
-                ForArray(j, indices)
-                {
-                    idx[j] = off + indices[j];
-                }
-            }
-
-            Gpu_TransferBuffer(APP.gpu.wall_indx_buf, APP.rdr.wall_indices, sizeof(APP.rdr.wall_indices));
         }
 
         // wall texture
@@ -692,8 +655,6 @@ static void Gpu_Iterate()
         // walls
         SDL_BindGPUGraphicsPipeline(pass, APP.gpu.wall_pipeline);
         {
-            U32 index_count = (APP.rdr.wall_vert_count / 8) * 36;
-
             // bind vertex buffer
             {
                 SDL_GPUBufferBinding binding_vrt =
@@ -702,15 +663,6 @@ static void Gpu_Iterate()
                     .offset = 0,
                 };
                 SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
-            }
-            // bind index buffer
-            {
-                SDL_GPUBufferBinding binding_ind =
-                {
-                    .buffer = APP.gpu.wall_indx_buf,
-                    .offset = 0,
-                };
-                SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
             }
             // bind fragment sampler
             {
@@ -722,7 +674,7 @@ static void Gpu_Iterate()
                 SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
             }
 
-            SDL_DrawGPUIndexedPrimitives(pass, index_count, 1, 0, 0, 0);
+            SDL_DrawGPUPrimitives(pass, APP.rdr.wall_vert_count, 1, 0, 0);
         }
 
         SDL_EndGPURenderPass(pass);
