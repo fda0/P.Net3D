@@ -104,15 +104,13 @@ static void Gpu_ProcessWindowResize()
 static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U64 data_size)
 {
     // create transfer buffer
-    SDL_GPUTransferBuffer *buf_transfer = 0;
+    SDL_GPUTransferBufferCreateInfo trans_desc =
     {
-        SDL_GPUTransferBufferCreateInfo transfer_buffer_desc;
-        transfer_buffer_desc.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-        transfer_buffer_desc.size = data_size;
-        transfer_buffer_desc.props = 0;
-        buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &transfer_buffer_desc);
-        Assert(buf_transfer); // @todo report
-    }
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        .size = data_size
+    };
+    SDL_GPUTransferBuffer *buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
+    Assert(buf_transfer); // @todo report
 
     // CPU memory -> GPU memory
     {
@@ -143,6 +141,51 @@ static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U64 data_s
 
     SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
 }
+
+static void Gpu_TransferTexture(SDL_GPUTexture *gpu_tex,
+                                I32 w, I32 h,
+                                void *data, U64 data_size)
+{
+    // create transfer buffer
+    SDL_GPUTransferBufferCreateInfo trans_desc =
+    {
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        .size = data_size
+    };
+    SDL_GPUTransferBuffer *buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
+    Assert(buf_transfer); // @todo report
+
+    // CPU memory -> GPU memory
+    {
+        void *map = SDL_MapGPUTransferBuffer(APP.gpu.device, buf_transfer, false);
+        memcpy(map, data, data_size);
+        SDL_UnmapGPUTransferBuffer(APP.gpu.device, buf_transfer);
+    }
+
+    // GPU memory -> GPU buffers
+    {
+        SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+        SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+        SDL_GPUTextureTransferInfo trans_info = {
+            .transfer_buffer = buf_transfer,
+            .offset = 0,
+        };
+        SDL_GPUTextureRegion dst_region = {
+            .texture = gpu_tex,
+            .w = w,
+            .h = h,
+            .d = 1,
+        };
+        SDL_UploadToGPUTexture(copy_pass, &trans_info, &dst_region, false);
+
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(cmd);
+    }
+
+    SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
+}
+
 
 static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultSDLPipeline(SDL_GPUColorTargetDescription *color,
                                                                 SDL_GPUShader *vertex,
@@ -399,6 +442,44 @@ static void Gpu_Init()
             Gpu_TransferBuffer(APP.gpu.wall_indx_buf, APP.rdr.wall_indices, sizeof(APP.rdr.wall_indices));
         }
 
+        // wall texture
+        {
+            SDL_Surface *img = IMG_Load("../res/pxart/reference.png");
+            Assert(img); // @todo report
+
+            SDL_GPUTextureCreateInfo tex_info =
+            {
+                .type = SDL_GPU_TEXTURETYPE_2D,
+                .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                .width = img->w,
+                .height = img->h,
+                .layer_count_or_depth = 1,
+                .num_levels = 1,
+                .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
+            };
+            APP.gpu.tex_wall = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
+            SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.tex_wall, "Tex Wall");
+
+            Assert(img->w * img->h * 4 == img->h * img->pitch);
+            Gpu_TransferTexture(APP.gpu.tex_wall, img->w, img->h, img->pixels, img->h*img->pitch);
+
+            SDL_DestroySurface(img);
+        }
+
+        // wall sampler
+        {
+            SDL_GPUSamplerCreateInfo sampler_info =
+            {
+                .min_filter = SDL_GPU_FILTER_LINEAR,
+                .mag_filter = SDL_GPU_FILTER_LINEAR,
+                .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
+                .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+                .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+                .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+            };
+            APP.gpu.wall_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
+        }
+
         SDL_GPUShader *vertex_shader = 0;
         {
             SDL_GPUShaderCreateInfo create_info =
@@ -422,7 +503,7 @@ static void Gpu_Init()
             SDL_GPUShaderCreateInfo create_info =
             {
                 .stage = SDL_GPU_SHADERSTAGE_FRAGMENT,
-                .num_samplers = 0,
+                .num_samplers = 1,
                 .num_storage_buffers = 0,
                 .num_storage_textures = 0,
                 .num_uniform_buffers = 0,
@@ -450,7 +531,7 @@ static void Gpu_Init()
                     .instance_step_rate = 0,
                 },
             },
-            .num_vertex_attributes = 3,
+            .num_vertex_attributes = 4,
             .vertex_attributes = (SDL_GPUVertexAttribute[])
             {
                 {
@@ -470,6 +551,12 @@ static void Gpu_Init()
                     .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
                     .location = 2,
                     .offset = sizeof(float) * 6,
+                },
+                {
+                    .buffer_slot = 0,
+                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+                    .location = 3,
+                    .offset = sizeof(float) * 9,
                 },
             },
         };
@@ -625,17 +712,15 @@ static void Gpu_Iterate()
                 };
                 SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
             }
-#if 0 // @todo
             // bind fragment sampler
             {
                 SDL_GPUTextureSamplerBinding binding_sampl =
                 {
-                    .texture = Texture,
-                    .sampler = Sampler,
+                    .texture = APP.gpu.tex_wall,
+                    .sampler = APP.gpu.wall_sampler,
                 };
-                SDL_BindGPUFragmentSamplers(renderPass, 0, &binding_sampl, 1);
+                SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
             }
-#endif
 
             SDL_DrawGPUIndexedPrimitives(pass, index_count, 1, 0, 0, 0);
         }

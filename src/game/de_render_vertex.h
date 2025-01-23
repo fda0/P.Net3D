@@ -12,8 +12,10 @@ typedef struct
 
 typedef struct
 {
-    V3 p, color;
+    V3 p;
+    V3 color;
     V3 normal;
+    V2 uv;
 } Rdr_WallVertex;
 
 typedef struct

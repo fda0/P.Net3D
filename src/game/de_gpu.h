@@ -14,6 +14,8 @@ typedef struct
     SDL_GPUBuffer *wall_vert_buf;
     SDL_GPUBuffer *wall_indx_buf;
     SDL_GPUBuffer *wall_instance_buf;
+    SDL_GPUSampler *wall_sampler;
+    SDL_GPUTexture *tex_wall;
 
     SDL_GPUGraphicsPipeline *model_pipeline;
     SDL_GPUGraphicsPipeline *wall_pipeline;

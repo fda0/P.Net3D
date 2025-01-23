@@ -189,6 +189,15 @@ static void Game_IssueDrawCommands(AppState *app)
                     vert_start[6].p = V3_Make_XY_Z(col.arr[2], 30.f);
                     vert_start[7].p = V3_Make_XY_Z(col.arr[3], 30.f);
 
+                    vert_start[0].uv = (V2){0,0};
+                    vert_start[1].uv = (V2){1,0};
+                    vert_start[2].uv = (V2){1,1};
+                    vert_start[3].uv = (V2){0,1};
+                    vert_start[4].uv = (V2){0,1};
+                    vert_start[5].uv = (V2){1,1};
+                    vert_start[6].uv = (V2){1,0};
+                    vert_start[7].uv = (V2){0,0};
+
                     ForU32(i, vert_count)
                     {
                         Rdr_WallVertex *vrt = vert_start + i;
