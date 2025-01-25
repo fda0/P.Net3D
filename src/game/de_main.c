@@ -178,19 +178,20 @@ static void Game_IssueDrawCommands(AppState *app)
                         vrt->normal = (V3){1,1,0};
                     }
 
+                    CollisionVertices collision = sprite->collision_vertices;
+                    float height = 30.f;
+
                     {
-                        float height = 30.f;
-                        CollisionVertices col = sprite->collision_vertices;
                         V3 cube_verts[8] =
                         {
-                            V3_Make_XY_Z(col.arr[0], 0.f),
-                            V3_Make_XY_Z(col.arr[1], 0.f),
-                            V3_Make_XY_Z(col.arr[2], 0.f),
-                            V3_Make_XY_Z(col.arr[3], 0.f),
-                            V3_Make_XY_Z(col.arr[0], height),
-                            V3_Make_XY_Z(col.arr[1], height),
-                            V3_Make_XY_Z(col.arr[2], height),
-                            V3_Make_XY_Z(col.arr[3], height),
+                            V3_Make_XY_Z(collision.arr[0], 0.f),
+                            V3_Make_XY_Z(collision.arr[1], 0.f),
+                            V3_Make_XY_Z(collision.arr[2], 0.f),
+                            V3_Make_XY_Z(collision.arr[3], 0.f),
+                            V3_Make_XY_Z(collision.arr[0], height),
+                            V3_Make_XY_Z(collision.arr[1], height),
+                            V3_Make_XY_Z(collision.arr[2], height),
+                            V3_Make_XY_Z(collision.arr[3], height),
                         };
 
                         U32 i = 0;
@@ -239,18 +240,37 @@ static void Game_IssueDrawCommands(AppState *app)
                         Assert(i == vert_count);
                     }
 
-                    V2 face_uvs[6] =
-                    {
-                        (V2){0, 0},
-                        (V2){1, 0},
-                        (V2){0, 1},
-                        (V2){1, 0},
-                        (V2){1, 1},
-                        (V2){0, 1},
-                    };
+
+                    float w0 = V2_Length(V2_Sub(collision.arr[0], collision.arr[1]));
+                    float w1 = V2_Length(V2_Sub(collision.arr[1], collision.arr[2]));
+                    float w2 = V2_Length(V2_Sub(collision.arr[2], collision.arr[3]));
+                    float w3 = V2_Length(V2_Sub(collision.arr[3], collision.arr[0]));
+                    float texels_per_cm = 0.05f;
 
                     ForU32(face_i, face_count)
                     {
+                        V2 face_dim = {1, 1};
+                        switch (face_i)
+                        {
+                            case 0: /* front */  face_dim = (V2){w0, height}; break;
+                            case 1: /* bottom */ face_dim = (V2){w0, w1}; break; // not accurate
+                            case 2: /* back */   face_dim = (V2){w2, height}; break;
+                            case 3: /* top */    face_dim = (V2){w0, w1}; break; // not accurate
+                            case 4: /* left */   face_dim = (V2){w3, height}; break;
+                            case 5: /* right */  face_dim = (V2){w1, height}; break;
+                        }
+
+                        face_dim = V2_Scale(face_dim, texels_per_cm);
+                        V2 face_uvs[6] =
+                        {
+                            (V2){0, 0},
+                            (V2){face_dim.x, 0},
+                            (V2){0, face_dim.y},
+                            (V2){face_dim.x, 0},
+                            (V2){face_dim.x, face_dim.y},
+                            (V2){0, face_dim.y},
+                        };
+
                         ForU32(vert_i, vertices_per_face)
                         {
                             Rdr_WallVertex *vrt = wall_verts + (vert_i + face_i * vertices_per_face);
