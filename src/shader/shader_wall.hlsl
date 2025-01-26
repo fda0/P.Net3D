@@ -24,8 +24,6 @@ VSOutput ShaderWallVS(VSInput input)
 {
     float3 world_sun_pos = normalize(float3(-0.5f, 0.5f, 1.f));
     float in_sun_coef = dot(world_sun_pos, input.Normal);
-
-    float3 pos = input.Position;
     float4 color = float4(input.Color, 1.0f);
     color.xyz *= clamp(in_sun_coef, 0.25f, 1.0f);
 
@@ -35,7 +33,7 @@ VSOutput ShaderWallVS(VSInput input)
 
     VSOutput output;
     output.Color = color;
-    output.Position = mul(modelTransform, float4(pos, 1.0f));
+    output.Position = mul(modelTransform, float4(input.Position, 1.0f));
     output.UV = input.UV;
     return output;
 }

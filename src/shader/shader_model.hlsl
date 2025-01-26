@@ -16,7 +16,6 @@ struct VSInput
 struct VSOutput
 {
     float4 Color : TEXCOORD0;
-    float4 Normal : TEXCOORD1;
     float4 Position : SV_Position;
 };
 
@@ -30,22 +29,13 @@ StructuredBuffer<VSModelInstanceData> InstanceBuffer : register(t0);
 
 VSOutput ShaderModelVS(VSInput input)
 {
-    float4x4 shadow_mat = CameraRotationProj;
-    shadow_mat[3][0] = 0.f;
-    shadow_mat[3][1] = 0.f;
-    shadow_mat[3][2] = 0.f;
-    shadow_mat[3][3] = 0.f;
-    shadow_mat[0][3] = 0.f;
-    shadow_mat[1][3] = 0.f;
-    shadow_mat[2][3] = 0.f;
-    shadow_mat[3][3] = 0.f;
-
     VSModelInstanceData instance_data = InstanceBuffer[input.InstanceIndex];
 
-    float3 pos = input.Position;
-
+    float3 world_sun_pos = normalize(float3(-0.5f, 0.5f, 1.f));
+    float in_sun_coef = dot(world_sun_pos, input.Normal);
     float4 color = float4(input.Color, 1.0f);
-    color = color * instance_data.color;
+    color *= instance_data.color;
+    color.xyz *= clamp(in_sun_coef, 0.25f, 1.0f);
 
     float4x4 modelTransform = instance_data.transform;
     modelTransform = mul(CameraMoveProj, modelTransform);
@@ -54,17 +44,11 @@ VSOutput ShaderModelVS(VSInput input)
 
     VSOutput output;
     output.Color = color;
-    output.Normal = mul(shadow_mat, float4(input.Normal, 1.0f));
-    output.Position = mul(modelTransform, float4(pos, 1.0f));
+    output.Position = mul(modelTransform, float4(input.Position, 1.0f));
     return output;
 }
 
 float4 ShaderModelPS(VSOutput input) : SV_Target0
 {
-    float3 sun_dir = normalize(float3(-1.0f, 0.5f, 0.25f));
-    float3 sun_proj = dot(sun_dir, input.Normal.xyz);
-
-    float4 result = input.Color;
-    result.xyz = lerp(result.xyz, sun_proj, 0.5f);
-    return result;
+    return input.Color;
 }
