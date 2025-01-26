@@ -150,7 +150,7 @@ static Object *Object_CreateWall(AppState *app, V2 p, V2 dim)
 static Object *Object_CreatePlayer(AppState *app)
 {
     Object *player = Object_Create(app, ObjCategory_Net,
-                                   ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_RenderTeapot /*|ObjectFlag_Collide*/ );
+                                   ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_ModelTeapot /*|ObjectFlag_Collide*/ );
 
     player->collision.verts = CollisionVertices_FromRect((V2){0}, (V2){30, 30});
     Collision_RecalculateNormals(&player->collision);

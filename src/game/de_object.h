@@ -13,7 +13,7 @@ typedef enum
     ObjectFlag_Draw          = (1 << 0),
     ObjectFlag_Move          = (1 << 1),
     ObjectFlag_Collide       = (1 << 2),
-    ObjectFlag_RenderTeapot  = (1 << 3),
+    ObjectFlag_ModelTeapot   = (1 << 3),
 } Object_Flags;
 
 typedef enum
@@ -41,7 +41,6 @@ typedef struct
 
     // visuals
     ColorF sprite_color;
-    Uint32 some_number;
 
     // input actions
     bool is_pathing;
@@ -50,6 +49,7 @@ typedef struct
     Collision_Data collision;
 
     // temp
+    Uint32 some_number;
     bool did_collide;
 } Object;
 

@@ -12,7 +12,7 @@ static void Game_IssueDrawCommands(AppState *app)
         Object *obj = app->all_objects + obj_index;
         if (!(obj->flags & ObjectFlag_Draw)) continue;
 
-        if (obj->flags & ObjectFlag_RenderTeapot)
+        if (obj->flags & ObjectFlag_ModelTeapot)
         {
             if (APP.rdr.instance_count < ArrayCount(APP.rdr.instance_data))
             {
@@ -58,6 +58,16 @@ static void Game_IssueDrawCommands(AppState *app)
                 float height = 30.f;
                 CollisionVertices collision = obj->collision.verts;
                 {
+                    U32 cube_index_map[] =
+                    {
+                        0,1,4,1,5,4, // front
+                        6,5,2,5,1,2, // right
+                        7,6,3,6,2,3, // back
+                        4,7,0,7,3,0, // left
+                        4,5,7,5,6,7, // top
+                        3,2,0,2,1,0, // bottom
+                    };
+
                     V3 cube_verts[8] =
                     {
                         V3_Make_XY_Z(collision.arr[0], 0.f),
@@ -70,50 +80,11 @@ static void Game_IssueDrawCommands(AppState *app)
                         V3_Make_XY_Z(collision.arr[3], height),
                     };
 
-                    U32 i = 0;
-                    // front
-                    wall_verts[i++].p = cube_verts[0];
-                    wall_verts[i++].p = cube_verts[1];
-                    wall_verts[i++].p = cube_verts[4];
-                    wall_verts[i++].p = cube_verts[1];
-                    wall_verts[i++].p = cube_verts[5];
-                    wall_verts[i++].p = cube_verts[4];
-                    // bottom
-                    wall_verts[i++].p = cube_verts[3];
-                    wall_verts[i++].p = cube_verts[2];
-                    wall_verts[i++].p = cube_verts[0];
-                    wall_verts[i++].p = cube_verts[2];
-                    wall_verts[i++].p = cube_verts[1];
-                    wall_verts[i++].p = cube_verts[0];
-                    // back
-                    wall_verts[i++].p = cube_verts[7];
-                    wall_verts[i++].p = cube_verts[6];
-                    wall_verts[i++].p = cube_verts[3];
-                    wall_verts[i++].p = cube_verts[6];
-                    wall_verts[i++].p = cube_verts[2];
-                    wall_verts[i++].p = cube_verts[3];
-                    // top
-                    wall_verts[i++].p = cube_verts[4];
-                    wall_verts[i++].p = cube_verts[5];
-                    wall_verts[i++].p = cube_verts[7];
-                    wall_verts[i++].p = cube_verts[5];
-                    wall_verts[i++].p = cube_verts[6];
-                    wall_verts[i++].p = cube_verts[7];
-                    // left
-                    wall_verts[i++].p = cube_verts[4];
-                    wall_verts[i++].p = cube_verts[7];
-                    wall_verts[i++].p = cube_verts[0];
-                    wall_verts[i++].p = cube_verts[7];
-                    wall_verts[i++].p = cube_verts[3];
-                    wall_verts[i++].p = cube_verts[0];
-                    // right
-                    wall_verts[i++].p = cube_verts[6];
-                    wall_verts[i++].p = cube_verts[5];
-                    wall_verts[i++].p = cube_verts[2];
-                    wall_verts[i++].p = cube_verts[5];
-                    wall_verts[i++].p = cube_verts[1];
-                    wall_verts[i++].p = cube_verts[2];
-                    Assert(i == vert_count);
+                    ForArray(i, cube_index_map)
+                    {
+                        U32 index = cube_index_map[i];
+                        wall_verts[i].p = cube_verts[index];
+                    }
                 }
 
                 float w0 = V2_Length(V2_Sub(collision.arr[0], collision.arr[1]));
@@ -128,11 +99,11 @@ static void Game_IssueDrawCommands(AppState *app)
                     switch (face_i)
                     {
                         case 0: /* front */  face_dim = (V2){w0, height}; break;
-                        case 1: /* bottom */ face_dim = (V2){w0, w1}; break; // works for rects only
+                        case 1: /* right */  face_dim = (V2){w1, height}; break;
                         case 2: /* back */   face_dim = (V2){w2, height}; break;
-                        case 3: /* top */    face_dim = (V2){w0, w1}; break; // works for rects only
-                        case 4: /* left */   face_dim = (V2){w3, height}; break;
-                        case 5: /* right */  face_dim = (V2){w1, height}; break;
+                        case 3: /* left */   face_dim = (V2){w3, height}; break;
+                        case 4: /* top */    face_dim = (V2){w0, w1}; break; // works for rects only
+                        case 5: /* bottom */ face_dim = (V2){w0, w1}; break; // works for rects only
                     }
 
                     face_dim = V2_Scale(face_dim, texels_per_cm);
