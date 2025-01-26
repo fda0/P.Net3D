@@ -33,7 +33,6 @@
 
 static AppState APP;
 #include "de_tests.c"
-#include "de_sprite.c"
 #include "de_object.c"
 #include "de_client.c"
 #include "de_server.c"

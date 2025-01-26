@@ -71,7 +71,7 @@ static Object *Object_FromNetIndex(AppState *app, Uint32 net_index)
     return app->net_objects + net_index;
 }
 
-static Object *Object_Create(AppState *app, Obj_Category category, Uint32 sprite_id, Uint32 flags)
+static Object *Object_Create(AppState *app, Obj_Category category, Uint32 flags)
 {
     bool matched_category = false;
     Object *obj = 0;
@@ -118,25 +118,23 @@ static Object *Object_Create(AppState *app, Obj_Category category, Uint32 sprite
 
     obj->flags = flags;
     obj->init = true;
-    obj->sprite_id = sprite_id;
     obj->sprite_color = ColorF_RGB(1,1,1);
     return obj;
 }
 
 static Object *Object_CreateWall(AppState *app, V2 p, V2 dim)
 {
-    V2 half_dim = V2_Scale(dim, 0.5f);
-    CollisionVertices collision_verts = {0};
-    collision_verts.arr[0] = (V2){-half_dim.x, -half_dim.y};
-    collision_verts.arr[1] = (V2){ half_dim.x, -half_dim.y};
-    collision_verts.arr[2] = (V2){ half_dim.x,  half_dim.y};
-    collision_verts.arr[3] = (V2){-half_dim.x,  half_dim.y};
 
-    Sprite *sprite = Sprite_CreateNoTex(app, collision_verts);
     Object *obj = Object_Create(app, ObjCategory_Local,
-                                Sprite_IdFromPointer(app, sprite),
                                 ObjectFlag_Draw|ObjectFlag_Collide);
     obj->p = p;
+
+    V2 half_dim = V2_Scale(dim, 0.5f);
+    obj->collision.verts.arr[0] = (V2){-half_dim.x, -half_dim.y};
+    obj->collision.verts.arr[1] = (V2){ half_dim.x, -half_dim.y};
+    obj->collision.verts.arr[2] = (V2){ half_dim.x,  half_dim.y};
+    obj->collision.verts.arr[3] = (V2){-half_dim.x,  half_dim.y};
+    Collision_RecalculateNormals(&obj->collision);
 
     static float r = 0.f;
     static float g = 0.5f;
@@ -152,8 +150,11 @@ static Object *Object_CreateWall(AppState *app, V2 p, V2 dim)
 static Object *Object_CreatePlayer(AppState *app)
 {
     Object *player = Object_Create(app, ObjCategory_Net,
-                                   app->sprite_dude_id,
-                                   ObjectFlag_Draw|ObjectFlag_Move /*|ObjectFlag_Collide*/ );
+                                   ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_RenderTeapot /*|ObjectFlag_Collide*/ );
+
+    player->collision.verts = CollisionVertices_FromRect((V2){0}, (V2){30, 30});
+    Collision_RecalculateNormals(&player->collision);
+
     player->sprite_color = ColorF_RGB(1, 0.1f, 0.1f);
     return player;
 }
@@ -164,7 +165,7 @@ typedef struct
     RngF arr[4];
 } CollisionProjection;
 
-static CollisionProjection CalculateCollisionProjection(CollisionNormals normals, CollisionVertices verts)
+static CollisionProjection Collision_CalculateProjection(CollisionNormals normals, CollisionVertices verts)
 {
     CollisionProjection result = {0};
 
@@ -186,4 +187,19 @@ static CollisionProjection CalculateCollisionProjection(CollisionNormals normals
     }
 
     return result;
+}
+
+static void Collision_RecalculateNormals(Collision_Data *collision)
+{
+    Uint64 vert_count = ArrayCount(collision->verts.arr);
+    ForU64(vert_id, vert_count)
+    {
+        Uint64 next_vert_id = vert_id + 1;
+        if (next_vert_id >= vert_count)
+            next_vert_id -= vert_count;
+
+        collision->norms.arr[vert_id]
+            = V2_CalculateNormal(collision->verts.arr[vert_id],
+                                 collision->verts.arr[next_vert_id]);
+    }
 }

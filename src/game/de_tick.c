@@ -68,15 +68,13 @@ static void Tick_AdvanceSimulation(AppState *app)
         if (!Object_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_Collide)) continue;
 
         // reset debug flag
-        obj->has_collision = false;
+        obj->did_collide = false;
     }
 
     ForArray(obj_index, app->all_objects)
     {
         Object *obj = app->all_objects + obj_index;
         if (!Object_HasAnyFlag(obj, ObjectFlag_Move)) continue;
-
-        Sprite *obj_sprite = Sprite_Get(app, obj->sprite_id);
 
         // move object
         obj->p = V2_Add(obj->p, obj->dp);
@@ -87,7 +85,7 @@ static void Tick_AdvanceSimulation(AppState *app)
             float closest_obstacle_separation_dist = FLT_MAX;
             V2 closest_obstacle_wall_normal = {0};
 
-            CollisionVertices obj_verts = obj_sprite->collision_vertices;
+            CollisionVertices obj_verts = obj->collision.verts;
             Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj->p);
             V2 obj_center = Vertices_Average(obj_verts.arr, ArrayCount(obj_verts.arr));
 
@@ -97,9 +95,7 @@ static void Tick_AdvanceSimulation(AppState *app)
                 if (!Object_HasAnyFlag(obstacle, ObjectFlag_Collide)) continue;
                 if (obj == obstacle) continue;
 
-                Sprite *obstacle_sprite = Sprite_Get(app, obstacle->sprite_id);
-
-                CollisionVertices obstacle_verts = obstacle_sprite->collision_vertices;
+                CollisionVertices obstacle_verts = obstacle->collision.verts;
                 Vertices_Offset(obstacle_verts.arr, ArrayCount(obstacle_verts.arr), obstacle->p);
                 V2 obstacle_center = Vertices_Average(obstacle_verts.arr, ArrayCount(obstacle_verts.arr));
 
@@ -113,11 +109,11 @@ static void Tick_AdvanceSimulation(AppState *app)
                 {
                     bool use_obj_normals = !sat_iteration;
                     CollisionNormals normals = (use_obj_normals ?
-                                           obj_sprite->collision_normals :
-                                           obstacle_sprite->collision_normals);
+                                           obj->collision.norms :
+                                           obstacle->collision.norms);
 
-                    CollisionProjection proj_obj = CalculateCollisionProjection(normals, obj_verts);
-                    CollisionProjection proj_obstacle = CalculateCollisionProjection(normals, obstacle_verts);
+                    CollisionProjection proj_obj = Collision_CalculateProjection(normals, obj_verts);
+                    CollisionProjection proj_obstacle = Collision_CalculateProjection(normals, obstacle_verts);
 
                     ForArray(i, proj_obj.arr)
                     {
@@ -160,8 +156,8 @@ static void Tick_AdvanceSimulation(AppState *app)
                     closest_obstacle_wall_normal = wall_normal;
                 }
 
-                obj->has_collision |= (biggest_dist < 0.f);
-                obstacle->has_collision |= (biggest_dist < 0.f);
+                obj->did_collide |= (biggest_dist < 0.f);
+                obstacle->did_collide |= (biggest_dist < 0.f);
 
                 skip_this_obstacle:;
             }
@@ -186,47 +182,6 @@ static void Tick_AdvanceSimulation(AppState *app)
             }
         } // collision_iteration
     } // obj_index
-
-
-    // animate textures
-    ForArray(obj_index, app->all_objects)
-    {
-        Object *obj = app->all_objects + obj_index;
-        if (!Object_HasAnyFlag(obj, ObjectFlag_Draw)) continue;
-        if (Sprite_Get(app, obj->sprite_id)->tex_frames <= 1) continue;
-
-        Uint32 frame_index_map[8] =
-        {
-            0, 1, 2, 1,
-            0, 3, 4, 3
-        };
-
-        bool in_idle_frame = (0 == frame_index_map[obj->sprite_animation_index]);
-
-        float distance = V2_Length(V2_Sub(obj->p, obj->prev_p));
-        float anim_speed = (16.f * TIME_STEP);
-        anim_speed += (5.f * distance * TIME_STEP);
-
-        if (!distance && in_idle_frame)
-        {
-            anim_speed = 0.f;
-        }
-        obj->sprite_animation_t += anim_speed;
-
-        {
-            float period = 1.f;
-            Uint32 loop_iterations = 0;
-            while (obj->sprite_animation_t > period)
-            {
-                obj->sprite_animation_t -= period;
-                obj->sprite_animation_index += 1;
-                if (++loop_iterations > 128) break;
-            }
-        }
-
-        obj->sprite_animation_index %= ArrayCount(frame_index_map);
-        obj->sprite_frame_index = frame_index_map[obj->sprite_animation_index];
-    }
 }
 
 static Object Object_Lerp(Object prev, Object next, float t)
@@ -239,14 +194,8 @@ static Object Object_Lerp(Object prev, Object next, float t)
         result.dp = V2_Lerp(prev.dp, next.dp, t);
         result.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
         result.sprite_color = ColorF_Lerp(prev.sprite_color, next.sprite_color, t);
-        result.sprite_animation_t = LerpF(prev.sprite_animation_t, next.sprite_animation_t, t);
-
-        result.sprite_animation_index = (Uint32)RoundF(LerpF((float)prev.sprite_animation_index,
-                                                             (float)next.sprite_animation_index, t));
-        result.sprite_frame_index = (Uint32)RoundF(LerpF((float)prev.sprite_frame_index,
-                                                         (float)next.sprite_frame_index, t));
-        result.has_collision = (Uint32)RoundF(LerpF((float)prev.has_collision,
-                                                    (float)next.has_collision, t));
+        result.did_collide = (Uint32)RoundF(LerpF((float)prev.did_collide,
+                                                  (float)next.did_collide, t));
     }
 
     return result;

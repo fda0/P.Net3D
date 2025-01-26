@@ -1,11 +1,3 @@
-typedef struct
-{
-    SDL_Texture *tex;
-    Uint32 tex_frames;
-    CollisionVertices collision_vertices;
-    CollisionNormals collision_normals;
-} Sprite;
-
 typedef enum
 {
     LogFlags_Idk         = (1 << 0),
@@ -49,6 +41,14 @@ struct AppState
 
     Uint32 log_filter; // active log filer flags
 
+    // special objects
+    Object_Key pathing_marker;
+    bool pathing_marker_set;
+
+    // camera
+    V3 camera_p;
+    V3 camera_rot;
+
     // time
     Uint64 frame_id;
     Uint64 frame_time;
@@ -62,6 +62,17 @@ struct AppState
     V2 world_mouse;
     SDL_MouseButtonFlags mouse_keys;
     bool keyboard[SDL_SCANCODE_COUNT]; // true == key is down
+
+    // objects
+    union
+    {
+        struct
+        {
+            Object const_objects[OBJ_MAX_CONST_OBJECTS];
+            Object net_objects[OBJ_MAX_NETWORK_OBJECTS];
+        };
+        Object all_objects[OBJ_MAX_ALL_OBJECTS];
+    };
 
     // networking
     struct
@@ -81,31 +92,6 @@ struct AppState
 
     Client_State client;
     Server_State server;
-
-    // objects
-    union
-    {
-        struct
-        {
-            Object const_objects[OBJ_MAX_CONST_OBJECTS];
-            Object net_objects[OBJ_MAX_NETWORK_OBJECTS];
-        };
-        Object all_objects[OBJ_MAX_ALL_OBJECTS];
-    };
-
-    // sprites
-    Sprite sprite_pool[32];
-    Uint32 sprite_count;
-    Uint32 sprite_overlay_id;
-    Uint32 sprite_dude_id; // @todo better organization
-
-    // special objects
-    Object_Key pathing_marker;
-    bool pathing_marker_set;
-
-    // camera
-    V3 camera_p;
-    V3 camera_rot;
 
     // debug
     struct
