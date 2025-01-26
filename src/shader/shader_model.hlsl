@@ -47,26 +47,7 @@ VSOutput ShaderModelVS(VSInput input)
     float4 color = float4(input.Color, 1.0f);
     color = color * instance_data.color;
 
-    float4x4 idMat;
-    idMat[0][0] = 1.f;
-    idMat[0][1] = 0.f;
-    idMat[0][2] = 0.f;
-    idMat[0][3] = 0.f;
-    idMat[1][0] = 0.f;
-    idMat[1][1] = 1.f;
-    idMat[1][2] = 0.f;
-    idMat[1][3] = 0.f;
-    idMat[2][0] = 0.f;
-    idMat[2][1] = 0.f;
-    idMat[2][2] = 1.f;
-    idMat[2][3] = 0.f;
-    idMat[3][0] = 0.f;
-    idMat[3][1] = 0.f;
-    idMat[3][2] = 0.f;
-    idMat[3][3] = 1.f;
-
-    float4x4 modelTransform = idMat;
-    modelTransform = mul(instance_data.transform, modelTransform);
+    float4x4 modelTransform = instance_data.transform;
     modelTransform = mul(CameraMoveProj, modelTransform);
     modelTransform = mul(CameraRotationProj, modelTransform);
     modelTransform = mul(PerspectiveProj, modelTransform);

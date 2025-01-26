@@ -16,53 +16,25 @@ struct VSInput
 struct VSOutput
 {
     float4 Color : TEXCOORD0;
-    float4 Normal : TEXCOORD1;
-    float2 UV : TEXCOORD2;
+    float2 UV : TEXCOORD1;
     float4 Position : SV_Position;
 };
 
 VSOutput ShaderWallVS(VSInput input)
 {
-    float4x4 shadow_mat = CameraRotationProj;
-    shadow_mat[3][0] = 0.f;
-    shadow_mat[3][1] = 0.f;
-    shadow_mat[3][2] = 0.f;
-    shadow_mat[3][3] = 0.f;
-    shadow_mat[0][3] = 0.f;
-    shadow_mat[1][3] = 0.f;
-    shadow_mat[2][3] = 0.f;
-    shadow_mat[3][3] = 0.f;
+    float3 world_sun_pos = normalize(float3(-0.5f, 0.5f, 1.f));
+    float in_sun_coef = dot(world_sun_pos, input.Normal);
 
     float3 pos = input.Position;
-
     float4 color = float4(input.Color, 1.0f);
+    color.xyz *= clamp(in_sun_coef, 0.25f, 1.0f);
 
-    float4x4 idMat;
-    idMat[0][0] = 1.f;
-    idMat[0][1] = 0.f;
-    idMat[0][2] = 0.f;
-    idMat[0][3] = 0.f;
-    idMat[1][0] = 0.f;
-    idMat[1][1] = 1.f;
-    idMat[1][2] = 0.f;
-    idMat[1][3] = 0.f;
-    idMat[2][0] = 0.f;
-    idMat[2][1] = 0.f;
-    idMat[2][2] = 1.f;
-    idMat[2][3] = 0.f;
-    idMat[3][0] = 0.f;
-    idMat[3][1] = 0.f;
-    idMat[3][2] = 0.f;
-    idMat[3][3] = 1.f;
-
-    float4x4 modelTransform = idMat;
-    modelTransform = mul(CameraMoveProj, modelTransform);
+    float4x4 modelTransform = CameraMoveProj;
     modelTransform = mul(CameraRotationProj, modelTransform);
     modelTransform = mul(PerspectiveProj, modelTransform);
 
     VSOutput output;
     output.Color = color;
-    output.Normal = mul(shadow_mat, float4(input.Normal, 1.0f));
     output.Position = mul(modelTransform, float4(pos, 1.0f));
     output.UV = input.UV;
     return output;
@@ -73,13 +45,6 @@ SamplerState Sampler : register(s0, space2);
 
 float4 ShaderWallPS(VSOutput input) : SV_Target0
 {
-    float3 sun_dir = normalize(float3(-1.0f, 0.5f, 0.25f));
-    float3 sun_proj = dot(sun_dir, input.Normal.xyz);
-
-    float4 color = input.Color;
-    color.xyz = lerp(color.xyz, sun_proj, 0.5f);
-
-    float4 result = Texture.Sample(Sampler, input.UV);
-    result = result * color;
-    return result;
+    float4 tex_color = Texture.Sample(Sampler, input.UV);
+    return tex_color * input.Color;
 }

@@ -49,13 +49,11 @@ static void Game_IssueDrawCommands(AppState *app)
 
                 ForU32(i, vert_count)
                 {
-                    Rdr_WallVertex *vrt = wall_verts + i;
-                    SDL_zerop(vrt);
-                    vrt->color = (V3){0.95f, 0.7f, 0};
-                    vrt->normal = (V3){1,1,0};
+                    SDL_zerop(&wall_verts[i]);
+                    wall_verts[i].color = (V3){0.95f, 0.7f, 0};
                 }
 
-                float height = 30.f;
+                float height = 30.f + 10.f*SinF(APP.at*0.42f);
                 CollisionVertices collision = obj->collision.verts;
                 {
                     U32 cube_index_map[] =
@@ -67,6 +65,7 @@ static void Game_IssueDrawCommands(AppState *app)
                         4,5,7,5,6,7, // top
                         3,2,0,2,1,0, // bottom
                     };
+                    Assert(ArrayCount(cube_index_map) == vert_count);
 
                     V3 cube_verts[8] =
                     {
@@ -84,6 +83,8 @@ static void Game_IssueDrawCommands(AppState *app)
                     {
                         U32 index = cube_index_map[i];
                         wall_verts[i].p = cube_verts[index];
+                        wall_verts[i].p.x += obj->p.x;
+                        wall_verts[i].p.y += obj->p.y;
                     }
                 }
 
@@ -95,7 +96,8 @@ static void Game_IssueDrawCommands(AppState *app)
 
                 ForU32(face_i, face_count)
                 {
-                    V2 face_dim = {1, 1};
+                    // face texture UVs
+                    V2 face_dim = {};
                     switch (face_i)
                     {
                         case 0: /* front */  face_dim = (V2){w0, height}; break;
@@ -117,19 +119,24 @@ static void Game_IssueDrawCommands(AppState *app)
                         (V2){0, face_dim.y},
                     };
 
+                    // face normals
+                    V3 face_normal = {};
+                    switch (face_i)
+                    {
+                        case 0: /* front */  face_normal = V3_Make_XY_Z(obj->collision.norms.arr[0], 0); break;
+                        case 1: /* right */  face_normal = V3_Make_XY_Z(obj->collision.norms.arr[1], 0); break;
+                        case 2: /* back */   face_normal = V3_Make_XY_Z(obj->collision.norms.arr[2], 0); break;
+                        case 3: /* left */   face_normal = V3_Make_XY_Z(obj->collision.norms.arr[3], 0); break;
+                        case 4: /* top */    face_normal = (V3){0,0,1}; break;
+                        case 5: /* bottom */ face_normal = (V3){0,0,-1}; break;
+                    }
+
                     ForU32(vert_i, vertices_per_face)
                     {
-                        Rdr_WallVertex *vrt = wall_verts + (vert_i + face_i * vertices_per_face);
-                        AssertBounds(vert_i, face_uvs);
-                        vrt->uv = face_uvs[vert_i];
+                        U32 i = vert_i + face_i * vertices_per_face;
+                        wall_verts[i].uv = face_uvs[vert_i];
+                        wall_verts[i].normal = face_normal;
                     }
-                }
-
-                ForU32(i, vert_count)
-                {
-                    Rdr_WallVertex *vrt = wall_verts + i;
-                    vrt->p.x += obj->p.x;
-                    vrt->p.y += obj->p.y;
                 }
             }
         }
