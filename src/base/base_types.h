@@ -80,9 +80,12 @@ typedef int64_t I64;
 
 // Loop macros
 #define ArrayCount(Array) (sizeof(Array)/sizeof(Array[0]))
-#define ForU64(I, Size) for (U32 I = 0; I < (Size); I += 1)
+#define ForU64(I, Size) for (U64 I = 0; I < (Size); I += 1)
 #define ForU32(I, Size) for (U32 I = 0; I < (Size); I += 1)
 #define ForU16(I, Size) for (U16 I = 0; I < (Size); I += 1)
+#define ForI64(I, Size) for (I64 I = 0; I < (Size); I += 1)
+#define ForI32(I, Size) for (I32 I = 0; I < (Size); I += 1)
+#define ForI16(I, Size) for (I16 I = 0; I < (Size); I += 1)
 #define ForArray(I, Array) ForU64(I, ArrayCount(Array))
 
 // Asserts

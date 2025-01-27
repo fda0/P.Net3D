@@ -143,7 +143,7 @@ static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U64 data_s
 }
 
 static void Gpu_TransferTexture(SDL_GPUTexture *gpu_tex,
-                                I32 w, I32 h,
+                                U32 layer, U32 w, U32 h,
                                 void *data, U64 data_size)
 {
     // create transfer buffer
@@ -173,6 +173,7 @@ static void Gpu_TransferTexture(SDL_GPUTexture *gpu_tex,
         };
         SDL_GPUTextureRegion dst_region = {
             .texture = gpu_tex,
+            .layer = layer,
             .w = w,
             .h = h,
             .d = 1,
@@ -407,26 +408,70 @@ static void Gpu_Init()
 
         // wall texture
         {
-            SDL_Surface *img = IMG_Load("../res/pxart/reference.png");
-            Assert(img); // @todo report
+            SDL_Surface *imgs[WorldDir_COUNT] =
+            {
+                IMG_Load("../res/tex/brick_e.png"),
+                IMG_Load("../res/tex/brick_w.png"),
+                IMG_Load("../res/tex/brick_n.png"),
+                IMG_Load("../res/tex/brick_s.png"),
+                IMG_Load("../res/tex/brick_t.png"),
+                IMG_Load("../res/tex/brick_b.png"),
+            };
+            ForArray(i, imgs)
+            {
+                Assert(imgs[i]); // @todo report
+                Assert(imgs[0]->w == imgs[i]->w);
+                Assert(imgs[0]->h == imgs[i]->h);
+                Assert(imgs[0]->pitch == imgs[i]->pitch);
+            }
+            Assert(imgs[0]->pitch == imgs[0]->w*3); // rgb format expected
 
             SDL_GPUTextureCreateInfo tex_info =
             {
-                .type = SDL_GPU_TEXTURETYPE_2D,
+                .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
                 .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-                .width = img->w,
-                .height = img->h,
-                .layer_count_or_depth = 1,
+                .width = imgs[0]->w,
+                .height = imgs[0]->h,
+                .layer_count_or_depth = ArrayCount(imgs),
                 .num_levels = 1,
                 .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
             };
             APP.gpu.tex_wall = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
             SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.tex_wall, "Tex Wall");
 
-            Assert(img->w * img->h * 4 == img->h * img->pitch);
-            Gpu_TransferTexture(APP.gpu.tex_wall, img->w, img->h, img->pixels, img->h*img->pitch);
+            U64 img_size = imgs[0]->w * imgs[0]->h * 4;
+            ForArray(i, imgs)
+            {
+                // temporary: convert rgb -> rgba
+                ArenaScope scope = Arena_StartScope(APP.tmp);
+                U8 *buffer = Alloc(APP.tmp, U8, img_size);
+                U8 *pixels = (U8 *)imgs[i]->pixels;
 
-            SDL_DestroySurface(img);
+                ForI32(y, imgs[i]->h)
+                {
+                    U8 *buffer_row = buffer + y*imgs[i]->w*4;
+                    U8 *px_row = pixels + y*imgs[i]->pitch;
+                    ForI32(x, imgs[i]->w)
+                    {
+                        buffer_row[x*4 + 0] = px_row[x*3 + 0];
+                        buffer_row[x*4 + 1] = px_row[x*3 + 1];
+                        buffer_row[x*4 + 2] = px_row[x*3 + 2];
+                        buffer_row[x*4 + 3] = 255;
+                    }
+                }
+
+                // @todo this transfer could be optimized
+                Gpu_TransferTexture(APP.gpu.tex_wall,
+                                    i, imgs[i]->w, imgs[i]->h,
+                                    buffer, img_size);
+
+                Arena_PopScope(scope);
+            }
+
+            ForArray(i, imgs)
+            {
+                SDL_DestroySurface(imgs[i]);
+            }
         }
 
         // wall sampler

@@ -116,3 +116,20 @@ static Arena *Arena_MakeSubArena(Arena *a, U64 sub_capacity)
 #ifdef __clang__ // WARNINGS BOILERPLATE END
 #pragma clang diagnostic pop
 #endif
+
+// Arena Scope helper
+typedef struct
+{
+    Arena *a;
+    U64 used;
+} ArenaScope;
+
+static ArenaScope Arena_StartScope(Arena *a)
+{
+    return (ArenaScope){a, a->used};
+}
+static void Arena_PopScope(ArenaScope scope)
+{
+    Assert(scope.a->used >= scope.used);
+    scope.a->used = scope.used;
+}

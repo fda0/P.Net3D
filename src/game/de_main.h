@@ -21,6 +21,17 @@ typedef enum
 // @note enable logging
 #define LOG(FLAGS, ...) do{ if(((FLAGS) & APP.log_filter) == (FLAGS)){ SDL_Log(__VA_ARGS__); }}while(0)
 
+typedef enum
+{
+    WorldDir_E, // +X
+    WorldDir_W, // -X
+    WorldDir_N, // +Y
+    WorldDir_S, // -Y
+    WorldDir_T, // +Z
+    WorldDir_B, // -Z
+    WorldDir_COUNT
+} WorldDir;
+
 struct AppState
 {
     // SDL, window stuff
@@ -28,6 +39,8 @@ struct AppState
     //SDL_Renderer* renderer;
     Gpu_State gpu;
     Rdr_State rdr;
+
+    Arena *tmp;
 
     // window settings
     Sint32 init_window_px, init_window_py; // 0 if wasn't set

@@ -38,11 +38,12 @@ VSOutput ShaderWallVS(VSInput input)
     return output;
 }
 
-Texture2D<float4> Texture : register(t0, space2);
+Texture2DArray<float4> Texture : register(t0, space2);
 SamplerState Sampler : register(s0, space2);
 
 float4 ShaderWallPS(VSOutput input) : SV_Target0
 {
-    float4 tex_color = Texture.Sample(Sampler, input.UV);
+    float3 uv = float3(input.UV.x, input.UV.y, 0.f);
+    float4 tex_color = Texture.Sample(Sampler, uv);
     return tex_color * input.Color;
 }

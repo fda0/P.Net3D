@@ -18,6 +18,7 @@
 #include "base_types.h"
 #include "base_math.h"
 #include "base_string.h"
+#include "base_arena.h"
 #include "de_constants.h"
 #include "de_math.h"
 #include "de_vertices.h"
@@ -189,6 +190,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
     {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to allocate appstate", SDL_GetError(), NULL);
         return SDL_APP_FAILURE;
+    }
+
+    {
+        U64 arena_size = Megabyte(1);
+        app->tmp = Arena_MakeInside(malloc(arena_size), arena_size);
     }
     app->log_filter = ~(U32)LogFlags_NetAll;
     app->init_window_width = WINDOW_WIDTH;
