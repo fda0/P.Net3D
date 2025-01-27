@@ -128,12 +128,7 @@ static Object *Object_CreateWall(AppState *app, V2 p, V2 dim)
     Object *obj = Object_Create(app, ObjCategory_Local,
                                 ObjectFlag_Draw|ObjectFlag_Collide);
     obj->p = p;
-
-    V2 half_dim = V2_Scale(dim, 0.5f);
-    obj->collision.verts.arr[0] = (V2){-half_dim.x, -half_dim.y};
-    obj->collision.verts.arr[1] = (V2){ half_dim.x, -half_dim.y};
-    obj->collision.verts.arr[2] = (V2){ half_dim.x,  half_dim.y};
-    obj->collision.verts.arr[3] = (V2){-half_dim.x,  half_dim.y};
+    obj->collision.verts = CollisionVertices_FromRectDim(dim);
     Collision_RecalculateNormals(&obj->collision);
 
     static float r = 0.f;
@@ -152,7 +147,7 @@ static Object *Object_CreatePlayer(AppState *app)
     Object *player = Object_Create(app, ObjCategory_Net,
                                    ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_ModelTeapot /*|ObjectFlag_Collide*/ );
 
-    player->collision.verts = CollisionVertices_FromRect((V2){0}, (V2){30, 30});
+    player->collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
     Collision_RecalculateNormals(&player->collision);
 
     player->sprite_color = ColorF_RGB(1, 0.1f, 0.1f);

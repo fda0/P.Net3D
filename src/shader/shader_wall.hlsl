@@ -10,13 +10,13 @@ struct VSInput
     float3 Position : TEXCOORD0;
     float3 Color : TEXCOORD1;
     float3 Normal : TEXCOORD2;
-    float2 UV : TEXCOORD3;
+    float3 UV : TEXCOORD3;
 };
 
 struct VSOutput
 {
     float4 Color : TEXCOORD0;
-    float2 UV : TEXCOORD1;
+    float3 UV : TEXCOORD1;
     float4 Position : SV_Position;
 };
 
@@ -43,7 +43,6 @@ SamplerState Sampler : register(s0, space2);
 
 float4 ShaderWallPS(VSOutput input) : SV_Target0
 {
-    float3 uv = float3(input.UV.x, input.UV.y, 0.f);
-    float4 tex_color = Texture.Sample(Sampler, uv);
+    float4 tex_color = Texture.Sample(Sampler, input.UV);
     return tex_color * input.Color;
 }

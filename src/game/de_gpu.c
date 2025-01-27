@@ -562,7 +562,7 @@ static void Gpu_Init()
                 },
                 {
                     .buffer_slot = 0,
-                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+                    .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
                     .location = 3,
                     .offset = sizeof(float) * 9,
                 },

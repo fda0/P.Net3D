@@ -4,17 +4,16 @@ typedef struct
 } CollisionVertices;
 typedef CollisionVertices CollisionNormals;
 
-static CollisionVertices CollisionVertices_FromRect(V2 p, V2 dim)
+static CollisionVertices CollisionVertices_FromRectDim(V2 dim)
 {
-    V2 half_dim = V2_Scale(dim, 0.5f);
-    V2 p0 = V2_Sub(p, half_dim);
-    V2 p1 = V2_Add(p, half_dim);
+    V2 p0 = V2_Scale(dim, -0.5f);
+    V2 p1 = V2_Scale(dim, 0.5f);
 
     CollisionVertices result = {0};
-    result.arr[0] = (V2){p0.x, p0.y};
-    result.arr[1] = (V2){p1.x, p0.y};
-    result.arr[2] = (V2){p1.x, p1.y};
-    result.arr[3] = (V2){p0.x, p1.y};
+    result.arr[0] = (V2){p1.x, p0.y};
+    result.arr[1] = (V2){p1.x, p1.y};
+    result.arr[2] = (V2){p0.x, p1.y};
+    result.arr[3] = (V2){p0.x, p0.y};
     return result;
 }
 

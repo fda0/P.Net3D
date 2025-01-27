@@ -15,7 +15,7 @@ typedef struct
     V3 p;
     V3 color;
     V3 normal;
-    V2 uv;
+    V3 uv;
 } Rdr_WallVertex;
 
 typedef struct

@@ -53,17 +53,17 @@ static void Game_IssueDrawCommands(AppState *app)
                     wall_verts[i].color = (V3){0.95f, 0.7f, 0};
                 }
 
-                float height = 30.f + 10.f*SinF(APP.at*0.42f);
+                float height = 40.f;
                 CollisionVertices collision = obj->collision.verts;
                 {
                     U32 cube_index_map[] =
                     {
-                        0,1,4,1,5,4, // front
-                        6,5,2,5,1,2, // right
-                        7,6,3,6,2,3, // back
-                        4,7,0,7,3,0, // left
-                        4,5,7,5,6,7, // top
-                        3,2,0,2,1,0, // bottom
+                        4,5,0,5,1,0, // E
+                        7,6,3,6,2,3, // W
+                        4,7,0,7,3,0, // N
+                        6,5,2,5,1,2, // S
+                        4,5,7,5,6,7, // Top
+                        3,2,0,2,1,0, // Bottom
                     };
                     Assert(ArrayCount(cube_index_map) == vert_count);
 
@@ -100,12 +100,12 @@ static void Game_IssueDrawCommands(AppState *app)
                     V2 face_dim = {};
                     switch (face_i)
                     {
-                        case 0: /* front */  face_dim = (V2){w0, height}; break;
-                        case 1: /* right */  face_dim = (V2){w1, height}; break;
-                        case 2: /* back */   face_dim = (V2){w2, height}; break;
-                        case 3: /* left */   face_dim = (V2){w3, height}; break;
-                        case 4: /* top */    face_dim = (V2){w0, w1}; break; // works for rects only
-                        case 5: /* bottom */ face_dim = (V2){w0, w1}; break; // works for rects only
+                        case 0: /* E */ face_dim = (V2){w0, height}; break;
+                        case 1: /* W */ face_dim = (V2){w2, height}; break;
+                        case 2: /* N */ face_dim = (V2){w3, height}; break;
+                        case 3: /* S */ face_dim = (V2){w1, height}; break;
+                        case 4: /* T */ face_dim = (V2){w0, w1}; break; // works for rects only
+                        case 5: /* B */ face_dim = (V2){w0, w1}; break; // works for rects only
                     }
 
                     face_dim = V2_Scale(face_dim, texels_per_cm);
@@ -123,18 +123,18 @@ static void Game_IssueDrawCommands(AppState *app)
                     V3 face_normal = {};
                     switch (face_i)
                     {
-                        case 0: /* front */  face_normal = V3_Make_XY_Z(obj->collision.norms.arr[0], 0); break;
-                        case 1: /* right */  face_normal = V3_Make_XY_Z(obj->collision.norms.arr[1], 0); break;
-                        case 2: /* back */   face_normal = V3_Make_XY_Z(obj->collision.norms.arr[2], 0); break;
-                        case 3: /* left */   face_normal = V3_Make_XY_Z(obj->collision.norms.arr[3], 0); break;
-                        case 4: /* top */    face_normal = (V3){0,0,1}; break;
-                        case 5: /* bottom */ face_normal = (V3){0,0,-1}; break;
+                        case 0: /* E */ face_normal = V3_Make_XY_Z(obj->collision.norms.arr[0], 0); break;
+                        case 1: /* W */ face_normal = V3_Make_XY_Z(obj->collision.norms.arr[2], 0); break;
+                        case 2: /* N */ face_normal = V3_Make_XY_Z(obj->collision.norms.arr[3], 0); break;
+                        case 3: /* S */ face_normal = V3_Make_XY_Z(obj->collision.norms.arr[1], 0); break;
+                        case 4: /* T */ face_normal = (V3){0,0,1}; break;
+                        case 5: /* B */ face_normal = (V3){0,0,-1}; break;
                     }
 
                     ForU32(vert_i, vertices_per_face)
                     {
-                        U32 i = vert_i + face_i * vertices_per_face;
-                        wall_verts[i].uv = face_uvs[vert_i];
+                        U32 i = (face_i * vertices_per_face) + vert_i;
+                        wall_verts[i].uv = V3_Make_XY_Z(face_uvs[vert_i], (float)face_i);
                         wall_verts[i].normal = face_normal;
                     }
                 }
