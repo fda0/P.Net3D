@@ -28,5 +28,6 @@ typedef struct
 
 typedef struct
 {
-    I32 ind, tex, nrm;
-} M_ObjFace;
+    I32 pos, tex, nrm;
+    S8 material;
+} M_ObjFacePart;

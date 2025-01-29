@@ -63,6 +63,7 @@ static M_ObjToken M_ParseObjGetToken(M_ObjParser *p)
     if (s.str[0] == '/')
     {
         res.kind = M_ObjToken_Slash;
+        s = S8_Skip(s, 1);
     }
     else if (ByteIsAlpha(s.str[0]))
     {
@@ -77,7 +78,7 @@ static M_ObjToken M_ParseObjGetToken(M_ObjParser *p)
         bool has_dot = false;
         while (s.size)
         {
-            if (ByteIsWhite(s.str[0]))
+            if (ByteIsWhite(s.str[0]) || s.str[0] == '/')
                 break;
 
             if (s.str[0] == '.')
@@ -89,7 +90,7 @@ static M_ObjToken M_ParseObjGetToken(M_ObjParser *p)
     }
 
     res.text = S8_Range(start_src.str, s.str); // get final text range
-    p->at += res.text.size + 1; // adv parser
+    p->at += res.text.size; // adv parser
 
     M_LogObjToken(M_LogObjDebug, res);
     return res;
@@ -109,9 +110,9 @@ static void M_Pr_AddObjTokenNumber(Printer *pr, M_ObjToken t)
         Pr_Add(pr, S8Lit("f"));
 }
 
-static M_ObjFace M_ParseObjFaceTokens(M_ObjParser *p)
+static M_ObjFacePart M_ParseObjFaceTokens(M_ObjParser *p)
 {
-    M_ObjFace res = {};
+    M_ObjFacePart res = {};
     M_ObjParser p_copy = *p;
 
     M_ObjToken token = M_ParseObjGetToken(p);
@@ -122,7 +123,7 @@ static M_ObjFace M_ParseObjFaceTokens(M_ObjParser *p)
         return res;
     }
 
-    res.ind = M_ParseInt(token.text);
+    res.pos = M_ParseInt(token.text);
 
     p_copy = *p;
     token = M_ParseObjGetToken(p);
@@ -203,11 +204,15 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
     // Prepare tmp memory
     U32 max_elems = 1024*1024;
+    S8 active_material = {};
+
     float *obj_verts = AllocZeroed(M.tmp, float, max_elems);
     float *obj_normals = AllocZeroed(M.tmp, float, max_elems);
+    M_ObjFacePart *obj_parts = AllocZeroed(M.tmp, M_ObjFacePart, max_elems);
     U64 obj_vert_count = 0;
     U64 obj_normal_count = 0;
-    S8 active_material = {};
+    U64 obj_part_count = 0;
+
     U16 *out_inds = AllocZeroed(M.tmp, U16, max_elems);
     U64 out_ind_count = 0;
 
@@ -340,104 +345,44 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
         if (is_ind)
         {
-            M_ObjFace faces[8] = {};
-            U32 face_count = 0;
+            M_ObjFacePart face_parts[8] = {};
+            U32 face_part_count = 0;
 
             for (;;)
             {
-                M_ObjFace face = M_ParseObjFaceTokens(&parser);
-                if (!face.ind)
+                M_ObjFacePart part = M_ParseObjFaceTokens(&parser);
+                if (!part.pos)
                     break;
 
-                if (face_count >= ArrayCount(faces))
+                part.material = active_material;
+
+                if (face_part_count >= ArrayCount(face_parts))
                 {
-                    M_LOG(M_LogErr, "[OBJ PARSE] face_count overflow! face_count == %u.", face_count);
+                    M_LOG(M_LogErr, "[OBJ PARSE] face_count overflow! face_count == %u.", face_part_count);
                     M_LogObjParser(M_LogErr, &parser);
                     exit(1);
                 }
 
-                faces[face_count] = face;
-                face_count += 1;
+                face_parts[face_part_count] = part;
+                face_part_count += 1;
             }
 
-            if (face_count < 3)
+            if (face_part_count < 3)
             {
                 M_LOG(M_LogErr, "[OBJ PARSE] face_count underflow! "
-                      "3 faces are needed at minimum. face_count == %u.", face_count);
+                      "3 faces are needed at minimum. face_count == %u.", face_part_count);
                 M_LogObjParser(M_LogErr, &parser);
                 exit(1);
             }
 
-            U32 triangle_count = face_count - 2;
+            U32 triangle_count = face_part_count - 2;
             ForU32(triangle_i, triangle_count)
             {
-                M_ObjFace fs[3] =
-                {
-                    faces[0],
-                    faces[triangle_i + 1],
-                    faces[triangle_i + 2],
-                };
-
-                ForArray(i, fs)
-                {
-                    bool invalid = false;
-                    invalid = invalid || fs[i].ind < 1;
-                    invalid = invalid || (fs[i].ind & 0xffff) != fs[i].ind;
-                    invalid = invalid || fs[i].ind >= obj_vert_count;
-                    if (fs[i].nrm)
-                        invalid = invalid || fs[i].nrm >= obj_normal_count;
-
-                    if (invalid)
-                    {
-                        M_LOG(M_LogErr, "[OBJ PARSE] invalid fs[%u].ind: %u; for triangle_i :u",
-                              (U32)i, (U32)fs[i].ind, triangle_i);
-                        M_LogObjParser(M_LogErr, &parser);
-                        exit(1);
-                    }
-                }
-
-
-                ForArray(fs_i, fs)
-                {
-                    U32 vertex_offset = (fs[fs_i].ind - 1) * 3;
-
-                    Rdr_ModelVertex rdr_vertex = {};
-                    rdr_vertex.p = (V3)
-                    {
-                        obj_verts[vertex_offset + 0],
-                        obj_verts[vertex_offset + 1],
-                        obj_verts[vertex_offset + 2],
-                    };
-                    rdr_vertex.normal = (V3)
-                    {
-                        obj_normals[vertex_offset + 0],
-                        obj_normals[vertex_offset + 1],
-                        obj_normals[vertex_offset + 2],
-                    };
-
-                    rdr_vertex.color = (V3){1,1,1};
-                    if (S8_Match(active_material, S8Lit(""), 0))
-                    {
-                    }
-                    else if (S8_Match(active_material, S8Lit("Brown"), 0))
-                    {
-                        rdr_vertex.color = (V3){0.5f, 0.32f, 0.22f};
-                    }
-                    else if (S8_Match(active_material, S8Lit("LightRed"), 0))
-                    {
-                        rdr_vertex.color = (V3){1.f, 0.15f, 0.08f};
-                    }
-                    else
-                    {
-                        M_LOG(M_LogErr, "[OBJ PARSE] Warning: material with name \"%.*s\" is unsupported",
-                              S8Print(active_material));
-                    }
-
-                    U16 ind = M_FindOrInsertRdrModelVertex(rdr_vertex);
-                    M_AssertAlways(out_ind_count + 3 <= max_elems);
-                    out_inds[out_ind_count] = ind;
-                    out_ind_count += 1;
-                }
+                M_AssertAlways(obj_part_count + 3 <= max_elems);
+                obj_parts[obj_part_count + 0] = face_parts[0];
+                obj_parts[obj_part_count + 1] = face_parts[triangle_i + 1];
+                obj_parts[obj_part_count + 2] = face_parts[triangle_i + 2];
+                obj_part_count += 3;
             }
         }
     }
@@ -493,6 +438,89 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
         }
     }
 #endif
+
+    // Generate final Rdr_ModelVertex entries
+    for (U64 obj_part_index = 0;
+         obj_part_index + 3 <= obj_part_count;
+         obj_part_index += 3)
+    {
+        M_ObjFacePart parts[3] =
+        {
+            obj_parts[obj_part_index + 0],
+            obj_parts[obj_part_index + 1],
+            obj_parts[obj_part_index + 2],
+        };
+
+        ForArray(i, parts)
+        {
+            bool invalid = false;
+            invalid = invalid || parts[i].pos < 1;
+            invalid = invalid || (parts[i].pos & 0xffff) != parts[i].pos;
+            invalid = invalid || parts[i].pos >= obj_vert_count;
+            if (parts[i].nrm)
+            {
+                invalid = invalid || (parts[i].nrm & 0xffff) != parts[i].nrm;
+                invalid = invalid || parts[i].nrm >= obj_normal_count;
+            }
+
+            if (invalid)
+            {
+                M_LOG(M_LogErr, "[OBJ PARSE] invalid parts[%u].pos: %u, .nrm: %u; for obj_part_index :u",
+                      (U32)i, (U32)parts[i].pos, (U32)parts[i].nrm, (U32)obj_part_index);
+                M_LogObjParser(M_LogErr, &parser);
+                exit(1);
+            }
+        }
+
+        ForArray(part_i, parts)
+        {
+            Rdr_ModelVertex rdr_vertex = {};
+
+            U32 pos_offset = (parts[part_i].pos - 1) * 3;
+            rdr_vertex.p = (V3)
+            {
+                obj_verts[pos_offset + 0],
+                obj_verts[pos_offset + 1],
+                obj_verts[pos_offset + 2],
+            };
+
+            if (parts[part_i].nrm)
+            {
+                U32 nrm_offset = (parts[part_i].nrm - 1) * 3;
+                rdr_vertex.normal = (V3)
+                {
+                    obj_normals[nrm_offset + 0],
+                    obj_normals[nrm_offset + 1],
+                    obj_normals[nrm_offset + 2],
+                };
+            }
+
+            S8 material = parts[part_i].material;
+            rdr_vertex.color = (V3){1,1,1};
+            if (S8_Match(material, S8Lit(""), 0))
+            {
+            }
+            else if (S8_Match(material, S8Lit("Brown"), 0))
+            {
+                rdr_vertex.color = (V3){0.5f, 0.32f, 0.22f};
+                rdr_vertex.color = (V3){1,1,1};
+            }
+            else if (S8_Match(material, S8Lit("LightRed"), 0))
+            {
+                rdr_vertex.color = (V3){1.f, 0.15f, 0.08f};
+            }
+            else
+            {
+                M_LOG(M_LogErr, "[OBJ PARSE] Warning: material with name \"%.*s\" is unsupported",
+                      S8Print(material));
+            }
+
+            U16 ind = M_FindOrInsertRdrModelVertex(rdr_vertex);
+            M_AssertAlways(out_ind_count + 3 <= max_elems);
+            out_inds[out_ind_count] = ind;
+            out_ind_count += 1;
+        }
+    }
 
     //
     // Output - generating C header
