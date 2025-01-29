@@ -9,8 +9,9 @@ typedef struct
 
 #define M_MAX_OBJ_ELEM (1024 * 1024)
     float verts[M_MAX_OBJ_ELEM];
-    U16 inds[M_MAX_OBJ_ELEM];
     float normals[M_MAX_OBJ_ELEM];
+    U16 inds[M_MAX_OBJ_ELEM];
+    M_ObjMaterial materials[1024];
 } Meta_State;
 static Meta_State M;
 

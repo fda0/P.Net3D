@@ -52,12 +52,6 @@ static void Circle_CopyFillRange(Uint64 elem_size,
 //
 // Queue
 //
-typedef struct
-{
-    Uint64 min;
-    Uint64 max; // one past last
-} RngU64;
-
 static Uint64 RngU64_Count(RngU64 rng)
 {
     if (rng.max < rng.min)

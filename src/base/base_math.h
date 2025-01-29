@@ -353,6 +353,18 @@ static V2 V2_CalculateNormal(V2 a, V2 b)
 // ---
 // Ranges
 // ---
+typedef struct
+{
+    struct { U32 min, max; };
+    U32 E[2];
+} RngU32;
+
+typedef struct
+{
+    struct { U64 min, max; };
+    U64 E[2];
+} RngU64;
+
 typedef union
 {
     struct { float min, max; };

@@ -9,12 +9,6 @@ typedef struct
     U64 used;
     U64 cap;
     U32 err; // uses AsText_Error enum flags
-#if 0 // @todo add missing things
-    template <typename T> inline Printer& AddInt(T value, AsText_NumberSpec spec = {});
-    inline Printer& AddPercentage(I0 dividend, I0 divisor);
-    inline Printer& AddBytes(U0 value);
-    inline Printer& AddF32(F32 value, AsText_NumberSpec spec = {});
-#endif
 } Printer;
 
 static void Pr_Reset(Printer *p)

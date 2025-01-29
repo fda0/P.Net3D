@@ -6,5 +6,10 @@
 struct AppState;
 typedef struct AppState AppState;
 
+#if 0
 #define MODEL_VERTEX_ARR Model_teapot_vrt
 #define MODEL_INDEX_ARR Model_teapot_ind
+#else
+#define MODEL_VERTEX_ARR Model_flag_vrt
+#define MODEL_INDEX_ARR Model_flag_ind
+#endif
