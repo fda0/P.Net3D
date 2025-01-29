@@ -150,7 +150,7 @@ static Object *Object_CreatePlayer(AppState *app)
     player->collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
     Collision_RecalculateNormals(&player->collision);
 
-    player->sprite_color = ColorF_RGB(1, 0.1f, 0.1f);
+    player->sprite_color = ColorF_RGB(1,1,1);
     return player;
 }
 

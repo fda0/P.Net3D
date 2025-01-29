@@ -442,8 +442,9 @@ static void Gpu_Init()
             U64 img_size = imgs[0]->w * imgs[0]->h * 4;
             ForArray(i, imgs)
             {
+                ArenaScope scope = Arena_PushScope(APP.tmp);
+
                 // temporary: convert rgb -> rgba
-                ArenaScope scope = Arena_StartScope(APP.tmp);
                 U8 *buffer = Alloc(APP.tmp, U8, img_size);
                 U8 *pixels = (U8 *)imgs[i]->pixels;
 

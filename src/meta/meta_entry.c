@@ -13,6 +13,8 @@
 #include "meta_print_parse.c"
 #include "meta_obj.c"
 
+static U8 arena_memory_buffer[Megabyte(64)];
+
 int main()
 {
     // init

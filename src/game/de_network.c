@@ -213,9 +213,9 @@ static void Net_IterateSend(AppState *app)
                         Object *player = Object_CreatePlayer(app);
                         if (!Object_IsNil(player))
                         {
-                            player->p.x = 0.f + user_index * 1.f;
-                            player->sprite_color.g = (user_index & 1) ? 1.f : 0.f;
-                            player->sprite_color.b = (user_index & 2) ? 1.f : 0.f;
+                            player->p.y = 75.f - user_index * 25.f;
+                            player->sprite_color.g = (user_index & 1) ? 0.f : 1.f;
+                            player->sprite_color.b = (user_index & 2) ? 0.f : 1.f;
                         }
                         *player_key = player->key;
                     }

@@ -28,11 +28,5 @@ typedef struct
 
 typedef struct
 {
-    S8 name;
-    RngU32 index_range; // index range of indices
-} M_ObjMaterial;
-
-typedef struct
-{
     I32 ind, tex, nrm;
 } M_ObjFace;

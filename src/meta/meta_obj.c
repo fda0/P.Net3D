@@ -169,8 +169,48 @@ static M_ObjFace M_ParseObjFaceTokens(M_ObjParser *p)
     return res;
 }
 
+static U16 M_FindOrInsertRdrModelVertex(Rdr_ModelVertex rdr_vertex)
+{
+    //U64 hash = HashU64(0, &rdr_vertex, sizeof(rdr_vertex));
+
+    // @todo this is n^2, use hash table instead
+
+    ForArray(i, M.vertex_table)
+    {
+        if (!M.vertex_table[i].filled)
+        {
+            M.vertex_table[i].filled = true;
+            M.vertex_table[i].rdr = rdr_vertex;
+            return (U16)i;
+        }
+
+        if (Memeq(&rdr_vertex, &M.vertex_table[i].rdr, sizeof(rdr_vertex)))
+        {
+            return (U16)i;
+        }
+    }
+
+    M_AssertAlways(false);
+    return 0;
+}
+
 static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 {
+    ArenaScope tmp_scope = Arena_PushScope(M.tmp);
+
+    // Clear global memory
+    SDL_zeroa(M.vertex_table);
+
+    // Prepare tmp memory
+    U32 max_elems = 1024*1024;
+    float *obj_verts = AllocZeroed(M.tmp, float, max_elems);
+    float *obj_normals = AllocZeroed(M.tmp, float, max_elems);
+    U64 obj_vert_count = 0;
+    U64 obj_normal_count = 0;
+    S8 active_material = {};
+    U16 *out_inds = AllocZeroed(M.tmp, U16, max_elems);
+    U64 out_ind_count = 0;
+
     // Prepare transformation matrices
     Mat4 rotation_mat = Mat4_Rotation_RH(spec.rot_x, (V3){1,0,0});
     rotation_mat = Mat4_Mul(Mat4_Rotation_RH(spec.rot_y, (V3){0,1,0}), rotation_mat);
@@ -197,16 +237,6 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
             model_name = S8_Prefix(model_name, dot.index);
         }
     }
-
-    // Prepare tmp memory
-    SDL_zeroa(M.verts);
-    SDL_zeroa(M.inds);
-    SDL_zeroa(M.normals);
-    SDL_zeroa(M.materials);
-    U64 vert_count = 0;
-    U64 normal_count = 0;
-    U64 ind_count = 0;
-    U64 material_count = 0;
 
     //
     // Input - parsing .obj file
@@ -245,22 +275,15 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
         if (is_material)
         {
-            M_ObjToken mat = M_ParseObjGetToken(&parser);
-            if (mat.kind != M_ObjToken_String)
+            M_ObjToken mat_name = M_ParseObjGetToken(&parser);
+            if (mat_name.kind != M_ObjToken_String)
             {
                 M_LOG(M_LogErr, "[OBJ PARSE] expected String token when parsin material name, got:");
-                M_LogObjToken(M_LogErr, mat);
+                M_LogObjToken(M_LogErr, mat_name);
                 M_LogObjParser(M_LogErr, &parser);
                 exit(1);
             }
-
-            material_count += 1;
-            M_AssertAlways(material_count < ArrayCount(M.materials));
-
-            // init material
-            M.materials[material_count].name = mat.text;
-            M.materials[material_count].index_range.min = ind_count;
-            M.materials[material_count].index_range.max = ind_count;
+            active_material = mat_name.text;
         }
 
         if (is_vert || is_normal)
@@ -283,31 +306,34 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
             if (is_vert || is_normal)
             {
-                M_AssertAlways(vert_count + 3 <= ArrayCount(M.verts));
-                M_AssertAlways(normal_count + 3 <= ArrayCount(M.normals));
-                double n0 = M_ParseDouble(num0.text);
-                double n1 = M_ParseDouble(num1.text);
-                double n2 = M_ParseDouble(num2.text);
-                V4 vec = {(float)n0, (float)n1, (float)n2, 1.f};
+                M_AssertAlways(obj_vert_count + 3 <= max_elems);
+                M_AssertAlways(obj_normal_count + 3 <= max_elems);
+                V4 vec =
+                {
+                    (float)M_ParseDouble(num0.text),
+                    (float)M_ParseDouble(num1.text),
+                    (float)M_ParseDouble(num2.text),
+                    1.f
+                };
 
                 if (is_vert)
                 {
                     vec = V4_MulM4(vert_mat, vec);
 
-                    M.verts[vert_count + 0] = vec.x;
-                    M.verts[vert_count + 1] = vec.y;
-                    M.verts[vert_count + 2] = vec.z;
-                    vert_count += 3;
+                    obj_verts[obj_vert_count + 0] = vec.x;
+                    obj_verts[obj_vert_count + 1] = vec.y;
+                    obj_verts[obj_vert_count + 2] = vec.z;
+                    obj_vert_count += 3;
                 }
 
                 if (is_normal)
                 {
                     vec = V4_MulM4(rotation_mat, vec);
 
-                    M.normals[normal_count + 0] = vec.x;
-                    M.normals[normal_count + 1] = vec.y;
-                    M.normals[normal_count + 2] = vec.z;
-                    normal_count += 3;
+                    obj_normals[obj_normal_count + 0] = vec.x;
+                    obj_normals[obj_normal_count + 1] = vec.y;
+                    obj_normals[obj_normal_count + 2] = vec.z;
+                    obj_normal_count += 3;
                 }
             }
         }
@@ -343,24 +369,75 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
             }
 
             U32 triangle_count = face_count - 2;
-
             ForU32(triangle_i, triangle_count)
             {
-                M_ObjFace f0 = faces[0];
-                M_ObjFace f1 = faces[triangle_i + 1];
-                M_ObjFace f2 = faces[triangle_i + 2];
+                M_ObjFace fs[3] =
+                {
+                    faces[0],
+                    faces[triangle_i + 1],
+                    faces[triangle_i + 2],
+                };
 
-                M_AssertAlways(ind_count + 3 <= ArrayCount(M.inds));
-                M_AssertAlways(f0.ind >= 1 && (f0.ind & 0xffff) == f0.ind);
-                M_AssertAlways(f1.ind >= 1 && (f1.ind & 0xffff) == f1.ind);
-                M_AssertAlways(f2.ind >= 1 && (f2.ind & 0xffff) == f2.ind);
-                M.inds[ind_count + 0] = (U16)(f0.ind - 1);
-                M.inds[ind_count + 1] = (U16)(f1.ind - 1);
-                M.inds[ind_count + 2] = (U16)(f2.ind - 1);
-                ind_count += 3;
+                ForArray(i, fs)
+                {
+                    bool invalid = false;
+                    invalid = invalid || fs[i].ind < 1;
+                    invalid = invalid || (fs[i].ind & 0xffff) != fs[i].ind;
+                    invalid = invalid || fs[i].ind >= obj_vert_count;
+                    if (fs[i].nrm)
+                        invalid = invalid || fs[i].nrm >= obj_normal_count;
 
-                // advance current's material max to contain these indices
-                M.materials[material_count].index_range.max += 3;
+                    if (invalid)
+                    {
+                        M_LOG(M_LogErr, "[OBJ PARSE] invalid fs[%u].ind: %u; for triangle_i :u",
+                              (U32)i, (U32)fs[i].ind, triangle_i);
+                        M_LogObjParser(M_LogErr, &parser);
+                        exit(1);
+                    }
+                }
+
+
+                ForArray(fs_i, fs)
+                {
+                    U32 vertex_offset = (fs[fs_i].ind - 1) * 3;
+
+                    Rdr_ModelVertex rdr_vertex = {};
+                    rdr_vertex.p = (V3)
+                    {
+                        obj_verts[vertex_offset + 0],
+                        obj_verts[vertex_offset + 1],
+                        obj_verts[vertex_offset + 2],
+                    };
+                    rdr_vertex.normal = (V3)
+                    {
+                        obj_normals[vertex_offset + 0],
+                        obj_normals[vertex_offset + 1],
+                        obj_normals[vertex_offset + 2],
+                    };
+
+                    rdr_vertex.color = (V3){1,1,1};
+                    if (S8_Match(active_material, S8Lit(""), 0))
+                    {
+                    }
+                    else if (S8_Match(active_material, S8Lit("Brown"), 0))
+                    {
+                        rdr_vertex.color = (V3){0.5f, 0.32f, 0.22f};
+                    }
+                    else if (S8_Match(active_material, S8Lit("LightRed"), 0))
+                    {
+                        rdr_vertex.color = (V3){1.f, 0.15f, 0.08f};
+                    }
+                    else
+                    {
+                        M_LOG(M_LogErr, "[OBJ PARSE] Warning: material with name \"%.*s\" is unsupported",
+                              S8Print(active_material));
+                    }
+
+                    U16 ind = M_FindOrInsertRdrModelVertex(rdr_vertex);
+                    M_AssertAlways(out_ind_count + 3 <= max_elems);
+                    out_inds[out_ind_count] = ind;
+                    out_ind_count += 1;
+                }
             }
         }
     }
@@ -369,19 +446,17 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
     // Processing - generating additional data
     //
 
-    // material_count was used as index; advance it by one
-    material_count += 1;
-
     // automatically calculate normals if they are missing from .obj file
-    if (!normal_count)
+#if 0
+    if (!obj_normal_count)
     {
         for (U64 i = 0;
              i + 3 <= ind_count;
              i += 3)
         {
-            I32 i0 = M.inds[i];
-            I32 i1 = M.inds[i + 1];
-            I32 i2 = M.inds[i + 2];
+            I32 i0 = obj_inds[i];
+            I32 i1 = obj_inds[i + 1];
+            I32 i2 = obj_inds[i + 2];
             I32 vi0 = i0 * 3;
             I32 vi1 = i1 * 3;
             I32 vi2 = i2 * 3;
@@ -389,9 +464,9 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
             M_AssertAlways(vi1 + 3 <= vert_count);
             M_AssertAlways(vi2 + 3 <= vert_count);
 
-            V3 vert0 = {M.verts[vi0], M.verts[vi0 + 1], M.verts[vi0 + 2]};
-            V3 vert1 = {M.verts[vi1], M.verts[vi1 + 1], M.verts[vi1 + 2]};
-            V3 vert2 = {M.verts[vi2], M.verts[vi2 + 1], M.verts[vi2 + 2]};
+            V3 vert0 = {obj_verts[vi0], obj_verts[vi0 + 1], obj_verts[vi0 + 2]};
+            V3 vert1 = {obj_verts[vi1], obj_verts[vi1 + 1], obj_verts[vi1 + 2]};
+            V3 vert2 = {obj_verts[vi2], obj_verts[vi2 + 1], obj_verts[vi2 + 2]};
 
             V3 u = V3_Sub(vert1, vert0);
             V3 v = V3_Sub(vert2, vert0);
@@ -404,58 +479,64 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
                 u.x*v.y - u.y*v.x,
             };
 
-            M.normals[vi0] += normal.x;
-            M.normals[vi0 + 1] += normal.y;
-            M.normals[vi0 + 2] += normal.z;
+            obj_normals[vi0] += normal.x;
+            obj_normals[vi0 + 1] += normal.y;
+            obj_normals[vi0 + 2] += normal.z;
 
-            M.normals[vi1] += normal.x;
-            M.normals[vi1 + 1] += normal.y;
-            M.normals[vi1 + 2] += normal.z;
+            obj_normals[vi1] += normal.x;
+            obj_normals[vi1 + 1] += normal.y;
+            obj_normals[vi1 + 2] += normal.z;
 
-            M.normals[vi2] += normal.x;
-            M.normals[vi2 + 1] += normal.y;
-            M.normals[vi2 + 2] += normal.z;
+            obj_normals[vi2] += normal.x;
+            obj_normals[vi2 + 1] += normal.y;
+            obj_normals[vi2 + 2] += normal.z;
         }
     }
+#endif
 
     //
     // Output - generating C header
     //
     Pr_AddCstr(out, "// Model: "); Pr_Add(out, model_name); Pr_AddCstr(out, "\n");
     Pr_AddCstr(out, "static Rdr_ModelVertex Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_vrt[] =\n{\n");
-    for (U64 i = 0;
-         i + 3 <= vert_count;
-         i += 3)
+    ForArray(i, M.vertex_table)
     {
+        if (!M.vertex_table[i].filled)
+            break;
+
+        Rdr_ModelVertex rdr = M.vertex_table[i].rdr;
+
         Pr_AddCstr(out, "  ");
         // vert
-        Pr_AddFloat(out, M.verts[i    ]); Pr_AddCstr(out, "f, ");
-        Pr_AddFloat(out, M.verts[i + 1]); Pr_AddCstr(out, "f, ");
-        Pr_AddFloat(out, M.verts[i + 2]); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, rdr.p.x); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, rdr.p.y); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, rdr.p.z); Pr_AddCstr(out, "f, ");
 
         // color
-        Pr_Add(out, S8Lit("/*color*/1.f, 1.f, 1.f, "));
+        Pr_Add(out, S8Lit("/*col*/"));
+        Pr_AddFloat(out, rdr.color.x); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, rdr.color.y); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, rdr.color.z); Pr_AddCstr(out, "f, ");
 
         // normals
-        Pr_Add(out, S8Lit("/*normal*/"));
-        V3 vert_normal = {M.normals[i], M.normals[i + 1], M.normals[i + 2]};
-        vert_normal = V3_Normalize(vert_normal);
-        Pr_AddFloat(out, vert_normal.x); Pr_AddCstr(out, "f, ");
-        Pr_AddFloat(out, vert_normal.y); Pr_AddCstr(out, "f, ");
-        Pr_AddFloat(out, vert_normal.z); Pr_AddCstr(out, "f,\n");
+        Pr_Add(out, S8Lit("/*nrm*/"));
+        rdr.normal = V3_Normalize(rdr.normal);
+        Pr_AddFloat(out, rdr.normal.x); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, rdr.normal.y); Pr_AddCstr(out, "f, ");
+        Pr_AddFloat(out, rdr.normal.z); Pr_AddCstr(out, "f,\n");
     }
     Pr_AddCstr(out, "};\n\n");
 
     Pr_AddCstr(out, "static U16 Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_ind[] =\n{\n");
     for (U64 i = 0;
-         i + 3 <= ind_count;
+         i + 3 <= out_ind_count;
          i += 3)
     {
         Pr_AddCstr(out, "  ");
         // data
-        Pr_AddU16(out, M.inds[i    ]); Pr_AddCstr(out, ", ");
-        Pr_AddU16(out, M.inds[i + 1]); Pr_AddCstr(out, ", ");
-        Pr_AddU16(out, M.inds[i + 2]); Pr_AddCstr(out, ",\n");
+        Pr_AddU16(out, out_inds[i    ]); Pr_AddCstr(out, ", ");
+        Pr_AddU16(out, out_inds[i + 1]); Pr_AddCstr(out, ", ");
+        Pr_AddU16(out, out_inds[i + 2]); Pr_AddCstr(out, ",\n");
     }
     Pr_AddCstr(out, "};\n\n");
 
@@ -465,4 +546,6 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
         M_LOG(M_LogErr, "[OBJ PARSE] Printer out err: %u", out->err);
         exit(1);
     }
+
+    Arena_PopScope(tmp_scope);
 }

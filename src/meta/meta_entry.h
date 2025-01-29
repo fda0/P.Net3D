@@ -1,17 +1,15 @@
-static U8 arena_memory_buffer[Megabyte(32)]; // 32MB
+typedef struct
+{
+    Rdr_ModelVertex rdr;
+    bool filled;
+} M_VertexEntry;
 
 typedef struct
 {
     U32 log_filter;
     Arena *tmp;
 
-    U64 debug_color_index;
-
-#define M_MAX_OBJ_ELEM (1024 * 1024)
-    float verts[M_MAX_OBJ_ELEM];
-    float normals[M_MAX_OBJ_ELEM];
-    U16 inds[M_MAX_OBJ_ELEM];
-    M_ObjMaterial materials[1024];
+    M_VertexEntry vertex_table[1024*1024];
 } Meta_State;
 static Meta_State M;
 

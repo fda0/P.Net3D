@@ -359,6 +359,11 @@ typedef struct
     U32 E[2];
 } RngU32;
 
+static bool RngU32_InRange(RngU32 rng, U32 value)
+{
+    return rng.min >= value && rng.max < value;
+}
+
 typedef struct
 {
     struct { U64 min, max; };

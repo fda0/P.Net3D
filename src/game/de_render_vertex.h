@@ -6,7 +6,8 @@ typedef struct
 
 typedef struct
 {
-    V3 p, color;
+    V3 p;
+    V3 color;
     V3 normal;
 } Rdr_ModelVertex;
 

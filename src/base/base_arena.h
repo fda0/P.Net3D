@@ -20,12 +20,13 @@ struct Arena {
     U8 *base;
     U64 used;
     U64 capacity;
+    I8 scope_counter;
 };
 
 // ---
 // Allocate
 // ---
-static U8 *Arena_AllocateBytes(Arena *a, U64 bytes_to_allocate, U64 alignment, bool zero_init)
+static void *Arena_AllocateBytes(Arena *a, U64 bytes_to_allocate, U64 alignment, bool zero_init)
 {
     U64 align_reminder = ModuloPow2(a->used, alignment);
     if (align_reminder) {
@@ -51,8 +52,8 @@ static U8 *Arena_AllocateBytes(Arena *a, U64 bytes_to_allocate, U64 alignment, b
     return result;
 }
 
-#define Alloc(ARENA, TYPE, COUNT) Arena_AllocateBytes(ARENA, sizeof(TYPE)*COUNT, _Alignof(TYPE), false)
-#define AllocZeroed(ARENA, TYPE, COUNT) Arena_AllocateBytes(ARENA, sizeof(TYPE)*COUNT, _Alignof(TYPE), true)
+#define Alloc(ARENA, TYPE, COUNT) (TYPE *)Arena_AllocateBytes(ARENA, sizeof(TYPE)*COUNT, _Alignof(TYPE), false)
+#define AllocZeroed(ARENA, TYPE, COUNT) (TYPE *)Arena_AllocateBytes(ARENA, sizeof(TYPE)*COUNT, _Alignof(TYPE), true)
 
 // ---
 // Reset
@@ -122,14 +123,18 @@ typedef struct
 {
     Arena *a;
     U64 used;
+    I8 scope_counter;
 } ArenaScope;
 
-static ArenaScope Arena_StartScope(Arena *a)
+static ArenaScope Arena_PushScope(Arena *a)
 {
-    return (ArenaScope){a, a->used};
+    a->scope_counter += 1;
+    return (ArenaScope){a, a->used, a->scope_counter};
 }
 static void Arena_PopScope(ArenaScope scope)
 {
+    Assert(scope.scope_counter == scope.a->scope_counter);
     Assert(scope.a->used >= scope.used);
+    scope.a->scope_counter -= 1;
     scope.a->used = scope.used;
 }
