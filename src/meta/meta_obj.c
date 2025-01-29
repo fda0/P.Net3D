@@ -440,7 +440,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
         }
     }
 
-    // Generate final Rdr_ModelVertex entries
+    // Generate final Rdr_ModelVertex values
     for (U64 obj_part_index = 0;
          obj_part_index + 3 <= obj_part_count;
          obj_part_index += 3)

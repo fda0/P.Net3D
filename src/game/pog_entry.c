@@ -41,11 +41,11 @@ static AppState APP;
 #include "de_tick.c"
 #include "de_main.c"
 
-#include "gen_shader_model.vert.hx"
-#include "gen_shader_model.frag.hx"
-#include "gen_shader_wall.vert.hx"
-#include "gen_shader_wall.frag.hx"
-#include "gen_models.hx"
+#include "gen_shader_model.vert.h"
+#include "gen_shader_model.frag.h"
+#include "gen_shader_wall.vert.h"
+#include "gen_shader_wall.frag.h"
+#include "gen_models.h"
 #include "de_gpu.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)
