@@ -27,7 +27,7 @@ int main()
         U64 tmp_used = M.tmp->used; // save tmp arena used
 
         Printer pr_out = Pr_Alloc(M.tmp, Megabyte(1));
-        //M_ParseObj("../res/models/teapot.obj", &pr_out, (M_ModelSpec){.scale = 10.f, .rot_x = 0.25f});
+        M_ParseObj("../res/models/teapot.obj", &pr_out, (M_ModelSpec){.scale = 10.f, .rot_x = 0.25f});
         M_ParseObj("../res/models/flag.obj", &pr_out, (M_ModelSpec){.scale = 0.1f, .rot_x = 0.25f, .rot_z = 0.25f});
         M_SaveFile("../src/gen/gen_models.hx", Pr_S8(&pr_out));
 

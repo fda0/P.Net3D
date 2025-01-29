@@ -392,26 +392,22 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
     //
 
     // automatically calculate normals if they are missing from .obj file
-#if 0
     if (!obj_normal_count)
     {
-        for (U64 i = 0;
-             i + 3 <= ind_count;
-             i += 3)
+        for (U64 part_index = 0;
+             part_index + 3 <= obj_part_count;
+             part_index += 3)
         {
-            I32 i0 = obj_inds[i];
-            I32 i1 = obj_inds[i + 1];
-            I32 i2 = obj_inds[i + 2];
-            I32 vi0 = i0 * 3;
-            I32 vi1 = i1 * 3;
-            I32 vi2 = i2 * 3;
-            M_AssertAlways(vi0 + 3 <= vert_count);
-            M_AssertAlways(vi1 + 3 <= vert_count);
-            M_AssertAlways(vi2 + 3 <= vert_count);
+            U32 pos0_base = (obj_parts[part_index + 0].pos - 1) * 3;
+            U32 pos1_base = (obj_parts[part_index + 1].pos - 1) * 3;
+            U32 pos2_base = (obj_parts[part_index + 2].pos - 1) * 3;
+            M_AssertAlways(pos0_base + 3 <= obj_vert_count);
+            M_AssertAlways(pos1_base + 3 <= obj_vert_count);
+            M_AssertAlways(pos2_base + 3 <= obj_vert_count);
 
-            V3 vert0 = {obj_verts[vi0], obj_verts[vi0 + 1], obj_verts[vi0 + 2]};
-            V3 vert1 = {obj_verts[vi1], obj_verts[vi1 + 1], obj_verts[vi1 + 2]};
-            V3 vert2 = {obj_verts[vi2], obj_verts[vi2 + 1], obj_verts[vi2 + 2]};
+            V3 vert0 = {obj_verts[pos0_base], obj_verts[pos0_base + 1], obj_verts[pos0_base + 2]};
+            V3 vert1 = {obj_verts[pos1_base], obj_verts[pos1_base + 1], obj_verts[pos1_base + 2]};
+            V3 vert2 = {obj_verts[pos2_base], obj_verts[pos2_base + 1], obj_verts[pos2_base + 2]};
 
             V3 u = V3_Sub(vert1, vert0);
             V3 v = V3_Sub(vert2, vert0);
@@ -424,20 +420,25 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
                 u.x*v.y - u.y*v.x,
             };
 
-            obj_normals[vi0] += normal.x;
-            obj_normals[vi0 + 1] += normal.y;
-            obj_normals[vi0 + 2] += normal.z;
+            obj_normals[pos0_base] += normal.x;
+            obj_normals[pos0_base + 1] += normal.y;
+            obj_normals[pos0_base + 2] += normal.z;
 
-            obj_normals[vi1] += normal.x;
-            obj_normals[vi1 + 1] += normal.y;
-            obj_normals[vi1 + 2] += normal.z;
+            obj_normals[pos1_base] += normal.x;
+            obj_normals[pos1_base + 1] += normal.y;
+            obj_normals[pos1_base + 2] += normal.z;
 
-            obj_normals[vi2] += normal.x;
-            obj_normals[vi2 + 1] += normal.y;
-            obj_normals[vi2 + 2] += normal.z;
+            obj_normals[pos2_base] += normal.x;
+            obj_normals[pos2_base + 1] += normal.y;
+            obj_normals[pos2_base + 2] += normal.z;
+
+            obj_parts[part_index + 0].nrm = obj_parts[part_index + 0].pos;
+            obj_parts[part_index + 1].nrm = obj_parts[part_index + 1].pos;
+            obj_parts[part_index + 2].nrm = obj_parts[part_index + 2].pos;
+
+            obj_normal_count = max_elems;
         }
     }
-#endif
 
     // Generate final Rdr_ModelVertex entries
     for (U64 obj_part_index = 0;
