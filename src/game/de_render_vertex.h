@@ -1,3 +1,10 @@
+typedef enum
+{
+    RdrModel_Teapot,
+    RdrModel_Flag,
+    RdrModel_COUNT
+} Rdr_ModelType;
+
 typedef struct
 {
     Mat4 transform;
@@ -22,8 +29,13 @@ typedef struct
 typedef struct
 {
 #define RDR_MAX_MODEL_INSTANCES 16
-    Rdr_ModelInstanceData instance_data[RDR_MAX_MODEL_INSTANCES];
-    U32 instance_count;
+    Rdr_ModelInstanceData data[RDR_MAX_MODEL_INSTANCES];
+    U32 count;
+} Rdr_Model;
+
+typedef struct
+{
+    Rdr_Model models[RdrModel_COUNT];
 
     Rdr_WallVertex wall_verts[1024 * 8];
     U32 wall_vert_count;

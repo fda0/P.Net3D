@@ -6,10 +6,17 @@ typedef struct
 
 typedef struct
 {
+    SDL_GPUBuffer *vert_buf;
+    SDL_GPUBuffer *ind_buf;
+    SDL_GPUBuffer *inst_buf;
+    U32 ind_count;
+} Gpu_ModelBuffers;
+
+typedef struct
+{
     SDL_GPUDevice *device;
-    SDL_GPUBuffer *model_vert_buf;
-    SDL_GPUBuffer *model_indx_buf;
-    SDL_GPUBuffer *model_instance_buf;
+
+    Gpu_ModelBuffers models[RdrModel_COUNT];
 
     SDL_GPUBuffer *wall_vert_buf;
     SDL_GPUBuffer *wall_instance_buf;

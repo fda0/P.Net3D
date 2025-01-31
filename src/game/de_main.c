@@ -12,28 +12,40 @@ static void Game_IssueDrawCommands(AppState *app)
         Object *obj = app->all_objects + obj_index;
         if (!(obj->flags & ObjectFlag_Draw)) continue;
 
-        if (obj->flags & ObjectFlag_ModelTeapot)
+        if (obj->flags & ObjectFlag_ModelTeapot ||
+            obj->flags & ObjectFlag_ModelFlag)
         {
-            if (APP.rdr.instance_count < ArrayCount(APP.rdr.instance_data))
+            bool model_enabled[RdrModel_COUNT] =
             {
-                U32 instance_index = APP.rdr.instance_count;
-                APP.rdr.instance_count += 1;
-                Rdr_ModelInstanceData *inst_data = APP.rdr.instance_data + instance_index;
-                SDL_zerop(inst_data);
+                obj->flags & ObjectFlag_ModelTeapot,
+                obj->flags & ObjectFlag_ModelFlag
+            };
 
-                inst_data->color.x = obj->sprite_color.r;
-                inst_data->color.y = obj->sprite_color.g;
-                inst_data->color.z = obj->sprite_color.b;
+            static_assert(ArrayCount(model_enabled) == ArrayCount(APP.rdr.models));
+            ForArray(i, APP.rdr.models)
+            {
+                if (model_enabled[i] &&
+                    APP.rdr.models[i].count < ArrayCount(APP.rdr.models[i].data))
+                {
+                    Rdr_ModelInstanceData *inst = APP.rdr.models[i].data + APP.rdr.models[i].count;
+                    APP.rdr.models[i].count += 1;
 
-                V3 move = {};
-                move.x = obj->p.x;
-                move.y = obj->p.y;
-                Mat4 move_mat = Mat4_Translation(move);
-                Mat4 rot_mat = Mat4_Rotation_RH(0.03f, (V3){0,1,0});
-                if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
-                    rot_mat = Mat4_Diagonal(1.f);
+                    SDL_zerop(inst);
+                    inst->color.x = obj->sprite_color.r;
+                    inst->color.y = obj->sprite_color.g;
+                    inst->color.z = obj->sprite_color.b;
 
-                inst_data->transform = Mat4_Mul(move_mat, rot_mat);
+                    V3 move = {};
+                    move.x = obj->p.x;
+                    move.y = obj->p.y;
+                    Mat4 move_mat = Mat4_Translation(move);
+                    Mat4 rot_mat = Mat4_Rotation_RH(0.03f, (V3){0,1,0});
+                    if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
+                        rot_mat = Mat4_Diagonal(1.f);
+
+                    inst->transform = Mat4_Mul(move_mat, rot_mat);
+
+                }
             }
         }
         else
@@ -285,6 +297,6 @@ static void Game_Init(AppState *app)
 
     // pathing marker
     {
-        app->pathing_marker = Object_Create(app, ObjCategory_Local, 0)->key;
+        app->pathing_marker = Object_Create(app, ObjCategory_Local, ObjectFlag_ModelFlag)->key;
     }
 }

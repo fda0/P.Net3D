@@ -219,6 +219,80 @@ static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultSDLPipeline(SDL_GPUColorTarg
     return pipeline;
 }
 
+static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
+{
+    Rdr_ModelVertex *vertices = 0;
+    U64 vertices_size = 0;
+    U16 *indices = 0;
+    U64 indices_size = 0;
+    const char *vrt_buf_name = "";
+    const char *ind_buf_name = "";
+    const char *inst_buf_name = "";
+
+    switch (model_type)
+    {
+        default: Assert(0); break;
+        case RdrModel_Teapot: {
+            vertices = Model_teapot_vrt;
+            vertices_size = sizeof(Model_teapot_vrt);
+            indices = Model_teapot_ind;
+            indices_size = sizeof(Model_teapot_ind);
+            vrt_buf_name = "Teapot vrt buf";
+            ind_buf_name = "Teapot ind buf";
+            inst_buf_name = "Teapot inst buf";
+        } break;
+        case RdrModel_Flag: {
+            vertices = Model_flag_vrt;
+            vertices_size = sizeof(Model_flag_vrt);
+            indices = Model_flag_ind;
+            indices_size = sizeof(Model_flag_ind);
+            vrt_buf_name = "Flag vrt buf";
+            ind_buf_name = "Flag ind buf";
+            inst_buf_name = "Flag inst buf";
+        } break;
+    }
+
+    Gpu_ModelBuffers *model = APP.gpu.models + model_type;
+    model->ind_count = indices_size / sizeof(U16);
+
+    // create model vertex buffer
+    {
+        SDL_GPUBufferCreateInfo buffer_desc = {
+            .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
+            .size = vertices_size,
+            .props = 0,
+        };
+        model->vert_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
+        Assert(model->vert_buf); // @todo report
+        SDL_SetGPUBufferName(APP.gpu.device, model->vert_buf, vrt_buf_name);
+    }
+    // create model index buffer
+    {
+        SDL_GPUBufferCreateInfo buffer_desc = {
+            .usage = SDL_GPU_BUFFERUSAGE_INDEX,
+            .size = indices_size,
+            .props = 0,
+        };
+        model->ind_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
+        Assert(model->ind_buf); // @todo report
+        SDL_SetGPUBufferName(APP.gpu.device, model->ind_buf, ind_buf_name);
+    }
+    // create model per instance storage buffer
+    {
+        SDL_GPUBufferCreateInfo buffer_desc = {
+            .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+            .size = sizeof(APP.rdr.models[0].data),
+            .props = 0,
+        };
+        model->inst_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
+        Assert(model->inst_buf); // @todo report
+        SDL_SetGPUBufferName(APP.gpu.device, model->inst_buf, inst_buf_name);
+    }
+
+    Gpu_TransferBuffer(model->vert_buf, vertices, vertices_size);
+    Gpu_TransferBuffer(model->ind_buf, indices, indices_size);
+}
+
 static void Gpu_Init()
 {
     APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_1;
@@ -246,44 +320,10 @@ static void Gpu_Init()
     // model
     //
     {
-        // create model vertex buffer
+        ForU32(model_type, RdrModel_COUNT)
         {
-            SDL_GPUBufferCreateInfo buffer_desc = {
-                .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-                .size = sizeof(MODEL_VERTEX_ARR),
-                .props = 0,
-            };
-            APP.gpu.model_vert_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-            Assert(APP.gpu.model_vert_buf); // @todo report
-            SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.model_vert_buf, "Model vertex buffer");
+            Gpu_InitModelBuffers(model_type);
         }
-        // create model index buffer
-        {
-            SDL_GPUBufferCreateInfo buffer_desc = {
-                .usage = SDL_GPU_BUFFERUSAGE_INDEX,
-                .size = sizeof(MODEL_VERTEX_ARR),
-                .props = 0,
-            };
-            APP.gpu.model_indx_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-            Assert(APP.gpu.model_indx_buf); // @todo report
-            SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.model_indx_buf, "Model index buffer");
-        }
-        // create model per instance storage buffer
-        {
-            SDL_GPUBufferCreateInfo buffer_desc = {
-                .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                .size = sizeof(APP.rdr.instance_data),
-                .props = 0,
-            };
-            APP.gpu.model_instance_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-            Assert(APP.gpu.model_instance_buf); // @todo report
-            SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.model_instance_buf, "Per model instance storage buffer");
-        }
-
-        // model buffer transfers
-        // @todo merge transfers into one mapping, two memcpy calls
-        Gpu_TransferBuffer(APP.gpu.model_vert_buf, MODEL_VERTEX_ARR, sizeof(MODEL_VERTEX_ARR));
-        Gpu_TransferBuffer(APP.gpu.model_indx_buf, MODEL_INDEX_ARR, sizeof(MODEL_INDEX_ARR));
 
         SDL_GPUShader *vertex_shader = 0;
         {
@@ -495,7 +535,7 @@ static void Gpu_Init()
             {
                 .stage = SDL_GPU_SHADERSTAGE_VERTEX,
                 .num_samplers = 0,
-                .num_storage_buffers = 1,
+                .num_storage_buffers = 0,
                 .num_storage_textures = 0,
                 .num_uniform_buffers = 1,
 
@@ -599,17 +639,23 @@ static void Gpu_Iterate()
 
     Gpu_ProcessWindowResize();
 
-    // upload instance data
-    if (APP.rdr.instance_count)
-    {
-        Assert(APP.rdr.instance_count <= ArrayCount(APP.rdr.instance_data));
-        Gpu_TransferBuffer(APP.gpu.model_instance_buf, APP.rdr.instance_data,
-                           APP.rdr.instance_count*sizeof(APP.rdr.instance_data[0]));
-    }
-
+    // upload wall vertices
     if (APP.rdr.wall_vert_count)
     {
         Gpu_TransferBuffer(APP.gpu.wall_vert_buf, APP.rdr.wall_verts, sizeof(APP.rdr.wall_verts));
+    }
+
+    // upload model instance data
+    ForArray(model_i, APP.gpu.models)
+    {
+        Gpu_ModelBuffers *gpu_model = APP.gpu.models + model_i;
+        Rdr_Model *rdr_model = APP.rdr.models + model_i;
+        if (rdr_model->count)
+        {
+            Gpu_TransferBuffer(gpu_model->inst_buf,
+                               rdr_model->data,
+                               rdr_model->count * sizeof(rdr_model->data[0]));
+        }
     }
 
     // camera matrices
@@ -671,33 +717,6 @@ static void Gpu_Iterate()
     {
         SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
 
-        // model
-        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.model_pipeline);
-        {
-            // bind vertex buffer
-            {
-                SDL_GPUBufferBinding binding_vrt = {
-                    .buffer = APP.gpu.model_vert_buf,
-                    .offset = 0,
-                };
-                SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
-            }
-            // bind index buffer
-            {
-                SDL_GPUBufferBinding binding_ind = {
-                    .buffer = APP.gpu.model_indx_buf,
-                    .offset = 0,
-                };
-                SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
-            }
-            // bind instance storage buffer
-            {
-                SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.model_instance_buf, 1);
-            }
-
-            SDL_DrawGPUIndexedPrimitives(pass, ArrayCount(MODEL_INDEX_ARR), APP.rdr.instance_count, 0, 0, 0);
-        }
-
         // walls
         SDL_BindGPUGraphicsPipeline(pass, APP.gpu.wall_pipeline);
         {
@@ -721,6 +740,40 @@ static void Gpu_Iterate()
             }
 
             SDL_DrawGPUPrimitives(pass, APP.rdr.wall_vert_count, 1, 0, 0);
+        }
+
+        // model
+        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.model_pipeline);
+        ForArray(model_i, APP.gpu.models)
+        {
+            Gpu_ModelBuffers *gpu_model = APP.gpu.models + model_i;
+            Rdr_Model *rdr_model = APP.rdr.models + model_i;
+
+            if (!rdr_model->count)
+                continue;
+
+            // bind vertex buffer
+            {
+                SDL_GPUBufferBinding binding_vrt = {
+                    .buffer = gpu_model->vert_buf,
+                    .offset = 0,
+                };
+                SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
+            }
+            // bind index buffer
+            {
+                SDL_GPUBufferBinding binding_ind = {
+                    .buffer = gpu_model->ind_buf,
+                    .offset = 0,
+                };
+                SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+            }
+            // bind instance storage buffer
+            {
+                SDL_BindGPUVertexStorageBuffers(pass, 0, &gpu_model->inst_buf, 1);
+            }
+
+            SDL_DrawGPUIndexedPrimitives(pass, gpu_model->ind_count, rdr_model->count, 0, 0, 0);
         }
 
         SDL_EndGPURenderPass(pass);

@@ -14,6 +14,7 @@ typedef enum
     ObjectFlag_Move          = (1 << 1),
     ObjectFlag_Collide       = (1 << 2),
     ObjectFlag_ModelTeapot   = (1 << 3),
+    ObjectFlag_ModelFlag     = (1 << 4),
 } Object_Flags;
 
 typedef enum

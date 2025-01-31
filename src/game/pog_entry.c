@@ -74,8 +74,12 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
     // render cleanup
     {
-        APP.rdr.instance_count = 0;
         APP.rdr.wall_vert_count = 0;
+        ForArray(model_i, APP.gpu.models)
+        {
+            Rdr_Model *rdr_model = APP.rdr.models + model_i;
+            rdr_model->count = 0;
+        }
     }
 
     return SDL_APP_CONTINUE;
