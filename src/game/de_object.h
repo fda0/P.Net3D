@@ -55,5 +55,5 @@ typedef struct
 } Object;
 
 static Object Object_Lerp(Object prev, Object next, float t);
-static Object *Object_CreatePlayer(AppState *app);
+static Object *Object_CreatePlayer();
 static void Collision_RecalculateNormals(Collision_Data *collision);

@@ -79,6 +79,7 @@ struct AppState
 
     // user input
     V2 mouse;
+    bool world_mouse_valid;
     V2 world_mouse;
     SDL_MouseButtonFlags mouse_keys;
     bool keyboard[SDL_SCANCODE_COUNT]; // true == key is down
@@ -135,8 +136,6 @@ typedef struct
     Uint32 x, y, w, h;
 } WindowLayoutData;
 
-static void Game_AutoLayoutApply(AppState *app, Uint32 user_count, Sint32 px, Sint32 py, Sint32 w, Sint32 h);
-static V2 Game_WorldToScreen(AppState *app, V2 pos);
-static V2 Game_ScreenToWorld(AppState *app, V2 pos);
+static void Game_AutoLayoutApply(Uint32 user_count, Sint32 px, Sint32 py, Sint32 w, Sint32 h);
 
 

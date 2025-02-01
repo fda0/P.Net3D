@@ -16,7 +16,7 @@ static bool Object_KeyMatch(Object_Key a, Object_Key b)
             a.index == b.index);
 }
 
-static Object *Object_Get(AppState *app, Object_Key key, Uint32 category_mask)
+static Object *Object_Get(Object_Key key, Uint32 category_mask)
 {
     Object *result = Object_GetNil();
 
@@ -35,7 +35,7 @@ static Object *Object_Get(AppState *app, Object_Key key, Uint32 category_mask)
 
     if (index_in_valid_category)
     {
-        Object *obj = app->all_objects + key.index;
+        Object *obj = APP.all_objects + key.index;
         if (Object_KeyMatch(obj->key, key))
             result = obj;
     }
@@ -61,17 +61,17 @@ static bool Object_HasAllFlags(Object *obj, Uint32 flags)
     return (obj->flags & flags) == flags;
 }
 
-static Object *Object_FromNetIndex(AppState *app, Uint32 net_index)
+static Object *Object_FromNetIndex(Uint32 net_index)
 {
-    if (net_index > ArrayCount(app->net_objects))
+    if (net_index > ArrayCount(APP.net_objects))
     {
         return Object_GetNil();
     }
 
-    return app->net_objects + net_index;
+    return APP.net_objects + net_index;
 }
 
-static Object *Object_Create(AppState *app, Obj_Category category, Uint32 flags)
+static Object *Object_Create(Obj_Category category, Uint32 flags)
 {
     bool matched_category = false;
     Object *obj = 0;
@@ -81,9 +81,9 @@ static Object *Object_Create(AppState *app, Obj_Category category, Uint32 flags)
         Assert(!matched_category);
         matched_category = true;
 
-        ForArray(i, app->const_objects)
+        ForArray(i, APP.const_objects)
         {
-            Object *search = app->const_objects + i;
+            Object *search = APP.const_objects + i;
             if (!Object_IsInit(search))
             {
                 obj = search;
@@ -96,9 +96,9 @@ static Object *Object_Create(AppState *app, Obj_Category category, Uint32 flags)
         Assert(!matched_category);
         matched_category = true;
 
-        ForArray(i, app->net_objects)
+        ForArray(i, APP.net_objects)
         {
-            Object *search = app->net_objects + i;
+            Object *search = APP.net_objects + i;
             if (!Object_IsInit(search))
             {
                 obj = search;
@@ -113,8 +113,8 @@ static Object *Object_Create(AppState *app, Obj_Category category, Uint32 flags)
     // init object
     SDL_zerop(obj);
 
-    obj->key.made_at_tick = app->tick_id;
-    obj->key.index = ((Uint64)obj - (Uint64)app->all_objects) / sizeof(*obj);
+    obj->key.made_at_tick = APP.tick_id;
+    obj->key.index = ((Uint64)obj - (Uint64)APP.all_objects) / sizeof(*obj);
 
     obj->flags = flags;
     obj->init = true;
@@ -122,10 +122,9 @@ static Object *Object_Create(AppState *app, Obj_Category category, Uint32 flags)
     return obj;
 }
 
-static Object *Object_CreateWall(AppState *app, V2 p, V2 dim)
+static Object *Object_CreateWall(V2 p, V2 dim)
 {
-
-    Object *obj = Object_Create(app, ObjCategory_Local,
+    Object *obj = Object_Create(ObjCategory_Local,
                                 ObjectFlag_Draw|ObjectFlag_Collide);
     obj->p = p;
     obj->collision.verts = CollisionVertices_FromRectDim(dim);
@@ -142,10 +141,11 @@ static Object *Object_CreateWall(AppState *app, V2 p, V2 dim)
     return obj;
 }
 
-static Object *Object_CreatePlayer(AppState *app)
+static Object *Object_CreatePlayer()
 {
-    Object *player = Object_Create(app, ObjCategory_Net,
-                                   ObjectFlag_Draw|ObjectFlag_Move|ObjectFlag_ModelTeapot /*|ObjectFlag_Collide*/ );
+    Object *player = Object_Create(ObjCategory_Net,
+                                   ObjectFlag_Draw|ObjectFlag_Move|
+                                   ObjectFlag_ModelTeapot /*|ObjectFlag_Collide*/ );
 
     player->collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
     Collision_RecalculateNormals(&player->collision);

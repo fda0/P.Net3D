@@ -57,7 +57,7 @@ static void Server_InsertPlayerInput(Server_PlayerInputs *pi, Net_SendInputs *ne
             LOG(LogFlags_NetCatchup,
                 "%s: Client (?) current input delay: %llu"
                 " Setting input playback catchup to %d",
-                Net_Label2(),
+                Net_Label(),
                 pre_insert_playback_range,
                 (int)pi->receive_deltas.tick_catchup);
         }
@@ -75,13 +75,13 @@ static Tick_Input Server_PopPlayerInput(Server_PlayerInputs *pi)
     return result;
 }
 
-static Tick_Input Server_GetPlayerInput(AppState *app, Uint32 player_index)
+static Tick_Input Server_GetPlayerInput(Uint32 player_index)
 {
     Tick_Input result = {};
-    if (player_index >= ArrayCount(app->server.player_inputs))
+    if (player_index >= ArrayCount(APP.server.player_inputs))
         return result;
 
-    Server_PlayerInputs *pi = app->server.player_inputs + player_index;
+    Server_PlayerInputs *pi = APP.server.player_inputs + player_index;
     Uint64 playback_count = RngU64_Count(pi->playback_range);
 
     if (playback_count > 0)
@@ -93,7 +93,7 @@ static Tick_Input Server_GetPlayerInput(AppState *app, Uint32 player_index)
         LOG(LogFlags_NetTick,
             "%s: Ran out of input playback -> extrapolating; "
             "playback catchup %d",
-            Net_Label2(),
+            Net_Label(),
             pi->receive_deltas.tick_catchup);
 
         // extrapolation using last input!

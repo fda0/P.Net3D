@@ -4,10 +4,10 @@ static Object *Client_SnapshotObjectAtTick(Client_Snapshot *snap, Uint64 tick_id
     return snap->tick_states + state_index;
 }
 
-static Object Client_LerpNetObject(AppState *app, Uint32 net_index, Uint64 tick_id)
+static Object Client_LerpNetObject(Uint32 net_index, Uint64 tick_id)
 {
-    Assert(net_index < ArrayCount(app->client.obj_snaps));
-    Client_Snapshot *snap = app->client.obj_snaps + net_index;
+    Assert(net_index < ArrayCount(APP.client.obj_snaps));
+    Client_Snapshot *snap = APP.client.obj_snaps + net_index;
 
     Assert(tick_id <= snap->latest_server_tick &&
            tick_id >= snap->oldest_server_tick);
@@ -57,7 +57,7 @@ static Object Client_LerpNetObject(AppState *app, Uint32 net_index, Uint64 tick_
     return result;
 }
 
-static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
+static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
                                         Uint64 insert_at_tick_id, Object insert_obj)
 {
     // function returns true on error
@@ -73,7 +73,7 @@ static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
             "latest server tick: %llu; "
             "insert tick: %llu; "
             "diff: %llu (max: %d)",
-            Net_Label(app), snap->latest_server_tick, insert_at_tick_id,
+            Net_Label(), snap->latest_server_tick, insert_at_tick_id,
             snap->latest_server_tick - insert_at_tick_id, (int)NET_CLIENT_MAX_SNAPSHOTS);
         return true;
     }
@@ -97,7 +97,7 @@ static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
             "latest server tick: %llu; "
             "insert tick: %llu; "
             "diff: %llu (max: %llu)",
-            Net_Label(app), snap->latest_server_tick, insert_at_tick_id,
+            Net_Label(), snap->latest_server_tick, insert_at_tick_id,
             insert_at_tick_id - snap->latest_server_tick,
             (Uint64)NET_CLIENT_MAX_SNAPSHOTS);
         return true;
@@ -168,23 +168,23 @@ static bool Client_InsertSnapshotObject(AppState *app, Client_Snapshot *snap,
     return false; // no error
 }
 
-static Tick_Input *Client_PollInput(AppState *app)
+static Tick_Input *Client_PollInput()
 {
     V2 dir = {0};
-    if (app->keyboard[SDL_SCANCODE_W] || app->keyboard[SDL_SCANCODE_UP])    dir.x += 1;
-    if (app->keyboard[SDL_SCANCODE_S] || app->keyboard[SDL_SCANCODE_DOWN])  dir.x -= 1;
-    if (app->keyboard[SDL_SCANCODE_A] || app->keyboard[SDL_SCANCODE_LEFT])  dir.y += 1;
-    if (app->keyboard[SDL_SCANCODE_D] || app->keyboard[SDL_SCANCODE_RIGHT]) dir.y -= 1;
+    if (APP.keyboard[SDL_SCANCODE_W] || APP.keyboard[SDL_SCANCODE_UP])    dir.x += 1;
+    if (APP.keyboard[SDL_SCANCODE_S] || APP.keyboard[SDL_SCANCODE_DOWN])  dir.x -= 1;
+    if (APP.keyboard[SDL_SCANCODE_A] || APP.keyboard[SDL_SCANCODE_LEFT])  dir.y += 1;
+    if (APP.keyboard[SDL_SCANCODE_D] || APP.keyboard[SDL_SCANCODE_RIGHT]) dir.y -= 1;
 
-    Tick_Input *input = Q_Push(app->client.inputs_qbuf, &app->client.inputs_range);
+    Tick_Input *input = Q_Push(APP.client.inputs_qbuf, &APP.client.inputs_range);
     SDL_zerop(input);
 
     input->move_dir = V2_Normalize(dir);
-    if (app->pathing_marker_set)
+    if (APP.pathing_marker_set)
     {
-        app->pathing_marker_set = false;
+        APP.pathing_marker_set = false;
         input->is_pathing = true;
-        input->pathing_world_p = Object_Get(app, app->pathing_marker, ObjCategory_Local)->p;
+        input->pathing_world_p = Object_Get(APP.pathing_marker, ObjCategory_Local)->p;
     }
 
     return input;

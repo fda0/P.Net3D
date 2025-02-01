@@ -50,26 +50,23 @@ static AppState APP;
 
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
-    AppState *app = (AppState*)appstate;
+    (void)appstate;
 
     // input
     {
-        app->mouse_keys = SDL_GetMouseState(&app->mouse.x, &app->mouse.y);
+        APP.mouse_keys = SDL_GetMouseState(&APP.mouse.x, &APP.mouse.y);
+        APP.mouse.y = APP.window_height - APP.mouse.y;
 
         // keyboard state
         {
             int numkeys = 0;
             const bool *key_state_arr = SDL_GetKeyboardState(&numkeys);
-            int to_copy = Min(numkeys, ArrayCount(app->keyboard));
-            memcpy(app->keyboard, key_state_arr, to_copy);
+            int to_copy = Min(numkeys, ArrayCount(APP.keyboard));
+            memcpy(APP.keyboard, key_state_arr, to_copy);
         }
     }
 
-    //SDL_SetRenderDrawColor(app->renderer, 64, 64, 64, 255);
-    //SDL_RenderClear(app->renderer);
-    Game_Iterate(app);
-    //SDL_RenderPresent(app->renderer);
-
+    Game_Iterate(&APP);
     Gpu_Iterate();
 
     // render cleanup
@@ -87,7 +84,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 {
-    AppState *app = (AppState *)appstate;
+    (void)appstate;
 
     switch (event->type)
     {
@@ -98,8 +95,8 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 
         case SDL_EVENT_WINDOW_RESIZED:
         {
-            app->window_width = event->window.data1;
-            app->window_height = event->window.data2;
+            APP.window_width = event->window.data1;
+            APP.window_height = event->window.data2;
         } break;
 
         case SDL_EVENT_KEY_UP:
@@ -113,34 +110,30 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
             if (event->type == SDL_EVENT_KEY_DOWN &&
                 event->key.key == SDLK_P)
             {
-                app->debug.unpause_one_tick = true;
+                APP.debug.unpause_one_tick = true;
             }
-        } break;
-
-        default:
-        {
         } break;
     }
 
     return SDL_APP_CONTINUE;
 }
 
-static void Game_ParseCmd(AppState *app, int argc, char **argv)
+static void Game_ParseCmd(int argc, char **argv)
 {
     for (int i = 1; i < argc; i += 1)
     {
         const char *arg = argv[i];
         if (0 == strcmp(arg, "-server"))
         {
-            app->net.is_server = true;
+            APP.net.is_server = true;
         }
         else if (0 == strcmp(arg, "-top"))
         {
-            app->window_on_top = true;
+            APP.window_on_top = true;
         }
         else if (0 == strcmp(arg, "-b"))
         {
-            app->window_borderless = true;
+            APP.window_borderless = true;
         }
         else if (0 == strcmp(arg, "-w") ||
                  0 == strcmp(arg, "-h") ||
@@ -157,10 +150,10 @@ static void Game_ParseCmd(AppState *app, int argc, char **argv)
                 if (number > 0)
                 {
                     found_number = true;
-                    if      (0 == strcmp(arg, "-w"))  app->init_window_width = number;
-                    else if (0 == strcmp(arg, "-h"))  app->init_window_height = number;
-                    else if (0 == strcmp(arg, "-px")) app->init_window_px = number;
-                    else if (0 == strcmp(arg, "-py")) app->init_window_py = number;
+                    if      (0 == strcmp(arg, "-w"))  APP.init_window_width = number;
+                    else if (0 == strcmp(arg, "-h"))  APP.init_window_height = number;
+                    else if (0 == strcmp(arg, "-px")) APP.init_window_px = number;
+                    else if (0 == strcmp(arg, "-py")) APP.init_window_py = number;
                 }
             }
 
@@ -171,7 +164,7 @@ static void Game_ParseCmd(AppState *app, int argc, char **argv)
         }
         else if (0 == strcmp(arg, "-autolayout"))
         {
-            app->window_autolayout = true;
+            APP.window_autolayout = true;
         }
         else
         {
@@ -182,29 +175,17 @@ static void Game_ParseCmd(AppState *app, int argc, char **argv)
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
-    //*appstate = SDL_calloc(1, sizeof(AppState));
-    *appstate = &APP;
-    {
-        void *aligned = AlignPointerUp(appstate, _Alignof(AppState));
-        Assert(aligned == appstate);
-    }
-
-    AppState *app = (AppState *)*appstate;
-    if (!app)
-    {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to allocate appstate", SDL_GetError(), NULL);
-        return SDL_APP_FAILURE;
-    }
+    (void)appstate;
 
     {
         U64 arena_size = Megabyte(1);
-        app->tmp = Arena_MakeInside(malloc(arena_size), arena_size);
+        APP.tmp = Arena_MakeInside(malloc(arena_size), arena_size);
     }
-    app->log_filter = ~(U32)LogFlags_NetAll;
-    app->init_window_width = WINDOW_WIDTH;
-    app->init_window_height = WINDOW_HEIGHT;
+    APP.log_filter = ~(U32)LogFlags_NetAll;
+    APP.init_window_width = WINDOW_WIDTH;
+    APP.init_window_height = WINDOW_HEIGHT;
 
-    Game_ParseCmd(app, argc, argv);
+    Game_ParseCmd(argc, argv);
 
     if (!SDL_Init(SDL_INIT_VIDEO))
     {
@@ -219,13 +200,12 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
     }
 
     SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
-    window_flags |= (app->window_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
-    window_flags |= (app->window_borderless ? SDL_WINDOW_BORDERLESS : 0);
+    window_flags |= (APP.window_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
+    window_flags |= (APP.window_borderless ? SDL_WINDOW_BORDERLESS : 0);
 
-    app->window_width = app->init_window_width;
-    app->window_height = app->init_window_height;
+    APP.window_width = APP.init_window_width;
+    APP.window_height = APP.init_window_height;
 
-#if 1
     APP.gpu.device =
         SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL,
                             /* debug mode */ true,
@@ -237,7 +217,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
         return SDL_APP_FAILURE;
     }
 
-    APP.window = SDL_CreateWindow("P. Game", app->window_width, app->window_height, window_flags);
+    APP.window = SDL_CreateWindow("P. Game", APP.window_width, APP.window_height, window_flags);
     if (!APP.window)
     {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "CreateWindow failed", SDL_GetError(), 0);
@@ -250,35 +230,21 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
         return SDL_APP_FAILURE;
     }
 
-#else
-    if (!SDL_CreateWindowAndRenderer("P Game",
-                                     app->window_width, app->window_height,
-                                     window_flags,
-                                     &app->window, &app->renderer))
+    if (APP.init_window_px || APP.init_window_py)
     {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to create window/renderer", SDL_GetError(), NULL);
-        return SDL_APP_FAILURE;
-    }
-#endif
-
-    if (app->init_window_px || app->init_window_py)
-    {
-        int x = (app->init_window_px ? app->init_window_px : SDL_WINDOWPOS_UNDEFINED);
-        int y = (app->init_window_py ? app->init_window_py : SDL_WINDOWPOS_UNDEFINED);
-        SDL_SetWindowPosition(app->window, x, y);
+        int x = (APP.init_window_px ? APP.init_window_px : SDL_WINDOWPOS_UNDEFINED);
+        int y = (APP.init_window_py ? APP.init_window_py : SDL_WINDOWPOS_UNDEFINED);
+        SDL_SetWindowPosition(APP.window, x, y);
     }
 
-    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(app->window));
+    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(APP.window));
     SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
 
     Gpu_Init();
 
-    SDL_ShowWindow(app->window);
+    SDL_ShowWindow(APP.window);
 
-#if 0
-    SDL_SetRenderDrawBlendMode(app->renderer, SDL_BLENDMODE_BLEND);
-#endif
-    Game_Init(app);
+    Game_Init();
 
     return SDL_APP_CONTINUE;
 }

@@ -4,12 +4,12 @@
 //           stuff when it's reasonable.
 //
 
-static void Game_IssueDrawCommands(AppState *app)
+static void Game_IssueDrawCommands()
 {
     // draw objects
-    ForArray(obj_index, app->all_objects)
+    ForArray(obj_index, APP.all_objects)
     {
-        Object *obj = app->all_objects + obj_index;
+        Object *obj = APP.all_objects + obj_index;
         if (!(obj->flags & ObjectFlag_Draw)) continue;
 
         if (obj->flags & ObjectFlag_ModelTeapot ||
@@ -179,93 +179,93 @@ static void Game_IssueDrawCommands(AppState *app)
     }
 }
 
-static void Game_SetWindowPosSize(AppState *app, Sint32 px, Sint32 py, Sint32 w, Sint32 h)
+static void Game_SetWindowPosSize(Sint32 px, Sint32 py, Sint32 w, Sint32 h)
 {
-    SDL_SetWindowPosition(app->window, px, py);
-    SDL_SetWindowSize(app->window, w, h);
+    SDL_SetWindowPosition(APP.window, px, py);
+    SDL_SetWindowSize(APP.window, w, h);
 }
 
-static void Game_AutoLayoutApply(AppState *app, Uint32 user_count,
+static void Game_AutoLayoutApply(Uint32 user_count,
                                  Sint32 px, Sint32 py, Sint32 w, Sint32 h)
 {
-    if (user_count == app->latest_autolayout_user_count)
+    if (user_count == APP.latest_autolayout_user_count)
         return;
 
-    app->latest_autolayout_user_count = user_count;
-    Game_SetWindowPosSize(app, px, py, w, h);
+    APP.latest_autolayout_user_count = user_count;
+    Game_SetWindowPosSize(px, py, w, h);
 }
 
-static void Game_Iterate(AppState *app)
+static void Game_Iterate()
 {
     Test_Iterate();
 
     {
-        app->frame_id += 1;
+        APP.frame_id += 1;
 
         Uint64 new_frame_time = SDL_GetTicks();
-        Uint64 delta_time = new_frame_time - app->frame_time;
-        app->frame_time = new_frame_time;
-        app->dt = delta_time * (0.001f);
-        app->tick_dt_accumulator += Min(app->dt, 1.f); // clamp dt to 1s
+        Uint64 delta_time = new_frame_time - APP.frame_time;
+        APP.frame_time = new_frame_time;
+        APP.dt = delta_time * (0.001f);
+        APP.tick_dt_accumulator += Min(APP.dt, 1.f); // clamp dt to 1s
 
-        if (app->debug.fixed_dt)
+        if (APP.debug.fixed_dt)
         {
-            app->dt = app->debug.fixed_dt;
+            APP.dt = APP.debug.fixed_dt;
         }
 
-        app->at = WrapF(0.f, 1000.f, app->at + app->dt);
+        APP.at = WrapF(0.f, 1000.f, APP.at + APP.dt);
     }
 
-    Net_IterateReceive(app);
+    Net_IterateReceive();
 
-    if (app->debug.single_tick_stepping)
+    if (APP.debug.single_tick_stepping)
     {
-        if (app->debug.unpause_one_tick)
+        if (APP.debug.unpause_one_tick)
         {
-            app->tick_id += 1;
-            Tick_Iterate(app);
-            app->debug.unpause_one_tick = false;
+            APP.tick_id += 1;
+            Tick_Iterate();
+            APP.debug.unpause_one_tick = false;
         }
     }
     else
     {
-        while (app->tick_dt_accumulator > TIME_STEP)
+        while (APP.tick_dt_accumulator > TIME_STEP)
         {
-            app->tick_id += 1;
-            app->tick_dt_accumulator -= TIME_STEP;
-            Tick_Iterate(app);
+            APP.tick_id += 1;
+            APP.tick_dt_accumulator -= TIME_STEP;
+            Tick_Iterate();
         }
     }
 
-    Net_IterateSend(app);
+    Net_IterateSend();
 
 
     // move camera; calculate camera scale
     if (APP.debug.noclip_camera)
     {
         V3 camera_dir = {0};
-        if (app->keyboard[SDL_SCANCODE_I]) camera_dir.x += 1;
-        if (app->keyboard[SDL_SCANCODE_K]) camera_dir.x -= 1;
-        if (app->keyboard[SDL_SCANCODE_J]) camera_dir.y += 1;
-        if (app->keyboard[SDL_SCANCODE_L]) camera_dir.y -= 1;
-        if (app->keyboard[SDL_SCANCODE_O]) camera_dir.z += 1;
-        if (app->keyboard[SDL_SCANCODE_U]) camera_dir.z -= 1;
+        if (APP.keyboard[SDL_SCANCODE_I]) camera_dir.x += 1;
+        if (APP.keyboard[SDL_SCANCODE_K]) camera_dir.x -= 1;
+        if (APP.keyboard[SDL_SCANCODE_J]) camera_dir.y += 1;
+        if (APP.keyboard[SDL_SCANCODE_L]) camera_dir.y -= 1;
+        if (APP.keyboard[SDL_SCANCODE_O]) camera_dir.z += 1;
+        if (APP.keyboard[SDL_SCANCODE_U]) camera_dir.z -= 1;
         camera_dir = V3_Normalize(camera_dir);
         camera_dir = V3_Scale(camera_dir, APP.dt * 100.f);
         APP.camera_p = V3_Add(APP.camera_p, camera_dir);
 
-        float rot_speed = 0.1f * APP.dt * (app->keyboard[SDL_SCANCODE_V] ? -1.f : 1.f);
-        if (app->keyboard[SDL_SCANCODE_B]) APP.camera_rot.x += rot_speed;
-        if (app->keyboard[SDL_SCANCODE_N]) APP.camera_rot.y += rot_speed;
-        if (app->keyboard[SDL_SCANCODE_M]) APP.camera_rot.z += rot_speed;
+        float rot_speed = 0.1f * APP.dt * (APP.keyboard[SDL_SCANCODE_V] ? -1.f : 1.f);
+        if (APP.keyboard[SDL_SCANCODE_B]) APP.camera_rot.x += rot_speed;
+        if (APP.keyboard[SDL_SCANCODE_N]) APP.camera_rot.y += rot_speed;
+        if (APP.keyboard[SDL_SCANCODE_M]) APP.camera_rot.z += rot_speed;
     }
     else
     {
-        Object *player = Object_Get(app, app->client.player_key, ObjCategory_Net);
+        Object *player = Object_Get(APP.client.player_key, ObjCategory_Net);
         if (!Object_IsNil(player))
         {
-            app->camera_p = V3_Make_XY_Z(player->p, 70.f);
-            app->camera_p.x -= 50.f;
+            APP.camera_p = V3_Make_XY_Z(player->p, 70.f);
+            APP.camera_p.x -= 50.f;
         }
     }
 
@@ -284,7 +284,7 @@ static void Game_Iterate(AppState *app)
         APP.camera_all_mat = Mat4_Mul(APP.camera_perspective_mat, Mat4_Mul(APP.camera_rot_mat, APP.camera_move_mat));
     }
 
-
+    // calculate mouse in screen space -> mouse in world space (at Z == 0)
     {
         V2 view_mouse =
         {
@@ -309,66 +309,68 @@ static void Game_Iterate(AppState *app)
             x * APP.camera_all_mat.elem[2][0] + y * APP.camera_all_mat.elem[2][1] + APP.camera_all_mat.elem[2][2],
         };
 
-        float t_up = V3_Inner(V3_Sub(plane_origin, APP.camera_p), plane_normal);
-        float t_down = V3_Inner(aim_dir, plane_normal);
+        float t_numerator = V3_Inner(V3_Sub(plane_origin, APP.camera_p), plane_normal);
+        float t_denominator = V3_Inner(aim_dir, plane_normal);
 
-        V3 world_mouse = {};
-        V3 world_off = {};
-        if (t_down)
+        APP.world_mouse_valid = t_denominator < 0.f;
+        if (APP.world_mouse_valid)
         {
-            float t = t_up / t_down;
-            world_off = V3_Scale(aim_dir, t);
-            world_mouse = V3_Add(APP.camera_p, world_off);
+            float t = t_numerator / t_denominator;
+            V3 world_off = V3_Scale(aim_dir, t);
+            V3 world_mouse = V3_Add(APP.camera_p, world_off);
             APP.world_mouse = (V2){world_mouse.x, world_mouse.y};
         }
     }
 
 
-    if (app->mouse_keys & SDL_BUTTON_RMASK)
+    if (APP.mouse_keys & SDL_BUTTON_RMASK)
     {
-        Object *marker = Object_Get(app, app->pathing_marker, ObjCategory_Local);
-        if (!Object_IsNil(marker))
+        if (APP.world_mouse_valid)
         {
-            marker->flags |= ObjectFlag_Draw;
-            marker->p = app->world_mouse;
-            app->pathing_marker_set = true;
+            Object *marker = Object_Get(APP.pathing_marker, ObjCategory_Local);
+            if (!Object_IsNil(marker))
+            {
+                marker->flags |= ObjectFlag_Draw;
+                marker->p = APP.world_mouse;
+                APP.pathing_marker_set = true;
+            }
         }
     }
 
-    Game_IssueDrawCommands(app);
+    Game_IssueDrawCommands();
 }
 
-static void Game_Init(AppState *app)
+static void Game_Init()
 {
     // init debug options
     {
-        //app->debug.fixed_dt = 0.1f;
-        //app->debug.single_tick_stepping = true;
-        app->debug.noclip_camera = true;
-        app->debug.draw_collision_box = true;
-        app->log_filter &= ~(LogFlags_NetDatagram);
+        //APP.debug.fixed_dt = 0.1f;
+        //APP.debug.single_tick_stepping = true;
+        APP.debug.noclip_camera = true;
+        APP.debug.draw_collision_box = true;
+        APP.log_filter &= ~(LogFlags_NetDatagram);
     }
 
-    Net_Init(app);
+    Net_Init();
 
-    app->frame_time = SDL_GetTicks();
+    APP.frame_time = SDL_GetTicks();
     APP.camera_fov_y = 0.19f;
-    app->camera_p = (V3){-300.f, 0.f, 200.f};
-    app->camera_rot = (V3){0, -0.1f, 0};
-    app->tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
+    APP.camera_p = (V3){-300.f, 0.f, 200.f};
+    APP.camera_rot = (V3){0, -0.1f, 0};
+    APP.tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
 
     // add walls
     {
         float thickness = 20.f;
         float length = 400.f;
         float off = length*0.5f - thickness*0.5f;
-        Object_CreateWall(app, (V2){off, 0}, (V2){thickness, length});
-        Object_CreateWall(app, (V2){-off, 0}, (V2){thickness, length});
-        Object_CreateWall(app, (V2){0, off}, (V2){length, thickness});
-        Object_CreateWall(app, (V2){0,-off}, (V2){length*0.5f, thickness});
+        Object_CreateWall((V2){off, 0}, (V2){thickness, length});
+        Object_CreateWall((V2){-off, 0}, (V2){thickness, length});
+        Object_CreateWall((V2){0, off}, (V2){length, thickness});
+        Object_CreateWall((V2){0,-off}, (V2){length*0.5f, thickness});
 
         {
-            Object *rotated_wall = Object_CreateWall(app, (V2){0.5f*off, -0.5f*off},
+            Object *rotated_wall = Object_CreateWall((V2){0.5f*off, -0.5f*off},
                                                      (V2){thickness, 2.f*thickness});
 
             Vertices_Rotate(rotated_wall->collision.verts.arr,
@@ -381,6 +383,6 @@ static void Game_Init(AppState *app)
 
     // pathing marker
     {
-        app->pathing_marker = Object_Create(app, ObjCategory_Local, ObjectFlag_ModelFlag)->key;
+        APP.pathing_marker = Object_Create(ObjCategory_Local, ObjectFlag_ModelFlag)->key;
     }
 }

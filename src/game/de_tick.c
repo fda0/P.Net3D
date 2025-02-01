@@ -8,26 +8,26 @@ static Tick_Input Tick_NormalizeInput(Tick_Input input)
     return input;
 }
 
-static void Tick_AdvanceSimulation(AppState *app)
+static void Tick_AdvanceSimulation()
 {
     // update prev_p
-    ForArray(obj_index, app->all_objects)
+    ForArray(obj_index, APP.all_objects)
     {
-        Object *obj = app->all_objects + obj_index;
+        Object *obj = APP.all_objects + obj_index;
         if (!Object_HasAnyFlag(obj, ObjectFlag_Move)) continue;
 
         obj->prev_p = obj->p;
     }
 
     // apply player input
-    ForArray(player_index, app->server.player_keys)
+    ForArray(player_index, APP.server.player_keys)
     {
-        Object_Key player_key = app->server.player_keys[player_index];
-        Object *player = Object_Get(app, player_key, ObjCategory_Net);
+        Object_Key player_key = APP.server.player_keys[player_index];
+        Object *player = Object_Get(player_key, ObjCategory_Net);
         if (Object_IsNil(player))
             continue;
 
-        Tick_Input input = Server_GetPlayerInput(app, player_index);
+        Tick_Input input = Server_GetPlayerInput(player_index);
 
         if (input.is_pathing)
         {
@@ -62,18 +62,18 @@ static void Tick_AdvanceSimulation(AppState *app)
     }
 
     // movement & collision
-    ForArray(obj_index, app->all_objects)
+    ForArray(obj_index, APP.all_objects)
     {
-        Object *obj = app->all_objects + obj_index;
+        Object *obj = APP.all_objects + obj_index;
         if (!Object_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_Collide)) continue;
 
         // reset debug flag
         obj->did_collide = false;
     }
 
-    ForArray(obj_index, app->all_objects)
+    ForArray(obj_index, APP.all_objects)
     {
-        Object *obj = app->all_objects + obj_index;
+        Object *obj = APP.all_objects + obj_index;
         if (!Object_HasAnyFlag(obj, ObjectFlag_Move)) continue;
 
         // move object
@@ -89,9 +89,9 @@ static void Tick_AdvanceSimulation(AppState *app)
             Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj->p);
             V2 obj_center = Vertices_Average(obj_verts.arr, ArrayCount(obj_verts.arr));
 
-            ForArray(obstacle_index, app->all_objects)
+            ForArray(obstacle_index, APP.all_objects)
             {
-                Object *obstacle = app->all_objects + obstacle_index;
+                Object *obstacle = APP.all_objects + obstacle_index;
                 if (!Object_HasAnyFlag(obstacle, ObjectFlag_Collide)) continue;
                 if (obj == obstacle) continue;
 
@@ -109,8 +109,8 @@ static void Tick_AdvanceSimulation(AppState *app)
                 {
                     bool use_obj_normals = !sat_iteration;
                     CollisionNormals normals = (use_obj_normals ?
-                                           obj->collision.norms :
-                                           obstacle->collision.norms);
+                                                obj->collision.norms :
+                                                obstacle->collision.norms);
 
                     CollisionProjection proj_obj = Collision_CalculateProjection(normals, obj_verts);
                     CollisionProjection proj_obstacle = Collision_CalculateProjection(normals, obstacle_verts);
@@ -201,13 +201,13 @@ static Object Object_Lerp(Object prev, Object next, float t)
     return result;
 }
 
-static void Tick_Playback(AppState *app)
+static void Tick_Playback()
 {
     Uint64 smallest_latest_server_tick = ~0ull;
     Uint64 biggest_oldest_server_tick = 0;
-    ForArray(obj_i, app->client.obj_snaps)
+    ForArray(obj_i, APP.client.obj_snaps)
     {
-        Client_Snapshot *snap = app->client.obj_snaps + obj_i;
+        Client_Snapshot *snap = APP.client.obj_snaps + obj_i;
         if (snap->latest_server_tick < smallest_latest_server_tick)
         {
             smallest_latest_server_tick = snap->latest_server_tick;
@@ -218,7 +218,7 @@ static void Tick_Playback(AppState *app)
         }
     }
 
-    if (biggest_oldest_server_tick > app->client.next_playback_tick)
+    if (biggest_oldest_server_tick > APP.client.next_playback_tick)
     {
         LOG(LogFlags_NetTick,
             "%s: Server is too ahead from the client; "
@@ -228,17 +228,17 @@ static void Tick_Playback(AppState *app)
             "playback delay: %d, "
             "playback catchup %d, "
             "[bumping client's next_playback_tick]",
-            Net_Label(app),
+            Net_Label(),
             biggest_oldest_server_tick,
             smallest_latest_server_tick,
-            app->client.next_playback_tick,
-            (int)app->client.current_playback_delay,
-            (int)app->client.playable_tick_deltas.tick_catchup);
+            APP.client.next_playback_tick,
+            (int)APP.client.current_playback_delay,
+            (int)APP.client.playable_tick_deltas.tick_catchup);
 
-        app->client.next_playback_tick = biggest_oldest_server_tick;
+        APP.client.next_playback_tick = biggest_oldest_server_tick;
     }
 
-    if (smallest_latest_server_tick < app->client.next_playback_tick)
+    if (smallest_latest_server_tick < APP.client.next_playback_tick)
     {
         LOG(LogFlags_NetTick,
             "%s: Ran out of tick playback state; "
@@ -246,57 +246,57 @@ static void Tick_Playback(AppState *app)
             "smallest_latest_server_tick: %llu, "
             "playback delay: %d, "
             "playback catchup %d",
-            Net_Label(app),
-            app->client.next_playback_tick,
+            Net_Label(),
+            APP.client.next_playback_tick,
             smallest_latest_server_tick,
-            (int)app->client.current_playback_delay,
-            (int)app->client.playable_tick_deltas.tick_catchup);
+            (int)APP.client.current_playback_delay,
+            (int)APP.client.playable_tick_deltas.tick_catchup);
         return;
     }
 
     // calc current delay
     {
-        Uint64 current_playback_delay_u64 = smallest_latest_server_tick - app->client.next_playback_tick;
-        app->client.current_playback_delay = Saturate_U64toU16(current_playback_delay_u64);
+        Uint64 current_playback_delay_u64 = smallest_latest_server_tick - APP.client.next_playback_tick;
+        APP.client.current_playback_delay = Saturate_U64toU16(current_playback_delay_u64);
     }
 
-    if (TickDeltas_AddTick(&app->client.playable_tick_deltas, smallest_latest_server_tick))
+    if (TickDeltas_AddTick(&APP.client.playable_tick_deltas, smallest_latest_server_tick))
     {
-        TickDeltas_UpdateCatchup(&app->client.playable_tick_deltas, app->client.current_playback_delay);
-        if (app->client.playable_tick_deltas.tick_catchup)
+        TickDeltas_UpdateCatchup(&APP.client.playable_tick_deltas, APP.client.current_playback_delay);
+        if (APP.client.playable_tick_deltas.tick_catchup)
         {
             LOG(LogFlags_NetCatchup,
                 "%s: Current playback delay: %d, "
                 " Setting playback catchup to %d",
-                Net_Label(app),
-                (int)app->client.current_playback_delay,
-                (int)app->client.playable_tick_deltas.tick_catchup);
+                Net_Label(),
+                (int)APP.client.current_playback_delay,
+                (int)APP.client.playable_tick_deltas.tick_catchup);
         }
     }
 
     ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
     {
-        Object *net_obj = Object_FromNetIndex(app, net_index);
-        Object interpolated = Client_LerpNetObject(app, net_index, app->client.next_playback_tick);
+        Object *net_obj = Object_FromNetIndex(net_index);
+        Object interpolated = Client_LerpNetObject(net_index, APP.client.next_playback_tick);
         *net_obj = interpolated;
     }
-    app->client.next_playback_tick += 1;
+    APP.client.next_playback_tick += 1;
 }
 
-static void Tick_Iterate(AppState *app)
+static void Tick_Iterate()
 {
-    if (Net_IsServer(app))
+    if (Net_IsServer())
     {
-        Tick_AdvanceSimulation(app);
+        Tick_AdvanceSimulation();
     }
 
-    if (Net_IsClient(app))
+    if (Net_IsClient())
     {
-        Tick_Playback(app);
-        if (app->client.playable_tick_deltas.tick_catchup > 0)
+        Tick_Playback();
+        if (APP.client.playable_tick_deltas.tick_catchup > 0)
         {
-            app->client.playable_tick_deltas.tick_catchup -= 1;
-            Tick_Playback(app);
+            APP.client.playable_tick_deltas.tick_catchup -= 1;
+            Tick_Playback();
         }
     }
 }

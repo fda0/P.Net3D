@@ -81,7 +81,6 @@ typedef struct
 } Net_PacketHeader;
 #pragma pack(pop)
 
-static bool Net_IsServer(AppState *app);
-static bool Net_IsClient(AppState *app);
-static const char *Net_Label(AppState *app);
-static const char *Net_Label2();
+static bool Net_IsServer();
+static bool Net_IsClient();
+static const char *Net_Label();
