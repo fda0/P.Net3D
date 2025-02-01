@@ -463,8 +463,11 @@ static void Net_ProcessReceivedPayload(AppState *app, Uint16 player_id, S8 full_
             Net_SendWindowLayout layout;
             Net_ConsumeS8(&msg, &layout, sizeof(layout));
 
-            Game_AutoLayoutApply(app, layout.user_count,
-                                 layout.px, layout.py, layout.w, layout.h);
+            if (APP.window_autolayout)
+            {
+                Game_AutoLayoutApply(app, layout.user_count,
+                                     layout.px, layout.py, layout.w, layout.h);
+            }
         }
         else
         {

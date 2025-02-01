@@ -19,7 +19,6 @@ typedef struct
     Gpu_ModelBuffers models[RdrModel_COUNT];
 
     SDL_GPUBuffer *wall_vert_buf;
-    SDL_GPUBuffer *wall_instance_buf;
     SDL_GPUSampler *wall_sampler;
     SDL_GPUTexture *tex_wall;
 

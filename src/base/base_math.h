@@ -547,6 +547,11 @@ static Mat4 Mat4_Rotation_RH(float turns, V3 axis)
     return res;
 }
 
+static Mat4 Mat4_InvRotation(Mat4 mat)
+{
+    return Mat4_Transpose(mat);
+}
+
 static Mat4 Mat4_Scale(V3 scale)
 {
     Mat4 res = Mat4_Diagonal(1.f);
@@ -587,7 +592,6 @@ static Mat4 Mat4_Perspective_RH_NO(float fov_y, float aspect_ratio, float near, 
 {
     // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
     // Modified to work with +x fordward, -y right, +z up coordinate system (same as Source engine).
-
     float cotangent = 1.0f / TanF(fov_y * 0.5f);
 
     Mat4 res = {};
@@ -599,5 +603,24 @@ static Mat4 Mat4_Perspective_RH_NO(float fov_y, float aspect_ratio, float near, 
     res.elem[3][2] = (2.0f * near * far) / (near - far);
 
     res.elem[0][3] = 1.0f;
+    return res;
+}
+
+static inline Mat4 Mat4_InvPerspective_RH(Mat4 mat)
+{
+    Mat4 res = {};
+    // Invert the perspective projection matrix
+    float a = -1.0f / mat.elem[1][0]; // Corresponds to -aspect_ratio / cotangent
+    float b = 1.0f / mat.elem[2][1];  // Corresponds to 1 / cotangent
+    float c = mat.elem[0][2];         // -(near + far) / (near - far)
+    float d = mat.elem[3][2];         // (2 * near * far) / (near - far)
+
+    res.elem[1][0] = a;
+    res.elem[2][1] = b;
+
+    res.elem[3][0] = (1.0f / c) * -1.0f; // Inverting the Z mapping
+    res.elem[0][1] = (1.0f / d);
+
+    res.elem[2][3] = 1.0f; // Reverse the perspective divide
     return res;
 }

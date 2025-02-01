@@ -65,7 +65,10 @@ static void Game_IssueDrawCommands(AppState *app)
                     wall_verts[i].color = (V3){0.95f, 0.7f, 0};
                 }
 
-                float height = 40.f;
+                float height = 20.f;
+                float bot_z = 0;
+                float top_z = bot_z + height;
+
                 CollisionVertices collision = obj->collision.verts;
                 {
                     U32 cube_index_map[] =
@@ -81,14 +84,14 @@ static void Game_IssueDrawCommands(AppState *app)
 
                     V3 cube_verts[8] =
                     {
-                        V3_Make_XY_Z(collision.arr[0], 0.f),
-                        V3_Make_XY_Z(collision.arr[1], 0.f),
-                        V3_Make_XY_Z(collision.arr[2], 0.f),
-                        V3_Make_XY_Z(collision.arr[3], 0.f),
-                        V3_Make_XY_Z(collision.arr[0], height),
-                        V3_Make_XY_Z(collision.arr[1], height),
-                        V3_Make_XY_Z(collision.arr[2], height),
-                        V3_Make_XY_Z(collision.arr[3], height),
+                        V3_Make_XY_Z(collision.arr[0], bot_z),
+                        V3_Make_XY_Z(collision.arr[1], bot_z),
+                        V3_Make_XY_Z(collision.arr[2], bot_z),
+                        V3_Make_XY_Z(collision.arr[3], bot_z),
+                        V3_Make_XY_Z(collision.arr[0], top_z),
+                        V3_Make_XY_Z(collision.arr[1], top_z),
+                        V3_Make_XY_Z(collision.arr[2], top_z),
+                        V3_Make_XY_Z(collision.arr[3], top_z),
                     };
 
                     ForArray(i, cube_index_map)
@@ -97,6 +100,27 @@ static void Game_IssueDrawCommands(AppState *app)
                         wall_verts[i].p = cube_verts[index];
                         wall_verts[i].p.x += obj->p.x;
                         wall_verts[i].p.y += obj->p.y;
+                    }
+
+                    {
+                        V4 test = {};
+                        test.x = wall_verts[0].p.x;
+                        test.y = wall_verts[0].p.y;
+                        test.z = wall_verts[0].p.z;
+                        test.w = 1.f;
+
+                        V4 post_view = V4_MulM4(APP.camera_all_mat, test);
+
+                        V4 div = post_view;
+                        div.x /= div.w;
+                        div.y /= div.w;
+                        div.z /= div.w;
+                        div.w /= div.w;
+
+                        int a = 0;
+                        a += 123;
+                        a += 123;
+                        a += 123;
                     }
                 }
 
@@ -171,7 +195,6 @@ static void Game_AutoLayoutApply(AppState *app, Uint32 user_count,
     Game_SetWindowPosSize(app, px, py, w, h);
 }
 
-
 static void Game_Iterate(AppState *app)
 {
     Test_Iterate();
@@ -228,8 +251,13 @@ static void Game_Iterate(AppState *app)
         if (app->keyboard[SDL_SCANCODE_O]) camera_dir.z += 1;
         if (app->keyboard[SDL_SCANCODE_U]) camera_dir.z -= 1;
         camera_dir = V3_Normalize(camera_dir);
-        camera_dir = V3_Scale(camera_dir, APP.dt * 10.f);
+        camera_dir = V3_Scale(camera_dir, APP.dt * 100.f);
         APP.camera_p = V3_Add(APP.camera_p, camera_dir);
+
+        float rot_speed = 0.1f * APP.dt * (app->keyboard[SDL_SCANCODE_V] ? -1.f : 1.f);
+        if (app->keyboard[SDL_SCANCODE_B]) APP.camera_rot.x += rot_speed;
+        if (app->keyboard[SDL_SCANCODE_N]) APP.camera_rot.y += rot_speed;
+        if (app->keyboard[SDL_SCANCODE_M]) APP.camera_rot.z += rot_speed;
     }
     else
     {
@@ -240,6 +268,61 @@ static void Game_Iterate(AppState *app)
             app->camera_p.x -= 50.f;
         }
     }
+
+    // calculate camera transform matrices
+    {
+        APP.camera_move_mat = Mat4_InvTranslation(Mat4_Translation(APP.camera_p));
+
+        APP.camera_rot_mat = Mat4_Rotation_RH(APP.camera_rot.x, (V3){1,0,0});
+        APP.camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.z, (V3){0,0,1}), APP.camera_rot_mat);
+        APP.camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.y, (V3){0,1,0}), APP.camera_rot_mat);
+
+        APP.camera_perspective_mat = Mat4_Perspective_RH_NO(APP.camera_fov_y,
+                                                            (float)APP.window_width/APP.window_height,
+                                                            1.f, 1000.f);
+
+        APP.camera_all_mat = Mat4_Mul(APP.camera_perspective_mat, Mat4_Mul(APP.camera_rot_mat, APP.camera_move_mat));
+    }
+
+
+    {
+        V2 view_mouse =
+        {
+            (APP.mouse.x / (float)APP.window_width)  * 2.f - 1.f,
+            (APP.mouse.y / (float)APP.window_height) * 2.f - 1.f,
+        };
+
+        V3 plane_origin = {};
+        V3 plane_normal = {0,0,1};
+
+        float aspect = (float)APP.window_width / APP.window_height;
+        float tan = TanF(APP.camera_fov_y * 0.5f);
+        aspect *= aspect;
+        tan    *= tan;
+
+        float x = tan * view_mouse.x * aspect;
+        float y = tan * view_mouse.y * -1.f;
+        V3 aim_dir =
+        {
+            x * APP.camera_all_mat.elem[0][0] + y * APP.camera_all_mat.elem[0][1] + APP.camera_all_mat.elem[0][2],
+            x * APP.camera_all_mat.elem[1][0] + y * APP.camera_all_mat.elem[1][1] + APP.camera_all_mat.elem[1][2],
+            x * APP.camera_all_mat.elem[2][0] + y * APP.camera_all_mat.elem[2][1] + APP.camera_all_mat.elem[2][2],
+        };
+
+        float t_up = V3_Inner(V3_Sub(plane_origin, APP.camera_p), plane_normal);
+        float t_down = V3_Inner(aim_dir, plane_normal);
+
+        V3 world_mouse = {};
+        V3 world_off = {};
+        if (t_down)
+        {
+            float t = t_up / t_down;
+            world_off = V3_Scale(aim_dir, t);
+            world_mouse = V3_Add(APP.camera_p, world_off);
+            APP.world_mouse = (V2){world_mouse.x, world_mouse.y};
+        }
+    }
+
 
     if (app->mouse_keys & SDL_BUTTON_RMASK)
     {
@@ -261,7 +344,7 @@ static void Game_Init(AppState *app)
     {
         //app->debug.fixed_dt = 0.1f;
         //app->debug.single_tick_stepping = true;
-        //app->debug.noclip_camera = true;
+        app->debug.noclip_camera = true;
         app->debug.draw_collision_box = true;
         app->log_filter &= ~(LogFlags_NetDatagram);
     }
@@ -269,7 +352,8 @@ static void Game_Init(AppState *app)
     Net_Init(app);
 
     app->frame_time = SDL_GetTicks();
-    app->camera_p = (V3){-50.f, 0, 70.f};
+    APP.camera_fov_y = 0.19f;
+    app->camera_p = (V3){-300.f, 0.f, 200.f};
     app->camera_rot = (V3){0, -0.1f, 0};
     app->tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
 

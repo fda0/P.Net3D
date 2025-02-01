@@ -428,23 +428,6 @@ static void Gpu_Init()
             Assert(APP.gpu.wall_vert_buf); // @todo report
             SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.wall_vert_buf, "Wall vertex buffer");
         }
-        // create wall per instance storage buffer
-        {
-            SDL_GPUBufferCreateInfo buffer_desc = {
-                .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                .size = sizeof(Rdr_ModelInstanceData),
-                .props = 0,
-            };
-            APP.gpu.wall_instance_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-            Assert(APP.gpu.wall_instance_buf); // @todo report
-            SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.wall_instance_buf, "Per wall instance storage buffer");
-
-            // transfer single instance data
-            Rdr_ModelInstanceData noop_instance_data = {};
-            noop_instance_data.transform = Mat4_Diagonal(1.f);
-            noop_instance_data.color = (V4){1,1,1,1};
-            Gpu_TransferBuffer(APP.gpu.wall_instance_buf, &noop_instance_data, sizeof(noop_instance_data));
-        }
 
         // wall texture
         {
@@ -658,23 +641,9 @@ static void Gpu_Iterate()
         }
     }
 
-    // camera matrices
+    // transform uniforms
     {
-        Mat4 camera_move_mat = Mat4_InvTranslation(Mat4_Translation(APP.camera_p));
-
-        Mat4 camera_rot_mat = Mat4_Rotation_RH(APP.camera_rot.x, (V3){1,0,0});
-        camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.y, (V3){0,1,0}), camera_rot_mat);
-        camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.z, (V3){0,0,1}), camera_rot_mat);
-
-        Mat4 perspective_mat = Mat4_Perspective_RH_NO(0.21f, (float)draw_width/draw_height, 1.f, 1000.f);
-
-        Mat4 all_mats[] =
-        {
-            camera_move_mat,
-            camera_rot_mat,
-            perspective_mat,
-        };
-        SDL_PushGPUVertexUniformData(cmd, 0, all_mats, sizeof(all_mats));
+        SDL_PushGPUVertexUniformData(cmd, 0, &APP.camera_all_mat, sizeof(APP.camera_all_mat));
     }
 
     SDL_GPUDepthStencilTargetInfo depth_target = {

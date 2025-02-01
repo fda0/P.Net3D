@@ -10,6 +10,8 @@ typedef enum
     LogFlags_NetTick     = (1 << 7),
     LogFlags_NetCatchup  = (1 << 8),
     LogFlags_NetAll      = (0xff << 1),
+
+    LogFlags_Debug = (1 << 9),
 } Log_Flags;
 
 // @note disable logging
@@ -61,6 +63,11 @@ struct AppState
     // camera
     V3 camera_p;
     V3 camera_rot;
+    float camera_fov_y;
+    Mat4 camera_move_mat;
+    Mat4 camera_rot_mat;
+    Mat4 camera_perspective_mat;
+    Mat4 camera_all_mat;
 
     // time
     Uint64 frame_id;
