@@ -19,6 +19,9 @@ static Axis2 Axis2_Other(Axis2 axis)
 #define Max(a, b) ((a) > (b) ? (a) : (b))
 #define Clamp(min, max, val) (((val)<(min)) ? (min) : ((val)>(max))?(max):(val))
 
+#define TURNS_TO_RAD (2.f*SDL_PI_F)
+#define RAD_TO_TURNS (1.f/(2.f*SDL_PI_F))
+
 static float SqrtF(float a)
 {
     return SDL_sqrtf(a);
@@ -34,17 +37,22 @@ static float SignF(float a)
 static float SinF(float turns)
 {
     // @todo custom sincos that with turn input
-    return SDL_sinf(turns*2.f*SDL_PI_F);
+    return SDL_sinf(turns*TURNS_TO_RAD);
 }
 static float CosF(float turns)
 {
     // @todo custom sincos that with turn input
-    return SDL_cosf(turns*2.f*SDL_PI_F);
+    return SDL_cosf(turns*TURNS_TO_RAD);
+}
+static float AcosF(float value)
+{
+    // @todo custom sincos that with turn input
+    return SDL_acosf(value)*RAD_TO_TURNS;
 }
 static float TanF(float turns)
 {
     // @todo custom tan that with turn input
-    return SDL_tanf(turns*2.f*SDL_PI_F);
+    return SDL_tanf(turns*TURNS_TO_RAD);
 }
 
 typedef struct
@@ -622,5 +630,152 @@ static inline Mat4 Mat4_InvPerspective_RH(Mat4 mat)
     res.elem[0][1] = (1.0f / d);
 
     res.elem[2][3] = 1.0f; // Reverse the perspective divide
+    return res;
+}
+
+// ---
+// Quaternion
+// ---
+typedef V4 Quat;
+
+static Quat Quat_Add(Quat a, Quat b)
+{
+    return V4_Add(a, b);
+}
+
+static Quat Quat_Sub(Quat a, Quat b)
+{
+    return V4_Sub(a, b);
+}
+
+static Quat Quat_Mul(Quat a, Quat b)
+{
+    // @todo SIMD
+    Quat res = {};
+    res.x =  b.w * +a.x;
+    res.y =  b.z * -a.x;
+    res.z =  b.y * +a.x;
+    res.w =  b.x * -a.x;
+
+    res.x += b.z * +a.y;
+    res.y += b.w * +a.y;
+    res.z += b.x * -a.y;
+    res.w += b.y * -a.y;
+
+    res.x += b.y * -a.z;
+    res.y += b.x * +a.z;
+    res.z += b.w * +a.z;
+    res.w += b.z * -a.z;
+
+    res.x += b.x * +a.w;
+    res.y += b.y * +a.w;
+    res.z += b.z * +a.w;
+    res.w += b.w * +a.w;
+    return res;
+}
+
+static Quat Quat_Scale(Quat q, float scale)
+{
+    return V4_Scale(q, scale);
+}
+
+static float Quat_Inner(Quat a, Quat b)
+{
+    return V4_Inner(a, b);
+}
+
+static Quat Quat_Inv(Quat q)
+{
+    float lensq = Quat_Inner(q, q);
+    float inv_lensq = 1.f / lensq;
+
+    Quat res =
+    {
+        -q.x,
+        -q.y,
+        -q.z,
+        q.w,
+    };
+    return Quat_Scale(res, inv_lensq);
+}
+
+static Quat Quat_Normalize(Quat q)
+{
+    return V4_Normalize(q);
+}
+
+static Quat Quat_Mix(Quat a, Quat b, float ta, float tb)
+{
+    Quat res =
+    {
+        a.x*ta + b.x*tb,
+        a.y*ta + b.y*tb,
+        a.z*ta + b.z*tb,
+        a.w*ta + b.w*tb,
+    };
+    return res;
+}
+
+static Quat Quat_NLerp(Quat a, Quat b, float t)
+{
+    return Quat_Mix(a, b, 1.f - t, t);
+}
+
+static Quat Quat_SLerp(Quat a, Quat b, float t)
+{
+    float cos_theta = Quat_Inner(a, b);
+    if (cos_theta < 0.f)
+    {
+        cos_theta = -cos_theta;
+        b = Quat_Scale(b, -1.f);
+    }
+
+    if (cos_theta > 0.9995f)
+    {
+        // NOTE(lcf): Use Normalized Linear interpolation when vectors are roughly not L.I.
+        return Quat_NLerp(a, b, t);
+    }
+
+    float angle = AcosF(cos_theta);
+    float ta = SinF((1.f - t) * angle);
+    float tb = SinF(t * angle);
+
+    Quat res = Quat_Mix(a, b, ta, tb);
+    return Quat_Normalize(res);
+}
+
+static Mat4 Mat4_Rotation_Quat(Quat q)
+{
+    Quat norm = Quat_Normalize(q);
+    float xx = norm.x * norm.x;
+    float yy = norm.y * norm.y;
+    float zz = norm.z * norm.z;
+    float xy = norm.x * norm.y;
+    float xz = norm.x * norm.z;
+    float yz = norm.y * norm.z;
+    float wx = norm.w * norm.x;
+    float wy = norm.w * norm.y;
+    float wz = norm.w * norm.z;
+
+    Mat4 res;
+    res.elem[0][0] = 1.0f - 2.0f * (yy + zz);
+    res.elem[0][1] = 2.0f * (xy + wz);
+    res.elem[0][2] = 2.0f * (xz - wy);
+    res.elem[0][3] = 0.0f;
+
+    res.elem[1][0] = 2.0f * (xy - wz);
+    res.elem[1][1] = 1.0f - 2.0f * (xx + zz);
+    res.elem[1][2] = 2.0f * (yz + wx);
+    res.elem[1][3] = 0.0f;
+
+    res.elem[2][0] = 2.0f * (xz + wy);
+    res.elem[2][1] = 2.0f * (yz - wx);
+    res.elem[2][2] = 1.0f - 2.0f * (xx + yy);
+    res.elem[2][3] = 0.0f;
+
+    res.elem[3][0] = 0.0f;
+    res.elem[3][1] = 0.0f;
+    res.elem[3][2] = 0.0f;
+    res.elem[3][3] = 1.0f;
     return res;
 }
