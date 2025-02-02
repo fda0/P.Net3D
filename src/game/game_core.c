@@ -4,9 +4,8 @@
 //           stuff when it's reasonable.
 //
 
-static void Game_IssueDrawCommands()
+static void Game_DrawObjects()
 {
-    // draw objects
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
@@ -301,7 +300,7 @@ static void Game_Iterate()
         tan    *= tan;
 
         float x = tan * view_mouse.x * aspect;
-        float y = tan * view_mouse.y * -1.f;
+        float y = tan * view_mouse.y;
         V3 aim_dir =
         {
             x * APP.camera_all_mat.elem[0][0] + y * APP.camera_all_mat.elem[0][1] + APP.camera_all_mat.elem[0][2],
@@ -337,7 +336,7 @@ static void Game_Iterate()
         }
     }
 
-    Game_IssueDrawCommands();
+    Game_DrawObjects();
 }
 
 static void Game_Init()

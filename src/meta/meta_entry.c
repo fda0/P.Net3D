@@ -6,7 +6,7 @@
 #include "base_arena.h"
 #include "base_math.h"
 #include "base_printer.h"
-#include "de_render_vertex.h"
+#include "game_render.h"
 
 #include "meta_obj.h"
 #include "meta_entry.h"

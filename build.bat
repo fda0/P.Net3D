@@ -121,7 +121,7 @@ if "%game%"=="1" (
     dxc ..\src\shader\shader_wall.hlsl /E ShaderWallPS /T ps_6_0 /Fh ..\src\gen\gen_shader_wall.frag.h || exit /b 1
 
     :: --- Compile game -------------------------------------------------------
-    %compile% ..\src\game\pog_entry.c %compile_link_game% %link_icon% %out%pog.exe || exit /b 1
+    %compile% ..\src\game\game_sdl_entry.c %compile_link_game% %link_icon% %out%p.exe || exit /b 1
     set didbuild=1
 )
 popd
