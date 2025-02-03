@@ -13,13 +13,13 @@ static const char *Net_Label()
     return APP.net.is_server ? "SERVER" : "CLIENT";
 }
 
-static Uint8 *Net_PayloadAlloc(Uint32 size)
+static U8 *Net_PayloadAlloc(U32 size)
 {
-    Uint8 *result = APP.net.packet_payload_buf + APP.net.payload_used;
+    U8 *result = APP.net.packet_payload_buf + APP.net.payload_used;
     {
         // return ptr to start of the buffer
         // on overflow
-        Uint8 *end = (APP.net.packet_payload_buf + sizeof(APP.net.packet_payload_buf));
+        U8 *end = (APP.net.packet_payload_buf + sizeof(APP.net.packet_payload_buf));
         if (end < (result + size))
         {
             Assert(false);
@@ -31,9 +31,9 @@ static Uint8 *Net_PayloadAlloc(Uint32 size)
     return result;
 }
 
-static Uint8 *Net_PayloadMemcpy(void *data, Uint32 size)
+static U8 *Net_PayloadMemcpy(void *data, U32 size)
 {
-    Uint8 *result = Net_PayloadAlloc(size);
+    U8 *result = Net_PayloadAlloc(size);
     memcpy(result, data, size);
     return result;
 }
@@ -62,7 +62,7 @@ static void Net_RecalculatePacketHeader()
 {
     S8 payload = S8_Make(APP.net.packet_payload_buf, APP.net.payload_used);
     APP.net.packet_header.magic_value = NET_MAGIC_VALUE;
-    APP.net.packet_header.payload_hash = (Uint16)S8_Hash(0, payload);
+    APP.net.packet_header.payload_hash = (U16)S8_Hash(0, payload);
 }
 
 static S8 Net_GetPacketString()
@@ -71,8 +71,8 @@ static S8 Net_GetPacketString()
     static_assert(offsetof(AppState, net.packet_header) + sizeof(APP.net.packet_header) ==
                   offsetof(AppState, net.packet_payload_buf));
 
-    Uint64 total_size = sizeof(APP.net.packet_header) + APP.net.payload_used;
-    S8 result = S8_Make((Uint8 *)&APP.net.packet_header, total_size);
+    U64 total_size = sizeof(APP.net.packet_header) + APP.net.payload_used;
+    S8 result = S8_Make((U8 *)&APP.net.packet_header, total_size);
     return result;
 }
 
@@ -103,9 +103,9 @@ static void Net_PacketSendAndResetPayload(Net_User *destination /* null for broa
     APP.net.payload_used = 0;
 }
 
-static bool Net_ConsumeS8(S8 *msg, void *dest, Uint64 size)
+static bool Net_ConsumeS8(S8 *msg, void *dest, U64 size)
 {
-    Uint64 copy_size = Min(size, msg->size);
+    U64 copy_size = Min(size, msg->size);
     bool err = copy_size != size;
 
     if (err)
@@ -123,13 +123,13 @@ static bool Net_UserMatch(Net_User a, Net_User b)
             SDLNet_CompareAddresses(a.address, b.address) == 0);
 }
 
-static bool Net_UserMatchAddrPort(Net_User a, SDLNet_Address *address, Uint16 port)
+static bool Net_UserMatchAddrPort(Net_User a, SDLNet_Address *address, U16 port)
 {
     return (a.port == port &&
             SDLNet_CompareAddresses(a.address, address) == 0);
 }
 
-static Net_User *Net_FindUser(SDLNet_Address *address, Uint16 port)
+static Net_User *Net_FindUser(SDLNet_Address *address, U16 port)
 {
     ForU32(i, APP.server.user_count)
     {
@@ -139,7 +139,7 @@ static Net_User *Net_FindUser(SDLNet_Address *address, Uint16 port)
     return 0;
 }
 
-static Net_User *Net_AddUser(SDLNet_Address *address, Uint16 port)
+static Net_User *Net_AddUser(SDLNet_Address *address, U16 port)
 {
     if (APP.server.user_count < ArrayCount(APP.server.users))
     {
@@ -165,7 +165,7 @@ static void Net_IterateSend()
 
     {
         // hacky temporary network activity rate-limitting
-        static Uint64 last_timestamp = 0;
+        static U64 last_timestamp = 0;
         if (APP.frame_time < last_timestamp + 16)
             return;
         last_timestamp = APP.frame_time;
@@ -231,26 +231,26 @@ static void Net_IterateSend()
                 // @todo this should be done on iterate send!
                 if (APP.window_autolayout)
                 {
-                    Uint32 window_count = 1 + APP.server.user_count;
-                    Uint32 side_chunks = 1;
+                    U32 window_count = 1 + APP.server.user_count;
+                    U32 side_chunks = 1;
                     ForU32(timeout, 8)
                     {
-                        Uint32 total_chunks = side_chunks * side_chunks;
+                        U32 total_chunks = side_chunks * side_chunks;
                         if (total_chunks >= window_count)
                             break;
                         side_chunks += 1;
                     }
 
-                    Uint32 win_x = APP.init_window_px;
-                    Uint32 win_y = APP.init_window_py;
-                    Uint32 win_w = APP.init_window_width / side_chunks;
-                    Uint32 win_h = APP.init_window_height / side_chunks;
+                    U32 win_x = APP.init_window_px;
+                    U32 win_y = APP.init_window_py;
+                    U32 win_w = APP.init_window_width / side_chunks;
+                    U32 win_h = APP.init_window_height / side_chunks;
 
                     // calc server window
                     {
-                        Uint32 window_index = 0;
-                        Uint32 x = window_index / side_chunks;
-                        Uint32 y = window_index % side_chunks;
+                        U32 window_index = 0;
+                        U32 x = window_index / side_chunks;
+                        U32 y = window_index % side_chunks;
 
                         Game_AutoLayoutApply(APP.server.user_count,
                                              win_x + x*win_w, win_y + y*win_h,
@@ -259,9 +259,9 @@ static void Net_IterateSend()
 
                     // calc client window
                     {
-                        Uint32 window_index = user_index + 1;
-                        Uint32 x = window_index / side_chunks;
-                        Uint32 y = window_index % side_chunks;
+                        U32 window_index = user_index + 1;
+                        U32 x = window_index / side_chunks;
+                        U32 y = window_index % side_chunks;
 
                         Net_SendHeader head = {};
                         head.tick_id = APP.tick_id;
@@ -338,9 +338,9 @@ static void Net_IterateSend()
             Net_PayloadMemcpy(&head, sizeof(head));
 
             Net_SendInputs inputs = {0};
-            Uint16 input_count = 0;
+            U16 input_count = 0;
 
-            for (Uint64 i = APP.client.inputs_range.min;
+            for (U64 i = APP.client.inputs_range.min;
                  i < APP.client.inputs_range.max;
                  i += 1)
             {
@@ -371,7 +371,7 @@ static void Net_IterateSend()
     }
 }
 
-static void Net_ProcessReceivedPayload(Uint16 player_id, S8 full_message)
+static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
 {
     S8 msg = full_message;
     while (msg.size)
@@ -427,8 +427,8 @@ static void Net_ProcessReceivedPayload(Uint16 player_id, S8 full_message)
 
             ForArray(i, test.numbers)
             {
-                Uint32 loaded = test.numbers[i];
-                Uint32 expected = i + 1;
+                U32 loaded = test.numbers[i];
+                U32 expected = i + 1;
                 bool compare = loaded == expected;
                 Assert(compare);
             }
@@ -474,7 +474,7 @@ static void Net_ProcessReceivedPayload(Uint16 player_id, S8 full_message)
     }
 }
 
-static void Net_ReceivePacket(Uint16 player_id, S8 packet)
+static void Net_ReceivePacket(U16 player_id, S8 packet)
 {
     if (packet.size < sizeof(Net_PacketHeader))
     {
@@ -499,13 +499,13 @@ static void Net_ReceivePacket(Uint16 player_id, S8 packet)
     {
         LOG(LogFlags_NetPacket,
             "%s: packet rejected - invalid magic value: %u; expected: %u",
-            Net_Label(), (Uint32)header.magic_value, NET_MAGIC_VALUE);
+            Net_Label(), (U32)header.magic_value, NET_MAGIC_VALUE);
         return;
     }
 
     // validate hash
-    Uint64 hash64 = S8_Hash(0, packet);
-    Uint16 hash16 = (Uint16)hash64;
+    U64 hash64 = S8_Hash(0, packet);
+    U16 hash16 = (U16)hash64;
     if (hash16 != header.payload_hash)
     {
         LOG(LogFlags_NetPacket,
@@ -525,7 +525,7 @@ static void Net_IterateReceive()
 
     {
         // hacky temporary network activity rate-limitting
-        static Uint64 last_timestamp = 0;
+        static U64 last_timestamp = 0;
         if (APP.frame_time < last_timestamp + 8)
             return;
         last_timestamp = APP.frame_time;
@@ -557,7 +557,7 @@ static void Net_IterateReceive()
             }
         }
 
-        Uint16 player_id = 0;
+        U16 player_id = 0;
 
         // save user
         if (is_server)
@@ -573,7 +573,7 @@ static void Net_IterateReceive()
 
             if (user)
             {
-                Uint64 user_id = ((Uint64)user - (Uint64)APP.server.users) / sizeof(Net_User);
+                U64 user_id = ((U64)user - (U64)APP.server.users) / sizeof(Net_User);
                 if (user_id < NET_MAX_PLAYERS)
                 {
                     player_id = user_id;
@@ -627,7 +627,7 @@ static void Net_Init()
         }
     }
 
-    Uint16 port = (APP.net.is_server ? NET_DEFAULT_SEVER_PORT : 0);
+    U16 port = (APP.net.is_server ? NET_DEFAULT_SEVER_PORT : 0);
     APP.net.socket = SDLNet_CreateDatagramSocket(0, port);
     if (!APP.net.socket)
     {

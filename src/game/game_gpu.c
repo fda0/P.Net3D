@@ -29,7 +29,7 @@ static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
     return result;
 }
 
-static SDL_GPUTexture *Gpu_CreateMSAATexture(Uint32 width, Uint32 height)
+static SDL_GPUTexture *Gpu_CreateMSAATexture(U32 width, U32 height)
 {
     if (APP.gpu.sample_count == SDL_GPU_SAMPLECOUNT_1)
     {
@@ -53,7 +53,7 @@ static SDL_GPUTexture *Gpu_CreateMSAATexture(Uint32 width, Uint32 height)
     return result;
 }
 
-static SDL_GPUTexture *Gpu_CreateResolveTexture(Uint32 width, Uint32 height)
+static SDL_GPUTexture *Gpu_CreateResolveTexture(U32 width, U32 height)
 {
     if (APP.gpu.sample_count == SDL_GPU_SAMPLECOUNT_1)
     {

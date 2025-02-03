@@ -27,14 +27,14 @@ typedef enum
 
 typedef struct
 {
-    Uint32 made_at_tick;
-    Uint32 index;
+    U32 made_at_tick;
+    U32 index;
 } Object_Key;
 
 typedef struct
 {
     Object_Key key;
-    Uint32 flags;
+    U32 flags;
     bool init;
     V2 p; // position of center
     V2 dp; // change of p
@@ -50,7 +50,7 @@ typedef struct
     Collision_Data collision;
 
     // temp
-    Uint32 some_number;
+    U32 some_number;
     bool did_collide;
 } Object;
 

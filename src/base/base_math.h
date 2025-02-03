@@ -100,8 +100,8 @@ static float WrapF(float min, float max, float a)
     return (offset - (FloorF(offset / range) * range) + min);
 }
 
-static void *AlignPointerUp(void *ptr, Uint64 alignment) {
-    Uint64 pointer = (Uint64)ptr;
+static void *AlignPointerUp(void *ptr, U64 alignment) {
+    U64 pointer = (U64)ptr;
     pointer += (alignment - 1);
     pointer = pointer & (~((alignment - 1)));
     return (void *)pointer;

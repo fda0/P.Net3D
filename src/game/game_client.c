@@ -1,10 +1,10 @@
-static Object *Client_SnapshotObjectAtTick(Client_Snapshot *snap, Uint64 tick_id)
+static Object *Client_SnapshotObjectAtTick(Client_Snapshot *snap, U64 tick_id)
 {
-    Uint64 state_index = tick_id % ArrayCount(snap->tick_states);
+    U64 state_index = tick_id % ArrayCount(snap->tick_states);
     return snap->tick_states + state_index;
 }
 
-static Object Client_LerpNetObject(Uint32 net_index, Uint64 tick_id)
+static Object Client_LerpNetObject(U32 net_index, U64 tick_id)
 {
     Assert(net_index < ArrayCount(APP.client.obj_snaps));
     Client_Snapshot *snap = APP.client.obj_snaps + net_index;
@@ -17,8 +17,8 @@ static Object Client_LerpNetObject(Uint32 net_index, Uint64 tick_id)
         return *exact_obj;
 
     // find nearest prev_id/next_id objects
-    Uint64 prev_id = tick_id;
-    Uint64 next_id = tick_id;
+    U64 prev_id = tick_id;
+    U64 next_id = tick_id;
     while (prev_id > snap->oldest_server_tick)
     {
         prev_id -= 1;
@@ -50,19 +50,19 @@ static Object Client_LerpNetObject(Uint32 net_index, Uint64 tick_id)
     snap->recent_lerp_end_tick = next_id;
 
     // do the interpolation
-    Uint64 id_range = next_id - prev_id;
-    Uint64 id_offset = tick_id - prev_id;
+    U64 id_range = next_id - prev_id;
+    U64 id_offset = tick_id - prev_id;
     float t = (float)id_offset / (float)id_range;
     Object result = Object_Lerp(*prev, *next, t);
     return result;
 }
 
 static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
-                                        Uint64 insert_at_tick_id, Object insert_obj)
+                                        U64 insert_at_tick_id, Object insert_obj)
 {
     // function returns true on error
     static_assert(ArrayCount(snap->tick_states) == NET_CLIENT_MAX_SNAPSHOTS);
-    Uint64 last_to_first_tick_offset = NET_CLIENT_MAX_SNAPSHOTS - 1;
+    U64 last_to_first_tick_offset = NET_CLIENT_MAX_SNAPSHOTS - 1;
 
     if (snap->recent_lerp_start_tick != snap->recent_lerp_end_tick &&
         insert_at_tick_id >= snap->recent_lerp_start_tick &&
@@ -78,14 +78,14 @@ static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
         return true;
     }
 
-    Sint64 delta_from_latest = (Sint64)insert_at_tick_id - (Sint64)snap->latest_server_tick;
+    I64 delta_from_latest = (I64)insert_at_tick_id - (I64)snap->latest_server_tick;
     if (delta_from_latest > 0)
     {
         // save new latest server tick
         snap->latest_server_tick = insert_at_tick_id;
     }
 
-    Uint64 minimum_server_tick = (snap->latest_server_tick >= last_to_first_tick_offset ?
+    U64 minimum_server_tick = (snap->latest_server_tick >= last_to_first_tick_offset ?
                                   snap->latest_server_tick - last_to_first_tick_offset :
                                   0);
 
@@ -99,7 +99,7 @@ static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
             "diff: %llu (max: %llu)",
             Net_Label(), snap->latest_server_tick, insert_at_tick_id,
             insert_at_tick_id - snap->latest_server_tick,
-            (Uint64)NET_CLIENT_MAX_SNAPSHOTS);
+            (U64)NET_CLIENT_MAX_SNAPSHOTS);
         return true;
     }
 
@@ -117,8 +117,8 @@ static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
         }
         else
         {
-            Uint64 clearing_start = insert_at_tick_id - delta_from_latest + 1;
-            for (Uint64 i = clearing_start;
+            U64 clearing_start = insert_at_tick_id - delta_from_latest + 1;
+            for (U64 i = clearing_start;
                  i < insert_at_tick_id;
                  i += 1)
             {
@@ -132,7 +132,7 @@ static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
         if (snap->oldest_server_tick < minimum_server_tick)
         {
             // find new oldest
-            for (Uint64 i = minimum_server_tick;
+            for (U64 i = minimum_server_tick;
                  i < insert_at_tick_id;
                  i += 1)
             {

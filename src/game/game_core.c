@@ -178,14 +178,14 @@ static void Game_DrawObjects()
     }
 }
 
-static void Game_SetWindowPosSize(Sint32 px, Sint32 py, Sint32 w, Sint32 h)
+static void Game_SetWindowPosSize(I32 px, I32 py, I32 w, I32 h)
 {
     SDL_SetWindowPosition(APP.window, px, py);
     SDL_SetWindowSize(APP.window, w, h);
 }
 
-static void Game_AutoLayoutApply(Uint32 user_count,
-                                 Sint32 px, Sint32 py, Sint32 w, Sint32 h)
+static void Game_AutoLayoutApply(U32 user_count,
+                                 I32 px, I32 py, I32 w, I32 h)
 {
     if (user_count == APP.latest_autolayout_user_count)
         return;
@@ -201,8 +201,8 @@ static void Game_Iterate()
     {
         APP.frame_id += 1;
 
-        Uint64 new_frame_time = SDL_GetTicks();
-        Uint64 delta_time = new_frame_time - APP.frame_time;
+        U64 new_frame_time = SDL_GetTicks();
+        U64 delta_time = new_frame_time - APP.frame_time;
         APP.frame_time = new_frame_time;
         APP.dt = delta_time * (0.001f);
         APP.tick_dt_accumulator += Min(APP.dt, 1.f); // clamp dt to 1s

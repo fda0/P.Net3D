@@ -194,7 +194,7 @@ static Object Object_Lerp(Object prev, Object next, float t)
         result.dp = V2_Lerp(prev.dp, next.dp, t);
         result.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
         result.sprite_color = ColorF_Lerp(prev.sprite_color, next.sprite_color, t);
-        result.did_collide = (Uint32)RoundF(LerpF((float)prev.did_collide,
+        result.did_collide = (U32)RoundF(LerpF((float)prev.did_collide,
                                                   (float)next.did_collide, t));
     }
 
@@ -203,8 +203,8 @@ static Object Object_Lerp(Object prev, Object next, float t)
 
 static void Tick_Playback()
 {
-    Uint64 smallest_latest_server_tick = ~0ull;
-    Uint64 biggest_oldest_server_tick = 0;
+    U64 smallest_latest_server_tick = ~0ull;
+    U64 biggest_oldest_server_tick = 0;
     ForArray(obj_i, APP.client.obj_snaps)
     {
         Client_Snapshot *snap = APP.client.obj_snaps + obj_i;
@@ -256,7 +256,7 @@ static void Tick_Playback()
 
     // calc current delay
     {
-        Uint64 current_playback_delay_u64 = smallest_latest_server_tick - APP.client.next_playback_tick;
+        U64 current_playback_delay_u64 = smallest_latest_server_tick - APP.client.next_playback_tick;
         APP.client.current_playback_delay = Saturate_U64toU16(current_playback_delay_u64);
     }
 

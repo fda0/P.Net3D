@@ -17,23 +17,23 @@ static CollisionVertices CollisionVertices_FromRectDim(V2 dim)
     return result;
 }
 
-static void Vertices_Rotate(V2 *verts, Uint64 vert_count, float rotation)
+static void Vertices_Rotate(V2 *verts, U64 vert_count, float rotation)
 {
     SinCosResult sincos = SinCosF(rotation);
     ForU64(i, vert_count)
         verts[i] = V2_RotateSinCos(verts[i], sincos);
 }
-static void Vertices_Scale(V2 *verts, Uint64 vert_count, float scale)
+static void Vertices_Scale(V2 *verts, U64 vert_count, float scale)
 {
     ForU64(i, vert_count)
         verts[i] = V2_Scale(verts[i], scale);
 }
-static void Vertices_Offset(V2 *verts, Uint64 vert_count, V2 offset)
+static void Vertices_Offset(V2 *verts, U64 vert_count, V2 offset)
 {
     ForU64(i, vert_count)
         verts[i] = V2_Add(verts[i], offset);
 }
-static void Vertices_Max(V2 *verts, Uint64 vert_count, V2 val)
+static void Vertices_Max(V2 *verts, U64 vert_count, V2 val)
 {
     ForU64(i, vert_count)
     {
@@ -41,7 +41,7 @@ static void Vertices_Max(V2 *verts, Uint64 vert_count, V2 val)
         verts[i].y = Max(verts[i].y, val.y);
     }
 }
-static void Vertices_Min(V2 *verts, Uint64 vert_count, V2 val)
+static void Vertices_Min(V2 *verts, U64 vert_count, V2 val)
 {
     ForU64(i, vert_count)
     {
@@ -50,7 +50,7 @@ static void Vertices_Min(V2 *verts, Uint64 vert_count, V2 val)
     }
 }
 
-static V2 Vertices_Average(V2 *verts, Uint64 vert_count)
+static V2 Vertices_Average(V2 *verts, U64 vert_count)
 {
     V2 sum = {0};
     ForU64(i, vert_count)

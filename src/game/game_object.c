@@ -16,14 +16,14 @@ static bool Object_KeyMatch(Object_Key a, Object_Key b)
             a.index == b.index);
 }
 
-static Object *Object_Get(Object_Key key, Uint32 category_mask)
+static Object *Object_Get(Object_Key key, U32 category_mask)
 {
     Object *result = Object_GetNil();
 
     bool index_in_valid_category = false;
     {
-        Uint32 min = 0;
-        Uint32 max = OBJ_MAX_CONST_OBJECTS;
+        U32 min = 0;
+        U32 max = OBJ_MAX_CONST_OBJECTS;
         if (category_mask & ObjCategory_Local)
             index_in_valid_category |= (key.index >= min && key.index < max);
 
@@ -52,16 +52,16 @@ static bool Object_HasData(Object *obj)
     return !!obj->flags;
 }
 
-static bool Object_HasAnyFlag(Object *obj, Uint32 flag)
+static bool Object_HasAnyFlag(Object *obj, U32 flag)
 {
     return !!(obj->flags & flag);
 }
-static bool Object_HasAllFlags(Object *obj, Uint32 flags)
+static bool Object_HasAllFlags(Object *obj, U32 flags)
 {
     return (obj->flags & flags) == flags;
 }
 
-static Object *Object_FromNetIndex(Uint32 net_index)
+static Object *Object_FromNetIndex(U32 net_index)
 {
     if (net_index > ArrayCount(APP.net_objects))
     {
@@ -71,7 +71,7 @@ static Object *Object_FromNetIndex(Uint32 net_index)
     return APP.net_objects + net_index;
 }
 
-static Object *Object_Create(Obj_Category category, Uint32 flags)
+static Object *Object_Create(Obj_Category category, U32 flags)
 {
     bool matched_category = false;
     Object *obj = 0;
@@ -114,7 +114,7 @@ static Object *Object_Create(Obj_Category category, Uint32 flags)
     SDL_zerop(obj);
 
     obj->key.made_at_tick = APP.tick_id;
-    obj->key.index = ((Uint64)obj - (Uint64)APP.all_objects) / sizeof(*obj);
+    obj->key.index = ((U64)obj - (U64)APP.all_objects) / sizeof(*obj);
 
     obj->flags = flags;
     obj->init = true;
@@ -186,10 +186,10 @@ static CollisionProjection Collision_CalculateProjection(CollisionNormals normal
 
 static void Collision_RecalculateNormals(Collision_Data *collision)
 {
-    Uint64 vert_count = ArrayCount(collision->verts.arr);
+    U64 vert_count = ArrayCount(collision->verts.arr);
     ForU64(vert_id, vert_count)
     {
-        Uint64 next_vert_id = vert_id + 1;
+        U64 next_vert_id = vert_id + 1;
         if (next_vert_id >= vert_count)
             next_vert_id -= vert_count;
 

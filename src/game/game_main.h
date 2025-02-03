@@ -45,16 +45,16 @@ struct AppState
     Arena *tmp;
 
     // window settings
-    Sint32 init_window_px, init_window_py; // 0 if wasn't set
-    Sint32 init_window_width, init_window_height;
-    Sint32 window_width, window_height;
+    I32 init_window_px, init_window_py; // 0 if wasn't set
+    I32 init_window_width, init_window_height;
+    I32 window_width, window_height;
     bool window_on_top;
     bool window_borderless;
 
     bool window_autolayout;
-    Uint32 latest_autolayout_user_count;
+    U32 latest_autolayout_user_count;
 
-    Uint32 log_filter; // active log filer flags
+    U32 log_filter; // active log filer flags
 
     // special objects
     Object_Key pathing_marker;
@@ -70,11 +70,11 @@ struct AppState
     Mat4 camera_all_mat;
 
     // time
-    Uint64 frame_id;
-    Uint64 frame_time;
+    U64 frame_id;
+    U64 frame_time;
     float dt;
     float at;
-    Uint64 tick_id;
+    U64 tick_id;
     float tick_dt_accumulator;
 
     // user input
@@ -107,8 +107,8 @@ struct AppState
         // msg payload
         bool packet_err; // set on internal buffer overflow errors etc
         Net_PacketHeader packet_header;
-        Uint8 packet_payload_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network payload construction
-        Uint32 payload_used;
+        U8 packet_payload_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network payload construction
+        U32 payload_used;
     } net;
 
     Client_State client;
@@ -125,7 +125,7 @@ struct AppState
 
         bool draw_collision_box;
         float collision_sprite_animation_t;
-        Uint32 collision_sprite_frame_index;
+        U32 collision_sprite_frame_index;
 
         bool draw_texture_box;
     } debug;
@@ -133,9 +133,9 @@ struct AppState
 
 typedef struct
 {
-    Uint32 x, y, w, h;
+    U32 x, y, w, h;
 } WindowLayoutData;
 
-static void Game_AutoLayoutApply(Uint32 user_count, Sint32 px, Sint32 py, Sint32 w, Sint32 h);
+static void Game_AutoLayoutApply(U32 user_count, I32 px, I32 py, I32 w, I32 h);
 
 

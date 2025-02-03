@@ -1,29 +1,29 @@
-static void Server_InsertPlayerInput(Server_PlayerInputs *pi, Net_SendInputs *net_msg, Uint64 net_msg_tick_id)
+static void Server_InsertPlayerInput(Server_PlayerInputs *pi, Net_SendInputs *net_msg, U64 net_msg_tick_id)
 {
     if (net_msg_tick_id <= pi->latest_client_tick_id)
         return; // no new inputs
 
-    Uint64 pre_insert_playback_range = RngU64_Count(pi->playback_range);
+    U64 pre_insert_playback_range = RngU64_Count(pi->playback_range);
 
     // @threading - mutex?
     Tick_Input *inputs = net_msg->inputs;
-    Uint16 input_count = Min(net_msg->input_count, ArrayCount(net_msg->inputs));
+    U16 input_count = Min(net_msg->input_count, ArrayCount(net_msg->inputs));
 
     if (net_msg_tick_id + 1 < input_count)
     {
-        Uint16 new_input_count = net_msg_tick_id + 1;
-        Uint16 delta = input_count - new_input_count;
+        U16 new_input_count = net_msg_tick_id + 1;
+        U16 delta = input_count - new_input_count;
 
         input_count = new_input_count;
         inputs += delta;
     }
 
-    Uint64 first_input_tick_id = net_msg_tick_id + 1 - input_count;
-    Uint64 stored_inputs = 0;
+    U64 first_input_tick_id = net_msg_tick_id + 1 - input_count;
+    U64 stored_inputs = 0;
 
     ForU64(input_index, input_count)
     {
-        Uint64 input_tick = first_input_tick_id + input_index;
+        U64 input_tick = first_input_tick_id + input_index;
         if (input_tick <= pi->latest_client_tick_id)
         {
             // reject old inputs
@@ -75,14 +75,14 @@ static Tick_Input Server_PopPlayerInput(Server_PlayerInputs *pi)
     return result;
 }
 
-static Tick_Input Server_GetPlayerInput(Uint32 player_index)
+static Tick_Input Server_GetPlayerInput(U32 player_index)
 {
     Tick_Input result = {};
     if (player_index >= ArrayCount(APP.server.player_inputs))
         return result;
 
     Server_PlayerInputs *pi = APP.server.player_inputs + player_index;
-    Uint64 playback_count = RngU64_Count(pi->playback_range);
+    U64 playback_count = RngU64_Count(pi->playback_range);
 
     if (playback_count > 0)
     {

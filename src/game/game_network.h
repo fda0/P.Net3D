@@ -14,7 +14,7 @@
 typedef struct
 {
     SDLNet_Address *address;
-    Uint16 port;
+    U16 port;
 } Net_User;
 
 typedef enum
@@ -31,35 +31,35 @@ typedef enum
 
 typedef struct
 {
-    Uint64 tick_id; // this is already send via packet header
+    U64 tick_id; // this is already send via packet header
     Net_SendKind kind;
 } Net_SendHeader;
 
 typedef struct
 {
     Tick_Input inputs[NET_MAX_INPUT_TICKS];
-    Uint16 input_count;
+    U16 input_count;
 } Net_SendInputs;
 
 typedef struct
 {
-    Uint64 number;
+    U64 number;
 } Net_SendPing;
 
 typedef struct
 {
-    Uint32 net_index;
+    U32 net_index;
     Object obj;
 } Net_SendObjUpdate;
 
 typedef struct
 {
-    Uint32 net_index;
+    U32 net_index;
 } Net_SendObjEmpty;
 
 typedef struct
 {
-    Uint32 numbers[290];
+    U32 numbers[290];
 } Net_SendNetworkTest;
 
 typedef struct
@@ -69,15 +69,15 @@ typedef struct
 
 typedef struct
 {
-    Uint32 user_count;
-    Sint32 px, py, w, h;
+    U32 user_count;
+    I32 px, py, w, h;
 } Net_SendWindowLayout;
 
 #pragma pack(push, 1)
 typedef struct
 {
-    Uint16 magic_value; // use this as seed for hash calculation instead
-    Uint16 payload_hash;
+    U16 magic_value; // use this as seed for hash calculation instead
+    U16 payload_hash;
 } Net_PacketHeader;
 #pragma pack(pop)
 
