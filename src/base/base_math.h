@@ -218,6 +218,16 @@ static float V3_Inner(V3 a, V3 b)
 {
     return a.x*b.x + a.y*b.y + a.z*b.z;
 }
+static V3 V3_Cross(V3 a, V3 b)
+{
+    V3 res =
+    {
+        (a.y * b.z) - (a.z * b.y),
+        (a.z * b.x) - (a.x * b.z),
+        (a.x * b.y) - (a.y * b.x),
+    };
+    return res;
+}
 static V3 V3_NanToZero(V3 a)
 {
     if (a.x != a.x) a.x = 0.f;
@@ -778,4 +788,105 @@ static Mat4 Mat4_Rotation_Quat(Quat q)
     res.elem[3][2] = 0.0f;
     res.elem[3][3] = 1.0f;
     return res;
+}
+
+static Quat Quat_FromM4_RH(Mat4 mat)
+{
+    float t = 0.f;
+    Quat q = {};
+
+    if (mat.elem[2][2] < 0.0f)
+    {
+        if (mat.elem[0][0] > mat.elem[1][1])
+        {
+            t = 1 + mat.elem[0][0] - mat.elem[1][1] - mat.elem[2][2];
+            q = (Quat)
+            {
+                t,
+                mat.elem[0][1] + mat.elem[1][0],
+                mat.elem[2][0] + mat.elem[0][2],
+                mat.elem[1][2] - mat.elem[2][1]
+            };
+        }
+        else
+        {
+            t = 1 - mat.elem[0][0] + mat.elem[1][1] - mat.elem[2][2];
+            q = (Quat)
+            {
+                      mat.elem[0][1] + mat.elem[1][0],
+                      t,
+                      mat.elem[1][2] + mat.elem[2][1],
+                      mat.elem[2][0] - mat.elem[0][2]
+            };
+        }
+    }
+    else
+    {
+        if (mat.elem[0][0] < -mat.elem[1][1])
+        {
+            t = 1 - mat.elem[0][0] - mat.elem[1][1] + mat.elem[2][2];
+            q = (Quat)
+            {
+                      mat.elem[2][0] + mat.elem[0][2],
+                      mat.elem[1][2] + mat.elem[2][1],
+                      t,
+                      mat.elem[0][1] - mat.elem[1][0]
+            };
+        }
+        else
+        {
+            t = 1 + mat.elem[0][0] + mat.elem[1][1] + mat.elem[2][2];
+            q = (Quat)
+            {
+                      mat.elem[1][2] - mat.elem[2][1],
+                      mat.elem[2][0] - mat.elem[0][2],
+                      mat.elem[0][1] - mat.elem[1][0],
+                      t
+            };
+        }
+    }
+
+    q = Quat_Scale(q, 0.5f / SqrtF(t));
+    return q;
+}
+
+static Quat Quat_FromAxisAngle_RH(V3 axis, float rot_turns)
+{
+    SinCosResult sc = SinCosF(rot_turns);
+    axis = V3_Normalize(axis);
+    axis = V3_Scale(axis, sc.sin);
+
+    Quat res =
+    {
+        axis.x,
+        axis.y,
+        axis.z,
+        sc.cos
+    };
+    return res;
+}
+
+static Quat Quat_FromNormalizedPair(V3 a, V3 b)
+{
+    V3 cross = V3_Cross(a, b);
+    Quat res =
+    {
+        cross.x,
+        cross.y,
+        cross.z,
+        1.f + V3_Inner(a, b),
+    };
+    return res;
+}
+
+static Quat Quat_FromPair(V3 a, V3 b)
+{
+    return Quat_FromNormalizedPair(V3_Normalize(a), V3_Normalize(b));
+}
+
+static V3 V3_Rotate(V3 v, Quat q)
+{
+    V3 q3 = {q.x, q.y, q.z};
+    V3 t = V3_Scale(V3_Cross(q3, v), 2);
+    return V3_Add(v, V3_Add(V3_Scale(t, q.w), V3_Cross(q3, t)));
 }
