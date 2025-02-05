@@ -217,9 +217,9 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
     U64 out_ind_count = 0;
 
     // Prepare transformation matrices
-    Mat4 rotation_mat = Mat4_Rotation_RH(spec.rot_x, (V3){1,0,0});
-    rotation_mat = Mat4_Mul(Mat4_Rotation_RH(spec.rot_y, (V3){0,1,0}), rotation_mat);
-    rotation_mat = Mat4_Mul(Mat4_Rotation_RH(spec.rot_z, (V3){0,0,1}), rotation_mat);
+    Mat4 rotation_mat = Mat4_Rotation_RH((V3){1,0,0}, spec.rot_x);
+    rotation_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, spec.rot_y), rotation_mat);
+    rotation_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, spec.rot_z), rotation_mat);
 
     Mat4 vert_mat = Mat4_Diagonal(1.f);
     if (spec.scale)

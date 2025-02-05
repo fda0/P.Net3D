@@ -43,14 +43,23 @@ static void Game_DrawObjects()
 
                     if (obj_index & 1)
                     {
-                        Quat rot_q = Quat_FromAxisAngle_RH((V3){0,1,0}, 0.06f);
-                        Quat rot2 = Quat_FromAxisAngle_RH((V3){0,0,1}, -0.18f);
-                        rot_q = Quat_Mul(rot_q, rot2);
-                        //if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
-                        //{
-                        //rot_q = Quat_Identity();
-                        //}
-                        rot_mat = Mat4_Rotation_Quat(rot_q);
+                        Quat rot0 = Quat_FromAxisAngle_RH((V3){1,0,0}, 0.25f);
+                        Quat rot1 = Quat_FromAxisAngle_RH((V3){0,0,1}, 0.35f);
+                        //Quat rot1 = Quat_Identity();
+
+                        Quat rot = Quat_Mul(rot0, rot1);
+                        //Quat rot = rot0;
+
+                        rot_mat = Mat4_Rotation_Quat(rot);
+                    }
+                    else
+                    {
+                        Mat4 rot0 = Mat4_Rotation_RH((V3){1,0,0}, 0.25f);
+                        Mat4 rot1 = Mat4_Rotation_RH((V3){0,0,1}, 0.35f);
+                        //Mat4 rot1 = Mat4_Identity();
+
+                        rot_mat = Mat4_Mul(rot0, rot1);
+                        //rot_mat = rot0;
                     }
 
                     inst->transform = Mat4_Mul(move_mat, rot_mat);
@@ -282,9 +291,9 @@ static void Game_Iterate()
     {
         APP.camera_move_mat = Mat4_InvTranslation(Mat4_Translation(APP.camera_p));
 
-        APP.camera_rot_mat = Mat4_Rotation_RH(APP.camera_rot.x, (V3){1,0,0});
-        APP.camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.z, (V3){0,0,1}), APP.camera_rot_mat);
-        APP.camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH(APP.camera_rot.y, (V3){0,1,0}), APP.camera_rot_mat);
+        APP.camera_rot_mat = Mat4_Rotation_RH((V3){1,0,0}, APP.camera_rot.x);
+        APP.camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_rot.z), APP.camera_rot_mat);
+        APP.camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_rot.y), APP.camera_rot_mat);
 
         APP.camera_perspective_mat = Mat4_Perspective_RH_NO(APP.camera_fov_y,
                                                             (float)APP.window_width/APP.window_height,

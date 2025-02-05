@@ -531,7 +531,7 @@ static Mat4 Mat4_Mul(Mat4 left, Mat4 right)
     return res;
 }
 
-static Mat4 Mat4_Rotation_RH(float turns, V3 axis)
+static Mat4 Mat4_Rotation_RH(V3 axis, float turns)
 {
     axis = V3_Normalize(axis);
     SinCosResult trig = SinCosF(turns);
@@ -850,10 +850,9 @@ static Quat Quat_FromM4_RH(Mat4 mat)
 
 static Quat Quat_FromAxisAngle_RH(V3 axis, float rot_turns)
 {
-    SinCosResult sc = SinCosF(rot_turns);
+    SinCosResult sc = SinCosF(rot_turns * 0.5f);
     axis = V3_Normalize(axis);
     axis = V3_Scale(axis, sc.sin);
-
     Quat res =
     {
         axis.x,
