@@ -209,8 +209,8 @@ static void Net_IterateSend()
                         if (!Object_IsNil(player))
                         {
                             player->p.y = 75.f - user_index * 25.f;
-                            player->sprite_color.g = (user_index & 1) ? 0.f : 1.f;
-                            player->sprite_color.b = (user_index & 2) ? 0.f : 1.f;
+                            player->color.g = (user_index & 1) ? 0.f : 1.f;
+                            player->color.b = (user_index & 2) ? 0.f : 1.f;
                         }
                         *player_key = player->key;
                     }

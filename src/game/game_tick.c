@@ -46,7 +46,7 @@ static void Tick_AdvanceSimulation()
             float len_sq = V2_LengthSq(dir);
             if (len_sq > 1.f)
             {
-                float len_inv = 1.f / SqrtF(len_sq);
+                float len_inv = InvSqrtF(len_sq);
                 dir = V2_Scale(dir, len_inv);
                 player_dir = dir;
             }
@@ -193,9 +193,9 @@ static Object Object_Lerp(Object prev, Object next, float t)
         result.p = V2_Lerp(prev.p, next.p, t);
         result.dp = V2_Lerp(prev.dp, next.dp, t);
         result.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
-        result.sprite_color = ColorF_Lerp(prev.sprite_color, next.sprite_color, t);
-        result.did_collide = (U32)RoundF(LerpF((float)prev.did_collide,
-                                                  (float)next.did_collide, t));
+        result.color = ColorF_Lerp(prev.color, next.color, t);
+        result.model_rotation = Quat_Lerp(prev.model_rotation, next.model_rotation, t);
+        result.did_collide = (bool)RoundF(LerpF((float)prev.did_collide, (float)next.did_collide, t));
     }
 
     return result;

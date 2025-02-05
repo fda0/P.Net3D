@@ -26,6 +26,11 @@ static float SqrtF(float a)
 {
     return SDL_sqrtf(a);
 }
+static float InvSqrtF(float a)
+{
+    // @todo use SSE intrinsic?
+    return 1.f / SqrtF(a);
+}
 static float AbsF(float a)
 {
     return (a < 0.f ? -a : a);
@@ -162,10 +167,10 @@ static float V2_Length(V2 a)
 }
 static V2 V2_Normalize(V2 a)
 {
-    float length = V2_Length(a);
-    if (length) {
-        float length_inv = 1.f / length;
-        a = V2_Scale(a, length_inv);
+    float len_sq = V2_LengthSq(a);
+    if (len_sq) {
+        float len_inv = InvSqrtF(len_sq);
+        a = V2_Scale(a, len_inv);
     }
     return a;
 }
@@ -249,10 +254,10 @@ static float V3_Length(V3 a)
 }
 static V3 V3_Normalize(V3 a)
 {
-    float length = V3_Length(a);
-    if (length) {
-        float length_inv = 1.f / length;
-        a = V3_Scale(a, length_inv);
+    float len_sq = V3_LengthSq(a);
+    if (len_sq) {
+        float len_inv = InvSqrtF(len_sq);
+        a = V3_Scale(a, len_inv);
     }
     return a;
 }
@@ -310,10 +315,10 @@ static float V4_Length(V4 a)
 }
 static V4 V4_Normalize(V4 a)
 {
-    float length = V4_Length(a);
-    if (length) {
-        float length_inv = 1.f / length;
-        a = V4_Scale(a, length_inv);
+    float len_sq = V4_LengthSq(a);
+    if (len_sq) {
+        float len_inv = InvSqrtF(len_sq);
+        a = V4_Scale(a, len_inv);
     }
     return a;
 }
@@ -363,7 +368,6 @@ static V2 V2_CalculateNormal(V2 a, V2 b)
     V2 vec = V2_Sub(b, a);
     // Make a direction vector out of it.
     V2 dir = V2_Normalize(vec);
-
     return V2_RotateClockwise90(dir);
 }
 
@@ -409,7 +413,7 @@ typedef union
     struct { float r, g, b, a; };
     float E[4];
 } ColorF;
-static ColorF ColorF_Normalize(ColorF f)
+static ColorF ColorF_Clamp(ColorF f)
 {
     ForArray(i, f.E)
         f.E[i] = Clamp(0.f, 1.f, f.E[i]);
@@ -491,58 +495,41 @@ static Mat4 Mat4_Transpose(Mat4 mat)
     return res;
 }
 
-static V4 LinearCombineV4M4(V4 left, Mat4 right)
+static V4 V4_MulM4(Mat4 mat, V4 vec)
 {
-#if 0
-    // @todo sse
-    res.SSE = _mm_mul_ps(_mm_shuffle_ps(left.SSE, left.SSE, 0x00), right.cols[0].SSE);
-    res.SSE = _mm_add_ps(res.SSE, _mm_mul_ps(_mm_shuffle_ps(left.SSE, left.SSE, 0x55), right.cols[1].SSE));
-    res.SSE = _mm_add_ps(res.SSE, _mm_mul_ps(_mm_shuffle_ps(left.SSE, left.SSE, 0xaa), right.cols[2].SSE));
-    res.SSE = _mm_add_ps(res.SSE, _mm_mul_ps(_mm_shuffle_ps(left.SSE, left.SSE, 0xff), right.cols[3].SSE));
-    // @todo neon
-    res.NEON = vmulq_laneq_f32(right.cols[0].NEON, left.NEON, 0);
-    res.NEON = vfmaq_laneq_f32(res.NEON, right.cols[1].NEON, left.NEON, 1);
-    res.NEON = vfmaq_laneq_f32(res.NEON, right.cols[2].NEON, left.NEON, 2);
-    res.NEON = vfmaq_laneq_f32(res.NEON, right.cols[3].NEON, left.NEON, 3);
-#endif
+    // @todo SIMD
     V4 res;
-    res.x = left.E[0] * right.cols[0].x;
-    res.y = left.E[0] * right.cols[0].y;
-    res.z = left.E[0] * right.cols[0].z;
-    res.w = left.E[0] * right.cols[0].w;
+    res.x = vec.E[0] * mat.cols[0].x;
+    res.y = vec.E[0] * mat.cols[0].y;
+    res.z = vec.E[0] * mat.cols[0].z;
+    res.w = vec.E[0] * mat.cols[0].w;
 
-    res.x += left.E[1] * right.cols[1].x;
-    res.y += left.E[1] * right.cols[1].y;
-    res.z += left.E[1] * right.cols[1].z;
-    res.w += left.E[1] * right.cols[1].w;
+    res.x += vec.E[1] * mat.cols[1].x;
+    res.y += vec.E[1] * mat.cols[1].y;
+    res.z += vec.E[1] * mat.cols[1].z;
+    res.w += vec.E[1] * mat.cols[1].w;
 
-    res.x += left.E[2] * right.cols[2].x;
-    res.y += left.E[2] * right.cols[2].y;
-    res.z += left.E[2] * right.cols[2].z;
-    res.w += left.E[2] * right.cols[2].w;
+    res.x += vec.E[2] * mat.cols[2].x;
+    res.y += vec.E[2] * mat.cols[2].y;
+    res.z += vec.E[2] * mat.cols[2].z;
+    res.w += vec.E[2] * mat.cols[2].w;
 
-    res.x += left.E[3] * right.cols[3].x;
-    res.y += left.E[3] * right.cols[3].y;
-    res.z += left.E[3] * right.cols[3].z;
-    res.w += left.E[3] * right.cols[3].w;
+    res.x += vec.E[3] * mat.cols[3].x;
+    res.y += vec.E[3] * mat.cols[3].y;
+    res.z += vec.E[3] * mat.cols[3].z;
+    res.w += vec.E[3] * mat.cols[3].w;
     return res;
 }
 
 static Mat4 Mat4_Mul(Mat4 left, Mat4 right)
 {
     Mat4 res;
-    res.cols[0] = LinearCombineV4M4(right.cols[0], left);
-    res.cols[1] = LinearCombineV4M4(right.cols[1], left);
-    res.cols[2] = LinearCombineV4M4(right.cols[2], left);
-    res.cols[3] = LinearCombineV4M4(right.cols[3], left);
+    res.cols[0] = V4_MulM4(left, right.cols[0]);
+    res.cols[1] = V4_MulM4(left, right.cols[1]);
+    res.cols[2] = V4_MulM4(left, right.cols[2]);
+    res.cols[3] = V4_MulM4(left, right.cols[3]);
     return res;
 }
-
-static V4 V4_MulM4(Mat4 mat, V4 vec)
-{
-    return LinearCombineV4M4(vec, mat);
-}
-
 
 static Mat4 Mat4_Rotation_RH(float turns, V3 axis)
 {
@@ -662,10 +649,10 @@ static Quat Quat_Mul(Quat a, Quat b)
 {
     // @todo SIMD
     Quat res = {};
-    res.x =  b.w * +a.x;
-    res.y =  b.z * -a.x;
-    res.z =  b.y * +a.x;
-    res.w =  b.x * -a.x;
+    res.x = b.w * +a.x;
+    res.y = b.z * -a.x;
+    res.z = b.y * +a.x;
+    res.w = b.x * -a.x;
 
     res.x += b.z * +a.y;
     res.y += b.w * +a.y;
@@ -692,6 +679,11 @@ static Quat Quat_Scale(Quat q, float scale)
 static float Quat_Inner(Quat a, Quat b)
 {
     return V4_Inner(a, b);
+}
+
+static Quat Quat_Identity()
+{
+    return (Quat){0,0,0,1};
 }
 
 static Quat Quat_Inv(Quat q)
@@ -729,6 +721,12 @@ static Quat Quat_Mix(Quat a, Quat b, float ta, float tb)
 static Quat Quat_NLerp(Quat a, Quat b, float t)
 {
     return Quat_Mix(a, b, 1.f - t, t);
+}
+
+static Quat Quat_Lerp(Quat a, Quat b, float t)
+{
+    Quat res = Quat_NLerp(a, b, t);
+    return Quat_Normalize(res);
 }
 
 static Quat Quat_SLerp(Quat a, Quat b, float t)

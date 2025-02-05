@@ -30,20 +30,30 @@ static void Game_DrawObjects()
                     APP.rdr.models[i].count += 1;
 
                     SDL_zerop(inst);
-                    inst->color.x = obj->sprite_color.r;
-                    inst->color.y = obj->sprite_color.g;
-                    inst->color.z = obj->sprite_color.b;
+                    inst->color.x = obj->color.r;
+                    inst->color.y = obj->color.g;
+                    inst->color.z = obj->color.b;
 
                     V3 move = {};
                     move.x = obj->p.x;
                     move.y = obj->p.y;
                     Mat4 move_mat = Mat4_Translation(move);
-                    Mat4 rot_mat = Mat4_Rotation_RH(0.03f, (V3){0,1,0});
-                    if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
-                        rot_mat = Mat4_Diagonal(1.f);
+
+                    Mat4 rot_mat = Mat4_Identity();
+
+                    if (obj_index & 1)
+                    {
+                        Quat rot_q = Quat_FromAxisAngle_RH((V3){0,1,0}, 0.06f);
+                        Quat rot2 = Quat_FromAxisAngle_RH((V3){0,0,1}, -0.18f);
+                        rot_q = Quat_Mul(rot_q, rot2);
+                        //if (obj->p.x == obj->prev_p.x && obj->p.y == obj->prev_p.y)
+                        //{
+                        //rot_q = Quat_Identity();
+                        //}
+                        rot_mat = Mat4_Rotation_Quat(rot_q);
+                    }
 
                     inst->transform = Mat4_Mul(move_mat, rot_mat);
-
                 }
             }
         }
@@ -354,8 +364,8 @@ static void Game_Init()
 
     APP.frame_time = SDL_GetTicks();
     APP.camera_fov_y = 0.19f;
-    APP.camera_p = (V3){-300.f, 0.f, 200.f};
-    APP.camera_rot = (V3){0, -0.1f, 0};
+    APP.camera_p = (V3){-100.f, 0.f, 100.f};
+    APP.camera_rot = (V3){0, -0.15f, 0};
     APP.tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
 
     // add walls

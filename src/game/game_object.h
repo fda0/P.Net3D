@@ -10,11 +10,12 @@ typedef struct
 
 typedef enum
 {
-    ObjectFlag_Draw          = (1 << 0),
-    ObjectFlag_Move          = (1 << 1),
-    ObjectFlag_Collide       = (1 << 2),
-    ObjectFlag_ModelTeapot   = (1 << 3),
-    ObjectFlag_ModelFlag     = (1 << 4),
+    ObjectFlag_Draw            = (1 << 0),
+    ObjectFlag_Move            = (1 << 1),
+    ObjectFlag_Collide         = (1 << 2),
+    ObjectFlag_AnimateRotation = (1 << 3),
+    ObjectFlag_ModelTeapot     = (1 << 4),
+    ObjectFlag_ModelFlag       = (1 << 5),
 } Object_Flags;
 
 typedef enum
@@ -41,7 +42,11 @@ typedef struct
     V2 prev_p; // position from the last frame
 
     // visuals
-    ColorF sprite_color;
+    ColorF color;
+    Quat model_rotation;
+    //Quat rotation_min;
+    //Quat rotation_max;
+    //float rotation_t;
 
     // input actions
     bool is_pathing;

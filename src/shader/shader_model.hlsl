@@ -25,17 +25,35 @@ struct VSModelInstanceData
 
 StructuredBuffer<VSModelInstanceData> InstanceBuffer : register(t0);
 
+float4x4 Mat4_RotationPart(float4x4 mat)
+{
+    mat._14 = 0.f;
+    mat._24 = 0.f;
+    mat._34 = 0.f;
+    mat._44 = 1.f;
+    return mat;
+}
+float4x4 Mat4_Identity()
+{
+    return float4x4(1.0f, 0.0f, 0.0f, 0.0f,
+                    0.0f, 1.0f, 0.0f, 0.0f,
+                    0.0f, 0.0f, 1.0f, 0.0f,
+                    0.0f, 0.0f, 0.0f, 1.0f);
+}
+
 VSOutput ShaderModelVS(VSInput input)
 {
-    VSModelInstanceData instance_data = InstanceBuffer[input.InstanceIndex];
+    VSModelInstanceData instance = InstanceBuffer[input.InstanceIndex];
 
+    float3 normal = mul(Mat4_RotationPart(instance.transform), float4(input.normal, 1.f)).xyz;
     float3 world_sun_pos = normalize(float3(-0.5f, 0.5f, 1.f));
-    float in_sun_coef = dot(world_sun_pos, input.normal);
+    float in_sun_coef = dot(world_sun_pos, normal);
+
     float4 color = float4(input.color, 1.0f);
-    color *= instance_data.color;
+    color *= instance.color;
     color.xyz *= clamp(in_sun_coef, 0.25f, 1.0f);
 
-    float4x4 model_transform = instance_data.transform;
+    float4x4 model_transform = instance.transform;
     model_transform = mul(CameraTransform, model_transform);
 
     VSOutput output;
