@@ -58,11 +58,11 @@ typedef struct
 
     Collision_Data collision;
 
-    Object_LocalData local; // not synced from the server
-
     // temp
     U32 some_number;
     bool did_collide;
+
+    Object_LocalData local; // not synced from the server
 } Object;
 
 static Object Object_Lerp(Object prev, Object next, float t);

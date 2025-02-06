@@ -277,6 +277,7 @@ static void Tick_Playback()
 
         Object interpolated = Client_LerpNetObject(net_index, APP.client.next_playback_tick);
         *net_obj = interpolated;
+
         net_obj->local = local; // @todo refactor
     }
     APP.client.next_playback_tick += 1;

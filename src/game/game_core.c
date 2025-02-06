@@ -398,7 +398,7 @@ static void Game_Iterate()
             {
                 marker->flags |= ObjectFlag_Draw;
                 marker->p = APP.world_mouse;
-                marker->local.animated_p = V3_Make_XY_Z(marker->p, 50.f);
+                marker->local.animated_p = V3_Make_XY_Z(marker->p, 30.f);
                 APP.pathing_marker_set = true;
             }
         }
@@ -422,7 +422,7 @@ static void Game_Init()
 
     APP.frame_time = SDL_GetTicks();
     APP.camera_fov_y = 0.19f;
-    APP.camera_p = (V3){-100.f, 0.f, 200.f};
+    APP.camera_p = (V3){-200.f, 0.f, 175.f};
     APP.camera_rot = (V3){0, -0.15f, 0};
     APP.tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
 

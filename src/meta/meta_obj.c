@@ -173,7 +173,6 @@ static M_ObjFacePart M_ParseObjFaceTokens(M_ObjParser *p)
 static U16 M_FindOrInsertRdrModelVertex(Rdr_ModelVertex rdr_vertex)
 {
     //U64 hash = HashU64(0, &rdr_vertex, sizeof(rdr_vertex));
-
     // @todo this is n^2, use hash table instead
 
     ForArray(i, M.vertex_table)

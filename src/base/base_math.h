@@ -389,18 +389,13 @@ static V2 V2_CalculateNormal(V2 a, V2 b)
 // ---
 // Ranges
 // ---
-typedef struct
+typedef union
 {
     struct { U32 min, max; };
     U32 E[2];
 } RngU32;
 
-static bool RngU32_InRange(RngU32 rng, U32 value)
-{
-    return rng.min >= value && rng.max < value;
-}
-
-typedef struct
+typedef union
 {
     struct { U64 min, max; };
     U64 E[2];
@@ -411,6 +406,19 @@ typedef union
     struct { float min, max; };
     float E[2];
 } RngF; // Range float
+
+
+static bool RngU32_InRange(RngU32 rng, U32 value)
+{
+    return rng.min >= value && rng.max < value;
+}
+
+static U64 RngU64_Count(RngU64 rng)
+{
+    if (rng.max < rng.min)
+        return 0;
+    return rng.max - rng.min;
+}
 
 static float RngF_MaxDistance(RngF a, RngF b)
 {

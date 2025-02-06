@@ -3,17 +3,6 @@
 // live in this file for now
 //
 
-// @todo
-// Turns out I'm using circle buffers a lot in this project;
-// Perhaps it would be nice to create helpers for working with them;
-// Needed apis (Circle_ prefix?):
-// 1. Pop element
-// 2. Push element
-// 3. at index
-// 4. is index in [min; max) range?
-// 1-4 are "queue" -> create queue template?
-// 5. Clear range from tick to tick;? no!
-
 static void Circle_CopyFillRange(U64 elem_size,
                                  void *buf, U64 buf_elem_count, U64 *buf_elem_index,
                                  void *copy_src, U64 copy_src_elem_count)
@@ -52,13 +41,6 @@ static void Circle_CopyFillRange(U64 elem_size,
 //
 // Queue
 //
-static U64 RngU64_Count(RngU64 rng)
-{
-    if (rng.max < rng.min)
-        return 0;
-    return rng.max - rng.min;
-}
-
 static U8 *Queue_Push(void *buf, U64 elem_count, U64 elem_size, RngU64 *range)
 {
     Assert(range->min <= range->max);
