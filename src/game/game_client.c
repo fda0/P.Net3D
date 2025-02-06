@@ -4,7 +4,7 @@ static Object *Client_SnapshotObjectAtTick(Client_Snapshot *snap, U64 tick_id)
     return snap->tick_states + state_index;
 }
 
-static Object Client_LerpNetObject(U32 net_index, U64 tick_id)
+static Obj_Sync Client_LerpNetObject(U32 net_index, U64 tick_id)
 {
     Assert(net_index < ArrayCount(APP.client.obj_snaps));
     Client_Snapshot *snap = APP.client.obj_snaps + net_index;
@@ -14,7 +14,7 @@ static Object Client_LerpNetObject(U32 net_index, U64 tick_id)
 
     Object *exact_obj = Client_SnapshotObjectAtTick(snap, tick_id);
     if (Obj_IsInit(exact_obj)) // exact object found
-        return *exact_obj;
+        return exact_obj->s;
 
     // find nearest prev_id/next_id objects
     U64 prev_id = tick_id;
@@ -37,13 +37,13 @@ static Object Client_LerpNetObject(U32 net_index, U64 tick_id)
 
     // handle cases where we can't interpolate
     if (!Obj_IsInit(prev) && !Obj_IsInit(next)) // disaster
-        return *exact_obj;
+        return exact_obj->s;
 
     if (!Obj_IsInit(prev))
-        return *next;
+        return next->s;
 
     if (!Obj_IsInit(next))
-        return *prev;
+        return prev->s;
 
     // lock lerp range; new packets in this range will be rejected
     snap->recent_lerp_start_tick = prev_id;
@@ -53,7 +53,7 @@ static Object Client_LerpNetObject(U32 net_index, U64 tick_id)
     U64 id_range = next_id - prev_id;
     U64 id_offset = tick_id - prev_id;
     float t = (float)id_offset / (float)id_range;
-    Object result = Obj_Lerp(*prev, *next, t);
+    Obj_Sync result = Obj_SyncLerp(prev->s, next->s, t);
     return result;
 }
 
@@ -184,7 +184,7 @@ static Tick_Input *Client_PollInput()
     {
         APP.pathing_marker_set = false;
         input->is_pathing = true;
-        input->pathing_world_p = Obj_Get(APP.pathing_marker, ObjCategory_Local)->p;
+        input->pathing_world_p = Obj_Get(APP.pathing_marker, ObjCategory_Local)->s.p;
     }
 
     return input;

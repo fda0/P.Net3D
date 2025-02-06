@@ -36,7 +36,7 @@ static Object *Obj_Get(Obj_Key key, U32 category_mask)
     if (index_in_valid_category)
     {
         Object *obj = APP.all_objects + key.index;
-        if (Obj_KeyMatch(obj->key, key))
+        if (Obj_KeyMatch(obj->s.key, key))
             result = obj;
     }
     return result;
@@ -44,21 +44,21 @@ static Object *Obj_Get(Obj_Key key, U32 category_mask)
 
 static bool Obj_IsInit(Object *obj)
 {
-    return obj->init;
+    return obj->s.init;
 }
 
 static bool Obj_HasData(Object *obj)
 {
-    return !!obj->flags;
+    return !!obj->s.flags;
 }
 
 static bool Obj_HasAnyFlag(Object *obj, U32 flag)
 {
-    return !!(obj->flags & flag);
+    return !!(obj->s.flags & flag);
 }
 static bool Obj_HasAllFlags(Object *obj, U32 flags)
 {
-    return (obj->flags & flags) == flags;
+    return (obj->s.flags & flags) == flags;
 }
 
 static Object *Obj_FromNetIndex(U32 net_index)
@@ -113,12 +113,12 @@ static Object *Obj_Create(Obj_Category category, U32 flags)
     // init object
     SDL_zerop(obj);
 
-    obj->key.made_at_tick = APP.tick_id;
-    obj->key.index = ((U64)obj - (U64)APP.all_objects) / sizeof(*obj);
+    obj->s.key.made_at_tick = APP.tick_id;
+    obj->s.key.index = ((U64)obj - (U64)APP.all_objects) / sizeof(*obj);
 
-    obj->flags = flags;
-    obj->init = true;
-    obj->color = ColorF_RGB(1,1,1);
+    obj->s.flags = flags;
+    obj->s.init = true;
+    obj->s.color = ColorF_RGB(1,1,1);
     return obj;
 }
 
@@ -126,9 +126,9 @@ static Object *Obj_CreateWall(V2 p, V2 dim)
 {
     Object *obj = Obj_Create(ObjCategory_Local,
                                 ObjectFlag_Draw|ObjectFlag_Collide);
-    obj->p = p;
-    obj->collision.verts = CollisionVertices_FromRectDim(dim);
-    Collision_RecalculateNormals(&obj->collision);
+    obj->s.p = p;
+    obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
+    Collision_RecalculateNormals(&obj->s.collision);
 
     static float r = 0.f;
     static float g = 0.5f;
@@ -137,7 +137,7 @@ static Object *Obj_CreateWall(V2 p, V2 dim)
     while (r > 1.f) r -= 1.f;
     while (g > 1.f) g -= 1.f;
 
-    obj->color = ColorF_RGB(r, g, 0.5f);
+    obj->s.color = ColorF_RGB(r, g, 0.5f);
     return obj;
 }
 
@@ -149,10 +149,10 @@ static Object *Obj_CreatePlayer()
                                    ObjectFlag_ModelTeapot |
                                    ObjectFlag_AnimateRotation);
 
-    player->collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
-    Collision_RecalculateNormals(&player->collision);
+    player->s.collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
+    Collision_RecalculateNormals(&player->s.collision);
 
-    player->color = ColorF_RGB(1,1,1);
+    player->s.color = ColorF_RGB(1,1,1);
     return player;
 }
 

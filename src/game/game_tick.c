@@ -16,7 +16,7 @@ static void Tick_AdvanceSimulation()
         Object *obj = APP.all_objects + obj_index;
         if (Obj_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_AnimateRotation))
         {
-            obj->prev_p = obj->p;
+            obj->s.prev_p = obj->s.p;
         }
     }
 
@@ -32,18 +32,18 @@ static void Tick_AdvanceSimulation()
 
         if (input.is_pathing)
         {
-            player->is_pathing = true;
-            player->pathing_dest_p = input.pathing_world_p;
+            player->s.is_pathing = true;
+            player->s.pathing_dest_p = input.pathing_world_p;
         }
         if (input.move_dir.x || input.move_dir.y)
         {
-            player->is_pathing = false;
+            player->s.is_pathing = false;
         }
 
         V2 player_dir = input.move_dir;
-        if (player->is_pathing)
+        if (player->s.is_pathing)
         {
-            V2 dir = V2_Sub(player->pathing_dest_p, player->p);
+            V2 dir = V2_Sub(player->s.pathing_dest_p, player->s.p);
             float len_sq = V2_LengthSq(dir);
             if (len_sq > 1.f)
             {
@@ -53,13 +53,13 @@ static void Tick_AdvanceSimulation()
             }
             else
             {
-                player->is_pathing = false;
+                player->s.is_pathing = false;
             }
         }
 
         float player_speed = 60.f * TIME_STEP;
-        player->dp = V2_Scale(player_dir, player_speed);
-        player->some_number += 1;
+        player->s.dp = V2_Scale(player_dir, player_speed);
+        player->s.some_number += 1;
     }
 
     // movement & collision
@@ -69,7 +69,7 @@ static void Tick_AdvanceSimulation()
         if (!Obj_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_Collide)) continue;
 
         // reset debug flag
-        obj->did_collide = false;
+        obj->s.did_collide = false;
     }
 
     ForArray(obj_index, APP.all_objects)
@@ -78,7 +78,7 @@ static void Tick_AdvanceSimulation()
         if (!Obj_HasAnyFlag(obj, ObjectFlag_Move)) continue;
 
         // move object
-        obj->p = V2_Add(obj->p, obj->dp);
+        obj->s.p = V2_Add(obj->s.p, obj->s.dp);
 
         // check collision
         ForU32(collision_iteration, 8) // support up to 8 overlapping wall collisions
@@ -86,8 +86,8 @@ static void Tick_AdvanceSimulation()
             float closest_obstacle_separation_dist = FLT_MAX;
             V2 closest_obstacle_wall_normal = {0};
 
-            CollisionVertices obj_verts = obj->collision.verts;
-            Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj->p);
+            CollisionVertices obj_verts = obj->s.collision.verts;
+            Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj->s.p);
             V2 obj_center = Vertices_Average(obj_verts.arr, ArrayCount(obj_verts.arr));
 
             ForArray(obstacle_index, APP.all_objects)
@@ -96,8 +96,8 @@ static void Tick_AdvanceSimulation()
                 if (!Obj_HasAnyFlag(obstacle, ObjectFlag_Collide)) continue;
                 if (obj == obstacle) continue;
 
-                CollisionVertices obstacle_verts = obstacle->collision.verts;
-                Vertices_Offset(obstacle_verts.arr, ArrayCount(obstacle_verts.arr), obstacle->p);
+                CollisionVertices obstacle_verts = obstacle->s.collision.verts;
+                Vertices_Offset(obstacle_verts.arr, ArrayCount(obstacle_verts.arr), obstacle->s.p);
                 V2 obstacle_center = Vertices_Average(obstacle_verts.arr, ArrayCount(obstacle_verts.arr));
 
                 float biggest_dist = -FLT_MAX;
@@ -110,8 +110,8 @@ static void Tick_AdvanceSimulation()
                 {
                     bool use_obj_normals = !sat_iteration;
                     CollisionNormals normals = (use_obj_normals ?
-                                                obj->collision.norms :
-                                                obstacle->collision.norms);
+                                                obj->s.collision.norms :
+                                                obstacle->s.collision.norms);
 
                     CollisionProjection proj_obj = Collision_CalculateProjection(normals, obj_verts);
                     CollisionProjection proj_obstacle = Collision_CalculateProjection(normals, obstacle_verts);
@@ -157,8 +157,8 @@ static void Tick_AdvanceSimulation()
                     closest_obstacle_wall_normal = wall_normal;
                 }
 
-                obj->did_collide |= (biggest_dist < 0.f);
-                obstacle->did_collide |= (biggest_dist < 0.f);
+                obj->s.did_collide |= (biggest_dist < 0.f);
+                obstacle->s.did_collide |= (biggest_dist < 0.f);
 
                 skip_this_obstacle:;
             }
@@ -169,12 +169,12 @@ static void Tick_AdvanceSimulation()
                 float move_out_magnitude = -closest_obstacle_separation_dist;
 
                 V2 move_out = V2_Scale(move_out_dir, move_out_magnitude);
-                obj->p = V2_Add(obj->p, move_out);
+                obj->s.p = V2_Add(obj->s.p, move_out);
 
                 // remove all velocity on collision axis
                 // we might want to do something different here!
-                if (move_out.x) obj->dp.x = 0;
-                if (move_out.y) obj->dp.y = 0;
+                if (move_out.x) obj->s.dp.x = 0;
+                if (move_out.y) obj->s.dp.y = 0;
             }
             else
             {
@@ -185,16 +185,16 @@ static void Tick_AdvanceSimulation()
     } // obj_index
 }
 
-static Object Obj_Lerp(Object prev, Object next, float t)
+static Obj_Sync Obj_SyncLerp(Obj_Sync prev, Obj_Sync next, float t)
 {
-    Object result = prev;
-    result.p = V2_Lerp(prev.p, next.p, t);
-    result.dp = V2_Lerp(prev.dp, next.dp, t);
-    result.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
-    result.color = ColorF_Lerp(prev.color, next.color, t);
-    result.rot_z = LerpF(prev.rot_z, next.rot_z, t);
-    result.did_collide = (bool)RoundF(LerpF((float)prev.did_collide, (float)next.did_collide, t));
-    return result;
+    Obj_Sync res = prev;
+    res.p = V2_Lerp(prev.p, next.p, t);
+    res.dp = V2_Lerp(prev.dp, next.dp, t);
+    res.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
+    res.color = ColorF_Lerp(prev.color, next.color, t);
+    res.rot_z = LerpF(prev.rot_z, next.rot_z, t);
+    res.did_collide = (bool)RoundF(LerpF((float)prev.did_collide, (float)next.did_collide, t));
+    return res;
 }
 
 static void Tick_Playback()
@@ -272,13 +272,9 @@ static void Tick_Playback()
 
     ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
     {
+        Obj_Sync interpolated_sync = Client_LerpNetObject(net_index, APP.client.next_playback_tick);
         Object *net_obj = Obj_FromNetIndex(net_index);
-        Obj_LocalData local = net_obj->local; // @todo refactor
-
-        Object interpolated = Client_LerpNetObject(net_index, APP.client.next_playback_tick);
-        *net_obj = interpolated;
-
-        net_obj->local = local; // @todo refactor
+        net_obj->s = interpolated_sync;
     }
     APP.client.next_playback_tick += 1;
 }

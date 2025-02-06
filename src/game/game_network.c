@@ -208,11 +208,11 @@ static void Net_IterateSend()
                         Object *player = Obj_CreatePlayer();
                         if (!Obj_IsNil(player))
                         {
-                            player->p.y = 75.f - user_index * 25.f;
-                            player->color.g = (user_index & 1) ? 0.f : 1.f;
-                            player->color.b = (user_index & 2) ? 0.f : 1.f;
+                            player->s.p.y = 75.f - user_index * 25.f;
+                            player->s.color.g = (user_index & 1) ? 0.f : 1.f;
+                            player->s.color.b = (user_index & 2) ? 0.f : 1.f;
                         }
-                        *player_key = player->key;
+                        *player_key = player->s.key;
                     }
 
                     Net_SendHeader head = {};
@@ -397,7 +397,7 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
                 Net_SendObjEmpty empty;
                 Net_ConsumeS8(&msg, &empty, sizeof(empty));
                 update.net_index = empty.net_index;
-                update.obj.init = true;
+                update.obj.s.init = true;
             }
 
             if (update.net_index >= OBJ_MAX_NETWORK_OBJECTS)

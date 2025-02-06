@@ -21,13 +21,13 @@ static void Game_AnimateObjects()
         if (Obj_HasAllFlags(obj, ObjectFlag_AnimateRotation))
         {
             //V2 obj_dir = obj->dp;
-            V2 obj_dir = V2_Sub(obj->p, obj->prev_p);
+            V2 obj_dir = V2_Sub(obj->s.p, obj->s.prev_p);
             if (obj_dir.x || obj_dir.y)
             {
                 obj_dir = V2_Normalize(obj_dir);
 
                 float rot = -Atan2F(obj_dir) + 0.25f;
-                obj->rot_z = WrapF(-0.5f, 0.5f, rot);
+                obj->s.rot_z = WrapF(-0.5f, 0.5f, rot);
                 //LOG(LogFlags_Debug, "rot_z: %f", obj->rot_z);
                 int a = 0;
                 a += 1;
@@ -36,8 +36,8 @@ static void Game_AnimateObjects()
 
         if (Obj_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
         {
-            Quat q0 = obj->local.animated_rot;
-            Quat q1 = Quat_FromAxisAngle_RH((V3){0,0,1}, obj->rot_z);
+            Quat q0 = obj->l.animated_rot;
+            Quat q1 = Quat_FromAxisAngle_RH((V3){0,0,1}, obj->s.rot_z);
 
             float w1 = APP.dt * 25.f;
             float w0 = 1.f - w1;
@@ -45,22 +45,22 @@ static void Game_AnimateObjects()
             if (Quat_Inner(q0, q1) < 0.f)
                 w1 = -w1;
 
-            obj->local.animated_rot = Quat_Normalize(Quat_Mix(q0, q1, w0, w1));
+            obj->l.animated_rot = Quat_Normalize(Quat_Mix(q0, q1, w0, w1));
         }
 
         if (Obj_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
         {
-            V3 pos = V3_Make_XY_Z(obj->p, 0);
-            V3 delta = V3_Sub(pos, obj->local.animated_p);
+            V3 pos = V3_Make_XY_Z(obj->s.p, 0);
+            V3 delta = V3_Sub(pos, obj->l.animated_p);
 
             float speed = APP.dt * 15.f;
             delta = V3_Scale(delta, speed);
 
-            obj->local.animated_p = V3_Add(obj->local.animated_p, delta);
-            ForArray(i, obj->local.animated_p.E)
+            obj->l.animated_p = V3_Add(obj->l.animated_p, delta);
+            ForArray(i, obj->l.animated_p.E)
             {
-                if (obj->local.animated_p.E[i] < 0.1f)
-                    obj->local.animated_p.E[i] = pos.E[i];
+                if (obj->l.animated_p.E[i] < 0.1f)
+                    obj->l.animated_p.E[i] = pos.E[i];
             }
         }
     }
@@ -71,15 +71,14 @@ static void Game_DrawObjects()
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
-        if (!(obj->flags & ObjectFlag_Draw)) continue;
+        if (!Obj_HasAnyFlag(obj, ObjectFlag_Draw)) continue;
 
-        if (Obj_HasAnyFlag(obj, ObjectFlag_ModelTeapot|
-                              ObjectFlag_ModelFlag))
+        if (Obj_HasAnyFlag(obj, ObjectFlag_ModelTeapot|ObjectFlag_ModelFlag))
         {
             bool model_enabled[RdrModel_COUNT] =
             {
-                obj->flags & ObjectFlag_ModelTeapot,
-                obj->flags & ObjectFlag_ModelFlag
+                obj->s.flags & ObjectFlag_ModelTeapot,
+                obj->s.flags & ObjectFlag_ModelFlag
             };
 
             static_assert(ArrayCount(model_enabled) == ArrayCount(APP.rdr.models));
@@ -92,21 +91,21 @@ static void Game_DrawObjects()
                     APP.rdr.models[i].count += 1;
 
                     SDL_zerop(inst);
-                    inst->color.x = obj->color.r;
-                    inst->color.y = obj->color.g;
-                    inst->color.z = obj->color.b;
+                    inst->color.x = obj->s.color.r;
+                    inst->color.y = obj->s.color.g;
+                    inst->color.z = obj->s.color.b;
 
-                    V3 pos = V3_Make_XY_Z(obj->p, 0);
+                    V3 pos = V3_Make_XY_Z(obj->s.p, 0);
                     if (Obj_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
                     {
-                        pos = obj->local.animated_p;
+                        pos = obj->l.animated_p;
                     }
                     Mat4 move_mat = Mat4_Translation(pos);
 
                     Mat4 rot_mat = Mat4_Identity();
                     if (Obj_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
                     {
-                        rot_mat = Mat4_Rotation_Quat(obj->local.animated_rot);
+                        rot_mat = Mat4_Rotation_Quat(obj->l.animated_rot);
                         //rot_mat = Mat4_Rotation_RH((V3){0,0,1}, obj->animated_rot_z);
                     }
                     inst->transform = Mat4_Mul(move_mat, rot_mat);
@@ -134,7 +133,7 @@ static void Game_DrawObjects()
                 float bot_z = 0;
                 float top_z = bot_z + height;
 
-                CollisionVertices collision = obj->collision.verts;
+                CollisionVertices collision = obj->s.collision.verts;
                 {
                     U32 cube_index_map[] =
                     {
@@ -163,8 +162,8 @@ static void Game_DrawObjects()
                     {
                         U32 index = cube_index_map[i];
                         wall_verts[i].p = cube_verts[index];
-                        wall_verts[i].p.x += obj->p.x;
-                        wall_verts[i].p.y += obj->p.y;
+                        wall_verts[i].p.x += obj->s.p.x;
+                        wall_verts[i].p.y += obj->s.p.y;
                     }
 
                     {
@@ -224,10 +223,10 @@ static void Game_DrawObjects()
                     V3 face_normal = {};
                     switch (face_i)
                     {
-                        case 0: /* E */ face_normal = V3_Make_XY_Z(obj->collision.norms.arr[0], 0); break;
-                        case 1: /* W */ face_normal = V3_Make_XY_Z(obj->collision.norms.arr[2], 0); break;
-                        case 2: /* N */ face_normal = V3_Make_XY_Z(obj->collision.norms.arr[3], 0); break;
-                        case 3: /* S */ face_normal = V3_Make_XY_Z(obj->collision.norms.arr[1], 0); break;
+                        case 0: /* E */ face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[0], 0); break;
+                        case 1: /* W */ face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[2], 0); break;
+                        case 2: /* N */ face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[3], 0); break;
+                        case 3: /* S */ face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[1], 0); break;
                         case 4: /* T */ face_normal = (V3){0,0,1}; break;
                         case 5: /* B */ face_normal = (V3){0,0,-1}; break;
                     }
@@ -329,7 +328,7 @@ static void Game_Iterate()
         Object *player = Obj_Get(APP.client.player_key, ObjCategory_Net);
         if (!Obj_IsNil(player))
         {
-            APP.camera_p = V3_Make_XY_Z(player->p, 70.f);
+            APP.camera_p = V3_Make_XY_Z(player->s.p, 70.f);
             APP.camera_p.x -= 50.f;
         }
     }
@@ -396,9 +395,9 @@ static void Game_Iterate()
             Object *marker = Obj_Get(APP.pathing_marker, ObjCategory_Local);
             if (!Obj_IsNil(marker))
             {
-                marker->flags |= ObjectFlag_Draw;
-                marker->p = APP.world_mouse;
-                marker->local.animated_p = V3_Make_XY_Z(marker->p, 30.f);
+                marker->s.flags |= ObjectFlag_Draw;
+                marker->s.p = APP.world_mouse;
+                marker->l.animated_p = V3_Make_XY_Z(marker->s.p, 30.f);
                 APP.pathing_marker_set = true;
             }
         }
@@ -440,17 +439,17 @@ static void Game_Init()
             Object *rotated_wall = Obj_CreateWall((V2){0.5f*off, -0.5f*off},
                                                      (V2){thickness, 2.f*thickness});
 
-            Vertices_Rotate(rotated_wall->collision.verts.arr,
-                            ArrayCount(rotated_wall->collision.verts.arr),
+            Vertices_Rotate(rotated_wall->s.collision.verts.arr,
+                            ArrayCount(rotated_wall->s.collision.verts.arr),
                             0.1f);
 
-            Collision_RecalculateNormals(&rotated_wall->collision);
+            Collision_RecalculateNormals(&rotated_wall->s.collision);
         }
     }
 
     // pathing marker
     {
         APP.pathing_marker = Obj_Create(ObjCategory_Local, ObjectFlag_ModelFlag |
-                                           ObjectFlag_AnimatePosition)->key;
+                                        ObjectFlag_AnimatePosition)->s.key;
     }
 }

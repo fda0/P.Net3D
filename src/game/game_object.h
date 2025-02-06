@@ -35,12 +35,14 @@ typedef struct
 
 typedef struct
 {
+    // Object data that'ss kept on client side only
     Quat animated_rot; // animates towards model_rot_z
     V3 animated_p; // animates towards (V3){p.x, p.y, 0}
-} Obj_LocalData; // @todo refactor
+} Obj_Local; // @todo refactor
 
 typedef struct
 {
+    // Object data that's synced with the server
     Obj_Key key;
     U32 flags;
     bool init;
@@ -61,10 +63,14 @@ typedef struct
     // temp
     U32 some_number;
     bool did_collide;
+} Obj_Sync;
 
-    Obj_LocalData local; // not synced from the server
+typedef struct
+{
+    Obj_Sync s;
+    Obj_Local l;
 } Object;
 
-static Object Obj_Lerp(Object prev, Object next, float t);
+static Obj_Sync Obj_SyncLerp(Obj_Sync prev, Obj_Sync next, float t);
 static Object *Obj_CreatePlayer();
 static void Collision_RecalculateNormals(Collision_Data *collision);
