@@ -145,7 +145,9 @@ static Object *Object_CreatePlayer()
 {
     Object *player = Object_Create(ObjCategory_Net,
                                    ObjectFlag_Draw|ObjectFlag_Move|
-                                   ObjectFlag_ModelTeapot /*|ObjectFlag_Collide*/ );
+                                   /*|ObjectFlag_Collide*/
+                                   ObjectFlag_ModelTeapot |
+                                   ObjectFlag_AnimateRotation);
 
     player->collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
     Collision_RecalculateNormals(&player->collision);

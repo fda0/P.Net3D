@@ -14,9 +14,10 @@ static void Tick_AdvanceSimulation()
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
-        if (!Object_HasAnyFlag(obj, ObjectFlag_Move)) continue;
-
-        obj->prev_p = obj->p;
+        if (Object_HasAnyFlag(obj, ObjectFlag_Move))
+        {
+            obj->prev_p = obj->p;
+        }
     }
 
     // apply player input
@@ -182,22 +183,82 @@ static void Tick_AdvanceSimulation()
             }
         } // collision_iteration
     } // obj_index
+
+
+
+    // update animated rotation and position
+    ForArray(obj_index, APP.all_objects)
+    {
+        Object *obj = APP.all_objects + obj_index;
+
+        if (Object_HasAnyFlag(obj, ObjectFlag_ModelTeapot))
+        {
+            int z = 1;
+            z += 1;
+            z += 1;
+            z += 1;
+        }
+
+        if (Object_HasAllFlags(obj, ObjectFlag_Move|
+                               ObjectFlag_AnimateRotation))
+        {
+            //V2 obj_dir = obj->dp;
+            V2 obj_dir = V2_Sub(obj->p, obj->prev_p);
+            if (obj_dir.x || obj_dir.y)
+            {
+                obj_dir = V2_Normalize(obj_dir);
+
+                float rot = -Atan2F(obj_dir) + 0.25f;
+                obj->rot_z = WrapF(-0.5f, 0.5f, rot);
+                //LOG(LogFlags_Debug, "rot_z: %f", obj->rot_z);
+                int a = 0;
+                a += 1;
+            }
+        }
+
+        if (Object_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
+        {
+            Quat q0 = obj->animated_rot;
+            Quat q1 = Quat_FromAxisAngle_RH((V3){0,0,1}, obj->rot_z);
+
+            float w1 = TIME_STEP * 25.f;
+            float w0 = 1.f - w1;
+
+            if (Quat_Inner(q0, q1) < 0.f)
+                w1 = -w1;
+
+            obj->animated_rot = Quat_Normalize(Quat_Mix(q0, q1, w0, w1));
+        }
+
+        if (Object_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
+        {
+            V3 pos = (V3){obj->p.x, obj->p.y, 0};
+
+            float speed = TIME_STEP * 1.f;
+            V3 delta = V3_Sub(pos, obj->animated_p);
+            delta = V3_Scale(delta, speed);
+
+            obj->animated_p = V3_Add(obj->animated_p, delta);
+            ForArray(i, obj->animated_p.E)
+            {
+                if (obj->animated_p.E[i] < 0.1f)
+                    obj->animated_p.E[i] = pos.E[i];
+            }
+        }
+    }
 }
 
 static Object Object_Lerp(Object prev, Object next, float t)
 {
     Object result = prev;
-
-    if (1)
-    {
-        result.p = V2_Lerp(prev.p, next.p, t);
-        result.dp = V2_Lerp(prev.dp, next.dp, t);
-        result.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
-        result.color = ColorF_Lerp(prev.color, next.color, t);
-        result.model_rotation = Quat_Lerp(prev.model_rotation, next.model_rotation, t);
-        result.did_collide = (bool)RoundF(LerpF((float)prev.did_collide, (float)next.did_collide, t));
-    }
-
+    result.p = V2_Lerp(prev.p, next.p, t);
+    result.dp = V2_Lerp(prev.dp, next.dp, t);
+    result.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
+    result.color = ColorF_Lerp(prev.color, next.color, t);
+    result.rot_z = LerpF(prev.rot_z, next.rot_z, t);
+    result.animated_rot = Quat_Lerp(prev.animated_rot, next.animated_rot, t);
+    result.animated_p = V3_Lerp(prev.animated_p, next.animated_p, t);
+    result.did_collide = (bool)RoundF(LerpF((float)prev.did_collide, (float)next.did_collide, t));
     return result;
 }
 

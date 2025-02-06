@@ -14,8 +14,9 @@ typedef enum
     ObjectFlag_Move            = (1 << 1),
     ObjectFlag_Collide         = (1 << 2),
     ObjectFlag_AnimateRotation = (1 << 3),
-    ObjectFlag_ModelTeapot     = (1 << 4),
-    ObjectFlag_ModelFlag       = (1 << 5),
+    ObjectFlag_AnimatePosition = (1 << 4),
+    ObjectFlag_ModelTeapot     = (1 << 5),
+    ObjectFlag_ModelFlag       = (1 << 6),
 } Object_Flags;
 
 typedef enum
@@ -43,10 +44,10 @@ typedef struct
 
     // visuals
     ColorF color;
-    Quat model_rotation;
-    //Quat rotation_min;
-    //Quat rotation_max;
-    //float rotation_t;
+    float rot_z;
+    //float animated_rot_z; // animates towards model_rot_z
+    Quat animated_rot;
+    V3 animated_p; // animates towards (V3){p.x, p.y, 0}
 
     // input actions
     bool is_pathing;

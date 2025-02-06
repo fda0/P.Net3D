@@ -13,6 +13,29 @@ static Axis2 Axis2_Other(Axis2 axis)
 }
 
 // ---
+// Vector
+// ---
+typedef union
+{
+    struct { float x, y; };
+    float E[2];
+} V2;
+
+typedef union
+{
+    struct { float x, y, z; };
+    float E[3];
+} V3;
+
+typedef union
+{
+    struct { float x, y, z, w; };
+    float E[4];
+} V4;
+
+typedef V4 Quat;
+
+// ---
 // Scalar math
 // ---
 #define Min(a, b) ((a) < (b) ? (a) : (b))
@@ -49,15 +72,22 @@ static float CosF(float turns)
     // @todo custom sincos that with turn input
     return SDL_cosf(turns*TURNS_TO_RAD);
 }
-static float AcosF(float value)
-{
-    // @todo custom sincos that with turn input
-    return SDL_acosf(value)*RAD_TO_TURNS;
-}
 static float TanF(float turns)
 {
     // @todo custom tan that with turn input
     return SDL_tanf(turns*TURNS_TO_RAD);
+}
+static float AsinF(float value)
+{
+    return SDL_asinf(value)*RAD_TO_TURNS;
+}
+static float AcosF(float value)
+{
+    return SDL_acosf(value)*RAD_TO_TURNS;
+}
+static float Atan2F(V2 vec)
+{
+    return SDL_atan2f(vec.x, vec.y)*RAD_TO_TURNS;
 }
 
 typedef struct
@@ -115,14 +145,6 @@ static void *AlignPointerUp(void *ptr, U64 alignment) {
 // ---
 // Vector math
 // ---
-
-// V2 basics
-typedef union
-{
-    struct { float x, y; };
-    float E[2];
-} V2;
-
 static V2 V2_Scale(V2 a, float scale)
 {
     return (V2){a.x*scale, a.y*scale};
@@ -175,13 +197,9 @@ static V2 V2_Normalize(V2 a)
     return a;
 }
 
-// V3 basics
-typedef union
-{
-    struct { float x, y, z; };
-    float E[3];
-} V3;
-
+//
+// V3
+//
 static V3 V3_Make_XY_Z(V2 xy, float z)
 {
     return (V3){xy.x, xy.y, z};
@@ -262,13 +280,9 @@ static V3 V3_Normalize(V3 a)
     return a;
 }
 
-// V4 basics
-typedef union
-{
-    struct { float x, y, z, w; };
-    float E[4];
-} V4;
-
+//
+// V4
+//
 static V4 V4_Scale(V4 a, float scale)
 {
     return (V4){a.x*scale, a.y*scale, a.z*scale, a.w*scale};
@@ -633,8 +647,6 @@ static inline Mat4 Mat4_InvPerspective_RH(Mat4 mat)
 // ---
 // Quaternion
 // ---
-typedef V4 Quat;
-
 static Quat Quat_Add(Quat a, Quat b)
 {
     return V4_Add(a, b);
@@ -690,7 +702,6 @@ static Quat Quat_Inv(Quat q)
 {
     float lensq = Quat_Inner(q, q);
     float inv_lensq = 1.f / lensq;
-
     Quat res =
     {
         -q.x,
@@ -706,14 +717,14 @@ static Quat Quat_Normalize(Quat q)
     return V4_Normalize(q);
 }
 
-static Quat Quat_Mix(Quat a, Quat b, float ta, float tb)
+static Quat Quat_Mix(Quat a, Quat b, float wa, float wb)
 {
     Quat res =
     {
-        a.x*ta + b.x*tb,
-        a.y*ta + b.y*tb,
-        a.z*ta + b.z*tb,
-        a.w*ta + b.w*tb,
+        a.x*wa + b.x*wb,
+        a.y*wa + b.y*wb,
+        a.z*wa + b.z*wb,
+        a.w*wa + b.w*wb,
     };
     return res;
 }

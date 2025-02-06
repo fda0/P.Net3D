@@ -27,6 +27,8 @@ StructuredBuffer<VSModelInstanceData> InstanceBuffer : register(t0);
 
 float4x4 Mat4_RotationPart(float4x4 mat)
 {
+    // @todo in the future this matrix will need to be normalized
+    // to eliminate scaling from the matrix
     mat._14 = 0.f;
     mat._24 = 0.f;
     mat._34 = 0.f;

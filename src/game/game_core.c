@@ -11,8 +11,8 @@ static void Game_DrawObjects()
         Object *obj = APP.all_objects + obj_index;
         if (!(obj->flags & ObjectFlag_Draw)) continue;
 
-        if (obj->flags & ObjectFlag_ModelTeapot ||
-            obj->flags & ObjectFlag_ModelFlag)
+        if (Object_HasAnyFlag(obj, ObjectFlag_ModelTeapot|
+                              ObjectFlag_ModelFlag))
         {
             bool model_enabled[RdrModel_COUNT] =
             {
@@ -40,28 +40,11 @@ static void Game_DrawObjects()
                     Mat4 move_mat = Mat4_Translation(move);
 
                     Mat4 rot_mat = Mat4_Identity();
-
-                    if (obj_index & 1)
+                    if (Object_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
                     {
-                        Quat rot0 = Quat_FromAxisAngle_RH((V3){1,0,0}, 0.25f);
-                        Quat rot1 = Quat_FromAxisAngle_RH((V3){0,0,1}, 0.35f);
-                        //Quat rot1 = Quat_Identity();
-
-                        Quat rot = Quat_Mul(rot0, rot1);
-                        //Quat rot = rot0;
-
-                        rot_mat = Mat4_Rotation_Quat(rot);
+                        rot_mat = Mat4_Rotation_Quat(obj->animated_rot);
+                        //rot_mat = Mat4_Rotation_RH((V3){0,0,1}, obj->animated_rot_z);
                     }
-                    else
-                    {
-                        Mat4 rot0 = Mat4_Rotation_RH((V3){1,0,0}, 0.25f);
-                        Mat4 rot1 = Mat4_Rotation_RH((V3){0,0,1}, 0.35f);
-                        //Mat4 rot1 = Mat4_Identity();
-
-                        rot_mat = Mat4_Mul(rot0, rot1);
-                        //rot_mat = rot0;
-                    }
-
                     inst->transform = Mat4_Mul(move_mat, rot_mat);
                 }
             }
