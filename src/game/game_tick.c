@@ -14,7 +14,7 @@ static void Tick_AdvanceSimulation()
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
-        if (Object_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_AnimateRotation))
+        if (Obj_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_AnimateRotation))
         {
             obj->prev_p = obj->p;
         }
@@ -23,9 +23,9 @@ static void Tick_AdvanceSimulation()
     // apply player input
     ForArray(player_index, APP.server.player_keys)
     {
-        Object_Key player_key = APP.server.player_keys[player_index];
-        Object *player = Object_Get(player_key, ObjCategory_Net);
-        if (Object_IsNil(player))
+        Obj_Key player_key = APP.server.player_keys[player_index];
+        Object *player = Obj_Get(player_key, ObjCategory_Net);
+        if (Obj_IsNil(player))
             continue;
 
         Tick_Input input = Server_GetPlayerInput(player_index);
@@ -66,7 +66,7 @@ static void Tick_AdvanceSimulation()
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
-        if (!Object_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_Collide)) continue;
+        if (!Obj_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_Collide)) continue;
 
         // reset debug flag
         obj->did_collide = false;
@@ -75,7 +75,7 @@ static void Tick_AdvanceSimulation()
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
-        if (!Object_HasAnyFlag(obj, ObjectFlag_Move)) continue;
+        if (!Obj_HasAnyFlag(obj, ObjectFlag_Move)) continue;
 
         // move object
         obj->p = V2_Add(obj->p, obj->dp);
@@ -93,7 +93,7 @@ static void Tick_AdvanceSimulation()
             ForArray(obstacle_index, APP.all_objects)
             {
                 Object *obstacle = APP.all_objects + obstacle_index;
-                if (!Object_HasAnyFlag(obstacle, ObjectFlag_Collide)) continue;
+                if (!Obj_HasAnyFlag(obstacle, ObjectFlag_Collide)) continue;
                 if (obj == obstacle) continue;
 
                 CollisionVertices obstacle_verts = obstacle->collision.verts;
@@ -185,7 +185,7 @@ static void Tick_AdvanceSimulation()
     } // obj_index
 }
 
-static Object Object_Lerp(Object prev, Object next, float t)
+static Object Obj_Lerp(Object prev, Object next, float t)
 {
     Object result = prev;
     result.p = V2_Lerp(prev.p, next.p, t);
@@ -272,8 +272,8 @@ static void Tick_Playback()
 
     ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
     {
-        Object *net_obj = Object_FromNetIndex(net_index);
-        Object_LocalData local = net_obj->local; // @todo refactor
+        Object *net_obj = Obj_FromNetIndex(net_index);
+        Obj_LocalData local = net_obj->local; // @todo refactor
 
         Object interpolated = Client_LerpNetObject(net_index, APP.client.next_playback_tick);
         *net_obj = interpolated;

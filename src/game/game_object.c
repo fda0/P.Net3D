@@ -1,24 +1,24 @@
 READ_ONLY static Object nil_object = {};
 
-static Object *Object_GetNil()
+static Object *Obj_GetNil()
 {
     return &nil_object;
 }
 
-static bool Object_IsNil(Object *obj)
+static bool Obj_IsNil(Object *obj)
 {
     return obj == &nil_object;
 }
 
-static bool Object_KeyMatch(Object_Key a, Object_Key b)
+static bool Obj_KeyMatch(Obj_Key a, Obj_Key b)
 {
     return (a.made_at_tick == b.made_at_tick &&
             a.index == b.index);
 }
 
-static Object *Object_Get(Object_Key key, U32 category_mask)
+static Object *Obj_Get(Obj_Key key, U32 category_mask)
 {
-    Object *result = Object_GetNil();
+    Object *result = Obj_GetNil();
 
     bool index_in_valid_category = false;
     {
@@ -36,42 +36,42 @@ static Object *Object_Get(Object_Key key, U32 category_mask)
     if (index_in_valid_category)
     {
         Object *obj = APP.all_objects + key.index;
-        if (Object_KeyMatch(obj->key, key))
+        if (Obj_KeyMatch(obj->key, key))
             result = obj;
     }
     return result;
 }
 
-static bool Object_IsInit(Object *obj)
+static bool Obj_IsInit(Object *obj)
 {
     return obj->init;
 }
 
-static bool Object_HasData(Object *obj)
+static bool Obj_HasData(Object *obj)
 {
     return !!obj->flags;
 }
 
-static bool Object_HasAnyFlag(Object *obj, U32 flag)
+static bool Obj_HasAnyFlag(Object *obj, U32 flag)
 {
     return !!(obj->flags & flag);
 }
-static bool Object_HasAllFlags(Object *obj, U32 flags)
+static bool Obj_HasAllFlags(Object *obj, U32 flags)
 {
     return (obj->flags & flags) == flags;
 }
 
-static Object *Object_FromNetIndex(U32 net_index)
+static Object *Obj_FromNetIndex(U32 net_index)
 {
     if (net_index > ArrayCount(APP.net_objects))
     {
-        return Object_GetNil();
+        return Obj_GetNil();
     }
 
     return APP.net_objects + net_index;
 }
 
-static Object *Object_Create(Obj_Category category, U32 flags)
+static Object *Obj_Create(Obj_Category category, U32 flags)
 {
     bool matched_category = false;
     Object *obj = 0;
@@ -84,7 +84,7 @@ static Object *Object_Create(Obj_Category category, U32 flags)
         ForArray(i, APP.const_objects)
         {
             Object *search = APP.const_objects + i;
-            if (!Object_IsInit(search))
+            if (!Obj_IsInit(search))
             {
                 obj = search;
                 break;
@@ -99,7 +99,7 @@ static Object *Object_Create(Obj_Category category, U32 flags)
         ForArray(i, APP.net_objects)
         {
             Object *search = APP.net_objects + i;
-            if (!Object_IsInit(search))
+            if (!Obj_IsInit(search))
             {
                 obj = search;
                 break;
@@ -108,7 +108,7 @@ static Object *Object_Create(Obj_Category category, U32 flags)
     }
 
     if (!obj)
-        return Object_GetNil();
+        return Obj_GetNil();
 
     // init object
     SDL_zerop(obj);
@@ -122,9 +122,9 @@ static Object *Object_Create(Obj_Category category, U32 flags)
     return obj;
 }
 
-static Object *Object_CreateWall(V2 p, V2 dim)
+static Object *Obj_CreateWall(V2 p, V2 dim)
 {
-    Object *obj = Object_Create(ObjCategory_Local,
+    Object *obj = Obj_Create(ObjCategory_Local,
                                 ObjectFlag_Draw|ObjectFlag_Collide);
     obj->p = p;
     obj->collision.verts = CollisionVertices_FromRectDim(dim);
@@ -141,9 +141,9 @@ static Object *Object_CreateWall(V2 p, V2 dim)
     return obj;
 }
 
-static Object *Object_CreatePlayer()
+static Object *Obj_CreatePlayer()
 {
-    Object *player = Object_Create(ObjCategory_Net,
+    Object *player = Obj_Create(ObjCategory_Net,
                                    ObjectFlag_Draw|ObjectFlag_Move|
                                    /*|ObjectFlag_Collide*/
                                    ObjectFlag_ModelTeapot |

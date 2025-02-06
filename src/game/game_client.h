@@ -20,6 +20,6 @@ typedef struct
     RngU64 inputs_range;
 
     //
-    Object_Key player_key;
+    Obj_Key player_key;
     U64 player_key_latest_tick_id;
 } Client_State;

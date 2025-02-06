@@ -64,7 +64,7 @@ typedef struct
 
 typedef struct
 {
-    Object_Key player_key;
+    Obj_Key player_key;
 } Net_SendAssignPlayerKey;
 
 typedef struct

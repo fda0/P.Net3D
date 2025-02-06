@@ -201,12 +201,12 @@ static void Net_IterateSend()
                 // create player characters and send them to users
                 {
                     AssertBounds(user_index, APP.server.player_keys);
-                    Object_Key *player_key = APP.server.player_keys + user_index;
+                    Obj_Key *player_key = APP.server.player_keys + user_index;
 
                     if (!player_key->made_at_tick)
                     {
-                        Object *player = Object_CreatePlayer();
-                        if (!Object_IsNil(player))
+                        Object *player = Obj_CreatePlayer();
+                        if (!Obj_IsNil(player))
                         {
                             player->p.y = 75.f - user_index * 25.f;
                             player->color.g = (user_index & 1) ? 0.f : 1.f;
@@ -285,9 +285,9 @@ static void Net_IterateSend()
         // iterate over network objects
         ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
         {
-            Object *net_obj = Object_FromNetIndex(net_index);
+            Object *net_obj = Obj_FromNetIndex(net_index);
 
-            if (Object_HasData(net_obj))
+            if (Obj_HasData(net_obj))
             {
                 Net_SendHeader head = {};
                 head.tick_id = APP.tick_id;

@@ -17,7 +17,7 @@ typedef enum
     ObjectFlag_AnimatePosition = (1 << 4),
     ObjectFlag_ModelTeapot     = (1 << 5),
     ObjectFlag_ModelFlag       = (1 << 6),
-} Object_Flags;
+} Obj_Flags;
 
 typedef enum
 {
@@ -31,17 +31,17 @@ typedef struct
 {
     U32 made_at_tick;
     U32 index;
-} Object_Key;
+} Obj_Key;
 
 typedef struct
 {
     Quat animated_rot; // animates towards model_rot_z
     V3 animated_p; // animates towards (V3){p.x, p.y, 0}
-} Object_LocalData; // @todo refactor
+} Obj_LocalData; // @todo refactor
 
 typedef struct
 {
-    Object_Key key;
+    Obj_Key key;
     U32 flags;
     bool init;
     V2 p; // position of center
@@ -62,9 +62,9 @@ typedef struct
     U32 some_number;
     bool did_collide;
 
-    Object_LocalData local; // not synced from the server
+    Obj_LocalData local; // not synced from the server
 } Object;
 
-static Object Object_Lerp(Object prev, Object next, float t);
-static Object *Object_CreatePlayer();
+static Object Obj_Lerp(Object prev, Object next, float t);
+static Object *Obj_CreatePlayer();
 static void Collision_RecalculateNormals(Collision_Data *collision);

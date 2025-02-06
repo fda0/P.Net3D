@@ -10,7 +10,7 @@ static void Game_AnimateObjects()
     {
         Object *obj = APP.all_objects + obj_index;
 
-        if (Object_HasAnyFlag(obj, ObjectFlag_ModelTeapot))
+        if (Obj_HasAnyFlag(obj, ObjectFlag_ModelTeapot))
         {
             int z = 1;
             z += 1;
@@ -18,7 +18,7 @@ static void Game_AnimateObjects()
             z += 1;
         }
 
-        if (Object_HasAllFlags(obj, ObjectFlag_AnimateRotation))
+        if (Obj_HasAllFlags(obj, ObjectFlag_AnimateRotation))
         {
             //V2 obj_dir = obj->dp;
             V2 obj_dir = V2_Sub(obj->p, obj->prev_p);
@@ -34,7 +34,7 @@ static void Game_AnimateObjects()
             }
         }
 
-        if (Object_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
+        if (Obj_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
         {
             Quat q0 = obj->local.animated_rot;
             Quat q1 = Quat_FromAxisAngle_RH((V3){0,0,1}, obj->rot_z);
@@ -48,7 +48,7 @@ static void Game_AnimateObjects()
             obj->local.animated_rot = Quat_Normalize(Quat_Mix(q0, q1, w0, w1));
         }
 
-        if (Object_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
+        if (Obj_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
         {
             V3 pos = V3_Make_XY_Z(obj->p, 0);
             V3 delta = V3_Sub(pos, obj->local.animated_p);
@@ -73,7 +73,7 @@ static void Game_DrawObjects()
         Object *obj = APP.all_objects + obj_index;
         if (!(obj->flags & ObjectFlag_Draw)) continue;
 
-        if (Object_HasAnyFlag(obj, ObjectFlag_ModelTeapot|
+        if (Obj_HasAnyFlag(obj, ObjectFlag_ModelTeapot|
                               ObjectFlag_ModelFlag))
         {
             bool model_enabled[RdrModel_COUNT] =
@@ -97,14 +97,14 @@ static void Game_DrawObjects()
                     inst->color.z = obj->color.b;
 
                     V3 pos = V3_Make_XY_Z(obj->p, 0);
-                    if (Object_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
+                    if (Obj_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
                     {
                         pos = obj->local.animated_p;
                     }
                     Mat4 move_mat = Mat4_Translation(pos);
 
                     Mat4 rot_mat = Mat4_Identity();
-                    if (Object_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
+                    if (Obj_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
                     {
                         rot_mat = Mat4_Rotation_Quat(obj->local.animated_rot);
                         //rot_mat = Mat4_Rotation_RH((V3){0,0,1}, obj->animated_rot_z);
@@ -326,8 +326,8 @@ static void Game_Iterate()
     }
     else
     {
-        Object *player = Object_Get(APP.client.player_key, ObjCategory_Net);
-        if (!Object_IsNil(player))
+        Object *player = Obj_Get(APP.client.player_key, ObjCategory_Net);
+        if (!Obj_IsNil(player))
         {
             APP.camera_p = V3_Make_XY_Z(player->p, 70.f);
             APP.camera_p.x -= 50.f;
@@ -393,8 +393,8 @@ static void Game_Iterate()
     {
         if (APP.world_mouse_valid)
         {
-            Object *marker = Object_Get(APP.pathing_marker, ObjCategory_Local);
-            if (!Object_IsNil(marker))
+            Object *marker = Obj_Get(APP.pathing_marker, ObjCategory_Local);
+            if (!Obj_IsNil(marker))
             {
                 marker->flags |= ObjectFlag_Draw;
                 marker->p = APP.world_mouse;
@@ -431,13 +431,13 @@ static void Game_Init()
         float thickness = 20.f;
         float length = 400.f;
         float off = length*0.5f - thickness*0.5f;
-        Object_CreateWall((V2){off, 0}, (V2){thickness, length});
-        Object_CreateWall((V2){-off, 0}, (V2){thickness, length});
-        Object_CreateWall((V2){0, off}, (V2){length, thickness});
-        Object_CreateWall((V2){0,-off}, (V2){length*0.5f, thickness});
+        Obj_CreateWall((V2){off, 0}, (V2){thickness, length});
+        Obj_CreateWall((V2){-off, 0}, (V2){thickness, length});
+        Obj_CreateWall((V2){0, off}, (V2){length, thickness});
+        Obj_CreateWall((V2){0,-off}, (V2){length*0.5f, thickness});
 
         {
-            Object *rotated_wall = Object_CreateWall((V2){0.5f*off, -0.5f*off},
+            Object *rotated_wall = Obj_CreateWall((V2){0.5f*off, -0.5f*off},
                                                      (V2){thickness, 2.f*thickness});
 
             Vertices_Rotate(rotated_wall->collision.verts.arr,
@@ -450,7 +450,7 @@ static void Game_Init()
 
     // pathing marker
     {
-        APP.pathing_marker = Object_Create(ObjCategory_Local, ObjectFlag_ModelFlag |
+        APP.pathing_marker = Obj_Create(ObjCategory_Local, ObjectFlag_ModelFlag |
                                            ObjectFlag_AnimatePosition)->key;
     }
 }

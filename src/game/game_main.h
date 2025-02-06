@@ -57,7 +57,7 @@ struct AppState
     U32 log_filter; // active log filer flags
 
     // special objects
-    Object_Key pathing_marker;
+    Obj_Key pathing_marker;
     bool pathing_marker_set;
 
     // camera

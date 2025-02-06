@@ -13,7 +13,7 @@ static Object Client_LerpNetObject(U32 net_index, U64 tick_id)
            tick_id >= snap->oldest_server_tick);
 
     Object *exact_obj = Client_SnapshotObjectAtTick(snap, tick_id);
-    if (Object_IsInit(exact_obj)) // exact object found
+    if (Obj_IsInit(exact_obj)) // exact object found
         return *exact_obj;
 
     // find nearest prev_id/next_id objects
@@ -22,13 +22,13 @@ static Object Client_LerpNetObject(U32 net_index, U64 tick_id)
     while (prev_id > snap->oldest_server_tick)
     {
         prev_id -= 1;
-        if (Object_IsInit(Client_SnapshotObjectAtTick(snap, prev_id)))
+        if (Obj_IsInit(Client_SnapshotObjectAtTick(snap, prev_id)))
             break;
     }
     while (next_id < snap->latest_server_tick)
     {
         next_id += 1;
-        if (Object_IsInit(Client_SnapshotObjectAtTick(snap, next_id)))
+        if (Obj_IsInit(Client_SnapshotObjectAtTick(snap, next_id)))
             break;
     }
 
@@ -36,13 +36,13 @@ static Object Client_LerpNetObject(U32 net_index, U64 tick_id)
     Object *next = Client_SnapshotObjectAtTick(snap, next_id);
 
     // handle cases where we can't interpolate
-    if (!Object_IsInit(prev) && !Object_IsInit(next)) // disaster
+    if (!Obj_IsInit(prev) && !Obj_IsInit(next)) // disaster
         return *exact_obj;
 
-    if (!Object_IsInit(prev))
+    if (!Obj_IsInit(prev))
         return *next;
 
-    if (!Object_IsInit(next))
+    if (!Obj_IsInit(next))
         return *prev;
 
     // lock lerp range; new packets in this range will be rejected
@@ -53,7 +53,7 @@ static Object Client_LerpNetObject(U32 net_index, U64 tick_id)
     U64 id_range = next_id - prev_id;
     U64 id_offset = tick_id - prev_id;
     float t = (float)id_offset / (float)id_range;
-    Object result = Object_Lerp(*prev, *next, t);
+    Object result = Obj_Lerp(*prev, *next, t);
     return result;
 }
 
@@ -86,8 +86,8 @@ static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
     }
 
     U64 minimum_server_tick = (snap->latest_server_tick >= last_to_first_tick_offset ?
-                                  snap->latest_server_tick - last_to_first_tick_offset :
-                                  0);
+                               snap->latest_server_tick - last_to_first_tick_offset :
+                               0);
 
     if (insert_at_tick_id < minimum_server_tick)
     {
@@ -137,7 +137,7 @@ static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
                  i += 1)
             {
                 Object *obj = Client_SnapshotObjectAtTick(snap, i);
-                if (Object_IsInit(obj))
+                if (Obj_IsInit(obj))
                 {
                     snap->oldest_server_tick = i;
                     break;
@@ -184,7 +184,7 @@ static Tick_Input *Client_PollInput()
     {
         APP.pathing_marker_set = false;
         input->is_pathing = true;
-        input->pathing_world_p = Object_Get(APP.pathing_marker, ObjCategory_Local)->p;
+        input->pathing_world_p = Obj_Get(APP.pathing_marker, ObjCategory_Local)->p;
     }
 
     return input;
