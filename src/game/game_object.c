@@ -12,28 +12,28 @@ static bool Obj_IsNil(Object *obj)
 
 static bool Obj_KeyMatch(Obj_Key a, Obj_Key b)
 {
-    return (a.made_at_tick == b.made_at_tick &&
+    return (a.serial_number == b.serial_number &&
             a.index == b.index);
 }
 
-static Object *Obj_Get(Obj_Key key, U32 category_mask)
+static Object *Obj_Get(Obj_Key key, U32 storage_mask)
 {
     Object *result = Obj_GetNil();
 
-    bool index_in_valid_category = false;
+    bool index_in_valid_storage = false;
     {
         U32 min = 0;
         U32 max = OBJ_MAX_CONST_OBJECTS;
-        if (category_mask & ObjCategory_Local)
-            index_in_valid_category |= (key.index >= min && key.index < max);
+        if (storage_mask & ObjStorage_Local)
+            index_in_valid_storage |= (key.index >= min && key.index < max);
 
         min = max;
         max += OBJ_MAX_NETWORK_OBJECTS;
-        if (category_mask & ObjCategory_Net)
-            index_in_valid_category |= (key.index >= min && key.index < max);
+        if (storage_mask & ObjStorage_Net)
+            index_in_valid_storage |= (key.index >= min && key.index < max);
     }
 
-    if (index_in_valid_category)
+    if (index_in_valid_storage)
     {
         Object *obj = APP.all_objects + key.index;
         if (Obj_KeyMatch(obj->s.key, key))
@@ -71,15 +71,15 @@ static Object *Obj_FromNetIndex(U32 net_index)
     return APP.net_objects + net_index;
 }
 
-static Object *Obj_Create(Obj_Category category, U32 flags)
+static Object *Obj_Create(Obj_Category storage, U32 flags)
 {
-    bool matched_category = false;
+    bool matched_storage = false;
     Object *obj = 0;
 
-    if (category & ObjCategory_Local)
+    if (storage & ObjStorage_Local)
     {
-        Assert(!matched_category);
-        matched_category = true;
+        Assert(!matched_storage);
+        matched_storage = true;
 
         ForArray(i, APP.const_objects)
         {
@@ -91,10 +91,10 @@ static Object *Obj_Create(Obj_Category category, U32 flags)
             }
         }
     }
-    if (category & ObjCategory_Net)
+    if (storage & ObjStorage_Net)
     {
-        Assert(!matched_category);
-        matched_category = true;
+        Assert(!matched_storage);
+        matched_storage = true;
 
         ForArray(i, APP.net_objects)
         {
@@ -113,7 +113,8 @@ static Object *Obj_Create(Obj_Category category, U32 flags)
     // init object
     SDL_zerop(obj);
 
-    obj->s.key.made_at_tick = APP.tick_id;
+    obj->s.key.serial_number = APP.obj_serial_counter;
+    APP.obj_serial_counter += 1;
     obj->s.key.index = ((U64)obj - (U64)APP.all_objects) / sizeof(*obj);
 
     obj->s.flags = flags;
@@ -124,8 +125,8 @@ static Object *Obj_Create(Obj_Category category, U32 flags)
 
 static Object *Obj_CreateWall(V2 p, V2 dim)
 {
-    Object *obj = Obj_Create(ObjCategory_Local,
-                                ObjectFlag_Draw|ObjectFlag_Collide);
+    Object *obj = Obj_Create(ObjStorage_Local,
+                                ObjFlag_Draw|ObjFlag_Collide);
     obj->s.p = p;
     obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
     Collision_RecalculateNormals(&obj->s.collision);
@@ -143,11 +144,11 @@ static Object *Obj_CreateWall(V2 p, V2 dim)
 
 static Object *Obj_CreatePlayer()
 {
-    Object *player = Obj_Create(ObjCategory_Net,
-                                   ObjectFlag_Draw|ObjectFlag_Move|
-                                   /*|ObjectFlag_Collide*/
-                                   ObjectFlag_ModelTeapot |
-                                   ObjectFlag_AnimateRotation);
+    Object *player = Obj_Create(ObjStorage_Net,
+                                   ObjFlag_Draw|ObjFlag_Move|
+                                   /*|ObjFlag_Collide*/
+                                   ObjFlag_ModelTeapot |
+                                   ObjFlag_AnimateRotation);
 
     player->s.collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
     Collision_RecalculateNormals(&player->s.collision);

@@ -10,26 +10,25 @@ typedef struct
 
 typedef enum
 {
-    ObjectFlag_Draw            = (1 << 0),
-    ObjectFlag_Move            = (1 << 1),
-    ObjectFlag_Collide         = (1 << 2),
-    ObjectFlag_AnimateRotation = (1 << 3),
-    ObjectFlag_AnimatePosition = (1 << 4),
-    ObjectFlag_ModelTeapot     = (1 << 5),
-    ObjectFlag_ModelFlag       = (1 << 6),
+    ObjFlag_Draw            = (1 << 0),
+    ObjFlag_Move            = (1 << 1),
+    ObjFlag_Collide         = (1 << 2),
+    ObjFlag_AnimateRotation = (1 << 3),
+    ObjFlag_AnimatePosition = (1 << 4),
+    ObjFlag_ModelTeapot     = (1 << 5),
+    ObjFlag_ModelFlag       = (1 << 6),
 } Obj_Flags;
 
 typedef enum
 {
-    ObjCategory_Local = (1 << 0),
-    ObjCategory_Net   = (1 << 1),
-
-    ObjCategory_All = (ObjCategory_Local | ObjCategory_Net)
+    ObjStorage_Local = (1 << 0),
+    ObjStorage_Net   = (1 << 1),
+    ObjStorage_All = (ObjStorage_Local | ObjStorage_Net)
 } Obj_Category;
 
 typedef struct
 {
-    U32 made_at_tick;
+    U32 serial_number;
     U32 index;
 } Obj_Key;
 

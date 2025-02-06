@@ -184,7 +184,7 @@ static Tick_Input *Client_PollInput()
     {
         APP.pathing_marker_set = false;
         input->is_pathing = true;
-        input->pathing_world_p = Obj_Get(APP.pathing_marker, ObjCategory_Local)->s.p;
+        input->pathing_world_p = Obj_Get(APP.pathing_marker, ObjStorage_Local)->s.p;
     }
 
     return input;

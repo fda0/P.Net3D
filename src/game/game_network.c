@@ -203,7 +203,7 @@ static void Net_IterateSend()
                     AssertBounds(user_index, APP.server.player_keys);
                     Obj_Key *player_key = APP.server.player_keys + user_index;
 
-                    if (!player_key->made_at_tick)
+                    if (!player_key->serial_number)
                     {
                         Object *player = Obj_CreatePlayer();
                         if (!Obj_IsNil(player))

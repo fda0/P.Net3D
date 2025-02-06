@@ -10,7 +10,7 @@ static void Game_AnimateObjects()
     {
         Object *obj = APP.all_objects + obj_index;
 
-        if (Obj_HasAnyFlag(obj, ObjectFlag_ModelTeapot))
+        if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot))
         {
             int z = 1;
             z += 1;
@@ -18,7 +18,7 @@ static void Game_AnimateObjects()
             z += 1;
         }
 
-        if (Obj_HasAllFlags(obj, ObjectFlag_AnimateRotation))
+        if (Obj_HasAllFlags(obj, ObjFlag_AnimateRotation))
         {
             //V2 obj_dir = obj->dp;
             V2 obj_dir = V2_Sub(obj->s.p, obj->s.prev_p);
@@ -34,7 +34,7 @@ static void Game_AnimateObjects()
             }
         }
 
-        if (Obj_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
+        if (Obj_HasAnyFlag(obj, ObjFlag_AnimateRotation))
         {
             Quat q0 = obj->l.animated_rot;
             Quat q1 = Quat_FromAxisAngle_RH((V3){0,0,1}, obj->s.rot_z);
@@ -48,7 +48,7 @@ static void Game_AnimateObjects()
             obj->l.animated_rot = Quat_Normalize(Quat_Mix(q0, q1, w0, w1));
         }
 
-        if (Obj_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
+        if (Obj_HasAnyFlag(obj, ObjFlag_AnimatePosition))
         {
             V3 pos = V3_Make_XY_Z(obj->s.p, 0);
             V3 delta = V3_Sub(pos, obj->l.animated_p);
@@ -71,14 +71,14 @@ static void Game_DrawObjects()
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
-        if (!Obj_HasAnyFlag(obj, ObjectFlag_Draw)) continue;
+        if (!Obj_HasAnyFlag(obj, ObjFlag_Draw)) continue;
 
-        if (Obj_HasAnyFlag(obj, ObjectFlag_ModelTeapot|ObjectFlag_ModelFlag))
+        if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot|ObjFlag_ModelFlag))
         {
             bool model_enabled[RdrModel_COUNT] =
             {
-                obj->s.flags & ObjectFlag_ModelTeapot,
-                obj->s.flags & ObjectFlag_ModelFlag
+                obj->s.flags & ObjFlag_ModelTeapot,
+                obj->s.flags & ObjFlag_ModelFlag
             };
 
             static_assert(ArrayCount(model_enabled) == ArrayCount(APP.rdr.models));
@@ -96,14 +96,14 @@ static void Game_DrawObjects()
                     inst->color.z = obj->s.color.b;
 
                     V3 pos = V3_Make_XY_Z(obj->s.p, 0);
-                    if (Obj_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
+                    if (Obj_HasAnyFlag(obj, ObjFlag_AnimatePosition))
                     {
                         pos = obj->l.animated_p;
                     }
                     Mat4 move_mat = Mat4_Translation(pos);
 
                     Mat4 rot_mat = Mat4_Identity();
-                    if (Obj_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
+                    if (Obj_HasAnyFlag(obj, ObjFlag_AnimateRotation))
                     {
                         rot_mat = Mat4_Rotation_Quat(obj->l.animated_rot);
                         //rot_mat = Mat4_Rotation_RH((V3){0,0,1}, obj->animated_rot_z);
@@ -325,7 +325,7 @@ static void Game_Iterate()
     }
     else
     {
-        Object *player = Obj_Get(APP.client.player_key, ObjCategory_Net);
+        Object *player = Obj_Get(APP.client.player_key, ObjStorage_Net);
         if (!Obj_IsNil(player))
         {
             APP.camera_p = V3_Make_XY_Z(player->s.p, 70.f);
@@ -392,10 +392,10 @@ static void Game_Iterate()
     {
         if (APP.world_mouse_valid)
         {
-            Object *marker = Obj_Get(APP.pathing_marker, ObjCategory_Local);
+            Object *marker = Obj_Get(APP.pathing_marker, ObjStorage_Local);
             if (!Obj_IsNil(marker))
             {
-                marker->s.flags |= ObjectFlag_Draw;
+                marker->s.flags |= ObjFlag_Draw;
                 marker->s.p = APP.world_mouse;
                 marker->l.animated_p = V3_Make_XY_Z(marker->s.p, 30.f);
                 APP.pathing_marker_set = true;
@@ -423,6 +423,7 @@ static void Game_Init()
     APP.camera_fov_y = 0.19f;
     APP.camera_p = (V3){-200.f, 0.f, 175.f};
     APP.camera_rot = (V3){0, -0.15f, 0};
+    APP.obj_serial_counter = 1;
     APP.tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
 
     // add walls
@@ -449,7 +450,7 @@ static void Game_Init()
 
     // pathing marker
     {
-        APP.pathing_marker = Obj_Create(ObjCategory_Local, ObjectFlag_ModelFlag |
-                                        ObjectFlag_AnimatePosition)->s.key;
+        APP.pathing_marker = Obj_Create(ObjStorage_Local, ObjFlag_ModelFlag |
+                                        ObjFlag_AnimatePosition)->s.key;
     }
 }

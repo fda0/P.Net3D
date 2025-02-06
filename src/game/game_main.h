@@ -75,6 +75,7 @@ struct AppState
     float dt;
     float at;
     U64 tick_id;
+    U32 obj_serial_counter;
     float tick_dt_accumulator;
 
     // user input

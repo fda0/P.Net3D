@@ -14,7 +14,7 @@ static void Tick_AdvanceSimulation()
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
-        if (Obj_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_AnimateRotation))
+        if (Obj_HasAnyFlag(obj, ObjFlag_Move|ObjFlag_AnimateRotation))
         {
             obj->s.prev_p = obj->s.p;
         }
@@ -24,7 +24,7 @@ static void Tick_AdvanceSimulation()
     ForArray(player_index, APP.server.player_keys)
     {
         Obj_Key player_key = APP.server.player_keys[player_index];
-        Object *player = Obj_Get(player_key, ObjCategory_Net);
+        Object *player = Obj_Get(player_key, ObjStorage_Net);
         if (Obj_IsNil(player))
             continue;
 
@@ -66,7 +66,7 @@ static void Tick_AdvanceSimulation()
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
-        if (!Obj_HasAnyFlag(obj, ObjectFlag_Move|ObjectFlag_Collide)) continue;
+        if (!Obj_HasAnyFlag(obj, ObjFlag_Move|ObjFlag_Collide)) continue;
 
         // reset debug flag
         obj->s.did_collide = false;
@@ -75,7 +75,7 @@ static void Tick_AdvanceSimulation()
     ForArray(obj_index, APP.all_objects)
     {
         Object *obj = APP.all_objects + obj_index;
-        if (!Obj_HasAnyFlag(obj, ObjectFlag_Move)) continue;
+        if (!Obj_HasAnyFlag(obj, ObjFlag_Move)) continue;
 
         // move object
         obj->s.p = V2_Add(obj->s.p, obj->s.dp);
@@ -93,7 +93,7 @@ static void Tick_AdvanceSimulation()
             ForArray(obstacle_index, APP.all_objects)
             {
                 Object *obstacle = APP.all_objects + obstacle_index;
-                if (!Obj_HasAnyFlag(obstacle, ObjectFlag_Collide)) continue;
+                if (!Obj_HasAnyFlag(obstacle, ObjFlag_Collide)) continue;
                 if (obj == obstacle) continue;
 
                 CollisionVertices obstacle_verts = obstacle->s.collision.verts;
