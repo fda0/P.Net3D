@@ -4,6 +4,68 @@
 //           stuff when it's reasonable.
 //
 
+static void Game_AnimateObjects()
+{
+    ForArray(obj_index, APP.all_objects)
+    {
+        Object *obj = APP.all_objects + obj_index;
+
+        if (Object_HasAnyFlag(obj, ObjectFlag_ModelTeapot))
+        {
+            int z = 1;
+            z += 1;
+            z += 1;
+            z += 1;
+        }
+
+        if (Object_HasAllFlags(obj, ObjectFlag_AnimateRotation))
+        {
+            //V2 obj_dir = obj->dp;
+            V2 obj_dir = V2_Sub(obj->p, obj->prev_p);
+            if (obj_dir.x || obj_dir.y)
+            {
+                obj_dir = V2_Normalize(obj_dir);
+
+                float rot = -Atan2F(obj_dir) + 0.25f;
+                obj->rot_z = WrapF(-0.5f, 0.5f, rot);
+                //LOG(LogFlags_Debug, "rot_z: %f", obj->rot_z);
+                int a = 0;
+                a += 1;
+            }
+        }
+
+        if (Object_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
+        {
+            Quat q0 = obj->local.animated_rot;
+            Quat q1 = Quat_FromAxisAngle_RH((V3){0,0,1}, obj->rot_z);
+
+            float w1 = APP.dt * 25.f;
+            float w0 = 1.f - w1;
+
+            if (Quat_Inner(q0, q1) < 0.f)
+                w1 = -w1;
+
+            obj->local.animated_rot = Quat_Normalize(Quat_Mix(q0, q1, w0, w1));
+        }
+
+        if (Object_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
+        {
+            V3 pos = V3_Make_XY_Z(obj->p, 0);
+            V3 delta = V3_Sub(pos, obj->local.animated_p);
+
+            float speed = APP.dt * 15.f;
+            delta = V3_Scale(delta, speed);
+
+            obj->local.animated_p = V3_Add(obj->local.animated_p, delta);
+            ForArray(i, obj->local.animated_p.E)
+            {
+                if (obj->local.animated_p.E[i] < 0.1f)
+                    obj->local.animated_p.E[i] = pos.E[i];
+            }
+        }
+    }
+}
+
 static void Game_DrawObjects()
 {
     ForArray(obj_index, APP.all_objects)
@@ -34,15 +96,17 @@ static void Game_DrawObjects()
                     inst->color.y = obj->color.g;
                     inst->color.z = obj->color.b;
 
-                    V3 move = {};
-                    move.x = obj->p.x;
-                    move.y = obj->p.y;
-                    Mat4 move_mat = Mat4_Translation(move);
+                    V3 pos = V3_Make_XY_Z(obj->p, 0);
+                    if (Object_HasAnyFlag(obj, ObjectFlag_AnimatePosition))
+                    {
+                        pos = obj->local.animated_p;
+                    }
+                    Mat4 move_mat = Mat4_Translation(pos);
 
                     Mat4 rot_mat = Mat4_Identity();
                     if (Object_HasAnyFlag(obj, ObjectFlag_AnimateRotation))
                     {
-                        rot_mat = Mat4_Rotation_Quat(obj->animated_rot);
+                        rot_mat = Mat4_Rotation_Quat(obj->local.animated_rot);
                         //rot_mat = Mat4_Rotation_RH((V3){0,0,1}, obj->animated_rot_z);
                     }
                     inst->transform = Mat4_Mul(move_mat, rot_mat);
@@ -323,6 +387,7 @@ static void Game_Iterate()
         }
     }
 
+    Game_AnimateObjects();
 
     if (APP.mouse_keys & SDL_BUTTON_RMASK)
     {
@@ -333,6 +398,7 @@ static void Game_Iterate()
             {
                 marker->flags |= ObjectFlag_Draw;
                 marker->p = APP.world_mouse;
+                marker->local.animated_p = V3_Make_XY_Z(marker->p, 50.f);
                 APP.pathing_marker_set = true;
             }
         }
@@ -356,7 +422,7 @@ static void Game_Init()
 
     APP.frame_time = SDL_GetTicks();
     APP.camera_fov_y = 0.19f;
-    APP.camera_p = (V3){-100.f, 0.f, 100.f};
+    APP.camera_p = (V3){-100.f, 0.f, 200.f};
     APP.camera_rot = (V3){0, -0.15f, 0};
     APP.tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
 
@@ -384,6 +450,7 @@ static void Game_Init()
 
     // pathing marker
     {
-        APP.pathing_marker = Object_Create(ObjCategory_Local, ObjectFlag_ModelFlag)->key;
+        APP.pathing_marker = Object_Create(ObjCategory_Local, ObjectFlag_ModelFlag |
+                                           ObjectFlag_AnimatePosition)->key;
     }
 }

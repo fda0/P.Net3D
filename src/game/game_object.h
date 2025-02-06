@@ -35,6 +35,12 @@ typedef struct
 
 typedef struct
 {
+    Quat animated_rot; // animates towards model_rot_z
+    V3 animated_p; // animates towards (V3){p.x, p.y, 0}
+} Object_LocalData; // @todo refactor
+
+typedef struct
+{
     Object_Key key;
     U32 flags;
     bool init;
@@ -45,15 +51,14 @@ typedef struct
     // visuals
     ColorF color;
     float rot_z;
-    //float animated_rot_z; // animates towards model_rot_z
-    Quat animated_rot;
-    V3 animated_p; // animates towards (V3){p.x, p.y, 0}
 
     // input actions
     bool is_pathing;
     V2 pathing_dest_p;
 
     Collision_Data collision;
+
+    Object_LocalData local; // not synced from the server
 
     // temp
     U32 some_number;
