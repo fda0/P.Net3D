@@ -28,7 +28,7 @@ set cl_common=     /nologo /FC /Z7 /W4 /wd4244 /wd4201 /std:clatest /MDd
 set cl_debug=      call cl /Od /Ob1 /DBUILD_DEBUG=1 %cl_common% %compile_common%
 set cl_release=    call cl /O2 /DBUILD_DEBUG=0 %cl_common% %compile_common%
 set cl_libs=       User32.lib Advapi32.lib Shell32.lib Gdi32.lib Version.lib OleAut32.lib Imm32.lib Ole32.lib Cfgmgr32.lib Setupapi.lib Winmm.lib Ws2_32.lib Iphlpapi.lib %sdl_libs%
-set cl_link=       /link /MANIFEST:EMBED /INCREMENTAL:NO /pdbaltpath:%%%%_PDB%%%% /STACK:33554432
+set cl_link=       /link /MANIFEST:EMBED /INCREMENTAL:NO /pdbaltpath:%%%%_PDB%%%%
 set cl_link_game=  /SUBSYSTEM:WINDOWS
 set cl_out=        /out:
 
