@@ -1,6 +1,6 @@
 typedef struct
 {
-    Object tick_states[NET_CLIENT_MAX_SNAPSHOTS]; // circle buf
+    Obj_Sync tick_states[NET_CLIENT_MAX_SNAPSHOTS]; // circle buf
     U64 latest_server_tick;
     U64 oldest_server_tick;
     U64 recent_lerp_start_tick;

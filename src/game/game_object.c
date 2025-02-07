@@ -42,9 +42,9 @@ static Object *Obj_Get(Obj_Key key, U32 storage_mask)
     return result;
 }
 
-static bool Obj_IsInit(Object *obj)
+static bool Obj_SyncIsInit(Obj_Sync *sync)
 {
-    return obj->s.init;
+    return sync->init;
 }
 
 static bool Obj_HasData(Object *obj)
@@ -84,7 +84,7 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
         ForArray(i, APP.const_objects)
         {
             Object *search = APP.const_objects + i;
-            if (!Obj_IsInit(search))
+            if (!Obj_SyncIsInit(&search->s))
             {
                 obj = search;
                 break;
@@ -99,7 +99,7 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
         ForArray(i, APP.net_objects)
         {
             Object *search = APP.net_objects + i;
-            if (!Obj_IsInit(search))
+            if (!Obj_SyncIsInit(&search->s))
             {
                 obj = search;
                 break;
@@ -114,7 +114,7 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
     SDL_zerop(obj);
 
     obj->s.key.serial_number = APP.obj_serial_counter;
-    APP.obj_serial_counter += 1;
+    APP.obj_serial_counter = Max(APP.obj_serial_counter + 1, 1);
     obj->s.key.index = ((U64)obj - (U64)APP.all_objects) / sizeof(*obj);
 
     obj->s.flags = flags;

@@ -1,10 +1,10 @@
-static Object *Client_SnapshotObjectAtTick(Client_Snapshot *snap, U64 tick_id)
+static Obj_Sync *Client_SnapshotObjSyncAtTick(Client_Snapshot *snap, U64 tick_id)
 {
     U64 state_index = tick_id % ArrayCount(snap->tick_states);
     return snap->tick_states + state_index;
 }
 
-static Obj_Sync Client_LerpNetObject(U32 net_index, U64 tick_id)
+static Obj_Sync Client_LerpNetObjSync(U32 net_index, U64 tick_id)
 {
     Assert(net_index < ArrayCount(APP.client.obj_snaps));
     Client_Snapshot *snap = APP.client.obj_snaps + net_index;
@@ -12,9 +12,9 @@ static Obj_Sync Client_LerpNetObject(U32 net_index, U64 tick_id)
     Assert(tick_id <= snap->latest_server_tick &&
            tick_id >= snap->oldest_server_tick);
 
-    Object *exact_obj = Client_SnapshotObjectAtTick(snap, tick_id);
-    if (Obj_IsInit(exact_obj)) // exact object found
-        return exact_obj->s;
+    Obj_Sync *exact_obj = Client_SnapshotObjSyncAtTick(snap, tick_id);
+    if (Obj_SyncIsInit(exact_obj)) // exact object found
+        return *exact_obj;
 
     // find nearest prev_id/next_id objects
     U64 prev_id = tick_id;
@@ -22,28 +22,28 @@ static Obj_Sync Client_LerpNetObject(U32 net_index, U64 tick_id)
     while (prev_id > snap->oldest_server_tick)
     {
         prev_id -= 1;
-        if (Obj_IsInit(Client_SnapshotObjectAtTick(snap, prev_id)))
+        if (Obj_SyncIsInit(Client_SnapshotObjSyncAtTick(snap, prev_id)))
             break;
     }
     while (next_id < snap->latest_server_tick)
     {
         next_id += 1;
-        if (Obj_IsInit(Client_SnapshotObjectAtTick(snap, next_id)))
+        if (Obj_SyncIsInit(Client_SnapshotObjSyncAtTick(snap, next_id)))
             break;
     }
 
-    Object *prev = Client_SnapshotObjectAtTick(snap, prev_id);
-    Object *next = Client_SnapshotObjectAtTick(snap, next_id);
+    Obj_Sync *prev = Client_SnapshotObjSyncAtTick(snap, prev_id);
+    Obj_Sync *next = Client_SnapshotObjSyncAtTick(snap, next_id);
 
     // handle cases where we can't interpolate
-    if (!Obj_IsInit(prev) && !Obj_IsInit(next)) // disaster
-        return exact_obj->s;
+    if (!Obj_SyncIsInit(prev) && !Obj_SyncIsInit(next)) // disaster
+        return *exact_obj;
 
-    if (!Obj_IsInit(prev))
-        return next->s;
+    if (!Obj_SyncIsInit(prev))
+        return *next;
 
-    if (!Obj_IsInit(next))
-        return prev->s;
+    if (!Obj_SyncIsInit(next))
+        return *prev;
 
     // lock lerp range; new packets in this range will be rejected
     snap->recent_lerp_start_tick = prev_id;
@@ -53,12 +53,11 @@ static Obj_Sync Client_LerpNetObject(U32 net_index, U64 tick_id)
     U64 id_range = next_id - prev_id;
     U64 id_offset = tick_id - prev_id;
     float t = (float)id_offset / (float)id_range;
-    Obj_Sync result = Obj_SyncLerp(prev->s, next->s, t);
+    Obj_Sync result = Obj_SyncLerp(*prev, *next, t);
     return result;
 }
 
-static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
-                                        U64 insert_at_tick_id, Object insert_obj)
+static bool Client_InsertSnapshotObjSync(Client_Snapshot *snap, U64 insert_at_tick_id, Obj_Sync insert_sync)
 {
     // function returns true on error
     static_assert(ArrayCount(snap->tick_states) == NET_CLIENT_MAX_SNAPSHOTS);
@@ -122,7 +121,7 @@ static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
                  i < insert_at_tick_id;
                  i += 1)
             {
-                Object *obj = Client_SnapshotObjectAtTick(snap, i);
+                Obj_Sync *obj = Client_SnapshotObjSyncAtTick(snap, i);
                 SDL_zerop(obj);
             }
         }
@@ -136,8 +135,8 @@ static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
                  i < insert_at_tick_id;
                  i += 1)
             {
-                Object *obj = Client_SnapshotObjectAtTick(snap, i);
-                if (Obj_IsInit(obj))
+                Obj_Sync *obj = Client_SnapshotObjSyncAtTick(snap, i);
+                if (Obj_SyncIsInit(obj))
                 {
                     snap->oldest_server_tick = i;
                     break;
@@ -160,8 +159,8 @@ static bool Client_InsertSnapshotObject(Client_Snapshot *snap,
 
     // insert object
     {
-        Object *insert_at_obj = Client_SnapshotObjectAtTick(snap, insert_at_tick_id);
-        *insert_at_obj = insert_obj;
+        Obj_Sync *insert_at_obj = Client_SnapshotObjSyncAtTick(snap, insert_at_tick_id);
+        *insert_at_obj = insert_sync;
     }
 
     Assert(snap->oldest_server_tick >= minimum_server_tick);

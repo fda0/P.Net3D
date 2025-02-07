@@ -49,8 +49,8 @@ typedef struct
 typedef struct
 {
     U32 net_index;
-    Object obj;
-} Net_SendObjUpdate;
+    Obj_Sync sync;
+} Net_SendObjSync;
 
 typedef struct
 {

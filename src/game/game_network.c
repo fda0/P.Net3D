@@ -294,9 +294,9 @@ static void Net_IterateSend()
                 head.kind = NetSendKind_ObjUpdate;
                 Net_PayloadMemcpy(&head, sizeof(head));
 
-                Net_SendObjUpdate update = {0};
+                Net_SendObjSync update = {0};
                 update.net_index = net_index;
-                update.obj = *net_obj;
+                update.sync = net_obj->s;
                 Net_PayloadMemcpy(&update, sizeof(update));
             }
             else
@@ -387,7 +387,7 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
         else if (head.kind == NetSendKind_ObjUpdate ||
                  head.kind == NetSendKind_ObjEmpty)
         {
-            Net_SendObjUpdate update = {0};
+            Net_SendObjSync update = {0};
             if (head.kind == NetSendKind_ObjUpdate)
             {
                 Net_ConsumeS8(&msg, &update, sizeof(update));
@@ -397,7 +397,7 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
                 Net_SendObjEmpty empty;
                 Net_ConsumeS8(&msg, &empty, sizeof(empty));
                 update.net_index = empty.net_index;
-                update.obj.s.init = true;
+                update.sync.init = true;
             }
 
             if (update.net_index >= OBJ_MAX_NETWORK_OBJECTS)
@@ -418,7 +418,7 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
 
             Assert(update.net_index < ArrayCount(APP.client.obj_snaps));
             Client_Snapshot *snap = APP.client.obj_snaps + update.net_index;
-            Client_InsertSnapshotObject(snap, head.tick_id, update.obj);
+            Client_InsertSnapshotObjSync(snap, head.tick_id, update.sync);
         }
         else if (head.kind == NetSendKind_NetworkTest)
         {

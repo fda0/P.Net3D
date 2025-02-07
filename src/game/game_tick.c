@@ -272,7 +272,7 @@ static void Tick_Playback()
 
     ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
     {
-        Obj_Sync interpolated_sync = Client_LerpNetObject(net_index, APP.client.next_playback_tick);
+        Obj_Sync interpolated_sync = Client_LerpNetObjSync(net_index, APP.client.next_playback_tick);
         Object *net_obj = Obj_FromNetIndex(net_index);
         net_obj->s = interpolated_sync;
     }
