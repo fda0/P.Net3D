@@ -1,25 +1,9 @@
-# networking big picture plan
-1. Send only "latest" state and use interpolation
-2. Compression - compressed Object representation (used in game and for network)
-3. Network compression - delta encoding - between state that`s ACKed by client and server state
-  - special "no changes" path that can bulk update many Objects
-4. Net quality - monitoring network congestion, targeting a different level of updates per second
-5. Udp packet size fixed to 1200 bytes?
-
-# networking issues
-- networking does a lot of copying between heap and stack to get around alignment requirements
-  - this causes stack overflow errors currently - quick workaround was to bump stack size of the game to 32MB on msvc. @todo modify stack size on all targets or reduce copying in the networking code
-
-- networking sort of works now but I made a big mess while fixing it.
-1. refactor the code that is here
-2. the idea of dividing big UDP message into smaller "packets" that all need to arrive at the destination is _problematic_. Its essentially an emulation of TCP. Maybe its not AS BAD because we still allow you to drop a portion of udp packets and go forward. But thats what is problematic. If a message is made out of 64 packets and for every message we have a drop of 1 packet the client will not read anything.
-3. move to a model where each udp packet has independent portion of info that can be read independetly by the client.
-4. udp message size could be dynamic
-5. we send an update for X objects with Y latest ticks
-6. client sends ACK
-7. we reduce client spam for stuff that was ACKed, otherwise we resend (most recent data) - we prioritize things that werent ACKed
-
-^ above system requires us to be able to playback / sync objecets separately, we cant assume that the whole gamestate is updated at once
-
-- support more shapes in collision system
+- animated models (skinned meshes)
 - debug ui interface
+- support more shapes in collision system (add circles!)
+- pathfinding
+
+# Network
+I think networking is in good enough state for local network development. Before making further progress on it I would like to make more progress on the rest of the engine. After that two immediate tasks are:
+- network compression (send less data, bitpacking, skip data initialized to zero etc)
+- network compression 2: client-server ack (don't resend data that got confirmed as received)
