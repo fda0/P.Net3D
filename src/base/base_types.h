@@ -89,7 +89,7 @@ typedef int64_t I64;
 #define ForArray(I, Array) ForU64(I, ArrayCount(Array))
 
 // Asserts
-#define Assert(Expr) SDL_assert(Expr) // @todo(mg) this might be compiled out for release builds
+#define Assert(Expr) SDL_assert(Expr) // @todo(mg) remove from release builds
 #define AssertBounds(Index, Array) Assert((Index) < ArrayCount((Array)))
 
 // Other helpers

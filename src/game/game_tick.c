@@ -139,14 +139,7 @@ static void Tick_AdvanceSimulation()
                         if (d > biggest_dist)
                         {
                             biggest_dist = d;
-                            wall_normal = normal;
-
-                            if (use_obj_normals || true) // @todo(mg) I have a bug somewhere? Why does `|| true` fix my bug?
-                            {
-                                // @note if we pick obj's normal we need to
-                                // inverse it if we want to move out of the obstacle
-                                wall_normal = V2_Reverse(wall_normal);
-                            }
+                            wall_normal = V2_Reverse(normal);
                         }
                     }
                 }

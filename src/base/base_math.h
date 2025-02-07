@@ -496,7 +496,7 @@ static Mat4 Mat4_Identity()
 
 static Mat4 Mat4_Transpose(Mat4 mat)
 {
-    // @todo sse
+    // @todo SIMD
     Mat4 res;
     res.elem[0][0] = mat.elem[0][0];
     res.elem[0][1] = mat.elem[1][0];

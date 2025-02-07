@@ -228,7 +228,7 @@ static void Net_IterateSend()
                 }
 
                 // calculate autolayout for clients
-                // @todo this should be done on iterate send!
+                // @todo this doesn't have to be done on iterate send
                 if (APP.window_autolayout)
                 {
                     U32 window_count = 1 + APP.server.user_count;

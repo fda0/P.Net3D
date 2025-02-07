@@ -49,7 +49,7 @@ static SDL_GPUTexture *Gpu_CreateMSAATexture(U32 width, U32 height)
     };
 
     SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
-    Assert(result); // @todo
+    Assert(result); // @todo report err
     return result;
 }
 
@@ -73,7 +73,7 @@ static SDL_GPUTexture *Gpu_CreateResolveTexture(U32 width, U32 height)
     };
 
     SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
-    Assert(result); // @todo
+    Assert(result); // @todo report err
     return result;
 }
 
@@ -110,7 +110,7 @@ static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U64 data_s
         .size = data_size
     };
     SDL_GPUTransferBuffer *buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
-    Assert(buf_transfer); // @todo report
+    Assert(buf_transfer); // @todo report err
 
     // CPU memory -> GPU memory
     {
@@ -153,7 +153,7 @@ static void Gpu_TransferTexture(SDL_GPUTexture *gpu_tex,
         .size = data_size
     };
     SDL_GPUTransferBuffer *buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
-    Assert(buf_transfer); // @todo report
+    Assert(buf_transfer); // @todo report err
 
     // CPU memory -> GPU memory
     {
@@ -263,7 +263,7 @@ static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
             .props = 0,
         };
         model->vert_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-        Assert(model->vert_buf); // @todo report
+        Assert(model->vert_buf); // @todo report err
         SDL_SetGPUBufferName(APP.gpu.device, model->vert_buf, vrt_buf_name);
     }
     // create model index buffer
@@ -274,7 +274,7 @@ static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
             .props = 0,
         };
         model->ind_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-        Assert(model->ind_buf); // @todo report
+        Assert(model->ind_buf); // @todo report err
         SDL_SetGPUBufferName(APP.gpu.device, model->ind_buf, ind_buf_name);
     }
     // create model per instance storage buffer
@@ -285,7 +285,7 @@ static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
             .props = 0,
         };
         model->inst_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-        Assert(model->inst_buf); // @todo report
+        Assert(model->inst_buf); // @todo report err
         SDL_SetGPUBufferName(APP.gpu.device, model->inst_buf, inst_buf_name);
     }
 
@@ -425,7 +425,7 @@ static void Gpu_Init()
                 .props = 0,
             };
             APP.gpu.wall_vert_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-            Assert(APP.gpu.wall_vert_buf); // @todo report
+            Assert(APP.gpu.wall_vert_buf); // @todo report err
             SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.wall_vert_buf, "Wall vertex buffer");
         }
 
@@ -442,7 +442,7 @@ static void Gpu_Init()
             };
             ForArray(i, imgs)
             {
-                Assert(imgs[i]); // @todo report
+                Assert(imgs[i]); // @todo report err & use fallback textures
                 Assert(imgs[0]->w == imgs[i]->w);
                 Assert(imgs[0]->h == imgs[i]->h);
                 Assert(imgs[0]->pitch == imgs[i]->pitch);
@@ -484,7 +484,7 @@ static void Gpu_Init()
                     }
                 }
 
-                // @todo this transfer could be optimized
+                // @todo these transfer could be optimized
                 Gpu_TransferTexture(APP.gpu.tex_wall,
                                     i, imgs[i]->w, imgs[i]->h,
                                     buffer, img_size);
@@ -594,7 +594,7 @@ static void Gpu_Init()
         };
 
         APP.gpu.wall_pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-        Assert(APP.gpu.wall_pipeline); // @todo report user to error and exit program on fail
+        Assert(APP.gpu.wall_pipeline); // @todo report error to user and exit program on fail
 
         SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
         SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
@@ -606,12 +606,12 @@ static void Gpu_Init()
 static void Gpu_Iterate()
 {
     SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-    Assert(cmd); // @todo
+    Assert(cmd); // @todo report err
 
     SDL_GPUTexture *swapchain_tex;
     U32 draw_width, draw_height;
     bool res = SDL_WaitAndAcquireGPUSwapchainTexture(cmd, APP.window, &swapchain_tex, &draw_width, &draw_height);
-    Assert(res); // @todo
+    Assert(res); // @todo report err
 
     if (!swapchain_tex)
     {

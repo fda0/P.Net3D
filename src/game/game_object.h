@@ -37,7 +37,7 @@ typedef struct
     // Object data that'ss kept on client side only
     Quat animated_rot; // animates towards model_rot_z
     V3 animated_p; // animates towards (V3){p.x, p.y, 0}
-} Obj_Local; // @todo refactor
+} Obj_Local;
 
 typedef struct
 {

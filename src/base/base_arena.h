@@ -37,7 +37,7 @@ static void *Arena_AllocateBytes(Arena *a, U64 bytes_to_allocate, U64 alignment,
     if ((a->used + bytes_to_allocate) > a->capacity)
     {
         // Arena capacity overflow!
-        // @todo allocate more memory; grow capacity if possible?
+        // @todo Add feature that allows to allocate more capacity
         Assert(false);
         return 0;
     }
