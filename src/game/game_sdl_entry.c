@@ -29,10 +29,9 @@
 #include "game_server.h"
 #include "game_render.h"
 #include "game_gpu.h"
-#include "game_main.h"
+#include "game_core.h"
 
 static AppState APP;
-#include "game_tests.c"
 #include "game_object.c"
 #include "game_client.c"
 #include "game_server.c"

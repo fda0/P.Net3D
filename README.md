@@ -1,5 +1,6 @@
 3D game/engine with networking. Written in C. Uses SDL3.
 
+
 # Cloning the project
 To download the repository and SDL3 at the same time, run:
 ```bash
@@ -10,6 +11,7 @@ To download the repository and its submodules separately, run
 git clone git@github.com:fda0/P.Net3D.git
 git submodule update --init --recursive
 ```
+
 
 # Building
 Project can be built on Windows using MSVC (default) or clang.  
@@ -32,6 +34,41 @@ build.bat game sdl
 ```bash
 build.bat game clang
 ```
+
+
+# Codebase
+## `src/base`
+Small libraries that could be used across multiple projects.
+- `base_types.h` - Define types and must-have-macros.
+- `base_arena.h` - Simple & fast bump/stack-like allocator.
+- `base_string.h` - Defines `S8` - length encoded string and its helper functions.
+- `base_printer.h` - String builder based. Tracks pre-allocated buffer and allows to easily copy text into it.
+- `base_math.h` - Trigonometry functions, vectors, matrices, quaternions.
+
+## `src/meta`
+`meta_entry.c` is compiled and ran before the game starts compiling.
+The plan is that all metaprogramming, code generation, and asset preparation will live there.
+Right now, its only job is to load .obj model files and transform them into a format expected by the engine.
+It can automatically generate per-vertex-normals if these are missing from the .obj file.
+
+## `src/gen`
+Auto-generated files like models' vertex buffers or precompiled shaders go here.
+Automatically cleared before build. Committed using `git lfs` to reduce spam in change history.
+
+## `src/game`
+The game uses the ["unity build"](https://en.wikipedia.org/wiki/Unity_build) technique to compile all .c files in one translation unit.
+- `game_sdl_entry.c` - Entry point of the game. Initialized SDL contexts, spawns game window, poll user input.
+- `game_constants.h` - Compile time constants used to modify how the game works.
+- `game_core.c` - Manages game logic loop, initialization. Contains code that didn't fit anywhere else yet.
+- `game_gpu`, `game_render` - Manages GPU setup, uploads data to GPU and dispatches render calls.
+- `game_render.h` - Defines vertex layout, instance buffer layout. Will be built into higher level helpers that aid with putting stuff on the screen.
+- `game_network` - Setting up connection, sending and receiving payloads over network.
+- `game_server` / `game_client` - Server / client side networking logic.
+- `game_object` - Constructors and helpers for Objects. Most things that are visible on the screen are called an Object in this engine.
+- `game_tick` - Game physics simulation. Physics updates use a fixed timestep in this engine.
+- `game_util` - Helpers that are somewhat universal but still specific to the game - so they don't end up in `src/base`
+- `shader_*` - hlsl shaders. In the future I'll try looking into systems that auto-translate shaders for hlsl & vulkan targets.
+
 
 # Resources
 ## Collision

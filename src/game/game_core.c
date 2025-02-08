@@ -246,8 +246,7 @@ static void Game_AutoLayoutApply(U32 user_count,
 
 static void Game_Iterate()
 {
-    Test_Iterate();
-
+    // pre-frame setup
     {
         APP.frame_id += 1;
 
