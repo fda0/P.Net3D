@@ -20,7 +20,7 @@
 #include "base_string.h"
 #include "base_arena.h"
 #include "game_constants.h"
-#include "game_vertices.h"
+#include "game_collision_vertices.h"
 #include "game_util.h"
 #include "game_object.h"
 #include "game_tick.h"

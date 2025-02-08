@@ -103,13 +103,6 @@ static bool M_IsNumberObjTokenKind(M_ObjTokenKind kind, bool allow_float)
     return false;
 }
 
-static void M_Pr_AddObjTokenNumber(Printer *pr, M_ObjToken t)
-{
-    Pr_Add(pr, t.text);
-    if (t.kind == M_ObjToken_Float)
-        Pr_Add(pr, S8Lit("f"));
-}
-
 static M_ObjFacePart M_ParseObjFaceTokens(M_ObjParser *p)
 {
     M_ObjFacePart res = {};

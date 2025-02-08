@@ -32,7 +32,7 @@ set cl_link=       /link /MANIFEST:EMBED /INCREMENTAL:NO /pdbaltpath:%%%%_PDB%%%
 set cl_link_game=  /SUBSYSTEM:WINDOWS
 set cl_out=        /out:
 
-set clang_common=    -fdiagnostics-absolute-paths -Wall -Wno-unused-variable -Wno-missing-braces -Wno-unused-function -Wno-microsoft-static-assert -Wno-c2x-extensions
+set clang_common=    -fdiagnostics-absolute-paths -Wall -Wno-missing-braces -Wno-unused-function -Wno-microsoft-static-assert -Wno-c2x-extensions
 set clang_debug=     call clang -g -O0 -DBUILD_DEBUG=1 %clang_common% %compile_common%
 set clang_release=   call clang -g -O2 -DBUILD_DEBUG=0 %clang_common% %compile_common%
 set clang_libs=      -lUser32.lib -lAdvapi32.lib -lShell32.lib -lGdi32.lib -lVersion.lib -lOleAut32.lib -lImm32.lib -lOle32.lib -lCfgmgr32.lib -lSetupapi.lib -lWinmm.lib -lWs2_32.lib -lIphlpapi.lib %sdl_libs%

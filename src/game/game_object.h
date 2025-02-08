@@ -58,10 +58,6 @@ typedef struct
     V2 pathing_dest_p;
 
     Collision_Data collision;
-
-    // temp
-    U32 some_number;
-    bool did_collide;
 } Obj_Sync;
 
 typedef struct

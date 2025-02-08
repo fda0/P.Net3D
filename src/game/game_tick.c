@@ -59,17 +59,6 @@ static void Tick_AdvanceSimulation()
 
         float player_speed = 60.f * TIME_STEP;
         player->s.dp = V2_Scale(player_dir, player_speed);
-        player->s.some_number += 1;
-    }
-
-    // movement & collision
-    ForArray(obj_index, APP.all_objects)
-    {
-        Object *obj = APP.all_objects + obj_index;
-        if (!Obj_HasAnyFlag(obj, ObjFlag_Move|ObjFlag_Collide)) continue;
-
-        // reset debug flag
-        obj->s.did_collide = false;
     }
 
     ForArray(obj_index, APP.all_objects)
@@ -88,7 +77,7 @@ static void Tick_AdvanceSimulation()
 
             CollisionVertices obj_verts = obj->s.collision.verts;
             Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj->s.p);
-            V2 obj_center = Vertices_Average(obj_verts.arr, ArrayCount(obj_verts.arr));
+            V2 obj_center = obj->s.p;
 
             ForArray(obstacle_index, APP.all_objects)
             {
@@ -98,7 +87,7 @@ static void Tick_AdvanceSimulation()
 
                 CollisionVertices obstacle_verts = obstacle->s.collision.verts;
                 Vertices_Offset(obstacle_verts.arr, ArrayCount(obstacle_verts.arr), obstacle->s.p);
-                V2 obstacle_center = Vertices_Average(obstacle_verts.arr, ArrayCount(obstacle_verts.arr));
+                V2 obstacle_center = obstacle->s.p;
 
                 float biggest_dist = -FLT_MAX;
                 V2 wall_normal = {0};
@@ -150,9 +139,6 @@ static void Tick_AdvanceSimulation()
                     closest_obstacle_wall_normal = wall_normal;
                 }
 
-                obj->s.did_collide |= (biggest_dist < 0.f);
-                obstacle->s.did_collide |= (biggest_dist < 0.f);
-
                 skip_this_obstacle:;
             }
 
@@ -186,7 +172,6 @@ static Obj_Sync Obj_SyncLerp(Obj_Sync prev, Obj_Sync next, float t)
     res.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
     res.color = ColorF_Lerp(prev.color, next.color, t);
     res.rot_z = LerpF(prev.rot_z, next.rot_z, t);
-    res.did_collide = (bool)RoundF(LerpF((float)prev.did_collide, (float)next.did_collide, t));
     return res;
 }
 
