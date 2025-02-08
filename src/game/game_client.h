@@ -5,11 +5,11 @@ typedef struct
     U64 oldest_server_tick;
     U64 recent_lerp_start_tick;
     U64 recent_lerp_end_tick;
-} Client_Snapshot;
+} Client_ObjSnapshots;
 
 typedef struct
 {
-    Client_Snapshot obj_snaps[OBJ_MAX_NETWORK_OBJECTS];
+    Client_ObjSnapshots snaps_of_objs[OBJ_MAX_NETWORK_OBJECTS];
     U64 next_playback_tick;
 
     U16 current_playback_delay;

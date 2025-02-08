@@ -194,9 +194,9 @@ static void Tick_Playback()
 {
     U64 smallest_latest_server_tick = ~0ull;
     U64 biggest_oldest_server_tick = 0;
-    ForArray(obj_i, APP.client.obj_snaps)
+    ForArray(obj_i, APP.client.snaps_of_objs)
     {
-        Client_Snapshot *snap = APP.client.obj_snaps + obj_i;
+        Client_ObjSnapshots *snap = APP.client.snaps_of_objs + obj_i;
         if (snap->latest_server_tick < smallest_latest_server_tick)
         {
             smallest_latest_server_tick = snap->latest_server_tick;
@@ -265,7 +265,7 @@ static void Tick_Playback()
 
     ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
     {
-        Obj_Sync interpolated_sync = Client_LerpNetObjSync(net_index, APP.client.next_playback_tick);
+        Obj_Sync interpolated_sync = Client_LerpObjSync(net_index, APP.client.next_playback_tick);
         Object *net_obj = Obj_FromNetIndex(net_index);
         net_obj->s = interpolated_sync;
     }

@@ -416,9 +416,9 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
                 continue;
             }
 
-            Assert(update.net_index < ArrayCount(APP.client.obj_snaps));
-            Client_Snapshot *snap = APP.client.obj_snaps + update.net_index;
-            Client_InsertSnapshotObjSync(snap, head.tick_id, update.sync);
+            Assert(update.net_index < ArrayCount(APP.client.snaps_of_objs));
+            Client_ObjSnapshots *snap = APP.client.snaps_of_objs + update.net_index;
+            Client_InsertSnapshot(snap, head.tick_id, update.sync);
         }
         else if (head.kind == NetSendKind_NetworkTest)
         {
