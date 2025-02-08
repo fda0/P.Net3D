@@ -37,16 +37,18 @@ static V3 M_ParseV3(S8 x, S8 y, S8 z)
 
 static void Pr_AddFloat(Printer *p, float value)
 {
+    // @todo remove clib dependency in the future
     char buf[128];
     snprintf(buf, sizeof(buf), "%f", value);
-    S8 string = S8_MakeScanCstr(buf);
+    S8 string = S8_ScanCstr(buf);
     Pr_Add(p, string);
 }
 
 static void Pr_AddU16(Printer *p, U16 value)
 {
+    // @todo remove clib dependency in the future
     char buf[128];
     snprintf(buf, sizeof(buf), "%u", (U32)value);
-    S8 string = S8_MakeScanCstr(buf);
+    S8 string = S8_ScanCstr(buf);
     Pr_Add(p, string);
 }

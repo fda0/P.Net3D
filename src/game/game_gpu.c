@@ -1,12 +1,11 @@
-#define GPU_DEPTH_CLEAR_FLOAT 1.0f
+#define GPU_CLEAR_DEPTH_FLOAT 1.0f
+#define GPU_CLEAR_COLOR_R 0.6f
+#define GPU_CLEAR_COLOR_G 0.6f
+#define GPU_CLEAR_COLOR_B 0.8f
+#define GPU_CLEAR_COLOR_A 1.0f
 
 static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
 {
-    SDL_PropertiesID props = SDL_CreateProperties();
-    SDL_SetFloatProperty(props,
-                         SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_DEPTH_FLOAT,
-                         GPU_DEPTH_CLEAR_FLOAT);
-
     SDL_GPUTextureCreateInfo createinfo = {
         .type = SDL_GPU_TEXTURETYPE_2D,
         .format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
@@ -16,14 +15,10 @@ static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
         .num_levels = 1,
         .sample_count = APP.gpu.sample_count,
         .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
-        .props = props,
+        .props = APP.gpu.clear_depth_props,
     };
 
     SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
-
-    // These properties shouldn't be destroyed.
-    // SDL_DestroyProperties(props);
-    // They are used again when this depth texture is "cycled".
 
     Assert(result); // @todo report err
     return result;
@@ -32,9 +27,7 @@ static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
 static SDL_GPUTexture *Gpu_CreateMSAATexture(U32 width, U32 height)
 {
     if (APP.gpu.sample_count == SDL_GPU_SAMPLECOUNT_1)
-    {
         return 0;
-    }
 
     SDL_GPUTextureCreateInfo createinfo = {
         .type = SDL_GPU_TEXTURETYPE_2D,
@@ -45,7 +38,7 @@ static SDL_GPUTexture *Gpu_CreateMSAATexture(U32 width, U32 height)
         .num_levels = 1,
         .sample_count = APP.gpu.sample_count,
         .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
-        .props = 0,
+        .props = APP.gpu.clear_color_props,
     };
 
     SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
@@ -56,9 +49,7 @@ static SDL_GPUTexture *Gpu_CreateMSAATexture(U32 width, U32 height)
 static SDL_GPUTexture *Gpu_CreateResolveTexture(U32 width, U32 height)
 {
     if (APP.gpu.sample_count == SDL_GPU_SAMPLECOUNT_1)
-    {
         return 0;
-    }
 
     SDL_GPUTextureCreateInfo createinfo = {
         .type = SDL_GPU_TEXTURETYPE_2D,
@@ -69,7 +60,7 @@ static SDL_GPUTexture *Gpu_CreateResolveTexture(U32 width, U32 height)
         .num_levels = 1,
         .sample_count = SDL_GPU_SAMPLECOUNT_1,
         .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
-        .props = 0,
+        .props = APP.gpu.clear_color_props,
     };
 
     SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
@@ -82,23 +73,23 @@ static void Gpu_ProcessWindowResize()
     U32 draw_width, draw_height;
     SDL_GetWindowSizeInPixels(APP.window, (int *)&draw_width, (int *)&draw_height);
 
-    if (APP.gpu.win_state.draw_width != draw_width ||
-        APP.gpu.win_state.draw_height != draw_height)
+    if (APP.gpu.draw_width != draw_width ||
+        APP.gpu.draw_height != draw_height)
     {
-        if (APP.gpu.win_state.tex_depth)
-            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.win_state.tex_depth);
-        if (APP.gpu.win_state.tex_msaa)
-            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.win_state.tex_msaa);
-        if (APP.gpu.win_state.tex_resolve)
-            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.win_state.tex_resolve);
+        if (APP.gpu.tex_depth)
+            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
+        if (APP.gpu.tex_msaa)
+            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
+        if (APP.gpu.tex_resolve)
+            SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
 
-        APP.gpu.win_state.tex_depth = Gpu_CreateDepthTexture(draw_width, draw_height);
-        APP.gpu.win_state.tex_msaa = Gpu_CreateMSAATexture(draw_width, draw_height);
-        APP.gpu.win_state.tex_resolve = Gpu_CreateResolveTexture(draw_width, draw_height);
+        APP.gpu.tex_depth = Gpu_CreateDepthTexture(draw_width, draw_height);
+        APP.gpu.tex_msaa = Gpu_CreateMSAATexture(draw_width, draw_height);
+        APP.gpu.tex_resolve = Gpu_CreateResolveTexture(draw_width, draw_height);
     }
 
-    APP.gpu.win_state.draw_width = draw_width;
-    APP.gpu.win_state.draw_height = draw_height;
+    APP.gpu.draw_width = draw_width;
+    APP.gpu.draw_height = draw_height;
 }
 
 static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U32 data_size)
@@ -188,9 +179,9 @@ static void Gpu_TransferTexture(SDL_GPUTexture *gpu_tex,
 }
 
 
-static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultSDLPipeline(SDL_GPUColorTargetDescription *color,
-                                                                SDL_GPUShader *vertex,
-                                                                SDL_GPUShader *fragment)
+static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultPipeline(SDL_GPUColorTargetDescription *color,
+                                                             SDL_GPUShader *vertex,
+                                                             SDL_GPUShader *fragment)
 {
     SDL_GPUGraphicsPipelineCreateInfo pipeline =
     {
@@ -295,17 +286,34 @@ static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
 
 static void Gpu_Init()
 {
-    APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_1;
-    bool msaa = false;
-    if (msaa)
+    // preapre props
     {
-        SDL_GPUTextureFormat tex_format =
-            SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window);
+        APP.gpu.clear_depth_props = SDL_CreateProperties();
+        SDL_SetFloatProperty(APP.gpu.clear_depth_props,
+                             SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_DEPTH_FLOAT,
+                             GPU_CLEAR_DEPTH_FLOAT);
 
-        bool supports_msaa =
-            SDL_GPUTextureSupportsSampleCount(APP.gpu.device, tex_format,
-                                              SDL_GPU_SAMPLECOUNT_4);
+        APP.gpu.clear_color_props = SDL_CreateProperties();
+        SDL_SetFloatProperty(APP.gpu.clear_color_props,
+                             SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_R_FLOAT,
+                             GPU_CLEAR_COLOR_R);
+        SDL_SetFloatProperty(APP.gpu.clear_color_props,
+                             SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_G_FLOAT,
+                             GPU_CLEAR_COLOR_G);
+        SDL_SetFloatProperty(APP.gpu.clear_color_props,
+                             SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_B_FLOAT,
+                             GPU_CLEAR_COLOR_B);
+        SDL_SetFloatProperty(APP.gpu.clear_color_props,
+                             SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_A_FLOAT,
+                             GPU_CLEAR_COLOR_A);
+    }
 
+    // check for msaa 4 support
+    APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    if (GPU_USE_MSAA)
+    {
+        SDL_GPUTextureFormat tex_format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window);
+        bool supports_msaa = SDL_GPUTextureSupportsSampleCount(APP.gpu.device, tex_format, SDL_GPU_SAMPLECOUNT_4);
         if (supports_msaa)
         {
             APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_4;
@@ -362,7 +370,7 @@ static void Gpu_Init()
         }
 
         SDL_GPUGraphicsPipelineCreateInfo pipeline =
-            Gpu_DefaultSDLPipeline(&color_desc, vertex_shader, fragment_shader);
+            Gpu_DefaultPipeline(&color_desc, vertex_shader, fragment_shader);
 
         pipeline.vertex_input_state = (SDL_GPUVertexInputState)
         {
@@ -549,7 +557,7 @@ static void Gpu_Init()
         }
 
         SDL_GPUGraphicsPipelineCreateInfo pipeline =
-            Gpu_DefaultSDLPipeline(&color_desc, vertex_shader, fragment_shader);
+            Gpu_DefaultPipeline(&color_desc, vertex_shader, fragment_shader);
 
         pipeline.vertex_input_state = (SDL_GPUVertexInputState)
         {
@@ -608,7 +616,7 @@ static void Gpu_Iterate()
     SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
     Assert(cmd); // @todo report err
 
-    SDL_GPUTexture *swapchain_tex;
+    SDL_GPUTexture *swapchain_tex = 0;
     U32 draw_width, draw_height;
     bool res = SDL_WaitAndAcquireGPUSwapchainTexture(cmd, APP.window, &swapchain_tex, &draw_width, &draw_height);
     Assert(res); // @todo report err
@@ -647,31 +655,31 @@ static void Gpu_Iterate()
     }
 
     SDL_GPUDepthStencilTargetInfo depth_target = {
-        .clear_depth = GPU_DEPTH_CLEAR_FLOAT,
+        .clear_depth = GPU_CLEAR_DEPTH_FLOAT,
         .load_op = SDL_GPU_LOADOP_CLEAR,
         .store_op = SDL_GPU_STOREOP_DONT_CARE,
         .stencil_load_op = SDL_GPU_LOADOP_DONT_CARE,
         .stencil_store_op = SDL_GPU_STOREOP_DONT_CARE,
-        .texture = APP.gpu.win_state.tex_depth,
+        .texture = APP.gpu.tex_depth,
         .cycle = true,
     };
 
-    SDL_GPUColorTargetInfo color_target = {
+    SDL_GPUColorTargetInfo color_target =
+    {
         .clear_color =
         {
-            .r = 0.6f,
-            .g = 0.6f,
-            .b = 0.8f,
-            .a = 1.0f,
+            .r = GPU_CLEAR_COLOR_R,
+            .g = GPU_CLEAR_COLOR_G,
+            .b = GPU_CLEAR_COLOR_B,
+            .a = GPU_CLEAR_COLOR_A,
         },
     };
-    bool tex_msaa = false;
-    if (tex_msaa)
+    if (APP.gpu.tex_msaa)
     {
         color_target.load_op = SDL_GPU_LOADOP_CLEAR;
         color_target.store_op = SDL_GPU_STOREOP_RESOLVE;
-        color_target.texture = APP.gpu.win_state.tex_msaa;
-        color_target.resolve_texture = APP.gpu.win_state.tex_resolve;
+        color_target.texture = APP.gpu.tex_msaa;
+        color_target.resolve_texture = APP.gpu.tex_resolve;
         color_target.cycle = true;
         color_target.cycle_resolve_texture = true;
     }
@@ -748,24 +756,27 @@ static void Gpu_Iterate()
         SDL_EndGPURenderPass(pass);
     }
 
-#if 0 // @todo msaa
-    if (render_state.sample_count > SDL_GPU_SAMPLECOUNT_1)
+    if (APP.gpu.sample_count > SDL_GPU_SAMPLECOUNT_1)
     {
-        SDL_zero(blit_info);
-        blit_info.source.texture = win_state->tex_resolve;
-        blit_info.source.w = drawablew;
-        blit_info.source.h = drawableh;
-
-        blit_info.destination.texture = swapchain_tex;
-        blit_info.destination.w = drawablew;
-        blit_info.destination.h = drawableh;
-
-        blit_info.load_op = SDL_GPU_LOADOP_DONT_CARE;
-        blit_info.filter = SDL_GPU_FILTER_LINEAR;
-
-        SDL_BlitGPUTexture(cmd, &blit_info);
+        SDL_GPUBlitInfo blit =
+        {
+            .source =
+            {
+                .texture = APP.gpu.tex_resolve,
+                .w = APP.gpu.draw_width,
+                .h = APP.gpu.draw_height,
+            },
+            .destination =
+            {
+                .texture = swapchain_tex,
+                .w = APP.gpu.draw_width,
+                .h = APP.gpu.draw_height,
+            },
+            .load_op = SDL_GPU_LOADOP_DONT_CARE,
+            .filter = SDL_GPU_FILTER_LINEAR,
+        };
+        SDL_BlitGPUTexture(cmd, &blit);
     }
-#endif
 
     SDL_SubmitGPUCommandBuffer(cmd);
 }

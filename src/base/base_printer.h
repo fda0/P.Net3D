@@ -65,7 +65,7 @@ static void Pr_Add(Printer *p, S8 str)
 
 static void Pr_AddCstr(Printer *p, const char *cstr)
 {
-    Pr_Add(p, S8_MakeScanCstr(cstr));
+    Pr_Add(p, S8_ScanCstr(cstr));
 }
 
 static void Pr_AddPrinter(Printer *p, Printer *copy)

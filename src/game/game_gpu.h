@@ -1,11 +1,5 @@
 typedef struct
 {
-    SDL_GPUTexture *tex_depth, *tex_msaa, *tex_resolve;
-    U32 draw_width, draw_height;
-} Gpu_WindowState;
-
-typedef struct
-{
     SDL_GPUBuffer *vert_buf;
     SDL_GPUBuffer *ind_buf;
     SDL_GPUBuffer *inst_buf;
@@ -16,15 +10,23 @@ typedef struct
 {
     SDL_GPUDevice *device;
 
-    Gpu_ModelBuffers models[RdrModel_COUNT];
+    // window state
+    SDL_GPUTexture *tex_depth;
+    SDL_GPUTexture *tex_msaa;
+    SDL_GPUTexture *tex_resolve;
+    U32 draw_width, draw_height;
 
+    // pipeline, sample settings
+    SDL_GPUGraphicsPipeline *model_pipeline;
+    SDL_GPUGraphicsPipeline *wall_pipeline;
+    SDL_GPUSampleCount sample_count;
+
+    // resources
+    Gpu_ModelBuffers models[RdrModel_COUNT];
     SDL_GPUBuffer *wall_vert_buf;
     SDL_GPUSampler *wall_sampler;
     SDL_GPUTexture *tex_wall;
 
-    SDL_GPUGraphicsPipeline *model_pipeline;
-    SDL_GPUGraphicsPipeline *wall_pipeline;
-
-    SDL_GPUSampleCount sample_count;
-    Gpu_WindowState win_state;
+    SDL_PropertiesID clear_depth_props;
+    SDL_PropertiesID clear_color_props;
 } Gpu_State;

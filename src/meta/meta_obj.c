@@ -221,7 +221,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
     vert_mat = Mat4_Mul(rotation_mat, vert_mat);
 
     // Load .obj file
-    S8 model_name = S8_MakeScanCstr(path);
+    S8 model_name = S8_ScanCstr(path);
     {
         S8_FindResult slash = S8_Find(model_name, S8Lit("/"), 0, S8Match_FindLast|S8Match_SlashInsensitive);
         if (slash.found)

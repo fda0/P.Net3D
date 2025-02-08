@@ -18,7 +18,7 @@ typedef struct {
     U64 found : 1;
 } S8_FindResult;
 
-static S8 S8_MakeScanCstr(const char *cstr)
+static S8 S8_ScanCstr(const char *cstr)
 {
     S8 result = {0};
     result.str = (U8 *)cstr;

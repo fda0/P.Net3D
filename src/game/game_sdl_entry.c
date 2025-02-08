@@ -121,23 +121,23 @@ static void Game_ParseCmd(int argc, char **argv)
 {
     for (int i = 1; i < argc; i += 1)
     {
-        const char *arg = argv[i];
-        if (0 == strcmp(arg, "-server"))
+        S8 arg = S8_ScanCstr(argv[i]);
+        if (S8_Match(arg, S8Lit("-server"), 0))
         {
             APP.net.is_server = true;
         }
-        else if (0 == strcmp(arg, "-top"))
+        else if (S8_Match(arg, S8Lit("-top"), 0))
         {
             APP.window_on_top = true;
         }
-        else if (0 == strcmp(arg, "-b"))
+        else if (S8_Match(arg, S8Lit("-b"), 0))
         {
             APP.window_borderless = true;
         }
-        else if (0 == strcmp(arg, "-w") ||
-                 0 == strcmp(arg, "-h") ||
-                 0 == strcmp(arg, "-px") ||
-                 0 == strcmp(arg, "-py"))
+        else if (S8_Match(arg, S8Lit("-w"), 0) ||
+                 S8_Match(arg, S8Lit("-h"), 0) ||
+                 S8_Match(arg, S8Lit("-px"), 0) ||
+                 S8_Match(arg, S8Lit("-py"), 0))
         {
             bool found_number = false;
             if (i + 1 < argc)
@@ -149,10 +149,10 @@ static void Game_ParseCmd(int argc, char **argv)
                 if (number > 0)
                 {
                     found_number = true;
-                    if      (0 == strcmp(arg, "-w"))  APP.init_window_width = number;
-                    else if (0 == strcmp(arg, "-h"))  APP.init_window_height = number;
-                    else if (0 == strcmp(arg, "-px")) APP.init_window_px = number;
-                    else if (0 == strcmp(arg, "-py")) APP.init_window_py = number;
+                    if      (S8_Match(arg, S8Lit("-w"), 0))  APP.init_window_width = number;
+                    else if (S8_Match(arg, S8Lit("-h"), 0))  APP.init_window_height = number;
+                    else if (S8_Match(arg, S8Lit("-px"), 0)) APP.init_window_px = number;
+                    else if (S8_Match(arg, S8Lit("-py"), 0)) APP.init_window_py = number;
                 }
             }
 
@@ -161,7 +161,7 @@ static void Game_ParseCmd(int argc, char **argv)
                 LOG(LogFlags_Idk, "%s needs to be followed by positive number", arg);
             }
         }
-        else if (0 == strcmp(arg, "-autolayout"))
+        else if (S8_Match(arg, S8Lit("-autolayout"), 0))
         {
             APP.window_autolayout = true;
         }
