@@ -45,7 +45,7 @@ static void Net_SendS8(Net_User destination, S8 msg)
     bool send_res = SDLNet_SendDatagram(APP.net.socket,
                                         destination.address,
                                         destination.port,
-                                        msg.str, msg.size);
+                                        msg.str, (U32)msg.size);
 
     if (!send_res)
     {
@@ -169,25 +169,6 @@ static void Net_IterateSend()
         if (APP.frame_time < last_timestamp + 16)
             return;
         last_timestamp = APP.frame_time;
-    }
-
-    // send network test
-    if (0)
-    {
-        if (is_client)
-        {
-            Net_SendHeader head = {};
-            head.tick_id = APP.tick_id;
-            head.kind = NetSendKind_NetworkTest;
-            Net_PayloadMemcpy(&head, sizeof(head));
-
-            Net_SendNetworkTest test;
-            ForArray(i, test.numbers)
-                test.numbers[i] = i + 1;
-
-            Net_PayloadMemcpy(&test, sizeof(test));
-            Net_PacketSendAndResetPayload(0);
-        }
     }
 
     if (is_server)
@@ -420,19 +401,6 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
             Client_ObjSnapshots *snap = APP.client.snaps_of_objs + update.net_index;
             Client_InsertSnapshot(snap, head.tick_id, update.sync);
         }
-        else if (head.kind == NetSendKind_NetworkTest)
-        {
-            Net_SendNetworkTest test;
-            Net_ConsumeS8(&msg, &test, sizeof(test));
-
-            ForArray(i, test.numbers)
-            {
-                U32 loaded = test.numbers[i];
-                U32 expected = i + 1;
-                bool compare = loaded == expected;
-                Assert(compare);
-            }
-        }
         else if (head.kind == NetSendKind_Inputs)
         {
             Net_SendInputs in_net;
@@ -576,7 +544,7 @@ static void Net_IterateReceive()
                 U64 user_id = ((U64)user - (U64)APP.server.users) / sizeof(Net_User);
                 if (user_id < NET_MAX_PLAYERS)
                 {
-                    player_id = user_id;
+                    player_id = Checked_U64toU16(user_id);
                 }
                 else
                 {

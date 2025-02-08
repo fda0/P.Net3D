@@ -101,7 +101,7 @@ static void Gpu_ProcessWindowResize()
     APP.gpu.win_state.draw_height = draw_height;
 }
 
-static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U64 data_size)
+static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U32 data_size)
 {
     // create transfer buffer
     SDL_GPUTransferBufferCreateInfo trans_desc =
@@ -144,7 +144,7 @@ static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U64 data_s
 
 static void Gpu_TransferTexture(SDL_GPUTexture *gpu_tex,
                                 U32 layer, U32 w, U32 h,
-                                void *data, U64 data_size)
+                                void *data, U32 data_size)
 {
     // create transfer buffer
     SDL_GPUTransferBufferCreateInfo trans_desc =
@@ -222,9 +222,9 @@ static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultSDLPipeline(SDL_GPUColorTarg
 static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
 {
     Rdr_ModelVertex *vertices = 0;
-    U64 vertices_size = 0;
+    U32 vertices_size = 0;
     U16 *indices = 0;
-    U64 indices_size = 0;
+    U32 indices_size = 0;
     const char *vrt_buf_name = "";
     const char *ind_buf_name = "";
     const char *inst_buf_name = "";
@@ -462,8 +462,8 @@ static void Gpu_Init()
             APP.gpu.tex_wall = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
             SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.tex_wall, "Tex Wall");
 
-            U64 img_size = imgs[0]->w * imgs[0]->h * 4;
-            ForArray(i, imgs)
+            U32 img_size = imgs[0]->w * imgs[0]->h * 4;
+            ForArray32(i, imgs)
             {
                 ArenaScope scope = Arena_PushScope(APP.tmp);
 

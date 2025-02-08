@@ -26,7 +26,12 @@ static double M_ParseDouble(S8 number)
 
 static V3 M_ParseV3(S8 x, S8 y, S8 z)
 {
-    V3 res = {M_ParseDouble(x), M_ParseDouble(y), M_ParseDouble(z)};
+    V3 res =
+    {
+        (float)M_ParseDouble(x),
+        (float)M_ParseDouble(y),
+        (float)M_ParseDouble(z)
+    };
     return res;
 }
 

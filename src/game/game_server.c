@@ -11,7 +11,7 @@ static void Server_InsertPlayerInput(Server_PlayerInputs *pi, Net_SendInputs *ne
 
     if (net_msg_tick_id + 1 < input_count)
     {
-        U16 new_input_count = net_msg_tick_id + 1;
+        U16 new_input_count = Checked_U64toU16(net_msg_tick_id + 1);
         U16 delta = input_count - new_input_count;
 
         input_count = new_input_count;
@@ -38,7 +38,7 @@ static void Server_InsertPlayerInput(Server_PlayerInputs *pi, Net_SendInputs *ne
 
     if (TickDeltas_AddTick(&pi->receive_deltas, net_msg_tick_id))
     {
-        TickDeltas_UpdateCatchup(&pi->receive_deltas, pre_insert_playback_range);
+        TickDeltas_UpdateCatchup(&pi->receive_deltas, Checked_U64toU16(pre_insert_playback_range));
         if (pi->receive_deltas.tick_catchup)
         {
             LOG(LogFlags_NetCatchup,

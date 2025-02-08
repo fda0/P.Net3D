@@ -21,7 +21,7 @@ static void Tick_AdvanceSimulation()
     }
 
     // apply player input
-    ForArray(player_index, APP.server.player_keys)
+    ForArray32(player_index, APP.server.player_keys)
     {
         Obj_Key player_key = APP.server.player_keys[player_index];
         Object *player = Obj_Get(player_key, ObjStorage_Net);

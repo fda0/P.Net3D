@@ -59,11 +59,6 @@ typedef struct
 
 typedef struct
 {
-    U32 numbers[290];
-} Net_SendNetworkTest;
-
-typedef struct
-{
     Obj_Key player_key;
 } Net_SendAssignPlayerKey;
 

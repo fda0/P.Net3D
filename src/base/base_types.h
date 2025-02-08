@@ -90,6 +90,7 @@ typedef int64_t I64;
 #define ForI32(I, Size) for (I32 I = 0; I < (Size); I += 1)
 #define ForI16(I, Size) for (I16 I = 0; I < (Size); I += 1)
 #define ForArray(I, Array) ForU64(I, ArrayCount(Array))
+#define ForArray32(I, Array) ForU32(I, ArrayCount(Array))
 
 // Asserts
 #define Assert(Expr) SDL_assert(Expr) // @todo(mg) remove from release builds

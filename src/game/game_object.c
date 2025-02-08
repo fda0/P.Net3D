@@ -115,7 +115,8 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
 
     obj->s.key.serial_number = APP.obj_serial_counter;
     APP.obj_serial_counter = Max(APP.obj_serial_counter + 1, 1);
-    obj->s.key.index = ((U64)obj - (U64)APP.all_objects) / sizeof(*obj);
+
+    obj->s.key.index = Checked_U64toU32(((U64)obj - (U64)APP.all_objects) / sizeof(*obj));
 
     obj->s.flags = flags;
     obj->s.init = true;

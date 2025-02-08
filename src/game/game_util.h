@@ -1,44 +1,4 @@
 //
-// Helpers that didn't find a better place
-// live in this file for now
-//
-
-static void Circle_CopyFillRange(U64 elem_size,
-                                 void *buf, U64 buf_elem_count, U64 *buf_elem_index,
-                                 void *copy_src, U64 copy_src_elem_count)
-{
-    if (copy_src_elem_count > buf_elem_count)
-    {
-        // @todo support this case in the future?
-        // copy just the reminder of src
-        Assert(false);
-        return;
-    }
-
-    U64 index_start = *buf_elem_index;
-    U64 index_end = index_start + copy_src_elem_count;
-
-    U64 copy1_buf_start = index_start % buf_elem_count;
-    U64 copy1_left_in_buf = buf_elem_count - copy1_buf_start;
-    U64 copy1_count = Min(copy1_left_in_buf, copy_src_elem_count);
-
-    // copy 1
-    {
-        U8 *dst = (U8 *)buf + (copy1_buf_start * elem_size);
-        memcpy(dst, copy_src, copy1_count * elem_size);
-    }
-
-    U64 copy2_count = copy_src_elem_count - copy1_count;
-    if (copy2_count)
-    {
-        U8 *src = (U8 *)copy_src + (copy1_count * elem_size);
-        memcpy(buf, src, copy2_count * elem_size);
-    }
-
-    *buf_elem_index = index_end;
-}
-
-//
 // Queue
 //
 static U8 *Queue_Push(void *buf, U64 elem_count, U64 elem_size, RngU64 *range)
@@ -111,17 +71,29 @@ static U16 Saturate_U64toU16(U64 number)
 {
     if (number > SDL_MAX_UINT16)
         return SDL_MAX_UINT16;
-    return number;
+    return number & 0xffff;
 }
+static U16 Checked_U64toU16(U64 number)
+{
+    Assert(number <= SDL_MAX_UINT16);
+    return number & 0xffff;
+}
+
+static U32 Checked_U64toU32(U64 number)
+{
+    Assert(number <= SDL_MAX_UINT32);
+    return number & 0xffffffff;
+}
+
 
 //
 // TickDeltas
 //
 typedef struct
 {
-    // This things every-increasing U64 ticks like tick
-    // last_tick == 0 is a special tick that's assumend to
-    // mean uninitialized DeltaTracker
+    // This tracks things like every-increasing U64 ticks
+    // last_tick == 0 is a special case that will trigger
+    // init code
     U64 last_tick;
     U16 deltas[64];
     U16 next_delta_index;
