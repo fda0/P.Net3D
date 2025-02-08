@@ -465,7 +465,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
             if (invalid)
             {
-                M_LOG(M_LogErr, "[OBJ PARSE] invalid parts[%u].pos: %u, .nrm: %u; for obj_part_index :u",
+                M_LOG(M_LogErr, "[OBJ PARSE] invalid parts[%u].pos: %u, .nrm: %u; for obj_part_index %u",
                       (U32)i, (U32)parts[i].pos, (U32)parts[i].nrm, (U32)obj_part_index);
                 M_LogObjParser(M_LogErr, &parser);
                 exit(1);

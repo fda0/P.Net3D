@@ -11,6 +11,9 @@
 #endif
 #ifdef __clang__
     #define COMPILER_CLANG 1
+    #ifdef COMPILER_MSVC
+        #undef COMPILER_MSVC
+    #endif
 #endif
 
 // detect OS

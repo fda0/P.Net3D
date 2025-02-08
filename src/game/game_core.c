@@ -10,14 +10,6 @@ static void Game_AnimateObjects()
     {
         Object *obj = APP.all_objects + obj_index;
 
-        if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot))
-        {
-            int z = 1;
-            z += 1;
-            z += 1;
-            z += 1;
-        }
-
         if (Obj_HasAllFlags(obj, ObjFlag_AnimateRotation))
         {
             //V2 obj_dir = obj->dp;
@@ -29,8 +21,6 @@ static void Game_AnimateObjects()
                 float rot = -Atan2F(obj_dir) + 0.25f;
                 obj->s.rot_z = WrapF(-0.5f, 0.5f, rot);
                 //LOG(LogFlags_Debug, "rot_z: %f", obj->rot_z);
-                int a = 0;
-                a += 1;
             }
         }
 
@@ -180,11 +170,6 @@ static void Game_DrawObjects()
                         div.y /= div.w;
                         div.z /= div.w;
                         div.w /= div.w;
-
-                        int a = 0;
-                        a += 123;
-                        a += 123;
-                        a += 123;
                     }
                 }
 

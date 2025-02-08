@@ -19,7 +19,6 @@ static void Server_InsertPlayerInput(Server_PlayerInputs *pi, Net_SendInputs *ne
     }
 
     U64 first_input_tick_id = net_msg_tick_id + 1 - input_count;
-    U64 stored_inputs = 0;
 
     ForU64(input_index, input_count)
     {
@@ -30,22 +29,10 @@ static void Server_InsertPlayerInput(Server_PlayerInputs *pi, Net_SendInputs *ne
             continue;
         }
 
-        stored_inputs += 1;
-
         // store input
         Tick_Input *pi_input = Q_Push(pi->qbuf, &pi->playback_range);
         *pi_input = inputs[input_index];
     }
-
-#if 0
-    LOG(LogFlags_NetCatchup,
-        "%s: Client (?) stored inputs: %llu, "
-        "received net_msg_tick: %llu, latest saved tick: %llu",
-        Net_Label2(),
-        stored_inputs,
-        net_msg_tick_id,
-        pi->latest_client_tick_id);
-#endif
 
     pi->latest_client_tick_id = net_msg_tick_id;
 

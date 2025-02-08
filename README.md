@@ -1,6 +1,6 @@
 3D game/engine with networking. Written in C. Uses SDL3.
 
-## Cloning the project
+# Cloning the project
 To download the repository and SDL3 at the same time, run:
 ```bash
 git clone --recurse-submodules git@github.com:fda0/P.Net3D.git
@@ -11,24 +11,26 @@ git clone git@github.com:fda0/P.Net3D.git
 git submodule update --init --recursive
 ```
 
-## Build
-On Windows: `build.bat`  
-~~On Linux: `./build.sh`~~  
+# Building
+Project can be built on Windows using MSVC (default) or clang.  
 Currently, only Windows is supported due to a dependency on DirectX 12. Adding Vulkan support in the future should be relatively easy, as the project uses the SDL_gpu API to handle GPU boilerplate setup.
+
+Arguments to build script
+- `game` - compile game target (default)
+- `sdl` - compile SDL libraries
+- `msvc` - compile using MSVC compiler (default)
+- `clang` - compile using clang compiler
+- `release` - compile with optimizations (todo: not well supported yet)
 
 Example commands:
 ```bash
-# builds SDL and game targets
-build.bat sdl game
+build.bat
 ```
 ```bash
-# builds game target
-build.bat game
+build.bat game sdl
 ```
 ```bash
-# builds SDL and game with optimizations
-# todo - optimized build is not a priority for now
-build.bat sdl game release
+build.bat game clang
 ```
 
 # Resources

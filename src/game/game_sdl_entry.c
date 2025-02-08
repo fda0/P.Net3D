@@ -65,7 +65,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
         }
     }
 
-    Game_Iterate(&APP);
+    Game_Iterate();
     Gpu_Iterate();
 
     // render cleanup

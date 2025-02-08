@@ -36,7 +36,7 @@ set clang_common=    -fdiagnostics-absolute-paths -Wall -Wno-unused-variable -Wn
 set clang_debug=     call clang -g -O0 -DBUILD_DEBUG=1 %clang_common% %compile_common%
 set clang_release=   call clang -g -O2 -DBUILD_DEBUG=0 %clang_common% %compile_common%
 set clang_libs=      -lUser32.lib -lAdvapi32.lib -lShell32.lib -lGdi32.lib -lVersion.lib -lOleAut32.lib -lImm32.lib -lOle32.lib -lCfgmgr32.lib -lSetupapi.lib -lWinmm.lib -lWs2_32.lib -lIphlpapi.lib %sdl_libs%
-set clang_link=      -fuse-ld=lld -Xlinker /SUBSYSTEM:WINDOWS -Xlinker /MANIFEST:EMBED -Xlinker /pdbaltpath:%%%%_PDB%%%%
+set clang_link=      -fuse-ld=lld -Xlinker /MANIFEST:EMBED -Xlinker /pdbaltpath:%%%%_PDB%%%%
 set clang_link_game= -Xlinker /SUBSYSTEM:WINDOWS
 set clang_out=       -o
 
