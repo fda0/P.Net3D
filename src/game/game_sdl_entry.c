@@ -32,6 +32,7 @@
 #include "game_core.h"
 
 static AppState APP;
+#include "game_key.c"
 #include "game_object.c"
 #include "game_client.c"
 #include "game_server.c"
@@ -52,15 +53,20 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
     // input
     {
-        APP.mouse_keys = SDL_GetMouseState(&APP.mouse.x, &APP.mouse.y);
+        SDL_MouseButtonFlags mouse_keys = SDL_GetMouseState(&APP.mouse.x, &APP.mouse.y);
         APP.mouse.y = APP.window_height - APP.mouse.y;
+
+        Key_Update(Key_MouseLeft, mouse_keys & SDL_BUTTON_LMASK);
+        Key_Update(Key_MouseRight, mouse_keys & SDL_BUTTON_RMASK);
 
         // keyboard state
         {
-            int numkeys = 0;
-            const bool *key_state_arr = SDL_GetKeyboardState(&numkeys);
-            int to_copy = Min(numkeys, ArrayCount(APP.keyboard));
-            memcpy(APP.keyboard, key_state_arr, to_copy);
+            I32 num_keys = 0;
+            const bool *key_states = SDL_GetKeyboardState(&num_keys);
+            ForI32(i, num_keys)
+            {
+                Key_Update(i, key_states[i]);
+            }
         }
     }
 
@@ -75,6 +81,11 @@ SDL_AppResult SDL_AppIterate(void *appstate)
             Rdr_Model *rdr_model = APP.rdr.models + model_i;
             rdr_model->count = 0;
         }
+    }
+
+    // input cleanup
+    {
+        APP.mouse_delta = (V2){};
     }
 
     return SDL_APP_CONTINUE;
@@ -110,6 +121,12 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
             {
                 APP.debug.unpause_one_tick = true;
             }
+        } break;
+
+        case SDL_EVENT_MOUSE_MOTION:
+        {
+            SDL_MouseMotionEvent motion = event->motion;
+            APP.mouse_delta = (V2){motion.xrel, motion.yrel};
         } break;
     }
 

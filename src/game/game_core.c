@@ -288,32 +288,40 @@ static void Game_Iterate()
     Net_IterateSend();
 
 
+    if (Key_Pressed(SDL_SCANCODE_RETURN))
+        APP.debug.noclip_camera = !APP.debug.noclip_camera;
+
     // move camera; calculate camera scale
     if (APP.debug.noclip_camera)
     {
         V3 camera_dir = {0};
-        if (APP.keyboard[SDL_SCANCODE_I]) camera_dir.x += 1;
-        if (APP.keyboard[SDL_SCANCODE_K]) camera_dir.x -= 1;
-        if (APP.keyboard[SDL_SCANCODE_J]) camera_dir.y += 1;
-        if (APP.keyboard[SDL_SCANCODE_L]) camera_dir.y -= 1;
-        if (APP.keyboard[SDL_SCANCODE_O]) camera_dir.z += 1;
-        if (APP.keyboard[SDL_SCANCODE_U]) camera_dir.z -= 1;
+        if (Key_Held(SDL_SCANCODE_UP))    camera_dir.x += 1;
+        if (Key_Held(SDL_SCANCODE_DOWN))  camera_dir.x -= 1;
+        if (Key_Held(SDL_SCANCODE_LEFT))  camera_dir.y += 1;
+        if (Key_Held(SDL_SCANCODE_RIGHT)) camera_dir.y -= 1;
+        if (Key_Held(SDL_SCANCODE_SPACE)) camera_dir.z += 1;
+        if (Key_Held(SDL_SCANCODE_LSHIFT) || Key_Held(SDL_SCANCODE_RSHIFT)) camera_dir.z -= 1;
         camera_dir = V3_Normalize(camera_dir);
-        camera_dir = V3_Scale(camera_dir, APP.dt * 100.f);
+        camera_dir = V3_Scale(camera_dir, APP.dt * 200.f);
         APP.camera_p = V3_Add(APP.camera_p, camera_dir);
 
-        float rot_speed = 0.1f * APP.dt * (APP.keyboard[SDL_SCANCODE_V] ? -1.f : 1.f);
-        if (APP.keyboard[SDL_SCANCODE_B]) APP.camera_rot.x += rot_speed;
-        if (APP.keyboard[SDL_SCANCODE_N]) APP.camera_rot.y += rot_speed;
-        if (APP.keyboard[SDL_SCANCODE_M]) APP.camera_rot.z += rot_speed;
+        if (Key_Held(Key_MouseLeft))
+        {
+            float rot_speed = 0.1f * APP.dt;
+            APP.camera_rot.z += rot_speed * APP.mouse_delta.x;
+            APP.camera_rot.y += rot_speed * APP.mouse_delta.y * (-2.f / 3.f);
+        }
+
     }
     else
     {
         Object *player = Obj_Get(APP.client.player_key, ObjStorage_Net);
         if (!Obj_IsNil(player))
         {
-            APP.camera_p = V3_Make_XY_Z(player->s.p, 70.f);
-            APP.camera_p.x -= 50.f;
+            APP.camera_p = V3_Make_XY_Z(player->s.p, 130.f);
+            APP.camera_p.x -= 100.f;
+            APP.camera_rot.z = 0;
+            APP.camera_rot.y = -0.15f;
         }
     }
 
@@ -372,7 +380,7 @@ static void Game_Iterate()
 
     Game_AnimateObjects();
 
-    if (APP.mouse_keys & SDL_BUTTON_RMASK)
+    if (Key_Held(Key_MouseRight))
     {
         if (APP.world_mouse_valid)
         {
@@ -381,7 +389,12 @@ static void Game_Iterate()
             {
                 marker->s.flags |= ObjFlag_Draw;
                 marker->s.p = APP.world_mouse;
-                marker->l.animated_p = V3_Make_XY_Z(marker->s.p, 30.f);
+
+                marker->l.animated_p.x = marker->s.p.x;
+                marker->l.animated_p.y = marker->s.p.y;
+                if (Key_Pressed(Key_MouseRight))
+                    marker->l.animated_p.z = 30.f;
+
                 APP.pathing_marker_set = true;
             }
         }
@@ -396,7 +409,7 @@ static void Game_Init()
     {
         //APP.debug.fixed_dt = 0.1f;
         //APP.debug.single_tick_stepping = true;
-        APP.debug.noclip_camera = true;
+        //APP.debug.noclip_camera = true;
         APP.debug.draw_collision_box = true;
         APP.log_filter &= ~(LogFlags_NetDatagram);
     }

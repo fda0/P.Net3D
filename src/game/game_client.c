@@ -172,10 +172,10 @@ static Tick_Input *Client_PollInput()
     // @todo input polling from SDL/OS should be done here directly?
     // Will make sense to revisit it when implementing multithreading.
     V2 dir = {0};
-    if (APP.keyboard[SDL_SCANCODE_W] || APP.keyboard[SDL_SCANCODE_UP])    dir.x += 1;
-    if (APP.keyboard[SDL_SCANCODE_S] || APP.keyboard[SDL_SCANCODE_DOWN])  dir.x -= 1;
-    if (APP.keyboard[SDL_SCANCODE_A] || APP.keyboard[SDL_SCANCODE_LEFT])  dir.y += 1;
-    if (APP.keyboard[SDL_SCANCODE_D] || APP.keyboard[SDL_SCANCODE_RIGHT]) dir.y -= 1;
+    if (Key_Held(SDL_SCANCODE_W)) dir.x += 1;
+    if (Key_Held(SDL_SCANCODE_S)) dir.x -= 1;
+    if (Key_Held(SDL_SCANCODE_A)) dir.y += 1;
+    if (Key_Held(SDL_SCANCODE_D)) dir.y -= 1;
 
     Tick_Input *input = Q_Push(APP.client.inputs_qbuf, &APP.client.inputs_range);
     SDL_zerop(input);

@@ -34,6 +34,23 @@ typedef enum
     WorldDir_COUNT
 } WorldDir;
 
+typedef enum
+{
+    Key_START = SDL_SCANCODE_COUNT + 1,
+
+    Key_MouseLeft,
+    Key_MouseRight,
+
+    Key_COUNT
+} KeyCode;
+
+typedef struct
+{
+    U8 held : 1;
+    U8 pressed : 1; // was pressed on this frame
+    U8 released : 1; // released on this frame
+} Key;
+
 struct AppState
 {
     // SDL, window stuff
@@ -80,10 +97,10 @@ struct AppState
 
     // user input
     V2 mouse;
+    V2 mouse_delta;
     bool world_mouse_valid;
     V2 world_mouse;
-    SDL_MouseButtonFlags mouse_keys;
-    bool keyboard[SDL_SCANCODE_COUNT]; // true == key is down
+    Key keys[Key_COUNT];
 
     // objects
     union
