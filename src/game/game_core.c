@@ -40,16 +40,16 @@ static void Game_AnimateObjects()
 
         if (Obj_HasAnyFlag(obj, ObjFlag_AnimatePosition))
         {
-            V3 pos = V3_Make_XY_Z(obj->s.p, 0);
+            V3 pos = V3_Make_XY_Z(obj->s.p, (obj->s.hide_above_map ? 200 : 0));
             V3 delta = V3_Sub(pos, obj->l.animated_p);
 
-            float speed = APP.dt * 15.f;
+            float speed = APP.dt * 10.f;
             delta = V3_Scale(delta, speed);
 
             obj->l.animated_p = V3_Add(obj->l.animated_p, delta);
             ForArray(i, obj->l.animated_p.E)
             {
-                if (obj->l.animated_p.E[i] < 0.1f)
+                if (AbsF(delta.E[i]) < 0.1f)
                     obj->l.animated_p.E[i] = pos.E[i];
             }
         }
@@ -380,23 +380,29 @@ static void Game_Iterate()
 
     Game_AnimateObjects();
 
-    if (Key_Held(Key_MouseRight))
+    Object *marker = Obj_Get(APP.pathing_marker, ObjStorage_Local);
+    if (!Obj_IsNil(marker))
     {
-        if (APP.world_mouse_valid)
+        if (Key_Held(SDL_SCANCODE_W) ||
+            Key_Held(SDL_SCANCODE_S) ||
+            Key_Held(SDL_SCANCODE_A) ||
+            Key_Held(SDL_SCANCODE_D))
         {
-            Object *marker = Obj_Get(APP.pathing_marker, ObjStorage_Local);
-            if (!Obj_IsNil(marker))
-            {
-                marker->s.flags |= ObjFlag_Draw;
-                marker->s.p = APP.world_mouse;
+            marker->s.hide_above_map = true;
+        }
 
-                marker->l.animated_p.x = marker->s.p.x;
-                marker->l.animated_p.y = marker->s.p.y;
-                if (Key_Pressed(Key_MouseRight))
-                    marker->l.animated_p.z = 30.f;
+        if (Key_Held(Key_MouseRight) && APP.world_mouse_valid)
+        {
+            marker->s.flags |= ObjFlag_Draw;
+            marker->s.p = APP.world_mouse;
+            marker->s.hide_above_map = false;
 
-                APP.pathing_marker_set = true;
-            }
+            marker->l.animated_p.x = marker->s.p.x;
+            marker->l.animated_p.y = marker->s.p.y;
+            if (Key_Pressed(Key_MouseRight))
+                marker->l.animated_p.z = 50.f;
+
+            APP.pathing_marker_set = true;
         }
     }
 

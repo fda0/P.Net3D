@@ -52,6 +52,7 @@ typedef struct
     // visuals
     ColorF color;
     float rot_z;
+    bool hide_above_map;
 
     // input actions
     bool is_pathing;
