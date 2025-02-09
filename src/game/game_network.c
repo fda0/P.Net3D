@@ -189,7 +189,7 @@ static void Net_IterateSend()
                         Object *player = Obj_CreatePlayer();
                         if (!Obj_IsNil(player))
                         {
-                            player->s.p.y = 75.f - user_index * 25.f;
+                            player->s.p.y = 100.f - user_index * 75.f;
                             player->s.color.g = (user_index & 1) ? 0.f : 1.f;
                             player->s.color.b = (user_index & 2) ? 0.f : 1.f;
                         }
