@@ -59,13 +59,14 @@ Automatically cleared before build. Committed using `git lfs` to reduce spam in 
 The game uses the ["unity build"](https://en.wikipedia.org/wiki/Unity_build) technique to compile all .c files in one translation unit.
 - `game_sdl_entry.c` - Entry point of the game. Initialized SDL contexts, spawns game window, poll user input.
 - `game_constants.h` - Compile time constants used to modify how the game works.
-- `game_core.c` - Manages game logic loop, initialization. Contains code that didn't fit anywhere else yet.
+- `game_core` - Manages game logic loop, initialization. Contains code that didn't fit anywhere else yet.
 - `game_gpu`, `game_render` - Manages GPU setup, uploads data to GPU and dispatches render calls.
 - `game_render.h` - Defines vertex layout, instance buffer layout. Will be built into higher level helpers that aid with putting stuff on the screen.
 - `game_network` - Setting up connection, sending and receiving payloads over network.
 - `game_server` / `game_client` - Server / client side networking logic.
 - `game_object` - Constructors and helpers for Objects. Most things that are visible on the screen are called an Object in this engine.
 - `game_tick` - Game physics simulation. Physics updates use a fixed timestep in this engine.
+- `game_key.c` - Helper functions for checking user input.
 - `game_util` - Helpers that are somewhat universal but still specific to the game - so they don't end up in `src/base`
 - `shader_*` - hlsl shaders. In the future I'll try looking into systems that auto-translate shaders for hlsl & vulkan targets.
 
