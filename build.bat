@@ -21,12 +21,14 @@ set include_paths=-I..\src\base\ -I..\src\game\ -I..\src\meta\ -I..\src\gen\
 set include_paths=%include_paths% -I..\libs\SDL\include\ -I..\libs\SDL_image\include\ -I..\libs\SDL_net\include\
 set compile_common=%compile_common% %include_paths%
 
-set sdl_libs=..\libs\SDL\build\win\Debug\SDL3-static.lib ..\libs\SDL_image\build\win\Debug\SDL3_image-static.lib ..\libs\SDL_net\build\win\Debug\SDL3_net-static.lib
+if "%debug%"=="1"     set sdl_build=build\win\Debug
+if "%release%"=="1"   set sdl_build=build\win\Release
+set sdl_libs=..\libs\SDL\%sdl_build%\SDL3-static.lib ..\libs\SDL_image\%sdl_build%\SDL3_image-static.lib ..\libs\SDL_net\%sdl_build%\SDL3_net-static.lib
 
 :: --- Compile/Link Line Definitions per compiler -----------------------------
-set cl_common=     /nologo /FC /Z7 /W4 /wd4244 /wd4201 /std:clatest /MDd
-set cl_debug=      call cl /Od /Ob1 /DBUILD_DEBUG=1 %cl_common% %compile_common%
-set cl_release=    call cl /O2 /DBUILD_DEBUG=0 %cl_common% %compile_common%
+set cl_common=     /nologo /FC /Z7 /W4 /wd4244 /wd4201 /std:clatest
+set cl_debug=      call cl /Od /Ob1 /DBUILD_DEBUG=1 /MDd %cl_common% %compile_common%
+set cl_release=    call cl /O2 /DBUILD_DEBUG=0 /MD %cl_common% %compile_common%
 set cl_libs=       User32.lib Advapi32.lib Shell32.lib Gdi32.lib Version.lib OleAut32.lib Imm32.lib Ole32.lib Cfgmgr32.lib Setupapi.lib Winmm.lib Ws2_32.lib Iphlpapi.lib %sdl_libs%
 set cl_link=       /link /MANIFEST:EMBED /INCREMENTAL:NO /pdbaltpath:%%%%_PDB%%%%
 set cl_link_game=  /SUBSYSTEM:WINDOWS
@@ -49,8 +51,8 @@ if "%msvc%"=="1"    set EHsc=/EHsc
 if "%clang%"=="1"   set EHsc=
 if "%msvc%"=="1"    set no_aslr=/DYNAMICBASE:NO
 if "%clang%"=="1"   set no_aslr=-Wl,/DYNAMICBASE:NO
-if "%msvc%"=="1"    set rc=call rc
-if "%clang%"=="1"   set rc=call llvm-rc
+if "%msvc%"=="1"    set call_rc=call rc
+if "%clang%"=="1"   set call_rc=call llvm-rc
 
 :: --- Choose Compile/Link Lines ----------------------------------------------
 if "%msvc%"=="1"      set compile_debug=%cl_debug%
@@ -73,29 +75,35 @@ if not exist build mkdir build
 for /f %%i in ('call git describe --always --dirty') do set compile=%compile% -DBUILD_GIT_HASH=\"%%i\"
 
 :: --- Build SDL --------------------------------------
+set cmake_stage1=call cmake -S . -B build\win
+if "%release%"=="1"   set cmake_stage1=%cmake_stage1% -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="/arch:AVX2" -DCMAKE_CXX_FLAGS="/arch:AVX2"
+
+set cmake_stage2=call cmake --build build\win
+if "%release%"=="1"   set cmake_stage2=%cmake_stage2% --config Release
+
+set cmake_stage1_libs=%cmake_stage1% -DBUILD_SHARED_LIBS=OFF "-DSDL3_DIR=..\SDL\build\win"
+
 if "%sdl%"=="1" (
     if exist libs\SDL (
         rem SDL build docs: https://github.com/libsdl-org/SDL/blob/main/docs/README-cmake.md
-        rem @todo(mg): handle release flag for SDL
         rem @todo(mg): pass gcc/clang flag to SDL (is that even possible?)
 
-        set cmake_stage_one=cmake -S . -B build\win
-        set cmake_stage_two=cmake --build build\win
-
         pushd libs\SDL
-        call %cmake_stage_one% && call %cmake_stage_two% || exit /b 1
+        %cmake_stage1% -DSDL_STATIC=ON || exit /b 1
+        %cmake_stage2% || exit /b 1
         popd
 
-        set cmake_stage_one=%cmake_stage_one% -DBUILD_SHARED_LIBS=OFF "-DSDL3_DIR=..\SDL\build\win"
+        pushd libs\SDL_net
+        %cmake_stage1_libs% || exit /b 1
+        %cmake_stage2% || exit /b 1
+        popd
 
         pushd libs\SDL_image
-        call %cmake_stage_one% -DSDLIMAGE_VENDORED=OFF && call %cmake_stage_two% || exit /b 1
+        %cmake_stage1_libs% -DSDLIMAGE_VENDORED=OFF || exit /b 1
+        %cmake_stage2% || exit /b 1
         popd
-        
-        pushd libs\SDL_net
-        call %cmake_stage_one% && call %cmake_stage_two% || exit /b 1
+
         set didbuild=1
-        popd
     ) else (
         echo "SDL directory not found! Make sure to initialize git submodules."
     )
@@ -112,7 +120,7 @@ if "%game%"=="1" (
     meta.exe || exit /b 1
 
     :: --- Produce Logo Icon File ---------------------------------------------
-    %rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1
+    %call_rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1
 
     :: --- Precompile shaders -------------------------------------------------
     dxc ..\src\game\shader_model.hlsl /E ShaderModelVS /T vs_6_0 /Fh ..\src\gen\gen_shader_model.vert.h || exit /b 1

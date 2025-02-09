@@ -88,7 +88,6 @@ static Tick_Input Server_GetPlayerInput(U32 player_index)
         result.is_pathing = false;
     }
 
-#if 1
     if (playback_count > 1 &&
         pi->receive_deltas.tick_catchup > 0)
     {
@@ -102,7 +101,6 @@ static Tick_Input Server_GetPlayerInput(U32 player_index)
             result.pathing_world_p = next.pathing_world_p;
         }
     }
-#endif
 
     result = Tick_NormalizeInput(result);
     return result;
