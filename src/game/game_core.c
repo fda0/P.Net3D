@@ -440,8 +440,8 @@ static void Game_Init()
         Obj_CreateWall((V2){0,-off}, (V2){length*0.5f, thickness});
 
         {
-            Object *rotated_wall = Obj_CreateWall((V2){0.5f*off, -0.5f*off},
-                                                     (V2){thickness, 2.f*thickness});
+            Object *rotated_wall = Obj_CreateWall((V2){0.75f*off, -0.5f*off},
+                                                     (V2){thickness, 5.f*thickness});
 
             Vertices_Rotate(rotated_wall->s.collision.verts.arr,
                             ArrayCount(rotated_wall->s.collision.verts.arr),

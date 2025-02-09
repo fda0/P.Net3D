@@ -22,16 +22,19 @@ Arguments to build script
 - `sdl` - compile SDL libraries
 - `msvc` - compile using MSVC compiler (default)
 - `clang` - compile using clang compiler
-- `release` - compile with optimizations (todo: not well supported yet)
+- `release` - compile with optimizations
 
 Example commands:
 ```bash
-build.bat
+# build sdl & game targets with optimizations enabled
+build.bat sdl game release
 ```
 ```bash
-build.bat game sdl
+# build game - debug builds
+build.bat game
 ```
 ```bash
+# build game using clang - debug build
 build.bat game clang
 ```
 
@@ -77,6 +80,9 @@ The game uses the SAT algorithm for collision detection.
 Two resources I found especially useful when researching its implementation:
 - [Collision Detection with SAT (Math for Game Developers) by pikuma](https://www.youtube.com/watch?v=-EsWKT7Doww)
 - [N Tutorial A – Collision Detection and Response](https://www.metanetsoftware.com/2016/n-tutorial-a-collision-detection-and-response)
+
+## Networking
+[Gaffer on Games](https://gafferongames.com/categories/game-networking/) articles are great to get an overview of various networking topics.
 
 ## Game math
 I used the [Handmade Math](https://github.com/HandmadeMath/HandmadeMath) library as a reference for matrix and quaternion math implementations.
