@@ -10,7 +10,6 @@ typedef struct
 typedef struct
 {
     Net_User users[NET_MAX_PLAYERS];
-    U32 user_count;
     Obj_Key player_keys[NET_MAX_PLAYERS];
     Server_PlayerInputs player_inputs[NET_MAX_PLAYERS];
 } Server_State;

@@ -89,9 +89,10 @@ static void Net_PacketSendAndResetPayload(Net_User *destination /* null for broa
     {
         if (APP.net.is_server)
         {
-            ForU32(i, APP.server.user_count)
+            ForArray(i, APP.server.users)
             {
-                Net_SendS8(APP.server.users[i], packet);
+                if (APP.server.users[i].address)
+                    Net_SendS8(APP.server.users[i], packet);
             }
         }
         else
@@ -117,39 +118,57 @@ static bool Net_ConsumeS8(S8 *msg, void *dest, U64 size)
     return err;
 }
 
-static bool Net_UserMatch(Net_User a, Net_User b)
+static bool Net_UserMatch(Net_User *a, Net_User *b)
 {
-    return (a.port == b.port &&
-            SDLNet_CompareAddresses(a.address, b.address) == 0);
+    return (a->port == b->port &&
+            SDLNet_CompareAddresses(a->address, b->address) == 0);
 }
 
-static bool Net_UserMatchAddrPort(Net_User a, SDLNet_Address *address, U16 port)
+static bool Net_UserMatchAddrPort(Net_User *user, SDLNet_Address *address, U16 port)
 {
-    return (a.port == port &&
-            SDLNet_CompareAddresses(a.address, address) == 0);
+    if (!user->address)
+        return false;
+
+    return (user->port == port &&
+            SDLNet_CompareAddresses(user->address, address) == 0);
 }
 
 static Net_User *Net_FindUser(SDLNet_Address *address, U16 port)
 {
-    ForU32(i, APP.server.user_count)
+    ForArray(i, APP.server.users)
     {
-        if (Net_UserMatchAddrPort(APP.server.users[i], address, port))
-            return APP.server.users + i;
+        Net_User *user = APP.server.users + i;
+        if (Net_UserMatchAddrPort(user, address, port))
+            return user;
     }
     return 0;
 }
 
 static Net_User *Net_AddUser(SDLNet_Address *address, U16 port)
 {
-    if (APP.server.user_count < ArrayCount(APP.server.users))
+    Net_User *new_user_slot = 0;
+    ForArray(i, APP.server.users)
     {
-        Net_User *user = APP.server.users + APP.server.user_count;
-        APP.server.user_count += 1;
-        user->address = SDLNet_RefAddress(address);
-        user->port = port;
-        return user;
+        Net_User *user = APP.server.users + i;
+        if (!user->address)
+        {
+            new_user_slot = user;
+            break;
+        }
     }
-    return 0;
+
+    if (new_user_slot)
+    {
+        new_user_slot->address = SDLNet_RefAddress(address);
+        new_user_slot->port = port;
+    }
+    return new_user_slot;
+}
+
+static void Net_RemoveUser(Net_User *user)
+{
+    SDLNet_UnrefAddress(user->address);
+    *user = (Net_User){};
 }
 
 static void Net_IterateSend()
@@ -157,11 +176,6 @@ static void Net_IterateSend()
     bool is_server = APP.net.is_server;
     bool is_client = !APP.net.is_server;
     if (APP.net.err) return;
-
-    if (is_server && !APP.server.user_count)
-    {
-        return;
-    }
 
     {
         // hacky temporary network activity rate-limitting
@@ -173,93 +187,100 @@ static void Net_IterateSend()
 
     if (is_server)
     {
+        U32 client_count = 0;
+        ForArray(i, APP.server.users)
+        {
+            if (APP.server.users[i].address)
+                client_count += 1;
+        }
+
         // iterate over connected users
-        ForU32(user_index, APP.server.user_count)
+        ForArray(user_index, APP.server.users)
         {
             Net_User *user = APP.server.users + user_index;
-            if (user->address)
-            {
-                // create player characters and send them to users
-                {
-                    AssertBounds(user_index, APP.server.player_keys);
-                    Obj_Key *player_key = APP.server.player_keys + user_index;
+            if (!user->address)
+                continue;
 
-                    if (!player_key->serial_number)
+            // create player characters and send them to users
+            {
+                AssertBounds(user_index, APP.server.player_keys);
+                Obj_Key *player_key = APP.server.player_keys + user_index;
+
+                if (!player_key->serial_number)
+                {
+                    Object *player = Obj_CreatePlayer();
+                    if (!Obj_IsNil(player))
                     {
-                        Object *player = Obj_CreatePlayer();
-                        if (!Obj_IsNil(player))
-                        {
-                            player->s.p.y = -150.f + user_index * 70.f;
-                            player->s.color.r = (user_index & 4) ? .3f : 1;
-                            player->s.color.g = (user_index & 2) ? .3f : 1;
-                            player->s.color.b = (user_index & 1) ? .3f : 1;
-                        }
-                        *player_key = player->s.key;
+                        player->s.p.y = -150.f + user_index * 70.f;
+                        player->s.color.r = (user_index & 4) ? .3f : 1;
+                        player->s.color.g = (user_index & 2) ? .3f : 1;
+                        player->s.color.b = (user_index & 1) ? .3f : 1;
                     }
+                    *player_key = player->s.key;
+                }
+
+                Net_SendHeader head = {};
+                head.tick_id = APP.tick_id;
+                head.kind = NetSendKind_AssignPlayerKey;
+                Net_PayloadMemcpy(&head, sizeof(head));
+
+                Net_SendAssignPlayerKey assign = {0};
+                assign.player_key = *player_key;
+                Net_PayloadMemcpy(&assign, sizeof(assign));
+
+                Net_PacketSendAndResetPayload(user);
+            }
+
+            // calculate autolayout for clients
+            // @todo this doesn't have to be done on iterate send
+            if (APP.window_autolayout)
+            {
+                U32 window_count = 1 + client_count;
+                U32 side_chunks = 1;
+                ForU32(timeout, 8)
+                {
+                    U32 total_chunks = side_chunks * side_chunks;
+                    if (total_chunks >= window_count)
+                        break;
+                    side_chunks += 1;
+                }
+
+                U32 win_x = APP.init_window_px;
+                U32 win_y = APP.init_window_py;
+                U32 win_w = APP.init_window_width / side_chunks;
+                U32 win_h = APP.init_window_height / side_chunks;
+
+                // calc server window
+                {
+                    U32 window_index = 0;
+                    U32 x = window_index / side_chunks;
+                    U32 y = window_index % side_chunks;
+
+                    Game_AutoLayoutApply(client_count,
+                                         win_x + x*win_w, win_y + y*win_h,
+                                         win_w, win_h);
+                }
+
+                // calc client window
+                {
+                    U32 window_index = user_index + 1;
+                    U32 x = window_index / side_chunks;
+                    U32 y = window_index % side_chunks;
 
                     Net_SendHeader head = {};
                     head.tick_id = APP.tick_id;
-                    head.kind = NetSendKind_AssignPlayerKey;
+                    head.kind = NetSendKind_WindowLayout;
                     Net_PayloadMemcpy(&head, sizeof(head));
 
-                    Net_SendAssignPlayerKey assign = {0};
-                    assign.player_key = *player_key;
-                    Net_PayloadMemcpy(&assign, sizeof(assign));
+                    Net_SendWindowLayout body = {};
+                    body.user_count = client_count;
+                    body.px = win_x + x*win_w;
+                    body.py = win_y + y*win_h;
+                    body.w = win_w;
+                    body.h = win_h;
+                    Net_PayloadMemcpy(&body, sizeof(body));
 
                     Net_PacketSendAndResetPayload(user);
-                }
-
-                // calculate autolayout for clients
-                // @todo this doesn't have to be done on iterate send
-                if (APP.window_autolayout)
-                {
-                    U32 window_count = 1 + APP.server.user_count;
-                    U32 side_chunks = 1;
-                    ForU32(timeout, 8)
-                    {
-                        U32 total_chunks = side_chunks * side_chunks;
-                        if (total_chunks >= window_count)
-                            break;
-                        side_chunks += 1;
-                    }
-
-                    U32 win_x = APP.init_window_px;
-                    U32 win_y = APP.init_window_py;
-                    U32 win_w = APP.init_window_width / side_chunks;
-                    U32 win_h = APP.init_window_height / side_chunks;
-
-                    // calc server window
-                    {
-                        U32 window_index = 0;
-                        U32 x = window_index / side_chunks;
-                        U32 y = window_index % side_chunks;
-
-                        Game_AutoLayoutApply(APP.server.user_count,
-                                             win_x + x*win_w, win_y + y*win_h,
-                                             win_w, win_h);
-                    }
-
-                    // calc client window
-                    {
-                        U32 window_index = user_index + 1;
-                        U32 x = window_index / side_chunks;
-                        U32 y = window_index % side_chunks;
-
-                        Net_SendHeader head = {};
-                        head.tick_id = APP.tick_id;
-                        head.kind = NetSendKind_WindowLayout;
-                        Net_PayloadMemcpy(&head, sizeof(head));
-
-                        Net_SendWindowLayout body = {0};
-                        body.user_count = APP.server.user_count;
-                        body.px = win_x + x*win_w;
-                        body.py = win_y + y*win_h;
-                        body.w = win_w;
-                        body.h = win_h;
-                        Net_PayloadMemcpy(&body, sizeof(body));
-
-                        Net_PacketSendAndResetPayload(user);
-                    }
                 }
             }
         }
@@ -445,6 +466,9 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
 
 static void Net_ReceivePacket(U16 player_id, S8 packet)
 {
+    if (APP.net.is_server && player_id >= NET_MAX_PLAYERS)
+        return;
+
     if (packet.size < sizeof(Net_PacketHeader))
     {
         LOG(LogFlags_NetPacket,
@@ -516,7 +540,7 @@ static void Net_IterateReceive()
 
         if (is_client)
         {
-            if (!Net_UserMatchAddrPort(APP.net.server_user, dgram->addr, dgram->port))
+            if (!Net_UserMatchAddrPort(&APP.net.server_user, dgram->addr, dgram->port))
             {
                 LOG(LogFlags_NetDatagram,
                     "%s: dgram rejected - received from non-server address %s:%d",
@@ -526,7 +550,8 @@ static void Net_IterateReceive()
             }
         }
 
-        U16 player_id = 0;
+
+        U16 player_id = NET_MAX_PLAYERS;
 
         // save user
         if (is_server)
@@ -542,15 +567,10 @@ static void Net_IterateReceive()
 
             if (user)
             {
+                user->last_msg_frame_time = APP.frame_time;
+
                 U64 user_id = ((U64)user - (U64)APP.server.users) / sizeof(Net_User);
-                if (user_id < NET_MAX_PLAYERS)
-                {
-                    player_id = Checked_U64toU16(user_id);
-                }
-                else
-                {
-                    Assert(0);
-                }
+                player_id = Checked_U64toU16(user_id);
             }
         }
 
@@ -559,6 +579,24 @@ static void Net_IterateReceive()
 
         datagram_cleanup:
         SDLNet_DestroyDatagram(dgram);
+    }
+}
+
+static void Net_IterateTimeoutUsers()
+{
+    if (Net_IsServer())
+    {
+        ForArray(user_index, APP.server.users)
+        {
+            Net_User *user = APP.server.users + user_index;
+            if (!user->address)
+                continue;
+
+            if (user->last_msg_frame_time + 2000 < APP.frame_time)
+            {
+                Net_RemoveUser(user);
+            }
+        }
     }
 }
 

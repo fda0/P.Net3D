@@ -285,8 +285,8 @@ static void Game_Iterate()
         }
     }
 
+    Net_IterateTimeoutUsers();
     Net_IterateSend();
-
 
     if (Key_Pressed(SDL_SCANCODE_RETURN))
         APP.debug.noclip_camera = !APP.debug.noclip_camera;
