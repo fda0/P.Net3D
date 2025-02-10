@@ -13,6 +13,11 @@ static const char *Net_Label()
     return APP.net.is_server ? "SERVER" : "CLIENT";
 }
 
+static bool Net_UserIsInactive(Net_User *user)
+{
+    return (user->last_msg_frame_time + NET_INACTIVE_MS < APP.frame_time);
+}
+
 static U8 *Net_PayloadAlloc(U32 size)
 {
     U8 *result = APP.net.packet_payload_buf + APP.net.payload_used;
@@ -38,13 +43,16 @@ static U8 *Net_PayloadMemcpy(void *data, U32 size)
     return result;
 }
 
-static void Net_SendS8(Net_User destination, S8 msg)
+static void Net_SendS8(Net_User *destination, S8 msg)
 {
     Assert(msg.size < 1280); // that seems to be a realistic reasonable max size? https://gafferongames.com/post/packet_fragmentation_and_reassembly/
 
+    if (APP.net.is_server && Net_UserIsInactive(destination))
+        return;
+
     bool send_res = SDLNet_SendDatagram(APP.net.socket,
-                                        destination.address,
-                                        destination.port,
+                                        destination->address,
+                                        destination->port,
                                         msg.str, (U32)msg.size);
 
     if (!send_res)
@@ -52,8 +60,8 @@ static void Net_SendS8(Net_User destination, S8 msg)
         LOG(LogFlags_NetSend,
             "%s: Sending buffer of size %lluB to %s:%d; %s",
             Net_Label(), msg.size,
-            SDLNet_GetAddressString(destination.address),
-            (int)destination.port,
+            SDLNet_GetAddressString(destination->address),
+            (int)destination->port,
             send_res ? "success" : "fail");
     }
 }
@@ -83,21 +91,24 @@ static void Net_PacketSendAndResetPayload(Net_User *destination /* null for broa
 
     if (destination)
     {
-        Net_SendS8(*destination, packet);
+        Net_SendS8(destination, packet);
     }
     else
     {
         if (APP.net.is_server)
         {
-            ForArray(i, APP.server.users)
+            ForArray(user_index, APP.server.users)
             {
-                if (APP.server.users[i].address)
-                    Net_SendS8(APP.server.users[i], packet);
+                Net_User *user = APP.server.users + user_index;
+                if (!user->address)
+                    continue;
+
+                Net_SendS8(user, packet);
             }
         }
         else
         {
-            Net_SendS8(APP.net.server_user, packet);
+            Net_SendS8(&APP.net.server_user, packet);
         }
     }
 
@@ -195,11 +206,14 @@ static void Net_IterateSend()
         }
 
         // iterate over connected users
+        U32 user_number = 0;
         ForArray(user_index, APP.server.users)
         {
             Net_User *user = APP.server.users + user_index;
             if (!user->address)
                 continue;
+
+            user_number += 1;
 
             // create player characters and send them to users
             {
@@ -263,7 +277,7 @@ static void Net_IterateSend()
 
                 // calc client window
                 {
-                    U32 window_index = user_index + 1;
+                    U32 window_index = user_number;
                     U32 x = window_index / side_chunks;
                     U32 y = window_index % side_chunks;
 
@@ -592,8 +606,12 @@ static void Net_IterateTimeoutUsers()
             if (!user->address)
                 continue;
 
-            if (user->last_msg_frame_time + 2000 * 100 < APP.frame_time)
+            if (user->last_msg_frame_time + NET_TIMEOUT_DISCONNECT_MS < APP.frame_time)
             {
+                LOG(LogFlags_NetInfo,
+                    "%s: Timeout. Removing user #%u",
+                    Net_Label(), user_index);
+
                 Net_RemoveUser(user);
             }
         }

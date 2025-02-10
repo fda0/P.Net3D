@@ -10,6 +10,9 @@
 #define NET_MAX_PAYLOAD_SIZE (NET_MAX_PACKET_SIZE - sizeof(Net_PacketHeader))
 #define NET_SIMULATE_PACKETLOSS 0 // doesn't seem to work on localhost
 
+#define NET_INACTIVE_MS (100)
+#define NET_TIMEOUT_DISCONNECT_MS (500)
+
 typedef struct
 {
     SDLNet_Address *address;

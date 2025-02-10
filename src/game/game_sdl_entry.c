@@ -197,7 +197,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
         APP.tmp = Arena_MakeInside(malloc(arena_size), arena_size);
     }
     APP.log_filter = ~(U32)LogFlags_NetAll;
-    APP.log_filter = ~(U32)0;
     APP.init_window_width = WINDOW_WIDTH;
     APP.init_window_height = WINDOW_HEIGHT;
 
