@@ -271,6 +271,11 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
     (void)appstate;
 
     SDLNet_Quit();
+    Gpu_Deinit();
+
+    SDL_ReleaseWindowFromGPUDevice(APP.gpu.device, APP.window);
+    SDL_DestroyWindow(APP.window);
+    SDL_DestroyGPUDevice(APP.gpu.device);
 
     const char* error = SDL_GetError();
     if (error[0])

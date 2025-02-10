@@ -78,9 +78,10 @@ static Tick_Input Server_GetPlayerInput(U32 player_index)
     else
     {
         LOG(LogFlags_NetTick,
-            "%s: Ran out of input playback -> extrapolating; "
+            "%s: Ran out of input playback (player %u) -> extrapolating; "
             "playback catchup %d",
             Net_Label(),
+            player_index,
             pi->receive_deltas.tick_catchup);
 
         // extrapolation using last input!

@@ -592,7 +592,7 @@ static void Net_IterateTimeoutUsers()
             if (!user->address)
                 continue;
 
-            if (user->last_msg_frame_time + 2000 < APP.frame_time)
+            if (user->last_msg_frame_time + 2000 * 100 < APP.frame_time)
             {
                 Net_RemoveUser(user);
             }

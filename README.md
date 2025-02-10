@@ -14,7 +14,7 @@ git submodule update --init --recursive
 
 
 # Building
-Project can be built on Windows using MSVC (default) or clang.  
+Project can be built on Windows using [MSVC (default)](https://github.com/EpicGamesExt/raddebugger?tab=readme-ov-file#development-setup-instructions) or clang.
 Currently, only Windows is supported due to a dependency on DirectX 12. Adding Vulkan support in the future should be relatively easy, as the project uses the SDL_gpu API to handle GPU boilerplate setup.
 
 Arguments to build script

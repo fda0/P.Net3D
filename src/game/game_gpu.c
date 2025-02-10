@@ -611,6 +611,29 @@ static void Gpu_Init()
     Gpu_ProcessWindowResize();
 }
 
+static void Gpu_Deinit()
+{
+    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.model_pipeline);
+    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.wall_pipeline);
+
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
+    if (APP.gpu.tex_msaa)
+        SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
+    if (APP.gpu.tex_resolve)
+        SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
+
+    ForArray(i, APP.gpu.models)
+    {
+        SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.models[i].vert_buf);
+        SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.models[i].ind_buf);
+        SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.models[i].inst_buf);
+    }
+
+    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_vert_buf);
+    SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.wall_sampler);
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_wall);
+}
+
 static void Gpu_Iterate()
 {
     SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);

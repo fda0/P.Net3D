@@ -427,7 +427,7 @@ static void Game_Init()
     APP.camera_p = (V3){-200.f, 0.f, 175.f};
     APP.camera_rot = (V3){0, -0.15f, 0};
     APP.obj_serial_counter = 1;
-    APP.tick_id = Max(NET_MAX_TICK_HISTORY, NET_CLIENT_MAX_SNAPSHOTS);
+    APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;
 
     // add walls
     {
