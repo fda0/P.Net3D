@@ -26,12 +26,16 @@ Arguments to build script
 
 Example commands:
 ```bash
-# build sdl & game targets with optimizations enabled
+# build sdl & game - with optimizations enabled
 build.bat sdl game release
 ```
 ```bash
-# build game - debug builds
-build.bat game
+# build sdl & game - debug builds
+build.bat sdl game
+```
+```bash
+# build game - debug build
+build.bat game clang
 ```
 ```bash
 # build game using clang - debug build
