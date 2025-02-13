@@ -13,6 +13,11 @@
 #include "meta_print_parse.c"
 #include "meta_obj.c"
 
+#define CGLTF_IMPLEMENTATION
+#pragma warning(push, 2)
+#include "cgltf.h"
+#pragma warning(pop)
+
 static U8 arena_memory_buffer[Megabyte(64)];
 
 int main()
@@ -32,6 +37,34 @@ int main()
         M_SaveFile("../src/gen/gen_models.h", Pr_S8(&pr_out));
 
         Arena_PopScope(tmp_scope);
+    }
+
+    {
+        cgltf_options options = {0};
+        cgltf_data *data = 0;
+        cgltf_result result = cgltf_parse_file(&options, "../res/models/Worker.gltf", &data);
+        if (result == cgltf_result_success)
+        {
+            ForU64(mesh_index, data->meshes_count)
+            {
+                cgltf_mesh *mesh = data->meshes + mesh_index;
+                ForU64(primitive_index, mesh->primitives_count)
+                {
+                    cgltf_primitive *primitive = mesh->primitives + primitive_index;
+                    if (primitive->type != cgltf_primitive_type_triangles)
+                    {
+                        M_LOG(M_LogGltf, "[gltf] Found primitive type that isn't triangle! (type: %u)");
+                    }
+
+                    int a = 1;
+                    a += 1;
+                }
+            }
+
+
+
+            cgltf_free(data);
+        }
     }
 
 

@@ -17,7 +17,7 @@ set compile_common=
 if "%asan%"=="1" set compile_common=%compile_common% -fsanitize=address && echo [asan enabled]
 
 :: --- Compile/Link Line Definitions ------------------------------------------
-set include_paths=-I..\src\base\ -I..\src\game\ -I..\src\meta\ -I..\src\gen\
+set include_paths=-I..\src\base\ -I..\src\game\ -I..\src\meta\ -I..\src\gen\ -I..\libs\
 set include_paths=%include_paths% -I..\libs\SDL\include\ -I..\libs\SDL_image\include\ -I..\libs\SDL_net\include\
 set compile_common=%compile_common% %include_paths%
 

@@ -18,6 +18,7 @@ enum M_LogType
     M_LogIdk = (1 << 0),
     M_LogErr = (1 << 1),
     M_LogObjDebug = (1 << 2),
+    M_LogGltf = (1 << 3),
 };
 
 // logging enable/disable
