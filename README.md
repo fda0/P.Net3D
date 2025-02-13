@@ -1,4 +1,5 @@
-3D game/engine with networking. Written in C. Uses SDL3.
+3D game/engine with networking. Written in C. Uses SDL3.  
+[Video showcase - Feb 11, 2025](https://www.youtube.com/watch?v=v2UXzL0xuF4)
 
 
 # Cloning the project
