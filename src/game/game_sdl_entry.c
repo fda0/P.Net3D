@@ -45,6 +45,7 @@ static AppState APP;
 #include "gen_shader_wall.vert.h"
 #include "gen_shader_wall.frag.h"
 #include "gen_models.h"
+#include "gen_models_gltf.h"
 #include "game_gpu.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)

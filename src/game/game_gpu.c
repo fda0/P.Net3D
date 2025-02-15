@@ -224,10 +224,17 @@ static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
   {
     default: Assert(0); break;
     case RdrModel_Teapot: {
+#if 0
       vertices = Model_teapot_vrt;
       vertices_size = sizeof(Model_teapot_vrt);
       indices = Model_teapot_ind;
       indices_size = sizeof(Model_teapot_ind);
+#else
+      vertices = Model_Worker_vrt;
+      vertices_size = sizeof(Model_Worker_vrt);
+      indices = Model_Worker_ind;
+      indices_size = sizeof(Model_Worker_ind);
+#endif
       vrt_buf_name = "Teapot vrt buf";
       ind_buf_name = "Teapot ind buf";
       inst_buf_name = "Teapot inst buf";

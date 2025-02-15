@@ -11,7 +11,7 @@ static void M_FakeFree(void *user_data, void *ptr)
   // do nothing
 }
 
-static void M_GLTF_Load(const char *path, Printer *out)
+static void M_GLTF_Load(const char *path, Printer *out, float scale)
 {
   //
   // Parse .gltf file using cgltf library
@@ -167,11 +167,11 @@ static void M_GLTF_Load(const char *path, Printer *out)
   ForU64(i, positions_vec_count)
   {
     Pr_Add(out, S8Lit("  /*pos*/"));
-    Pr_AddFloat(out, positions.vals[i*3 + 0]);
+    Pr_AddFloat(out, positions.vals[i*3 + 0] * scale);
     Pr_Add(out, S8Lit("f,"));
-    Pr_AddFloat(out, positions.vals[i*3 + 1]);
+    Pr_AddFloat(out, positions.vals[i*3 + 1] * scale);
     Pr_Add(out, S8Lit("f,"));
-    Pr_AddFloat(out, positions.vals[i*3 + 2]);
+    Pr_AddFloat(out, positions.vals[i*3 + 2] * scale);
     Pr_Add(out, S8Lit("f, "));
 
     Pr_Add(out, S8Lit("/*col*/1.f,1.f,1.f, "));
@@ -205,7 +205,7 @@ static void M_GLTF_Load(const char *path, Printer *out)
   Pr_Add(out, S8Lit("};\n\n"));
 
 
-  Pr_Add(out, S8Lit("static Rdr_ModelVertex Model_Worker_ind[] =\n{"));
+  Pr_Add(out, S8Lit("static U16 Model_Worker_ind[] =\n{"));
   ForU64(i, indices.used)
   {
     if (i % 16 == 0)
