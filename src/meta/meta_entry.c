@@ -20,14 +20,18 @@
 
 #include "meta_gltf_loader.c"
 
-static U8 arena_memory_buffer[Megabyte(64)];
+static U8 tmp_arena_memory[Megabyte(64)];
+static U8 cgltf_arena_memory[Megabyte(64)];
 
 int main()
 {
   // init
+  M.tmp = Arena_MakeInside(tmp_arena_memory, sizeof(tmp_arena_memory));
+  M.cgltf_arena = Arena_MakeInside(cgltf_arena_memory, sizeof(cgltf_arena_memory));
+
   M.log_filter = ~(U32)(M_LogObjDebug | M_LogGltfDebug);
+  M.log_filter &= ~(U32)(M_LogGltfWarning);
   //M.log_filter = ~(U32)(0);
-  M.tmp = Arena_MakeInside(arena_memory_buffer, sizeof(arena_memory_buffer));
 
   // load .obj models
   {
@@ -45,7 +49,9 @@ int main()
   {
     ArenaScope tmp_scope = Arena_PushScope(M.tmp);
 
-    M_GLTF_Load("../res/models/Worker.gltf");
+    Printer pr_out = Pr_Alloc(M.tmp, Megabyte(4));
+    M_GLTF_Load("../res/models/Worker.gltf", &pr_out);
+    M_SaveFile("../src/gen/gen_models_gltf.h", Pr_S8(&pr_out));
 
     Arena_PopScope(tmp_scope);
   }

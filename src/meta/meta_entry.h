@@ -8,6 +8,7 @@ typedef struct
 {
   U32 log_filter;
   Arena *tmp;
+  Arena *cgltf_arena;
   I32 exit_code;
 
   M_VertexEntry vertex_table[1024*1024];
