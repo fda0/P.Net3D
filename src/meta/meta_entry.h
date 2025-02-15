@@ -38,7 +38,7 @@ static bool M_LogFlagCheck(I32 flags)
 #define M_LOG(FLAGS, ...) do{ if(M_LogFlagCheck(FLAGS) && 0){ printf("[META] " __VA_ARGS__); }}while(0)
 #endif
 
-#define M_AssertAlways(...) Assert(__VA_ARGS__)
+#define M_AssertAlways(...) SDL_assert(__VA_ARGS__)
 
 static S8 M_LoadFile(const char *file_path, bool exit_on_err)
 {

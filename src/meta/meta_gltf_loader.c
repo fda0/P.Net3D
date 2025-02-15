@@ -81,7 +81,7 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
 
           ForU64(value_index, accessor->count)
           {
-            I16 *numbers = M_I16Buffer_Get(&indices, 1);
+            I16 *numbers = M_I16Buffer_Push(&indices, 1);
             U32 read_int = 0;
             bool ok = cgltf_accessor_read_uint(accessor, value_index, &read_int, 1);
             if (!ok)
@@ -130,10 +130,35 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
               M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
             } break;
 
+            case cgltf_attribute_type_texcoord:
+            {
+              // @todo
+              int a = 1;
+              a += 1;
+              continue;
+            } break;
+
+            case cgltf_attribute_type_joints:
+            {
+              // @todo
+              int b = 1;
+              b += 1;
+              continue;
+            } break;
+
+            case cgltf_attribute_type_weights:
+            {
+              // @todo
+              int c = 1;
+              c += 1;
+              continue;
+            } break;
+
             default:
             {
               // @todo change to warning
-              M_LOG(M_LogGltfDebug,
+              //M_LOG(M_LogGltfDebug,
+              M_LOG(M_LogGltfWarning,
                     "[GLTF LOADER] Attribute with unknown type (%u) skipped",
                     attribute->type);
               continue;
@@ -142,7 +167,7 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
 
           ForU64(value_index, accessor->count)
           {
-            float *numbers = M_FloatBuffer_Get(save_buf, number_count);
+            float *numbers = M_FloatBuffer_Push(save_buf, number_count);
             bool ok = cgltf_accessor_read_float(accessor, value_index, numbers, number_count);
             if (!ok)
             {
@@ -208,9 +233,15 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   Pr_Add(out, S8Lit("static U16 Model_Worker_ind[] =\n{"));
   ForU64(i, indices.used)
   {
-    if (i % 16 == 0)
+    U64 per_group = 3;
+    U64 per_row = per_group * 6;
+    if (i % per_row == 0)
     {
       Pr_Add(out, S8Lit("\n  "));
+    }
+    else if ((i % per_row) % per_group == 0)
+    {
+      Pr_Add(out, S8Lit(" "));
     }
     Pr_AddU16(out, indices.vals[i]);
     Pr_Add(out, S8Lit(","));

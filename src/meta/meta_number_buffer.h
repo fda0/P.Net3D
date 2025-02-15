@@ -12,7 +12,7 @@ static M_FloatBuffer M_FloatBuffer_Alloc(Arena *a, U64 count)
   buf.cap = count;
   return buf;
 }
-static float *M_FloatBuffer_Get(M_FloatBuffer *buf, U64 count)
+static float *M_FloatBuffer_Push(M_FloatBuffer *buf, U64 count)
 {
   M_AssertAlways(buf->cap >= buf->used);
   M_AssertAlways(count <= (buf->cap - buf->used));
@@ -35,7 +35,7 @@ static M_I16Buffer M_I16Buffer_Alloc(Arena *a, U64 count)
   buf.cap = count;
   return buf;
 }
-static I16 *M_I16Buffer_Get(M_I16Buffer *buf, U64 count)
+static I16 *M_I16Buffer_Push(M_I16Buffer *buf, U64 count)
 {
   M_AssertAlways(buf->cap >= buf->used);
   M_AssertAlways(count <= (buf->cap - buf->used));
