@@ -43,7 +43,11 @@ int main()
 
   // load .gltf models
   {
+    ArenaScope tmp_scope = Arena_PushScope(M.tmp);
+
     M_GLTF_Load("../res/models/Worker.gltf");
+
+    Arena_PopScope(tmp_scope);
   }
 
 

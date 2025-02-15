@@ -1,6 +1,26 @@
+static void *M_FakeMalloc(void *user_data, U64 size)
+{
+  (void)user_data;
+  U64 default_align = 16;
+  return Arena_AllocateBytes(M.tmp, size, default_align, false);
+}
+static void M_FakeFree(void *user_data, void *ptr)
+{
+  (void)user_data;
+  (void)ptr;
+  // do nothing
+}
+
 static void M_GLTF_Load(const char *path)
 {
-  cgltf_options options = {0};
+  cgltf_options options =
+  {
+    .memory =
+    {
+      .alloc_func = M_FakeMalloc,
+      .free_func = M_FakeFree,
+    },
+  };
   cgltf_data *data = 0;
 
   cgltf_result res = cgltf_parse_file(&options, path, &data);
@@ -88,26 +108,4 @@ static void M_GLTF_Load(const char *path)
       }
     }
   }
-
-#if 0
-  ForU64(mesh_index, data->meshes_count)
-  {
-    cgltf_mesh *mesh = data->meshes + mesh_index;
-    ForU64(primitive_index, mesh->primitives_count)
-    {
-      cgltf_primitive *primitive = mesh->primitives + primitive_index;
-      if (primitive->type != cgltf_primitive_type_triangles)
-      {
-        M_LOG(M_LogGltf, "[gltf] Found primitive type that isn't triangle! (type: %u)",
-              primitive->type);
-        continue;
-      }
-
-      int a = 1;
-      a += 1;
-    }
-  }
-#endif
-
-  cgltf_free(data);
 }
