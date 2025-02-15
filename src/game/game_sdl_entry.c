@@ -49,236 +49,236 @@ static AppState APP;
 
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
-    (void)appstate;
+  (void)appstate;
 
-    // input
+  // input
+  {
+    SDL_MouseButtonFlags mouse_keys = SDL_GetMouseState(&APP.mouse.x, &APP.mouse.y);
+    APP.mouse.y = APP.window_height - APP.mouse.y;
+
+    Key_Update(Key_MouseLeft, mouse_keys & SDL_BUTTON_LMASK);
+    Key_Update(Key_MouseRight, mouse_keys & SDL_BUTTON_RMASK);
+
+    // keyboard state
     {
-        SDL_MouseButtonFlags mouse_keys = SDL_GetMouseState(&APP.mouse.x, &APP.mouse.y);
-        APP.mouse.y = APP.window_height - APP.mouse.y;
-
-        Key_Update(Key_MouseLeft, mouse_keys & SDL_BUTTON_LMASK);
-        Key_Update(Key_MouseRight, mouse_keys & SDL_BUTTON_RMASK);
-
-        // keyboard state
-        {
-            I32 num_keys = 0;
-            const bool *key_states = SDL_GetKeyboardState(&num_keys);
-            ForI32(i, num_keys)
-            {
-                Key_Update(i, key_states[i]);
-            }
-        }
+      I32 num_keys = 0;
+      const bool *key_states = SDL_GetKeyboardState(&num_keys);
+      ForI32(i, num_keys)
+      {
+        Key_Update(i, key_states[i]);
+      }
     }
+  }
 
-    Game_Iterate();
-    Gpu_Iterate();
+  Game_Iterate();
+  Gpu_Iterate();
 
-    // render cleanup
+  // render cleanup
+  {
+    APP.rdr.wall_vert_count = 0;
+    ForArray(model_i, APP.gpu.models)
     {
-        APP.rdr.wall_vert_count = 0;
-        ForArray(model_i, APP.gpu.models)
-        {
-            Rdr_Model *rdr_model = APP.rdr.models + model_i;
-            rdr_model->count = 0;
-        }
+      Rdr_Model *rdr_model = APP.rdr.models + model_i;
+      rdr_model->count = 0;
     }
+  }
 
-    // input cleanup
-    {
-        APP.mouse_delta = (V2){};
-    }
+  // input cleanup
+  {
+    APP.mouse_delta = (V2){};
+  }
 
-    return SDL_APP_CONTINUE;
+  return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 {
-    (void)appstate;
+  (void)appstate;
 
-    switch (event->type)
+  switch (event->type)
+  {
+    case SDL_EVENT_QUIT:
     {
-        case SDL_EVENT_QUIT:
-        {
-            return SDL_APP_SUCCESS;
-        } break;
+      return SDL_APP_SUCCESS;
+    } break;
 
-        case SDL_EVENT_WINDOW_RESIZED:
-        {
-            APP.window_width = event->window.data1;
-            APP.window_height = event->window.data2;
-        } break;
+    case SDL_EVENT_WINDOW_RESIZED:
+    {
+      APP.window_width = event->window.data1;
+      APP.window_height = event->window.data2;
+    } break;
 
-        case SDL_EVENT_KEY_UP:
-        case SDL_EVENT_KEY_DOWN:
-        {
-            if (event->key.key == SDLK_ESCAPE)
-            {
-                return SDL_APP_SUCCESS; // useful in development
-            }
+    case SDL_EVENT_KEY_UP:
+    case SDL_EVENT_KEY_DOWN:
+    {
+      if (event->key.key == SDLK_ESCAPE)
+      {
+        return SDL_APP_SUCCESS; // useful in development
+      }
 
-            if (event->type == SDL_EVENT_KEY_DOWN &&
-                event->key.key == SDLK_P)
-            {
-                APP.debug.unpause_one_tick = true;
-            }
-        } break;
+      if (event->type == SDL_EVENT_KEY_DOWN &&
+          event->key.key == SDLK_P)
+      {
+        APP.debug.unpause_one_tick = true;
+      }
+    } break;
 
-        case SDL_EVENT_MOUSE_MOTION:
-        {
-            SDL_MouseMotionEvent motion = event->motion;
-            APP.mouse_delta = (V2){motion.xrel, motion.yrel};
-        } break;
-    }
+    case SDL_EVENT_MOUSE_MOTION:
+    {
+      SDL_MouseMotionEvent motion = event->motion;
+      APP.mouse_delta = (V2){motion.xrel, motion.yrel};
+    } break;
+  }
 
-    return SDL_APP_CONTINUE;
+  return SDL_APP_CONTINUE;
 }
 
 static void Game_ParseCmd(int argc, char **argv)
 {
-    for (int i = 1; i < argc; i += 1)
+  for (int i = 1; i < argc; i += 1)
+  {
+    S8 arg = S8_ScanCstr(argv[i]);
+    if (S8_Match(arg, S8Lit("-server"), 0))
     {
-        S8 arg = S8_ScanCstr(argv[i]);
-        if (S8_Match(arg, S8Lit("-server"), 0))
-        {
-            APP.net.is_server = true;
-        }
-        else if (S8_Match(arg, S8Lit("-top"), 0))
-        {
-            APP.window_on_top = true;
-        }
-        else if (S8_Match(arg, S8Lit("-b"), 0))
-        {
-            APP.window_borderless = true;
-        }
-        else if (S8_Match(arg, S8Lit("-w"), 0) ||
-                 S8_Match(arg, S8Lit("-h"), 0) ||
-                 S8_Match(arg, S8Lit("-px"), 0) ||
-                 S8_Match(arg, S8Lit("-py"), 0))
-        {
-            bool found_number = false;
-            if (i + 1 < argc)
-            {
-                i += 1;
-                const char *next_arg = argv[i];
-
-                int number = SDL_strtoul(next_arg, 0, 0);
-                if (number > 0)
-                {
-                    found_number = true;
-                    if      (S8_Match(arg, S8Lit("-w"), 0))  APP.init_window_width = number;
-                    else if (S8_Match(arg, S8Lit("-h"), 0))  APP.init_window_height = number;
-                    else if (S8_Match(arg, S8Lit("-px"), 0)) APP.init_window_px = number;
-                    else if (S8_Match(arg, S8Lit("-py"), 0)) APP.init_window_py = number;
-                }
-            }
-
-            if (!found_number)
-            {
-                LOG(LogFlags_Idk, "%s needs to be followed by positive number", arg);
-            }
-        }
-        else if (S8_Match(arg, S8Lit("-autolayout"), 0))
-        {
-            APP.window_autolayout = true;
-        }
-        else
-        {
-            LOG(LogFlags_Idk, "Unhandled argument: %s", arg);
-        }
+      APP.net.is_server = true;
     }
+    else if (S8_Match(arg, S8Lit("-top"), 0))
+    {
+      APP.window_on_top = true;
+    }
+    else if (S8_Match(arg, S8Lit("-b"), 0))
+    {
+      APP.window_borderless = true;
+    }
+    else if (S8_Match(arg, S8Lit("-w"), 0) ||
+             S8_Match(arg, S8Lit("-h"), 0) ||
+             S8_Match(arg, S8Lit("-px"), 0) ||
+             S8_Match(arg, S8Lit("-py"), 0))
+    {
+      bool found_number = false;
+      if (i + 1 < argc)
+      {
+        i += 1;
+        const char *next_arg = argv[i];
+
+        int number = SDL_strtoul(next_arg, 0, 0);
+        if (number > 0)
+        {
+          found_number = true;
+          if      (S8_Match(arg, S8Lit("-w"), 0))  APP.init_window_width = number;
+          else if (S8_Match(arg, S8Lit("-h"), 0))  APP.init_window_height = number;
+          else if (S8_Match(arg, S8Lit("-px"), 0)) APP.init_window_px = number;
+          else if (S8_Match(arg, S8Lit("-py"), 0)) APP.init_window_py = number;
+        }
+      }
+
+      if (!found_number)
+      {
+        LOG(LogFlags_Idk, "%s needs to be followed by positive number", arg);
+      }
+    }
+    else if (S8_Match(arg, S8Lit("-autolayout"), 0))
+    {
+      APP.window_autolayout = true;
+    }
+    else
+    {
+      LOG(LogFlags_Idk, "Unhandled argument: %s", arg);
+    }
+  }
 }
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
-    (void)appstate;
+  (void)appstate;
 
-    {
-        U64 arena_size = Megabyte(1);
-        APP.tmp = Arena_MakeInside(malloc(arena_size), arena_size);
-    }
-    APP.log_filter = ~(U32)LogFlags_NetAll;
-    APP.init_window_width = WINDOW_WIDTH;
-    APP.init_window_height = WINDOW_HEIGHT;
+  {
+    U64 arena_size = Megabyte(1);
+    APP.tmp = Arena_MakeInside(malloc(arena_size), arena_size);
+  }
+  APP.log_filter = ~(U32)LogFlags_NetAll;
+  APP.init_window_width = WINDOW_WIDTH;
+  APP.init_window_height = WINDOW_HEIGHT;
 
-    Game_ParseCmd(argc, argv);
+  Game_ParseCmd(argc, argv);
 
-    if (!SDL_Init(SDL_INIT_VIDEO))
-    {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to initialize SDL3.", SDL_GetError(), NULL);
-        return SDL_APP_FAILURE;
-    }
+  if (!SDL_Init(SDL_INIT_VIDEO))
+  {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to initialize SDL3.", SDL_GetError(), NULL);
+    return SDL_APP_FAILURE;
+  }
 
-    if (!SDLNet_Init())
-    {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to initialize SDL3 Net.", SDL_GetError(), NULL);
-        return SDL_APP_FAILURE;
-    }
+  if (!SDLNet_Init())
+  {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to initialize SDL3 Net.", SDL_GetError(), NULL);
+    return SDL_APP_FAILURE;
+  }
 
-    SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
-    window_flags |= (APP.window_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
-    window_flags |= (APP.window_borderless ? SDL_WINDOW_BORDERLESS : 0);
+  SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
+  window_flags |= (APP.window_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
+  window_flags |= (APP.window_borderless ? SDL_WINDOW_BORDERLESS : 0);
 
-    APP.window_width = APP.init_window_width;
-    APP.window_height = APP.init_window_height;
+  APP.window_width = APP.init_window_width;
+  APP.window_height = APP.init_window_height;
 
-    APP.gpu.device =
-        SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL,
-                            /* debug mode */ true,
-                            /* const char * name*/ 0);
+  APP.gpu.device =
+    SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL,
+                        /* debug mode */ true,
+                        /* const char * name*/ 0);
 
-    if (!APP.gpu.device)
-    {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUCreateDevice failed", SDL_GetError(), 0);
-        return SDL_APP_FAILURE;
-    }
+  if (!APP.gpu.device)
+  {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUCreateDevice failed", SDL_GetError(), 0);
+    return SDL_APP_FAILURE;
+  }
 
-    APP.window = SDL_CreateWindow("P. Game", APP.window_width, APP.window_height, window_flags);
-    if (!APP.window)
-    {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "CreateWindow failed", SDL_GetError(), 0);
-        return SDL_APP_FAILURE;
-    }
+  APP.window = SDL_CreateWindow("P. Game", APP.window_width, APP.window_height, window_flags);
+  if (!APP.window)
+  {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "CreateWindow failed", SDL_GetError(), 0);
+    return SDL_APP_FAILURE;
+  }
 
-    if (!SDL_ClaimWindowForGPUDevice(APP.gpu.device, APP.window))
-    {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUClaimWindow failed", SDL_GetError(), 0);
-        return SDL_APP_FAILURE;
-    }
+  if (!SDL_ClaimWindowForGPUDevice(APP.gpu.device, APP.window))
+  {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUClaimWindow failed", SDL_GetError(), 0);
+    return SDL_APP_FAILURE;
+  }
 
-    if (APP.init_window_px || APP.init_window_py)
-    {
-        int x = (APP.init_window_px ? APP.init_window_px : SDL_WINDOWPOS_UNDEFINED);
-        int y = (APP.init_window_py ? APP.init_window_py : SDL_WINDOWPOS_UNDEFINED);
-        SDL_SetWindowPosition(APP.window, x, y);
-    }
+  if (APP.init_window_px || APP.init_window_py)
+  {
+    int x = (APP.init_window_px ? APP.init_window_px : SDL_WINDOWPOS_UNDEFINED);
+    int y = (APP.init_window_py ? APP.init_window_py : SDL_WINDOWPOS_UNDEFINED);
+    SDL_SetWindowPosition(APP.window, x, y);
+  }
 
-    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(APP.window));
-    SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
+  const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(APP.window));
+  SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
 
-    Gpu_Init();
+  Gpu_Init();
 
-    SDL_ShowWindow(APP.window);
+  SDL_ShowWindow(APP.window);
 
-    Game_Init();
+  Game_Init();
 
-    return SDL_APP_CONTINUE;
+  return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
-    (void)result;
-    (void)appstate;
+  (void)result;
+  (void)appstate;
 
-    SDLNet_Quit();
-    Gpu_Deinit();
+  SDLNet_Quit();
+  Gpu_Deinit();
 
-    SDL_ReleaseWindowFromGPUDevice(APP.gpu.device, APP.window);
-    SDL_DestroyWindow(APP.window);
-    SDL_DestroyGPUDevice(APP.gpu.device);
+  SDL_ReleaseWindowFromGPUDevice(APP.gpu.device, APP.window);
+  SDL_DestroyWindow(APP.window);
+  SDL_DestroyGPUDevice(APP.gpu.device);
 
-    const char* error = SDL_GetError();
-    if (error[0])
-    {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s\n", error);
-    }
+  const char* error = SDL_GetError();
+  if (error[0])
+  {
+    SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s\n", error);
+  }
 }

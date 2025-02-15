@@ -7,58 +7,58 @@
 
 // detect compiler
 #ifdef _MSC_VER
-    #define COMPILER_MSVC 1
+  #define COMPILER_MSVC 1
 #endif
 #ifdef __clang__
     #define COMPILER_CLANG 1
-    #ifdef COMPILER_MSVC
-        #undef COMPILER_MSVC
-    #endif
+  #ifdef COMPILER_MSVC
+    #undef COMPILER_MSVC
+  #endif
 #endif
 
 // detect OS
 #ifdef _WIN32
-     #define OS_WINDOWS 1
+  #define OS_WINDOWS 1
 #endif
 #ifdef __linux__
-     #define OS_LINUX 1
+  #define OS_LINUX 1
 #endif
 
 // set undef compiler vars to 0
 #ifndef COMPILER_MSVC
-    #define COMPILER_MSVC 0
+  #define COMPILER_MSVC 0
 #endif
 #ifndef COMPILER_CLANG
-    #define COMPILER_CLANG 0
+  #define COMPILER_CLANG 0
 #endif
 #if COMPILER_MSVC == COMPILER_CLANG
-    #error "COMPILER_MSVC is equal to COMPILER_CLANG"
+  #error "COMPILER_MSVC is equal to COMPILER_CLANG"
 #endif
 
 // set undef OS vars to 0
 #ifndef OS_WINDOWS
-     #define OS_WINDOWS 0
+  #define OS_WINDOWS 0
 #endif
 #ifndef OS_LINUX
-    #define OS_LINUX 0
+  #define OS_LINUX 0
 #endif
 #if OS_WINDOWS == OS_LINUX
-    #error "OS_WINDOWS is equal to OS_LINUX"
+  #error "OS_WINDOWS is equal to OS_LINUX"
 #endif
 
 // Read only memory attribute - taken from EpicGamesExt/raddebugger
 #if COMPILER_MSVC || (COMPILER_CLANG && OS_WIN)
-#pragma section(".rdata$", read)
-#define READ_ONLY __declspec(allocate(".rdata$"))
+  #pragma section(".rdata$", read)
+  #define READ_ONLY __declspec(allocate(".rdata$"))
 #elif (COMPILER_CLANG && OS_LIN)
-#define READ_ONLY __attribute__((section(".rodata")))
+  #define READ_ONLY __attribute__((section(".rodata")))
 #else
-// NOTE(rjf): I don't know of a useful way to do this in GCC land.
-// __attribute__((section(".rodata"))) looked promising, but it introduces a
-// strange warning about malformed section attributes, and it doesn't look
-// like writing to that section reliably produces access violations, strangely
-// enough. (It does on Clang)
-#define READ_ONLY
+  // NOTE(rjf): I don't know of a useful way to do this in GCC land.
+  // __attribute__((section(".rodata"))) looked promising, but it introduces a
+  // strange warning about malformed section attributes, and it doesn't look
+  // like writing to that section reliably produces access violations, strangely
+  // enough. (It does on Clang)
+  #define READ_ONLY
 #endif
 
 // ---
@@ -102,5 +102,5 @@ typedef int64_t I64;
 
 static bool Memeq(const void *ptr_a, const void *ptr_b, U64 byte_size)
 {
-    return memcmp(ptr_a, ptr_b, byte_size) == 0;
+  return memcmp(ptr_a, ptr_b, byte_size) == 0;
 }
