@@ -8,6 +8,7 @@ typedef struct
 {
   U32 log_filter;
   Arena *tmp;
+  I32 exit_code;
 
   M_VertexEntry vertex_table[1024*1024];
 } Meta_State;
@@ -15,17 +16,25 @@ static Meta_State M;
 
 enum M_LogType
 {
-  M_LogIdk = (1 << 0),
-  M_LogErr = (1 << 1),
-  M_LogObjDebug = (1 << 2),
-  M_LogGltf = (1 << 3),
+  M_LogIdk         = (1 << 0),
+  M_LogErr         = (1 << 1),
+  M_LogObjDebug    = (1 << 2),
+  M_LogGltfWarning = (1 << 3),
+  M_LogGltfDebug   = (1 << 4),
 };
+
+static bool M_LogFlagCheck(I32 flags)
+{
+  if (flags & M_LogErr)
+    M.exit_code |= 1;
+  return !!(M.log_filter & flags);
+}
 
 // logging enable/disable
 #if 1
-#define M_LOG(FLAGS, ...) do{ if(((FLAGS) & M.log_filter) == (FLAGS)){ SDL_Log("[META] " __VA_ARGS__); }}while(0)
+#define M_LOG(FLAGS, ...) do{ if(M_LogFlagCheck(FLAGS)){ SDL_Log("[META] " __VA_ARGS__); }}while(0)
 #else
-#define M_LOG(FLAGS, ...) do{ (void)(FLAGS); if(0){ printf("[META] " __VA_ARGS__); }}while(0)
+#define M_LOG(FLAGS, ...) do{ if(M_LogFlagCheck(FLAGS) && 0){ printf("[META] " __VA_ARGS__); }}while(0)
 #endif
 
 #define M_AssertAlways(...) Assert(__VA_ARGS__)
