@@ -11,30 +11,6 @@ static void M_FakeFree(void *user_data, void *ptr)
   // do nothing
 }
 
-typedef struct
-{
-  float *vals;
-  U64 used;
-  U64 cap;
-} M_FloatBuffer;
-
-static M_FloatBuffer M_AllocFloatBuffer(Arena *a, U64 count)
-{
-  M_FloatBuffer buf = {};
-  buf.vals = Alloc(a, float, count);
-  buf.cap = count;
-  return buf;
-}
-
-static float *M_FloatsFromFloatBuffer(M_FloatBuffer *buf, U64 count)
-{
-  M_AssertAlways(buf->cap >= buf->used);
-  M_AssertAlways(count <= (buf->cap - buf->used));
-  float *res = buf->vals + buf->used;
-  buf->used += count;
-  return res;
-}
-
 static void M_GLTF_Load(const char *path, Printer *out)
 {
   //
@@ -76,8 +52,9 @@ static void M_GLTF_Load(const char *path, Printer *out)
   //
   ArenaScope tmp_scope = Arena_PushScope(M.tmp);
   U64 max_nums = 1024*1024;
-  M_FloatBuffer positions = M_AllocFloatBuffer(M.tmp, max_nums);
-  M_FloatBuffer normals = M_AllocFloatBuffer(M.tmp, max_nums);
+  M_FloatBuffer positions = M_FloatBuffer_Alloc(M.tmp, max_nums);
+  M_FloatBuffer normals = M_FloatBuffer_Alloc(M.tmp, max_nums);
+  M_I16Buffer indices = M_I16Buffer_Alloc(M.tmp, max_nums);
 
   ForU64(node_index, data->nodes_count)
   {
@@ -94,6 +71,25 @@ static void M_GLTF_Load(const char *path, Printer *out)
                 "[GLTF LOADER] Primitive with non triangle type (%u) skipped",
                 primitive->type);
           continue;
+        }
+
+        M_AssertAlways(primitive->indices);
+        {
+          cgltf_accessor *accessor = primitive->indices;
+          M_AssertAlways(accessor->component_type == cgltf_component_type_r_16u);
+          M_AssertAlways(accessor->type == cgltf_type_scalar);
+
+          ForU64(value_index, accessor->count)
+          {
+            I16 *numbers = M_I16Buffer_Get(&indices, 1);
+            U32 read_int = 0;
+            bool ok = cgltf_accessor_read_uint(accessor, value_index, &read_int, 1);
+            if (!ok)
+            {
+              M_LOG(M_LogGltfWarning, "[GLTF LOADER] Accessor failed to read i16");
+            }
+            *numbers = (I16)read_int;
+          }
         }
 
         ForU64(attribute_index, primitive->attributes_count)
@@ -124,17 +120,20 @@ static void M_GLTF_Load(const char *path, Printer *out)
             {
               save_buf = &positions;
               M_AssertAlways(number_count == 3);
+              M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
             } break;
 
             case cgltf_attribute_type_normal:
             {
               save_buf = &normals;
               M_AssertAlways(number_count == 3);
+              M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
             } break;
 
             default:
             {
-              M_LOG(M_LogGltfWarning,
+              // @todo change to warning
+              M_LOG(M_LogGltfDebug,
                     "[GLTF LOADER] Attribute with unknown type (%u) skipped",
                     attribute->type);
               continue;
@@ -143,19 +142,11 @@ static void M_GLTF_Load(const char *path, Printer *out)
 
           ForU64(value_index, accessor->count)
           {
-            float *numbers = M_FloatsFromFloatBuffer(save_buf, number_count);
+            float *numbers = M_FloatBuffer_Get(save_buf, number_count);
             bool ok = cgltf_accessor_read_float(accessor, value_index, numbers, number_count);
-            if (ok)
+            if (!ok)
             {
-              M_LOG(M_LogGltfDebug,
-                    "[GLTF LOADER] Loaded %u numbers",
-                    number_count);
-            }
-            else
-            {
-              M_LOG(M_LogGltfDebug,
-                    "[GLTF LOADER] Failed to load %u numbers",
-                    number_count);
+              M_LOG(M_LogGltfWarning, "[GLTF LOADER] Accessor failed to read %u floats", number_count);
             }
           }
         }
@@ -212,6 +203,19 @@ static void M_GLTF_Load(const char *path, Printer *out)
     Pr_Add(out, S8Lit("f,\n"));
   }
   Pr_Add(out, S8Lit("};\n\n"));
+
+
+  Pr_Add(out, S8Lit("static Rdr_ModelVertex Model_Worker_ind[] =\n{"));
+  ForU64(i, indices.used)
+  {
+    if (i % 16 == 0)
+    {
+      Pr_Add(out, S8Lit("\n  "));
+    }
+    Pr_AddU16(out, indices.vals[i]);
+    Pr_Add(out, S8Lit(","));
+  }
+  Pr_Add(out, S8Lit("\n};\n\n"));
 
 
   // Reset tmp arena

@@ -18,6 +18,7 @@
 #include "cgltf.h"
 #pragma warning(pop)
 
+#include "meta_number_buffer.h"
 #include "meta_gltf_loader.c"
 
 static U8 tmp_arena_memory[Megabyte(64)];
@@ -30,7 +31,7 @@ int main()
   M.cgltf_arena = Arena_MakeInside(cgltf_arena_memory, sizeof(cgltf_arena_memory));
 
   M.log_filter = ~(U32)(M_LogObjDebug | M_LogGltfDebug);
-  M.log_filter &= ~(U32)(M_LogGltfWarning);
+  //M.log_filter &= ~(U32)(M_LogGltfWarning);
   //M.log_filter = ~(U32)(0);
 
   // load .obj models
