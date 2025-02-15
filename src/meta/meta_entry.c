@@ -45,6 +45,33 @@ int main()
         cgltf_result result = cgltf_parse_file(&options, "../res/models/Worker.gltf", &data);
         if (result == cgltf_result_success)
         {
+            bool test = true;
+
+            ForU64(node_index, data->nodes_count)
+            {
+                cgltf_node *node = data->nodes + node_index;
+                cgltf_mesh* mesh = node->mesh;
+                if (mesh)
+                {
+                    ForU64(primitive_index, mesh->primitives_count)
+                    {
+                        cgltf_primitive *primitive = mesh->primitives + primitive_index;
+                        ForU64(attribute_index, primitive->attributes_count)
+                        {
+                            cgltf_attribute *attribute = primitive->attributes + attribute_index;
+                            (void)attribute;
+                            int a = 1;
+                            a += 1;
+                            if (test) break;
+                        }
+                        if (test) break;
+                    }
+                    if (test) break;
+                }
+                if (test) break;
+            }
+
+#if 0
             ForU64(mesh_index, data->meshes_count)
             {
                 cgltf_mesh *mesh = data->meshes + mesh_index;
@@ -54,14 +81,14 @@ int main()
                     if (primitive->type != cgltf_primitive_type_triangles)
                     {
                         M_LOG(M_LogGltf, "[gltf] Found primitive type that isn't triangle! (type: %u)");
+                        continue;
                     }
 
                     int a = 1;
                     a += 1;
                 }
             }
-
-
+#endif
 
             cgltf_free(data);
         }

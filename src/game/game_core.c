@@ -254,7 +254,8 @@ static void Game_Iterate()
         U64 delta_time = new_frame_time - APP.frame_time;
         APP.frame_time = new_frame_time;
         APP.dt = delta_time * (0.001f);
-        APP.tick_dt_accumulator += Min(APP.dt, 1.f); // clamp dt to 1s
+        APP.dt = Min(APP.dt, 1.f / 16.f); // clamp dt to 16 fps
+        APP.tick_dt_accumulator += APP.dt;
 
         if (APP.debug.fixed_dt)
         {
