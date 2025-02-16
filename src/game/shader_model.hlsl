@@ -1,3 +1,13 @@
+#ifndef IS_RIGID
+  #define IS_RIGID 0
+#endif
+#ifndef IS_SKINNED
+  #define IS_SKINNED 0
+#endif
+#if IS_RIGID == IS_SKINNED
+  #error "IS_RIGID is equal to IS_SKINNED"
+#endif
+
 cbuffer UBO : register(b0, space1)
 {
   float4x4 CameraTransform;
@@ -6,8 +16,12 @@ cbuffer UBO : register(b0, space1)
 struct VSInput
 {
   float3 position : TEXCOORD0;
-  float3 color : TEXCOORD1;
-  float3 normal : TEXCOORD2;
+  float3 color    : TEXCOORD1;
+  float3 normal   : TEXCOORD2;
+#if IS_SKINNED
+  uint joints_packed4 : TEXCOORD3;
+  float4 weights      : TEXCOORD4;
+#endif
   uint InstanceIndex : SV_InstanceID;
 };
 

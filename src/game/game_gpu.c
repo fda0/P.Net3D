@@ -210,47 +210,64 @@ static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultPipeline(SDL_GPUColorTargetD
   return pipeline;
 }
 
-static void Gpu_InitModelBuffers(Rdr_RigidType model_type)
+static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
 {
-  Rdr_RigidVertex *vertices = 0;
+  void *vertices = 0;
   U32 vertices_size = 0;
   U16 *indices = 0;
   U32 indices_size = 0;
   const char *vrt_buf_name = "";
   const char *ind_buf_name = "";
   const char *inst_buf_name = "";
+  U32 instance_size = (is_skinned ? sizeof(Rdr_SkinnedInstance) : sizeof(Rdr_RigidInstance));
 
-  switch (model_type)
+  if (is_skinned)
   {
-    default: Assert(0); break;
-    case RdrRigid_Teapot: {
-#if 0
-      vertices = Model_teapot_vrt;
-      vertices_size = sizeof(Model_teapot_vrt);
-      indices = Model_teapot_ind;
-      indices_size = sizeof(Model_teapot_ind);
-#else
-      vertices = Model_Worker_vrt;
-      vertices_size = sizeof(Model_Worker_vrt);
-      indices = Model_Worker_ind;
-      indices_size = sizeof(Model_Worker_ind);
-#endif
-      vrt_buf_name = "Teapot vrt buf";
-      ind_buf_name = "Teapot ind buf";
-      inst_buf_name = "Teapot inst buf";
-    } break;
-    case RdrRigid_Flag: {
-      vertices = Model_flag_vrt;
-      vertices_size = sizeof(Model_flag_vrt);
-      indices = Model_flag_ind;
-      indices_size = sizeof(Model_flag_ind);
-      vrt_buf_name = "Flag vrt buf";
-      ind_buf_name = "Flag ind buf";
-      inst_buf_name = "Flag inst buf";
-    } break;
+    switch (model_index)
+    {
+      default: Assert(0); break;
+      case RdrSkinned_Worker:
+      {
+        vertices = Model_Worker_vrt;
+        vertices_size = sizeof(Model_Worker_vrt);
+        indices = Model_Worker_ind;
+        indices_size = sizeof(Model_Worker_ind);
+        vrt_buf_name = "Worker skinned vrt buf";
+        ind_buf_name = "Worker skinned ind buf";
+        inst_buf_name = "Worker skinned inst buf";
+      } break;
+    }
+  }
+  else
+  {
+    switch (model_index)
+    {
+      default: Assert(0); break;
+      case RdrRigid_Teapot:
+      {
+        vertices = Model_teapot_vrt;
+        vertices_size = sizeof(Model_teapot_vrt);
+        indices = Model_teapot_ind;
+        indices_size = sizeof(Model_teapot_ind);
+        vrt_buf_name = "Teapot rigid vrt buf";
+        ind_buf_name = "Teapot rigid ind buf";
+        inst_buf_name = "Teapot rigid inst buf";
+      } break;
+      case RdrRigid_Flag:
+      {
+        vertices = Model_flag_vrt;
+        vertices_size = sizeof(Model_flag_vrt);
+        indices = Model_flag_ind;
+        indices_size = sizeof(Model_flag_ind);
+        vrt_buf_name = "Flag rigid vrt buf";
+        ind_buf_name = "Flag rigid ind buf";
+        inst_buf_name = "Flag rigid inst buf";
+      } break;
+    }
   }
 
-  Gpu_ModelBuffers *model = APP.gpu.models + model_type;
+  Gpu_ModelBuffers *models_base = (is_skinned ? APP.gpu.skinneds : APP.gpu.rigids);
+  Gpu_ModelBuffers *model = models_base + model_index;
   model->ind_count = indices_size / sizeof(U16);
 
   // create model vertex buffer
@@ -279,7 +296,7 @@ static void Gpu_InitModelBuffers(Rdr_RigidType model_type)
   {
     SDL_GPUBufferCreateInfo buffer_desc = {
       .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-      .size = sizeof(APP.rdr.rigids[0].instances),
+      .size = instance_size,
       .props = 0,
     };
     model->inst_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
@@ -332,12 +349,24 @@ static void Gpu_Init()
   };
 
   //
-  // model
+  // Skinned pipeline @todo
   //
   {
-    ForU32(model_type, RdrRigid_COUNT)
+    ForU32(model_index, RdrSkinned_COUNT)
     {
-      Gpu_InitModelBuffers(model_type);
+      Gpu_InitModelBuffers(true, model_index);
+    }
+
+    // @todo
+  }
+
+  //
+  // Rigid pipeline
+  //
+  {
+    ForU32(model_index, RdrRigid_COUNT)
+    {
+      Gpu_InitModelBuffers(false, model_index);
     }
 
     SDL_GPUShader *vertex_shader = 0;
