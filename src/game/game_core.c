@@ -65,20 +65,20 @@ static void Game_DrawObjects()
 
     if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot|ObjFlag_ModelFlag))
     {
-      bool model_enabled[RdrModel_COUNT] =
+      bool rigid_enabled[RdrRigid_COUNT] =
       {
         obj->s.flags & ObjFlag_ModelTeapot,
         obj->s.flags & ObjFlag_ModelFlag
       };
 
-      static_assert(ArrayCount(model_enabled) == ArrayCount(APP.rdr.models));
-      ForArray(i, APP.rdr.models)
+      static_assert(ArrayCount(rigid_enabled) == ArrayCount(APP.rdr.rigids));
+      ForArray(i, APP.rdr.rigids)
       {
-        if (model_enabled[i] &&
-            APP.rdr.models[i].count < ArrayCount(APP.rdr.models[i].data))
+        if (rigid_enabled[i] &&
+            APP.rdr.rigids[i].instance_count < ArrayCount(APP.rdr.rigids[i].instances))
         {
-          Rdr_ModelInstanceData *inst = APP.rdr.models[i].data + APP.rdr.models[i].count;
-          APP.rdr.models[i].count += 1;
+          Rdr_RigidInstance *inst = APP.rdr.rigids[i].instances + APP.rdr.rigids[i].instance_count;
+          APP.rdr.rigids[i].instance_count += 1;
 
           SDL_zerop(inst);
           inst->color.x = obj->s.color.r;

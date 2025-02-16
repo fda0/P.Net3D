@@ -163,7 +163,7 @@ static M_ObjFacePart M_ParseObjFaceTokens(M_ObjParser *p)
   return res;
 }
 
-static U16 M_FindOrInsertRdrModelVertex(Rdr_ModelVertex rdr_vertex)
+static U16 M_FindOrInsertRdrRigidVertex(Rdr_RigidVertex rdr_vertex)
 {
   //U64 hash = HashU64(0, &rdr_vertex, sizeof(rdr_vertex));
   // @todo this is n^2, use hash table instead
@@ -467,7 +467,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
     ForArray(part_i, parts)
     {
-      Rdr_ModelVertex rdr_vertex = {};
+      Rdr_RigidVertex rdr_vertex = {};
 
       U32 pos_offset = (parts[part_i].pos - 1) * 3;
       rdr_vertex.p = (V3)
@@ -508,7 +508,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
               S8Print(material));
       }
 
-      U16 ind = M_FindOrInsertRdrModelVertex(rdr_vertex);
+      U16 ind = M_FindOrInsertRdrRigidVertex(rdr_vertex);
       M_AssertAlways(out_ind_count + 3 <= max_elems);
       out_inds[out_ind_count] = ind;
       out_ind_count += 1;
@@ -519,13 +519,13 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
   // Output - generating C header
   //
   Pr_AddCstr(out, "// Model: "); Pr_Add(out, model_name); Pr_AddCstr(out, "\n");
-  Pr_AddCstr(out, "static Rdr_ModelVertex Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_vrt[] =\n{\n");
+  Pr_AddCstr(out, "static Rdr_RigidVertex Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_vrt[] =\n{\n");
   ForArray(i, M.vertex_table)
   {
     if (!M.vertex_table[i].filled)
       break;
 
-    Rdr_ModelVertex rdr = M.vertex_table[i].rdr;
+    Rdr_RigidVertex rdr = M.vertex_table[i].rdr;
 
     Pr_AddCstr(out, "  ");
     // vert

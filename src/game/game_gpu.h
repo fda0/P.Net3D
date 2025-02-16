@@ -22,7 +22,7 @@ typedef struct
   SDL_GPUSampleCount sample_count;
 
   // resources
-  Gpu_ModelBuffers models[RdrModel_COUNT];
+  Gpu_ModelBuffers models[RdrRigid_COUNT];
   SDL_GPUBuffer *wall_vert_buf;
   SDL_GPUSampler *wall_sampler;
   SDL_GPUTexture *tex_wall;

@@ -210,9 +210,9 @@ static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultPipeline(SDL_GPUColorTargetD
   return pipeline;
 }
 
-static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
+static void Gpu_InitModelBuffers(Rdr_RigidType model_type)
 {
-  Rdr_ModelVertex *vertices = 0;
+  Rdr_RigidVertex *vertices = 0;
   U32 vertices_size = 0;
   U16 *indices = 0;
   U32 indices_size = 0;
@@ -223,7 +223,7 @@ static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
   switch (model_type)
   {
     default: Assert(0); break;
-    case RdrModel_Teapot: {
+    case RdrRigid_Teapot: {
 #if 0
       vertices = Model_teapot_vrt;
       vertices_size = sizeof(Model_teapot_vrt);
@@ -239,7 +239,7 @@ static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
       ind_buf_name = "Teapot ind buf";
       inst_buf_name = "Teapot inst buf";
     } break;
-    case RdrModel_Flag: {
+    case RdrRigid_Flag: {
       vertices = Model_flag_vrt;
       vertices_size = sizeof(Model_flag_vrt);
       indices = Model_flag_ind;
@@ -279,7 +279,7 @@ static void Gpu_InitModelBuffers(Rdr_ModelType model_type)
   {
     SDL_GPUBufferCreateInfo buffer_desc = {
       .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-      .size = sizeof(APP.rdr.models[0].data),
+      .size = sizeof(APP.rdr.rigids[0].instances),
       .props = 0,
     };
     model->inst_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
@@ -335,7 +335,7 @@ static void Gpu_Init()
   // model
   //
   {
-    ForU32(model_type, RdrModel_COUNT)
+    ForU32(model_type, RdrRigid_COUNT)
     {
       Gpu_InitModelBuffers(model_type);
     }
@@ -386,13 +386,13 @@ static void Gpu_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(Rdr_ModelVertex),
+          .pitch = sizeof(Rdr_RigidVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
         {
           .slot = 1,
-          .pitch = sizeof(Rdr_ModelInstanceData),
+          .pitch = sizeof(Rdr_RigidInstance),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -667,15 +667,15 @@ static void Gpu_Iterate()
   }
 
   // upload model instance data
-  ForArray(model_i, APP.gpu.models)
+  ForArray(rigid_i, APP.gpu.models)
   {
-    Gpu_ModelBuffers *gpu_model = APP.gpu.models + model_i;
-    Rdr_Model *rdr_model = APP.rdr.models + model_i;
-    if (rdr_model->count)
+    Gpu_ModelBuffers *gpu_model = APP.gpu.models + rigid_i;
+    Rdr_Rigid *rigid = APP.rdr.rigids + rigid_i;
+    if (rigid->instance_count)
     {
       Gpu_TransferBuffer(gpu_model->inst_buf,
-                         rdr_model->data,
-                         rdr_model->count * sizeof(rdr_model->data[0]));
+                         rigid->instances,
+                         rigid->instance_count * sizeof(rigid->instances[0]));
     }
   }
 
@@ -751,12 +751,12 @@ static void Gpu_Iterate()
 
     // model
     SDL_BindGPUGraphicsPipeline(pass, APP.gpu.model_pipeline);
-    ForArray(model_i, APP.gpu.models)
+    ForArray(rigid_i, APP.gpu.models)
     {
-      Gpu_ModelBuffers *gpu_model = APP.gpu.models + model_i;
-      Rdr_Model *rdr_model = APP.rdr.models + model_i;
+      Gpu_ModelBuffers *gpu_model = APP.gpu.models + rigid_i;
+      Rdr_Rigid *rigid = APP.rdr.rigids + rigid_i;
 
-      if (!rdr_model->count)
+      if (!rigid->instance_count)
         continue;
 
       // bind vertex buffer
@@ -780,7 +780,7 @@ static void Gpu_Iterate()
         SDL_BindGPUVertexStorageBuffers(pass, 0, &gpu_model->inst_buf, 1);
       }
 
-      SDL_DrawGPUIndexedPrimitives(pass, gpu_model->ind_count, rdr_model->count, 0, 0, 0);
+      SDL_DrawGPUIndexedPrimitives(pass, gpu_model->ind_count, rigid->instance_count, 0, 0, 0);
     }
 
     SDL_EndGPURenderPass(pass);

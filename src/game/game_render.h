@@ -1,22 +1,22 @@
 typedef enum
 {
-  RdrModel_Teapot,
-  RdrModel_Flag,
-  RdrModel_COUNT
-} Rdr_ModelType;
+  RdrRigid_Teapot,
+  RdrRigid_Flag,
+  RdrRigid_COUNT
+} Rdr_RigidType;
 
 typedef struct
 {
   Mat4 transform;
   V4 color;
-} Rdr_ModelInstanceData;
+} Rdr_RigidInstance;
 
 typedef struct
 {
   V3 p;
   V3 color;
   V3 normal;
-} Rdr_ModelVertex;
+} Rdr_RigidVertex;
 
 typedef struct
 {
@@ -29,13 +29,13 @@ typedef struct
 typedef struct
 {
 #define RDR_MAX_MODEL_INSTANCES 16
-  Rdr_ModelInstanceData data[RDR_MAX_MODEL_INSTANCES];
-  U32 count;
-} Rdr_Model;
+  Rdr_RigidInstance instances[RDR_MAX_MODEL_INSTANCES];
+  U32 instance_count;
+} Rdr_Rigid;
 
 typedef struct
 {
-  Rdr_Model models[RdrModel_COUNT];
+  Rdr_Rigid rigids[RdrRigid_COUNT];
 
   Rdr_WallVertex wall_verts[1024 * 8];
   U32 wall_vert_count;

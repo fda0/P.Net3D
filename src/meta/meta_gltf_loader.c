@@ -52,9 +52,12 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   //
   ArenaScope tmp_scope = Arena_PushScope(M.tmp);
   U64 max_nums = 1024*1024;
-  M_FloatBuffer positions = M_FloatBuffer_Alloc(M.tmp, max_nums);
-  M_FloatBuffer normals = M_FloatBuffer_Alloc(M.tmp, max_nums);
-  M_I16Buffer indices = M_I16Buffer_Alloc(M.tmp, max_nums);
+  M_Buffer indices   = M_BufferAlloc(M.tmp, max_nums, sizeof(U16));
+  M_Buffer positions = M_BufferAlloc(M.tmp, max_nums, sizeof(float));
+  M_Buffer normals   = M_BufferAlloc(M.tmp, max_nums, sizeof(float));
+  M_Buffer texcoords = M_BufferAlloc(M.tmp, max_nums, sizeof(float));
+  M_Buffer joints    = M_BufferAlloc(M.tmp, max_nums, sizeof(U8));
+  M_Buffer weights   = M_BufferAlloc(M.tmp, max_nums, sizeof(float));
 
   ForU64(node_index, data->nodes_count)
   {
@@ -62,9 +65,16 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
     cgltf_mesh* mesh = node->mesh;
     if (mesh)
     {
+      if (node_index != 62)
+        continue;
+
       ForU64(primitive_index, mesh->primitives_count)
       {
         cgltf_primitive *primitive = mesh->primitives + primitive_index;
+
+        if (primitive_index != 0)
+          continue;
+
         if (primitive->type != cgltf_primitive_type_triangles)
         {
           M_LOG(M_LogGltfWarning,
@@ -81,14 +91,14 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
 
           ForU64(value_index, accessor->count)
           {
-            I16 *numbers = M_I16Buffer_Push(&indices, 1);
+            U16 *numbers = M_BufferPushU16(&indices, 1);
             U32 read_int = 0;
             bool ok = cgltf_accessor_read_uint(accessor, value_index, &read_int, 1);
             if (!ok)
             {
               M_LOG(M_LogGltfWarning, "[GLTF LOADER] Accessor failed to read i16");
             }
-            *numbers = (I16)read_int;
+            *numbers = (U16)read_int;
           }
         }
 
@@ -113,7 +123,7 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
             } break;
           }
 
-          M_FloatBuffer *save_buf = 0;
+          M_Buffer *save_buf = 0;
           switch (attribute->type)
           {
             case cgltf_attribute_type_position:
@@ -132,32 +142,27 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
 
             case cgltf_attribute_type_texcoord:
             {
-              // @todo
-              int a = 1;
-              a += 1;
-              continue;
+              save_buf = &texcoords;
+              M_AssertAlways(number_count == 2);
+              M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
             } break;
 
             case cgltf_attribute_type_joints:
             {
-              // @todo
-              int b = 1;
-              b += 1;
-              continue;
+              save_buf = &joints;
+              M_AssertAlways(number_count == 4);
+              M_AssertAlways(accessor->component_type == cgltf_component_type_r_8u);
             } break;
 
             case cgltf_attribute_type_weights:
             {
-              // @todo
-              int c = 1;
-              c += 1;
-              continue;
+              save_buf = &weights;
+              M_AssertAlways(number_count == 4);
+              M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
             } break;
 
             default:
             {
-              // @todo change to warning
-              //M_LOG(M_LogGltfDebug,
               M_LOG(M_LogGltfWarning,
                     "[GLTF LOADER] Attribute with unknown type (%u) skipped",
                     attribute->type);
@@ -165,14 +170,19 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
             } break;
           }
 
-          ForU64(value_index, accessor->count)
+          if (save_buf->elem_size == 4)
           {
-            float *numbers = M_FloatBuffer_Push(save_buf, number_count);
-            bool ok = cgltf_accessor_read_float(accessor, value_index, numbers, number_count);
-            if (!ok)
-            {
-              M_LOG(M_LogGltfWarning, "[GLTF LOADER] Accessor failed to read %u floats", number_count);
-            }
+            U64 total_count = number_count * accessor->count;
+            float *numbers = M_BufferPushFloat(save_buf, total_count);
+            U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
+            M_AssertAlways(unpacked == total_count);
+          }
+          else if (save_buf->elem_size == 2)
+          {
+            U64 total_count = number_count * accessor->count;
+            U16 *numbers = M_BufferPushU16(save_buf, total_count);
+            U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
+            M_AssertAlways(unpacked == total_count);
           }
         }
       }
@@ -188,24 +198,24 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   U64 normals_vec_count = normals.used / 3;
   M_AssertAlways(positions_vec_count == normals_vec_count);
 
-  Pr_Add(out, S8Lit("static Rdr_ModelVertex Model_Worker_vrt[] =\n{\n"));
+  Pr_Add(out, S8Lit("static Rdr_RigidVertex Model_Worker_vrt[] =\n{\n"));
   ForU64(i, positions_vec_count)
   {
     Pr_Add(out, S8Lit("  /*pos*/"));
-    Pr_AddFloat(out, positions.vals[i*3 + 0] * scale);
+    Pr_AddFloat(out, *M_BufferAtFloat(&positions, i*3 + 0) * scale);
     Pr_Add(out, S8Lit("f,"));
-    Pr_AddFloat(out, positions.vals[i*3 + 1] * scale);
+    Pr_AddFloat(out, *M_BufferAtFloat(&positions, i*3 + 1) * scale);
     Pr_Add(out, S8Lit("f,"));
-    Pr_AddFloat(out, positions.vals[i*3 + 2] * scale);
+    Pr_AddFloat(out, *M_BufferAtFloat(&positions, i*3 + 2) * scale);
     Pr_Add(out, S8Lit("f, "));
 
     Pr_Add(out, S8Lit("/*col*/1.f,1.f,1.f, "));
 
     V3 normal =
     {
-      normals.vals[i*3 + 0],
-      normals.vals[i*3 + 1],
-      normals.vals[i*3 + 2],
+      *M_BufferAtFloat(&normals, i*3 + 0),
+      *M_BufferAtFloat(&normals, i*3 + 1),
+      *M_BufferAtFloat(&normals, i*3 + 2),
     };
     float normal_lensq = V3_LengthSq(normal);
     if (normal_lensq < 0.001f)
@@ -243,7 +253,7 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
     {
       Pr_Add(out, S8Lit(" "));
     }
-    Pr_AddU16(out, indices.vals[i]);
+    Pr_AddU16(out, *M_BufferAtU16(&indices, i));
     Pr_Add(out, S8Lit(","));
   }
   Pr_Add(out, S8Lit("\n};\n\n"));
