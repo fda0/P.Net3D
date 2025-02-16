@@ -17,6 +17,7 @@ typedef enum
   ObjFlag_AnimatePosition = (1 << 4),
   ObjFlag_ModelTeapot     = (1 << 5),
   ObjFlag_ModelFlag       = (1 << 6),
+  ObjFlag_ModelWorker     = (1 << 7),
 } Obj_Flags;
 
 typedef enum
@@ -50,7 +51,7 @@ typedef struct
   V2 prev_p; // position from the last frame
 
   // visuals
-  ColorF color;
+  V4 color;
   float rot_z;
   bool hide_above_map;
 

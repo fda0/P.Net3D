@@ -317,7 +317,10 @@ static V4 V4_NanToZero(V4 a)
 }
 static V4 V4_Lerp(V4 a, V4 b, float t)
 {
-  return (V4){LerpF(a.x, b.x, t), LerpF(a.y, b.y, t), LerpF(a.z, b.z, t), LerpF(a.w, b.w, t)};
+  V4 res = {};
+  ForArray(i, res.E)
+    res.E[i] = LerpF(a.E[i], b.E[i], t);
+  return res;
 }
 static float V4_LengthSq(V4 a)
 {
@@ -428,39 +431,26 @@ static float RngF_MaxDistance(RngF a, RngF b)
 }
 
 // ---
-// Color
+// Color specific V4 helpers
 // ---
-typedef union
+static V4 V4_Clamp01(V4 a)
 {
-  struct { float r, g, b, a; };
-  float E[4];
-} ColorF;
-static ColorF ColorF_Clamp(ColorF f)
-{
-  ForArray(i, f.E)
-    f.E[i] = Clamp(0.f, 1.f, f.E[i]);
-  return f;
+  ForArray(i, a.E)
+    a.E[i] = Clamp(0.f, 1.f, a.E[i]);
+  return a;
 }
-static ColorF ColorF_Lerp(ColorF a, ColorF b, float t)
+static V4 V4_RGBA(float r, float g, float b, float a)
 {
-  ColorF res = {};
-  ForArray(i, res.E)
-    res.E[i] = LerpF(a.E[i], b.E[i], t);
-  return res;
+  return (V4){r, g, b, a};
 }
-
-static ColorF ColorF_RGBA(float r, float g, float b, float a)
+static V4 ColorF_RGB(float r, float g, float b)
 {
-  return (ColorF){r, g, b, a};
+  return (V4){r, g, b, 1.f};
 }
-static ColorF ColorF_RGB(float r, float g, float b)
+static V4 V4_ChangeW(V4 vec, float w)
 {
-  return (ColorF){r, g, b, 1.f};
-}
-static ColorF ColorF_ChangeA(ColorF f, float a)
-{
-  f.a = a;
-  return f;
+  vec.w = w;
+  return vec;
 }
 
 // ---

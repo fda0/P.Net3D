@@ -170,7 +170,7 @@ static Obj_Sync Obj_SyncLerp(Obj_Sync prev, Obj_Sync next, float t)
   res.p = V2_Lerp(prev.p, next.p, t);
   res.dp = V2_Lerp(prev.dp, next.dp, t);
   res.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
-  res.color = ColorF_Lerp(prev.color, next.color, t);
+  res.color = V4_Lerp(prev.color, next.color, t);
   res.rot_z = LerpF(prev.rot_z, next.rot_z, t);
   return res;
 }

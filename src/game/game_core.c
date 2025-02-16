@@ -63,44 +63,30 @@ static void Game_DrawObjects()
     Object *obj = APP.all_objects + obj_index;
     if (!Obj_HasAnyFlag(obj, ObjFlag_Draw)) continue;
 
-    if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot|ObjFlag_ModelFlag))
+    if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot |
+                       ObjFlag_ModelFlag | ObjFlag_ModelWorker))
     {
-      bool rigid_enabled[RdrRigid_COUNT] =
+      V3 pos = V3_Make_XY_Z(obj->s.p, 0);
+      if (Obj_HasAnyFlag(obj, ObjFlag_AnimatePosition))
       {
-        obj->s.flags & ObjFlag_ModelTeapot,
-        obj->s.flags & ObjFlag_ModelFlag
-      };
-
-      static_assert(ArrayCount(rigid_enabled) == ArrayCount(APP.rdr.rigids));
-      ForArray(i, APP.rdr.rigids)
-      {
-        if (rigid_enabled[i] &&
-            APP.rdr.rigids[i].instance_count < ArrayCount(APP.rdr.rigids[i].instances))
-        {
-          Rdr_RigidInstance *inst = APP.rdr.rigids[i].instances + APP.rdr.rigids[i].instance_count;
-          APP.rdr.rigids[i].instance_count += 1;
-
-          SDL_zerop(inst);
-          inst->color.x = obj->s.color.r;
-          inst->color.y = obj->s.color.g;
-          inst->color.z = obj->s.color.b;
-
-          V3 pos = V3_Make_XY_Z(obj->s.p, 0);
-          if (Obj_HasAnyFlag(obj, ObjFlag_AnimatePosition))
-          {
-            pos = obj->l.animated_p;
-          }
-          Mat4 move_mat = Mat4_Translation(pos);
-
-          Mat4 rot_mat = Mat4_Identity();
-          if (Obj_HasAnyFlag(obj, ObjFlag_AnimateRotation))
-          {
-            rot_mat = Mat4_Rotation_Quat(obj->l.animated_rot);
-            //rot_mat = Mat4_Rotation_RH((V3){0,0,1}, obj->animated_rot_z);
-          }
-          inst->transform = Mat4_Mul(move_mat, rot_mat);
-        }
+        pos = obj->l.animated_p;
       }
+
+      Mat4 transform = Mat4_Translation(pos);
+      if (Obj_HasAnyFlag(obj, ObjFlag_AnimateRotation))
+      {
+        Mat4 rot_mat = Mat4_Rotation_Quat(obj->l.animated_rot);
+        transform = Mat4_Mul(transform, rot_mat);
+      }
+
+      if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot))
+        Rdr_AddRigid(RdrRigid_Teapot, transform, obj->s.color);
+
+      if (Obj_HasAnyFlag(obj, ObjFlag_ModelFlag))
+        Rdr_AddRigid(RdrRigid_Flag, transform, obj->s.color);
+
+      if (Obj_HasAnyFlag(obj, ObjFlag_ModelWorker))
+        Rdr_AddSkinned(RdrSkinned_Worker, transform, obj->s.color);
     }
     else
     {
