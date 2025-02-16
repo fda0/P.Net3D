@@ -8,6 +8,15 @@
   #error "IS_RIGID is equal to IS_SKINNED"
 #endif
 
+#if IS_RIGID
+#define ShaderModelVS ShaderRigidVS
+#define ShaderModelPS ShaderRigidPS
+#endif
+#if IS_SKINNED
+#define ShaderModelVS ShaderSkinnedVS
+#define ShaderModelPS ShaderSkinnedPS
+#endif
+
 cbuffer UBO : register(b0, space1)
 {
   float4x4 CameraTransform;

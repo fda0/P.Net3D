@@ -17,7 +17,8 @@ typedef struct
   U32 draw_width, draw_height;
 
   // pipeline, sample settings
-  SDL_GPUGraphicsPipeline *model_pipeline;
+  SDL_GPUGraphicsPipeline *rigid_pipeline;
+  SDL_GPUGraphicsPipeline *skinned_pipeline;
   SDL_GPUGraphicsPipeline *wall_pipeline;
   SDL_GPUSampleCount sample_count;
 

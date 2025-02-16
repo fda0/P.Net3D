@@ -40,8 +40,10 @@ static AppState APP;
 #include "game_tick.c"
 #include "game_core.c"
 
-#include "gen_shader_model.vert.h"
-#include "gen_shader_model.frag.h"
+#include "gen_shader_rigid.vert.h"
+#include "gen_shader_rigid.frag.h"
+#include "gen_shader_skinned.vert.h"
+#include "gen_shader_skinned.frag.h"
 #include "gen_shader_wall.vert.h"
 #include "gen_shader_wall.frag.h"
 #include "gen_models.h"
@@ -77,10 +79,13 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   // render cleanup
   {
     APP.rdr.wall_vert_count = 0;
-    ForArray(rigid_i, APP.gpu.models)
+    ForArray(i, APP.gpu.rigids)
     {
-      Rdr_Rigid *rigid = APP.rdr.rigids + rigid_i;
-      rigid->instance_count = 0;
+      APP.rdr.rigids[i].instance_count = 0;
+    }
+    ForArray(i, APP.gpu.skinneds)
+    {
+      APP.rdr.skinneds[i].instance_count = 0;
     }
   }
 
