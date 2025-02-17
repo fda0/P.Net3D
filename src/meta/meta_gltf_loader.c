@@ -170,27 +170,26 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
             } break;
           }
 
+          U64 total_count = number_count * accessor->count;
+          U64 unpacked = 0;
           if (save_buf->elem_size == 4)
           {
-            U64 total_count = number_count * accessor->count;
             float *numbers = M_BufferPushFloat(save_buf, total_count);
-            U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
+            unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
             M_AssertAlways(unpacked == total_count);
           }
           else if (save_buf->elem_size == 2)
           {
-            U64 total_count = number_count * accessor->count;
             U16 *numbers = M_BufferPushU16(save_buf, total_count);
-            U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
+            unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
             M_AssertAlways(unpacked == total_count);
           }
           else if (save_buf->elem_size == 1)
           {
-            U64 total_count = number_count * accessor->count;
             U8 *numbers = M_BufferPushU8(save_buf, total_count);
-            U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
-            M_AssertAlways(unpacked == total_count);
+            unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
           }
+          M_AssertAlways(unpacked == total_count);
         }
       }
     }
@@ -200,13 +199,23 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   // Output collected data
   //
   M_AssertAlways(positions.used % 3 == 0);
+  U64 positions_count = positions.used / 3;
+
   M_AssertAlways(normals.used % 3 == 0);
-  U64 positions_vec_count = positions.used / 3;
-  U64 normals_vec_count = normals.used / 3;
-  M_AssertAlways(positions_vec_count == normals_vec_count);
+  U64 normals_count = normals.used / 3;
+
+  M_AssertAlways(joints.used % 4 == 0);
+  U64 joints_count = joints.used / 4;
+
+  M_AssertAlways(weights.used % 4 == 0);
+  U64 weights_count = weights.used / 4;
+
+  M_AssertAlways(positions_count == normals_count);
+  M_AssertAlways(positions_count == joints_count);
+  M_AssertAlways(positions_count == weights_count);
 
   Pr_Add(out, S8Lit("static Rdr_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
-  ForU64(i, positions_vec_count)
+  ForU64(i, positions_count)
   {
     Pr_Add(out, S8Lit("  /*pos*/"));
     Pr_AddFloat(out, *M_BufferAtFloat(&positions, i*3 + 0) * scale);
@@ -244,8 +253,35 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
     Pr_AddFloat(out, normal.z);
     Pr_Add(out, S8Lit("f, "));
 
-    Pr_Add(out, S8Lit("/*jnt*/0, "));
-    Pr_Add(out, S8Lit("/*wgt*/0.8f,0.1f,0.08f,0.02f,"));
+    U32 j0 = *M_BufferAtU8(&joints, i*4 + 0);
+    U32 j1 = *M_BufferAtU8(&joints, i*4 + 1);
+    U32 j2 = *M_BufferAtU8(&joints, i*4 + 2);
+    U32 j3 = *M_BufferAtU8(&joints, i*4 + 3);
+    U32 joint_packed4 = (j0 | (j1 << 8) | (j2 << 16) | (j3 << 24));
+    Pr_Add(out, S8Lit("/*jnt*/0x"));
+    Pr_AddU32Hex(out, joint_packed4);
+    Pr_Add(out, S8Lit(", "));
+
+    float w0 = *M_BufferAtFloat(&weights, i*4 + 0);
+    float w1 = *M_BufferAtFloat(&weights, i*4 + 1);
+    float w2 = *M_BufferAtFloat(&weights, i*4 + 2);
+    float w3 = *M_BufferAtFloat(&weights, i*4 + 3);
+    float weight_sum = w0 + w1 + w2 + w3;
+    if (weight_sum < 0.9f || weight_sum > 1.1f)
+    {
+      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
+    }
+
+    Pr_Add(out, S8Lit("/*wgt*/"));
+    Pr_AddFloat(out, w0);
+    Pr_Add(out, S8Lit("f,"));
+    Pr_AddFloat(out, w1);
+    Pr_Add(out, S8Lit("f,"));
+    Pr_AddFloat(out, w2);
+    Pr_Add(out, S8Lit("f,"));
+    Pr_AddFloat(out, w3);
+    Pr_Add(out, S8Lit("f,"));
+
     Pr_Add(out, S8Lit("\n"));
   }
   Pr_Add(out, S8Lit("};\n\n"));
