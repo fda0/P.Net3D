@@ -184,6 +184,13 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
             U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
             M_AssertAlways(unpacked == total_count);
           }
+          else if (save_buf->elem_size == 1)
+          {
+            U64 total_count = number_count * accessor->count;
+            U8 *numbers = M_BufferPushU8(save_buf, total_count);
+            U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
+            M_AssertAlways(unpacked == total_count);
+          }
         }
       }
     }
@@ -198,7 +205,7 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   U64 normals_vec_count = normals.used / 3;
   M_AssertAlways(positions_vec_count == normals_vec_count);
 
-  Pr_Add(out, S8Lit("static Rdr_RigidVertex Model_Worker_vrt[] =\n{\n"));
+  Pr_Add(out, S8Lit("static Rdr_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
   ForU64(i, positions_vec_count)
   {
     Pr_Add(out, S8Lit("  /*pos*/"));
@@ -235,7 +242,11 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
     Pr_AddFloat(out, normal.y);
     Pr_Add(out, S8Lit("f,"));
     Pr_AddFloat(out, normal.z);
-    Pr_Add(out, S8Lit("f,\n"));
+    Pr_Add(out, S8Lit("f, "));
+
+    Pr_Add(out, S8Lit("/*jnt*/0, "));
+    Pr_Add(out, S8Lit("/*wgt*/0.8f,0.1f,0.08f,0.02f,"));
+    Pr_Add(out, S8Lit("\n"));
   }
   Pr_Add(out, S8Lit("};\n\n"));
 

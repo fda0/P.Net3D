@@ -275,7 +275,6 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
     SDL_GPUBufferCreateInfo buffer_desc = {
       .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
       .size = vertices_size,
-      .props = 0,
     };
     model->vert_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
     Assert(model->vert_buf); // @todo report err
@@ -286,7 +285,6 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
     SDL_GPUBufferCreateInfo buffer_desc = {
       .usage = SDL_GPU_BUFFERUSAGE_INDEX,
       .size = indices_size,
-      .props = 0,
     };
     model->ind_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
     Assert(model->ind_buf); // @todo report err
@@ -297,7 +295,6 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
     SDL_GPUBufferCreateInfo buffer_desc = {
       .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
       .size = instance_size,
-      .props = 0,
     };
     model->inst_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
     Assert(model->inst_buf); // @todo report err
@@ -496,13 +493,13 @@ static void Gpu_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(Rdr_RigidVertex),
+          .pitch = sizeof(Rdr_SkinnedVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
         {
           .slot = 1,
-          .pitch = sizeof(Rdr_RigidInstance),
+          .pitch = sizeof(Rdr_SkinnedInstance),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },

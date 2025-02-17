@@ -131,15 +131,7 @@ static Object *Obj_CreateWall(V2 p, V2 dim)
   obj->s.p = p;
   obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
   Collision_RecalculateNormals(&obj->s.collision);
-
-  static float r = 0.f;
-  static float g = 0.5f;
-  r += 0.321f;
-  g += 0.111f;
-  while (r > 1.f) r -= 1.f;
-  while (g > 1.f) g -= 1.f;
-
-  obj->s.color = ColorF_RGB(r, g, 0.5f);
+  obj->s.color = (V4){1, 0.7f, 0.1f, 1};
   return obj;
 }
 

@@ -217,6 +217,12 @@ static V3 V3_Make_ZY_X(V2 zy, float x)
   return (V3){zy.x, zy.y, x};
 }
 
+static V3 V3_FromV4_XYZ(V4 vec)
+{
+  return (V3){vec.x, vec.y, vec.z};
+}
+
+
 static V3 V3_Scale(V3 a, float scale)
 {
   return (V3){a.x*scale, a.y*scale, a.z*scale};

@@ -102,7 +102,7 @@ static void Game_DrawObjects()
         ForU32(i, vert_count)
         {
           SDL_zerop(&wall_verts[i]);
-          wall_verts[i].color = (V3){0.95f, 0.7f, 0};
+          wall_verts[i].color = V3_FromV4_XYZ(obj->s.color);
         }
 
         float height = 20.f;
