@@ -38,9 +38,19 @@ static V3 M_ParseV3(S8 x, S8 y, S8 z)
 static void Pr_AddFloat(Printer *p, float value)
 {
   // @todo remove clib dependency in the future
+  S8 string = {};
+  if (value ==  0.f) string = S8Lit("0.0");
+  if (value == -0.f) string = S8Lit("-0.0");
+  if (value ==  1.f) string = S8Lit("1.0");
+  if (value == -1.f) string = S8Lit("-1.0");
+
   char buf[128];
-  snprintf(buf, sizeof(buf), "%f", value);
-  S8 string = S8_ScanCstr(buf);
+  if (!string.size)
+  {
+    snprintf(buf, sizeof(buf), "%f", value);
+    string = S8_ScanCstr(buf);
+  }
+
   Pr_Add(p, string);
 }
 

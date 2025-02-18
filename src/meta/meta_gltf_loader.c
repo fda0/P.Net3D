@@ -51,23 +51,26 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   // Collect data from .gltf file
   //
   ArenaScope tmp_scope = Arena_PushScope(M.tmp);
-  U64 max_nums = 1024*1024;
-  M_Buffer indices   = M_BufferAlloc(M.tmp, max_nums, sizeof(U16));
-  M_Buffer positions = M_BufferAlloc(M.tmp, max_nums, sizeof(float));
-  M_Buffer normals   = M_BufferAlloc(M.tmp, max_nums, sizeof(float));
-  M_Buffer texcoords = M_BufferAlloc(M.tmp, max_nums, sizeof(float));
-  M_Buffer joints    = M_BufferAlloc(M.tmp, max_nums, sizeof(U8));
-  M_Buffer weights   = M_BufferAlloc(M.tmp, max_nums, sizeof(float));
+  U64 max_verts = 1024*128;
+  M_Buffer indices   = M_BufferAlloc(M.tmp, max_verts*2, sizeof(U16));
+  M_Buffer positions = M_BufferAlloc(M.tmp, max_verts*3, sizeof(float));
+  M_Buffer normals   = M_BufferAlloc(M.tmp, max_verts*3, sizeof(float));
+  M_Buffer texcoords = M_BufferAlloc(M.tmp, max_verts*2, sizeof(float));
+  M_Buffer joints    = M_BufferAlloc(M.tmp, max_verts*4, sizeof(U8));
+  M_Buffer weights   = M_BufferAlloc(M.tmp, max_verts*4, sizeof(float));
+  M_Buffer inv_mats  = M_BufferAlloc(M.tmp, max_verts*16, sizeof(float));
 
   ForU64(node_index, data->nodes_count)
   {
     cgltf_node *node = data->nodes + node_index;
-    cgltf_mesh* mesh = node->mesh;
+
+    if (node_index != 62)
+      continue;
+
+    cgltf_mesh *mesh = node->mesh;
+    cgltf_skin *skin = node->skin;
     if (mesh)
     {
-      if (node_index != 62)
-        continue;
-
       ForU64(primitive_index, mesh->primitives_count)
       {
         cgltf_primitive *primitive = mesh->primitives + primitive_index;
@@ -89,17 +92,9 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
           M_AssertAlways(accessor->component_type == cgltf_component_type_r_16u);
           M_AssertAlways(accessor->type == cgltf_type_scalar);
 
-          ForU64(value_index, accessor->count)
-          {
-            U16 *numbers = M_BufferPushU16(&indices, 1);
-            U32 read_int = 0;
-            bool ok = cgltf_accessor_read_uint(accessor, value_index, &read_int, 1);
-            if (!ok)
-            {
-              M_LOG(M_LogGltfWarning, "[GLTF LOADER] Accessor failed to read i16");
-            }
-            *numbers = (U16)read_int;
-          }
+          U16 *numbers = M_BufferPushU16(&indices, accessor->count);
+          U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, indices.elem_size, accessor->count);
+          M_AssertAlways(unpacked == accessor->count);
         }
 
         ForU64(attribute_index, primitive->attributes_count)
@@ -107,57 +102,43 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
           cgltf_attribute *attribute = primitive->attributes + attribute_index;
           cgltf_accessor *accessor = attribute->data;
 
-          U32 number_count = 0;
-          switch (accessor->type)
-          {
-            case cgltf_type_scalar: number_count = 1; break;
-            case cgltf_type_vec2:   number_count = 2; break;
-            case cgltf_type_vec3:   number_count = 3; break;
-            case cgltf_type_vec4:   number_count = 4; break;
-            default:
-            {
-              M_LOG(M_LogGltfWarning,
-                    "[GLTF LOADER] Accessor with unknown type (%u) skipped",
-                    accessor->type);
-              continue;
-            } break;
-          }
-
+          U64 comp_count = cgltf_num_components(accessor->type);
           M_Buffer *save_buf = 0;
+
           switch (attribute->type)
           {
             case cgltf_attribute_type_position:
             {
               save_buf = &positions;
-              M_AssertAlways(number_count == 3);
+              M_AssertAlways(comp_count == 3);
               M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
             } break;
 
             case cgltf_attribute_type_normal:
             {
               save_buf = &normals;
-              M_AssertAlways(number_count == 3);
+              M_AssertAlways(comp_count == 3);
               M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
             } break;
 
             case cgltf_attribute_type_texcoord:
             {
               save_buf = &texcoords;
-              M_AssertAlways(number_count == 2);
+              M_AssertAlways(comp_count == 2);
               M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
             } break;
 
             case cgltf_attribute_type_joints:
             {
               save_buf = &joints;
-              M_AssertAlways(number_count == 4);
+              M_AssertAlways(comp_count == 4);
               M_AssertAlways(accessor->component_type == cgltf_component_type_r_8u);
             } break;
 
             case cgltf_attribute_type_weights:
             {
               save_buf = &weights;
-              M_AssertAlways(number_count == 4);
+              M_AssertAlways(comp_count == 4);
               M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
             } break;
 
@@ -170,7 +151,7 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
             } break;
           }
 
-          U64 total_count = number_count * accessor->count;
+          U64 total_count = comp_count * accessor->count;
           U64 unpacked = 0;
           if (save_buf->elem_size == 4)
           {
@@ -192,6 +173,21 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
           M_AssertAlways(unpacked == total_count);
         }
       }
+    }
+
+    if (skin)
+    {
+      cgltf_accessor *accessor = skin->inverse_bind_matrices;
+      M_AssertAlways(accessor);
+      M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+      M_AssertAlways(accessor->type == cgltf_type_mat4);
+
+      U64 comp_count = cgltf_num_components(accessor->type);
+      U64 total_count = comp_count * accessor->count;
+
+      float *numbers = M_BufferPushFloat(&inv_mats, total_count);
+      U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
+      M_AssertAlways(unpacked == total_count);
     }
   }
 
@@ -293,15 +289,27 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
     U64 per_group = 3;
     U64 per_row = per_group * 6;
     if (i % per_row == 0)
-    {
       Pr_Add(out, S8Lit("\n  "));
-    }
     else if ((i % per_row) % per_group == 0)
-    {
       Pr_Add(out, S8Lit(" "));
-    }
+
     Pr_AddU16(out, *M_BufferAtU16(&indices, i));
     Pr_Add(out, S8Lit(","));
+  }
+  Pr_Add(out, S8Lit("\n};\n\n"));
+
+  Pr_Add(out, S8Lit("static float Model_Worker_inv_bind_mat[] =\n{"));
+  ForU64(i, inv_mats.used)
+  {
+    U64 per_row = 4;
+    U64 per_mat = per_row * 4;
+    if (i % per_mat == 0)
+      Pr_Add(out, S8Lit("\n\n  "));
+    else if ((i % per_mat) % per_row == 0)
+      Pr_Add(out, S8Lit("\n  "));
+
+    Pr_AddFloat(out, *M_BufferAtFloat(&inv_mats, i));
+    Pr_Add(out, S8Lit("f, "));
   }
   Pr_Add(out, S8Lit("\n};\n\n"));
 
