@@ -58,7 +58,10 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   M_Buffer texcoords = M_BufferAlloc(M.tmp, max_verts*2, sizeof(float));
   M_Buffer joints    = M_BufferAlloc(M.tmp, max_verts*4, sizeof(U8));
   M_Buffer weights   = M_BufferAlloc(M.tmp, max_verts*4, sizeof(float));
-  M_Buffer inv_mats  = M_BufferAlloc(M.tmp, max_verts*16, sizeof(float));
+
+  U64 max_joints = 1024;
+  M_Buffer inv_mats      = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
+  M_Buffer inv_mat_names = M_BufferAlloc(M.tmp, max_joints,    sizeof(S8));
 
   ForU64(node_index, data->nodes_count)
   {
@@ -177,6 +180,12 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
 
     if (skin)
     {
+      ForU64(joint_index, skin->joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+        *M_BufferPushS8(&inv_mat_names, 1) = S8_ScanCstr(joint->name);
+      }
+
       cgltf_accessor *accessor = skin->inverse_bind_matrices;
       M_AssertAlways(accessor);
       M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
@@ -211,23 +220,23 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   M_AssertAlways(positions_count == weights_count);
 
   Pr_Add(out, S8Lit("static Rdr_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
-  ForU64(i, positions_count)
+  ForU64(vert_i, positions_count)
   {
     Pr_Add(out, S8Lit("  /*pos*/"));
-    Pr_AddFloat(out, *M_BufferAtFloat(&positions, i*3 + 0) * scale);
+    Pr_AddFloat(out, *M_BufferAtFloat(&positions, vert_i*3 + 0) * scale);
     Pr_Add(out, S8Lit("f,"));
-    Pr_AddFloat(out, *M_BufferAtFloat(&positions, i*3 + 1) * scale);
+    Pr_AddFloat(out, *M_BufferAtFloat(&positions, vert_i*3 + 1) * scale);
     Pr_Add(out, S8Lit("f,"));
-    Pr_AddFloat(out, *M_BufferAtFloat(&positions, i*3 + 2) * scale);
+    Pr_AddFloat(out, *M_BufferAtFloat(&positions, vert_i*3 + 2) * scale);
     Pr_Add(out, S8Lit("f, "));
 
     Pr_Add(out, S8Lit("/*col*/1.f,1.f,1.f, "));
 
     V3 normal =
     {
-      *M_BufferAtFloat(&normals, i*3 + 0),
-      *M_BufferAtFloat(&normals, i*3 + 1),
-      *M_BufferAtFloat(&normals, i*3 + 2),
+      *M_BufferAtFloat(&normals, vert_i*3 + 0),
+      *M_BufferAtFloat(&normals, vert_i*3 + 1),
+      *M_BufferAtFloat(&normals, vert_i*3 + 2),
     };
     float normal_lensq = V3_LengthSq(normal);
     if (normal_lensq < 0.001f)
@@ -249,19 +258,31 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
     Pr_AddFloat(out, normal.z);
     Pr_Add(out, S8Lit("f, "));
 
-    U32 j0 = *M_BufferAtU8(&joints, i*4 + 0);
-    U32 j1 = *M_BufferAtU8(&joints, i*4 + 1);
-    U32 j2 = *M_BufferAtU8(&joints, i*4 + 2);
-    U32 j3 = *M_BufferAtU8(&joints, i*4 + 3);
-    U32 joint_packed4 = (j0 | (j1 << 8) | (j2 << 16) | (j3 << 24));
+    U32 joint_vals[4] =
+    {
+      *M_BufferAtU8(&joints, vert_i*4 + 0),
+      *M_BufferAtU8(&joints, vert_i*4 + 1),
+      *M_BufferAtU8(&joints, vert_i*4 + 2),
+      *M_BufferAtU8(&joints, vert_i*4 + 3),
+    };
+    ForArray32(i, joint_vals)
+    {
+      if (joint_vals[i] >= inv_mat_names.used)
+        M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %u",
+              joint_vals[i], (U32)inv_mat_names.used);
+    }
+
+    U32 joint_packed4 = (joint_vals[0] | (joint_vals[1] << 8) |
+                         (joint_vals[2] << 16) | (joint_vals[3] << 24));
+
     Pr_Add(out, S8Lit("/*jnt*/0x"));
     Pr_AddU32Hex(out, joint_packed4);
     Pr_Add(out, S8Lit(", "));
 
-    float w0 = *M_BufferAtFloat(&weights, i*4 + 0);
-    float w1 = *M_BufferAtFloat(&weights, i*4 + 1);
-    float w2 = *M_BufferAtFloat(&weights, i*4 + 2);
-    float w3 = *M_BufferAtFloat(&weights, i*4 + 3);
+    float w0 = *M_BufferAtFloat(&weights, vert_i*4 + 0);
+    float w1 = *M_BufferAtFloat(&weights, vert_i*4 + 1);
+    float w2 = *M_BufferAtFloat(&weights, vert_i*4 + 2);
+    float w3 = *M_BufferAtFloat(&weights, vert_i*4 + 3);
     float weight_sum = w0 + w1 + w2 + w3;
     if (weight_sum < 0.9f || weight_sum > 1.1f)
     {
@@ -298,18 +319,24 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   }
   Pr_Add(out, S8Lit("\n};\n\n"));
 
-  Pr_Add(out, S8Lit("static float Model_Worker_inv_bind_mat[] =\n{"));
-  ForU64(i, inv_mats.used)
-  {
-    U64 per_row = 4;
-    U64 per_mat = per_row * 4;
-    if (i % per_mat == 0)
-      Pr_Add(out, S8Lit("\n\n  "));
-    else if ((i % per_mat) % per_row == 0)
-      Pr_Add(out, S8Lit("\n  "));
 
-    Pr_AddFloat(out, *M_BufferAtFloat(&inv_mats, i));
-    Pr_Add(out, S8Lit("f, "));
+  M_AssertAlways(inv_mats.used % 16 == 0);
+  U64 inv_mat4_count = inv_mats.used / 16;
+  M_AssertAlways(inv_mat_names.used == inv_mat4_count);
+
+  Pr_Add(out, S8Lit("static float Model_Worker_inv_bind_mat[] =\n{"));
+  ForU64(mat_index, inv_mat4_count)
+  {
+    Pr_Add(out, S8Lit("\n  // "));
+    Pr_Add(out, *M_BufferAtS8(&inv_mat_names, mat_index));
+    ForU64(number_index, 16)
+    {
+      U64 i = mat_index*16 + number_index;
+      if (number_index % 4 == 0)
+        Pr_Add(out, S8Lit("\n  "));
+      Pr_AddFloat(out, *M_BufferAtFloat(&inv_mats, i));
+      Pr_Add(out, S8Lit("f, "));
+    }
   }
   Pr_Add(out, S8Lit("\n};\n\n"));
 
