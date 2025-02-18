@@ -62,7 +62,6 @@ typedef struct
 {
   Mat4 transform;
   V4 color;
-  // add joint transforms
 } Rdr_SkinnedInstance;
 
 typedef struct

@@ -11,7 +11,7 @@ static void M_FakeFree(void *user_data, void *ptr)
   // do nothing
 }
 
-static void M_GLTF_Load(const char *path, Printer *out, float scale)
+static void M_GLTF_Load(const char *path, Printer *out)
 {
   //
   // Parse .gltf file using cgltf library
@@ -188,6 +188,7 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
 
       cgltf_accessor *accessor = skin->inverse_bind_matrices;
       M_AssertAlways(accessor);
+      M_AssertAlways(accessor->count == skin->joints_count);
       M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
       M_AssertAlways(accessor->type == cgltf_type_mat4);
 
@@ -197,6 +198,34 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
       float *numbers = M_BufferPushFloat(&inv_mats, total_count);
       U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
       M_AssertAlways(unpacked == total_count);
+
+
+      Mat4 *mats = (Mat4 *)numbers;
+      ForU64(joint_index, skin->joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+
+        Mat4 joint_mat = Mat4_Identity();
+        if (joint->has_translation)
+        {
+          V3 translation = (V3){joint->translation[0], joint->translation[1], joint->translation[2]};
+          joint_mat = Mat4_Mul(Mat4_Translation(translation), joint_mat);
+        }
+        if (joint->has_rotation)
+        {
+          V3 rotation = (V3){joint->rotation[0], joint->rotation[1], joint->rotation[2]};
+          joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){1,0,0}, rotation.x), joint_mat);
+          joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, rotation.y), joint_mat);
+          joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, rotation.z), joint_mat);
+        }
+        if (joint->has_scale)
+        {
+          V3 scale = (V3){joint->scale[0], joint->scale[1], joint->scale[2]};
+          joint_mat = Mat4_Mul(Mat4_Scale(scale), joint_mat);
+        }
+
+        mats[joint_index] = Mat4_Mul(joint_mat, mats[joint_index]);
+      }
     }
   }
 
@@ -223,11 +252,11 @@ static void M_GLTF_Load(const char *path, Printer *out, float scale)
   ForU64(vert_i, positions_count)
   {
     Pr_Add(out, S8Lit("  /*pos*/"));
-    Pr_AddFloat(out, *M_BufferAtFloat(&positions, vert_i*3 + 0) * scale);
+    Pr_AddFloat(out, *M_BufferAtFloat(&positions, vert_i*3 + 0));
     Pr_Add(out, S8Lit("f,"));
-    Pr_AddFloat(out, *M_BufferAtFloat(&positions, vert_i*3 + 1) * scale);
+    Pr_AddFloat(out, *M_BufferAtFloat(&positions, vert_i*3 + 1));
     Pr_Add(out, S8Lit("f,"));
-    Pr_AddFloat(out, *M_BufferAtFloat(&positions, vert_i*3 + 2) * scale);
+    Pr_AddFloat(out, *M_BufferAtFloat(&positions, vert_i*3 + 2));
     Pr_Add(out, S8Lit("f, "));
 
     Pr_Add(out, S8Lit("/*col*/1.f,1.f,1.f, "));
