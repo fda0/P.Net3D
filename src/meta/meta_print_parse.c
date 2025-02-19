@@ -70,3 +70,12 @@ static void Pr_AddU32Hex(Printer *p, U32 value)
   S8 string = S8_ScanCstr(buf);
   Pr_Add(p, string);
 }
+
+static void Pr_AddU64(Printer *p, U64 value)
+{
+  // @todo remove clib dependency in the future
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%llu", value);
+  S8 string = S8_ScanCstr(buf);
+  Pr_Add(p, string);
+}

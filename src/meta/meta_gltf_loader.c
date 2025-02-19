@@ -51,13 +51,16 @@ static void M_GLTF_Load(const char *path, Printer *out)
   // Collect data from .gltf file
   //
   ArenaScope tmp_scope = Arena_PushScope(M.tmp);
+
+  U64 max_indices = 1024*256;
+  M_Buffer indices = M_BufferAlloc(M.tmp, max_indices, sizeof(U16));
+
   U64 max_verts = 1024*128;
-  M_Buffer indices   = M_BufferAlloc(M.tmp, max_verts*2, sizeof(U16));
-  M_Buffer positions = M_BufferAlloc(M.tmp, max_verts*3, sizeof(float));
-  M_Buffer normals   = M_BufferAlloc(M.tmp, max_verts*3, sizeof(float));
-  M_Buffer texcoords = M_BufferAlloc(M.tmp, max_verts*2, sizeof(float));
-  M_Buffer joints    = M_BufferAlloc(M.tmp, max_verts*4, sizeof(U8));
-  M_Buffer weights   = M_BufferAlloc(M.tmp, max_verts*4, sizeof(float));
+  M_Buffer positions     = M_BufferAlloc(M.tmp, max_verts*3, sizeof(float));
+  M_Buffer normals       = M_BufferAlloc(M.tmp, max_verts*3, sizeof(float));
+  M_Buffer texcoords     = M_BufferAlloc(M.tmp, max_verts*2, sizeof(float));
+  M_Buffer joint_indices = M_BufferAlloc(M.tmp, max_verts*4, sizeof(U8));
+  M_Buffer weights       = M_BufferAlloc(M.tmp, max_verts*4, sizeof(float));
 
   U64 max_joints = 1024;
   M_Buffer inv_mats      = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
@@ -67,9 +70,6 @@ static void M_GLTF_Load(const char *path, Printer *out)
   {
     cgltf_node *node = data->nodes + node_index;
 
-    if (node_index != 62)
-      continue;
-
     cgltf_mesh *mesh = node->mesh;
     cgltf_skin *skin = node->skin;
     if (mesh)
@@ -77,9 +77,6 @@ static void M_GLTF_Load(const char *path, Printer *out)
       ForU64(primitive_index, mesh->primitives_count)
       {
         cgltf_primitive *primitive = mesh->primitives + primitive_index;
-
-        if (primitive_index != 0)
-          continue;
 
         if (primitive->type != cgltf_primitive_type_triangles)
         {
@@ -91,6 +88,8 @@ static void M_GLTF_Load(const char *path, Printer *out)
 
         M_AssertAlways(primitive->indices);
         {
+          U64 index_start_offset = positions.used/3;
+
           cgltf_accessor *accessor = primitive->indices;
           M_AssertAlways(accessor->component_type == cgltf_component_type_r_16u);
           M_AssertAlways(accessor->type == cgltf_type_scalar);
@@ -98,6 +97,14 @@ static void M_GLTF_Load(const char *path, Printer *out)
           U16 *numbers = M_BufferPushU16(&indices, accessor->count);
           U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, indices.elem_size, accessor->count);
           M_AssertAlways(unpacked == accessor->count);
+
+          if (index_start_offset)
+          {
+            ForU64(i, accessor->count)
+            {
+              numbers[i] += index_start_offset;
+            }
+          }
         }
 
         ForU64(attribute_index, primitive->attributes_count)
@@ -133,7 +140,7 @@ static void M_GLTF_Load(const char *path, Printer *out)
 
             case cgltf_attribute_type_joints:
             {
-              save_buf = &joints;
+              save_buf = &joint_indices;
               M_AssertAlways(comp_count == 4);
               M_AssertAlways(accessor->component_type == cgltf_component_type_r_8u);
             } break;
@@ -180,66 +187,41 @@ static void M_GLTF_Load(const char *path, Printer *out)
 
     if (skin)
     {
-      ForU64(joint_index, skin->joints_count)
+      bool doesnt_contain_inv_mats_yet = !inv_mat_names.used;
+      // This code assumes that inverse bind matrices
+      // from other nodes are duplicated and should be skipped.
+      // This is might be not true for more complex models.
+      if (doesnt_contain_inv_mats_yet)
       {
-        cgltf_node *joint = skin->joints[joint_index];
-        *M_BufferPushS8(&inv_mat_names, 1) = S8_ScanCstr(joint->name);
-      }
-
-      cgltf_accessor *accessor = skin->inverse_bind_matrices;
-      M_AssertAlways(accessor);
-      M_AssertAlways(accessor->count == skin->joints_count);
-      M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
-      M_AssertAlways(accessor->type == cgltf_type_mat4);
-
-      U64 comp_count = cgltf_num_components(accessor->type);
-      U64 total_count = comp_count * accessor->count;
-
-      float *numbers = M_BufferPushFloat(&inv_mats, total_count);
-      U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
-      M_AssertAlways(unpacked == total_count);
-
-      // tranpose unloaded matrices (row major -> col major)
-      {
-        Mat4 *mats = (Mat4 *)numbers;
-        ForU64(mat_index, total_count/16)
+        ForU64(joint_index, skin->joints_count)
         {
-          mats[mat_index] = Mat4_Transpose(mats[mat_index]);
-          //mats[mat_index] = Mat4_Identity();
+          cgltf_node *joint = skin->joints[joint_index];
+          *M_BufferPushS8(&inv_mat_names, 1) = S8_ScanCstr(joint->name);
+        }
+
+        cgltf_accessor *accessor = skin->inverse_bind_matrices;
+        M_AssertAlways(accessor);
+        M_AssertAlways(accessor->count == skin->joints_count);
+        M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+        M_AssertAlways(accessor->type == cgltf_type_mat4);
+
+        U64 comp_count = cgltf_num_components(accessor->type);
+        U64 total_count = comp_count * accessor->count;
+
+        float *numbers = M_BufferPushFloat(&inv_mats, total_count);
+        U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
+        M_AssertAlways(unpacked == total_count);
+
+        // tranpose unloaded matrices (row major -> col major)
+        {
+          Mat4 *mats = (Mat4 *)numbers;
+          ForU64(mat_index, total_count/16)
+          {
+            mats[mat_index] = Mat4_Transpose(mats[mat_index]);
+            //mats[mat_index] = Mat4_Identity();
+          }
         }
       }
-
-#if 0
-      M_AssertAlways(skin->joints_count == (total_count/16));
-
-      // premultiply these matrices ... @todo fix? delete?
-      Mat4 *mats = (Mat4 *)numbers;
-      ForU64(joint_index, skin->joints_count)
-      {
-        cgltf_node *joint = skin->joints[joint_index];
-
-        Mat4 joint_mat = Mat4_Identity();
-        if (joint->has_translation)
-        {
-          V3 translation = (V3){joint->translation[0], joint->translation[1], joint->translation[2]};
-          joint_mat = Mat4_Mul(Mat4_Translation(translation), joint_mat);
-        }
-        if (joint->has_rotation)
-        {
-          V3 rotation = (V3){joint->rotation[0], joint->rotation[1], joint->rotation[2]};
-          joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){1,0,0}, rotation.x), joint_mat);
-          joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, rotation.y), joint_mat);
-          joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, rotation.z), joint_mat);
-        }
-        if (joint->has_scale)
-        {
-          V3 scale = (V3){joint->scale[0], joint->scale[1], joint->scale[2]};
-          joint_mat = Mat4_Mul(Mat4_Scale(scale), joint_mat);
-        }
-
-        mats[joint_index] = Mat4_Mul(joint_mat, mats[joint_index]);
-      }
-#endif
     }
   }
 
@@ -252,14 +234,14 @@ static void M_GLTF_Load(const char *path, Printer *out)
   M_AssertAlways(normals.used % 3 == 0);
   U64 normals_count = normals.used / 3;
 
-  M_AssertAlways(joints.used % 4 == 0);
-  U64 joints_count = joints.used / 4;
+  M_AssertAlways(joint_indices.used % 4 == 0);
+  U64 joint_indices_count = joint_indices.used / 4;
 
   M_AssertAlways(weights.used % 4 == 0);
   U64 weights_count = weights.used / 4;
 
   M_AssertAlways(positions_count == normals_count);
-  M_AssertAlways(positions_count == joints_count);
+  M_AssertAlways(positions_count == joint_indices_count);
   M_AssertAlways(positions_count == weights_count);
 
   Pr_Add(out, S8Lit("static Rdr_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
@@ -301,22 +283,22 @@ static void M_GLTF_Load(const char *path, Printer *out)
     Pr_AddFloat(out, normal.z);
     Pr_Add(out, S8Lit("f, "));
 
-    U32 joint_vals[4] =
+    U32 joint_index_vals[4] =
     {
-      *M_BufferAtU8(&joints, vert_i*4 + 0),
-      *M_BufferAtU8(&joints, vert_i*4 + 1),
-      *M_BufferAtU8(&joints, vert_i*4 + 2),
-      *M_BufferAtU8(&joints, vert_i*4 + 3),
+      *M_BufferAtU8(&joint_indices, vert_i*4 + 0),
+      *M_BufferAtU8(&joint_indices, vert_i*4 + 1),
+      *M_BufferAtU8(&joint_indices, vert_i*4 + 2),
+      *M_BufferAtU8(&joint_indices, vert_i*4 + 3),
     };
-    ForArray32(i, joint_vals)
+    ForArray32(i, joint_index_vals)
     {
-      if (joint_vals[i] >= inv_mat_names.used)
+      if (joint_index_vals[i] >= inv_mat_names.used)
         M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %u",
-              joint_vals[i], (U32)inv_mat_names.used);
+              joint_index_vals[i], (U32)inv_mat_names.used);
     }
 
-    U32 joint_packed4 = (joint_vals[0] | (joint_vals[1] << 8) |
-                         (joint_vals[2] << 16) | (joint_vals[3] << 24));
+    U32 joint_packed4 = (joint_index_vals[0] | (joint_index_vals[1] << 8) |
+                         (joint_index_vals[2] << 16) | (joint_index_vals[3] << 24));
 
     Pr_Add(out, S8Lit("/*jnt*/0x"));
     Pr_AddU32Hex(out, joint_packed4);
@@ -367,6 +349,9 @@ static void M_GLTF_Load(const char *path, Printer *out)
   U64 inv_mat4_count = inv_mats.used / 16;
   M_AssertAlways(inv_mat_names.used == inv_mat4_count);
 
+  Pr_Add(out, S8Lit("// Mat4 count: "));
+  Pr_AddU64(out, inv_mat4_count);
+  Pr_Add(out, S8Lit("\n"));
   Pr_Add(out, S8Lit("static float Model_Worker_inv_bind_mat[] =\n{"));
   ForU64(mat_index, inv_mat4_count)
   {

@@ -436,7 +436,7 @@ VSOutput ShaderModelVS(VSInput input)
   //joint_mat3 = Mat4_TranslationPart(joint_mat3);
   //joint_mat1 = joint_mat2 = joint_mat3 = joint_mat0;
 
-#if 1
+#if 0
   float4 pos0 = mul(joint_mat0, position);
   float4 pos1 = mul(joint_mat1, position);
   float4 pos2 = mul(joint_mat2, position);
