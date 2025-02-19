@@ -199,7 +199,20 @@ static void M_GLTF_Load(const char *path, Printer *out)
       U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
       M_AssertAlways(unpacked == total_count);
 
+      // tranpose unloaded matrices (row major -> col major)
+      {
+        Mat4 *mats = (Mat4 *)numbers;
+        ForU64(mat_index, total_count/16)
+        {
+          mats[mat_index] = Mat4_Transpose(mats[mat_index]);
+          //mats[mat_index] = Mat4_Identity();
+        }
+      }
 
+#if 0
+      M_AssertAlways(skin->joints_count == (total_count/16));
+
+      // premultiply these matrices ... @todo fix? delete?
       Mat4 *mats = (Mat4 *)numbers;
       ForU64(joint_index, skin->joints_count)
       {
@@ -226,6 +239,7 @@ static void M_GLTF_Load(const char *path, Printer *out)
 
         mats[joint_index] = Mat4_Mul(joint_mat, mats[joint_index]);
       }
+#endif
     }
   }
 
@@ -364,7 +378,7 @@ static void M_GLTF_Load(const char *path, Printer *out)
       if (number_index % 4 == 0)
         Pr_Add(out, S8Lit("\n  "));
       Pr_AddFloat(out, *M_BufferAtFloat(&inv_mats, i));
-      Pr_Add(out, S8Lit("f, "));
+      Pr_Add(out, S8Lit("f,"));
     }
   }
   Pr_Add(out, S8Lit("\n};\n\n"));
