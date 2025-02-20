@@ -11,6 +11,15 @@ static void M_FakeFree(void *user_data, void *ptr)
   // do nothing
 }
 
+static U64 M_NodeIndex(cgltf_data *data, cgltf_node *target_node)
+{
+  M_AssertAlways(target_node >= data->nodes);
+  M_AssertAlways(target_node < data->nodes + data->nodes_count);
+  U64 index = ((U64)target_node - (U64)data->nodes) / sizeof(*target_node);
+  return index;
+}
+
+
 static void M_GLTF_Load(const char *path, Printer *out)
 {
   //
@@ -63,167 +72,273 @@ static void M_GLTF_Load(const char *path, Printer *out)
   M_Buffer weights       = M_BufferAlloc(M.tmp, max_verts*4, sizeof(float));
 
   U64 max_joints = 1024;
-  M_Buffer inv_mats      = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
-  M_Buffer inv_mat_names = M_BufferAlloc(M.tmp, max_joints,    sizeof(S8));
+  M_Buffer inv_mats       = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
+  M_Buffer inv_mat_names  = M_BufferAlloc(M.tmp, max_joints,    sizeof(S8));
+  M_Buffer animation_mats = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
 
-  ForU64(node_index, data->nodes_count)
+  ForU64(mesh_index, data->meshes_count)
   {
-    cgltf_node *node = data->nodes + node_index;
+    cgltf_mesh *mesh = data->meshes + mesh_index;
 
-    cgltf_mesh *mesh = node->mesh;
-    cgltf_skin *skin = node->skin;
-    if (mesh)
+    ForU64(primitive_index, mesh->primitives_count)
     {
-      ForU64(primitive_index, mesh->primitives_count)
+      cgltf_primitive *primitive = mesh->primitives + primitive_index;
+
+      if (primitive->type != cgltf_primitive_type_triangles)
       {
-        cgltf_primitive *primitive = mesh->primitives + primitive_index;
+        M_LOG(M_LogGltfWarning,
+              "[GLTF LOADER] Primitive with non triangle type (%u) skipped",
+              primitive->type);
+        continue;
+      }
 
-        if (primitive->type != cgltf_primitive_type_triangles)
+      M_AssertAlways(primitive->indices);
+      {
+        U64 index_start_offset = positions.used/3;
+
+        cgltf_accessor *accessor = primitive->indices;
+        M_AssertAlways(accessor->component_type == cgltf_component_type_r_16u);
+        M_AssertAlways(accessor->type == cgltf_type_scalar);
+
+        U16 *numbers = M_BufferPushU16(&indices, accessor->count);
+        U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, indices.elem_size, accessor->count);
+        M_AssertAlways(unpacked == accessor->count);
+
+        if (index_start_offset)
         {
-          M_LOG(M_LogGltfWarning,
-                "[GLTF LOADER] Primitive with non triangle type (%u) skipped",
-                primitive->type);
-          continue;
-        }
-
-        M_AssertAlways(primitive->indices);
-        {
-          U64 index_start_offset = positions.used/3;
-
-          cgltf_accessor *accessor = primitive->indices;
-          M_AssertAlways(accessor->component_type == cgltf_component_type_r_16u);
-          M_AssertAlways(accessor->type == cgltf_type_scalar);
-
-          U16 *numbers = M_BufferPushU16(&indices, accessor->count);
-          U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, indices.elem_size, accessor->count);
-          M_AssertAlways(unpacked == accessor->count);
-
-          if (index_start_offset)
+          ForU64(i, accessor->count)
           {
-            ForU64(i, accessor->count)
-            {
-              numbers[i] += index_start_offset;
-            }
+            numbers[i] += index_start_offset;
           }
-        }
-
-        ForU64(attribute_index, primitive->attributes_count)
-        {
-          cgltf_attribute *attribute = primitive->attributes + attribute_index;
-          cgltf_accessor *accessor = attribute->data;
-
-          U64 comp_count = cgltf_num_components(accessor->type);
-          M_Buffer *save_buf = 0;
-
-          switch (attribute->type)
-          {
-            case cgltf_attribute_type_position:
-            {
-              save_buf = &positions;
-              M_AssertAlways(comp_count == 3);
-              M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
-            } break;
-
-            case cgltf_attribute_type_normal:
-            {
-              save_buf = &normals;
-              M_AssertAlways(comp_count == 3);
-              M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
-            } break;
-
-            case cgltf_attribute_type_texcoord:
-            {
-              save_buf = &texcoords;
-              M_AssertAlways(comp_count == 2);
-              M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
-            } break;
-
-            case cgltf_attribute_type_joints:
-            {
-              save_buf = &joint_indices;
-              M_AssertAlways(comp_count == 4);
-              M_AssertAlways(accessor->component_type == cgltf_component_type_r_8u);
-            } break;
-
-            case cgltf_attribute_type_weights:
-            {
-              save_buf = &weights;
-              M_AssertAlways(comp_count == 4);
-              M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
-            } break;
-
-            default:
-            {
-              M_LOG(M_LogGltfWarning,
-                    "[GLTF LOADER] Attribute with unknown type (%u) skipped",
-                    attribute->type);
-              continue;
-            } break;
-          }
-
-          U64 total_count = comp_count * accessor->count;
-          U64 unpacked = 0;
-          if (save_buf->elem_size == 4)
-          {
-            float *numbers = M_BufferPushFloat(save_buf, total_count);
-            unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
-            M_AssertAlways(unpacked == total_count);
-          }
-          else if (save_buf->elem_size == 2)
-          {
-            U16 *numbers = M_BufferPushU16(save_buf, total_count);
-            unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
-            M_AssertAlways(unpacked == total_count);
-          }
-          else if (save_buf->elem_size == 1)
-          {
-            U8 *numbers = M_BufferPushU8(save_buf, total_count);
-            unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
-          }
-          M_AssertAlways(unpacked == total_count);
         }
       }
-    }
 
-    if (skin)
-    {
-      bool doesnt_contain_inv_mats_yet = !inv_mat_names.used;
-      // This code assumes that inverse bind matrices
-      // from other nodes are duplicated and should be skipped.
-      // This is might be not true for more complex models.
-      if (doesnt_contain_inv_mats_yet)
+      ForU64(attribute_index, primitive->attributes_count)
       {
-        ForU64(joint_index, skin->joints_count)
-        {
-          cgltf_node *joint = skin->joints[joint_index];
-          *M_BufferPushS8(&inv_mat_names, 1) = S8_ScanCstr(joint->name);
-        }
-
-        cgltf_accessor *accessor = skin->inverse_bind_matrices;
-        M_AssertAlways(accessor);
-        M_AssertAlways(accessor->count == skin->joints_count);
-        M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
-        M_AssertAlways(accessor->type == cgltf_type_mat4);
+        cgltf_attribute *attribute = primitive->attributes + attribute_index;
+        cgltf_accessor *accessor = attribute->data;
 
         U64 comp_count = cgltf_num_components(accessor->type);
-        U64 total_count = comp_count * accessor->count;
+        M_Buffer *save_buf = 0;
 
-        float *numbers = M_BufferPushFloat(&inv_mats, total_count);
-        U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
-        M_AssertAlways(unpacked == total_count);
-
-        // tranpose unloaded matrices (row major -> col major)
+        switch (attribute->type)
         {
-          Mat4 *mats = (Mat4 *)numbers;
-          ForU64(mat_index, total_count/16)
+          case cgltf_attribute_type_position:
           {
-            mats[mat_index] = Mat4_Transpose(mats[mat_index]);
-            //mats[mat_index] = Mat4_Identity();
-          }
+            save_buf = &positions;
+            M_AssertAlways(comp_count == 3);
+            M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+          } break;
+
+          case cgltf_attribute_type_normal:
+          {
+            save_buf = &normals;
+            M_AssertAlways(comp_count == 3);
+            M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+          } break;
+
+          case cgltf_attribute_type_texcoord:
+          {
+            save_buf = &texcoords;
+            M_AssertAlways(comp_count == 2);
+            M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+          } break;
+
+          case cgltf_attribute_type_joints:
+          {
+            save_buf = &joint_indices;
+            M_AssertAlways(comp_count == 4);
+            M_AssertAlways(accessor->component_type == cgltf_component_type_r_8u);
+          } break;
+
+          case cgltf_attribute_type_weights:
+          {
+            save_buf = &weights;
+            M_AssertAlways(comp_count == 4);
+            M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+          } break;
+
+          default:
+          {
+            M_LOG(M_LogGltfWarning,
+                  "[GLTF LOADER] Attribute with unknown type (%u) skipped",
+                  attribute->type);
+            continue;
+          } break;
         }
+
+        U64 total_count = comp_count * accessor->count;
+        U64 unpacked = 0;
+        if (save_buf->elem_size == 4)
+        {
+          float *numbers = M_BufferPushFloat(save_buf, total_count);
+          unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
+          M_AssertAlways(unpacked == total_count);
+        }
+        else if (save_buf->elem_size == 2)
+        {
+          U16 *numbers = M_BufferPushU16(save_buf, total_count);
+          unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
+          M_AssertAlways(unpacked == total_count);
+        }
+        else if (save_buf->elem_size == 1)
+        {
+          U8 *numbers = M_BufferPushU8(save_buf, total_count);
+          unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
+        }
+        M_AssertAlways(unpacked == total_count);
       }
     }
   }
+
+  ForU64(skin_index, data->skins_count)
+  {
+    cgltf_skin *skin = data->skins + skin_index;
+
+    ForU64(joint_index, skin->joints_count)
+    {
+      cgltf_node *joint = skin->joints[joint_index];
+      *M_BufferPushS8(&inv_mat_names, 1) = S8_ScanCstr(joint->name);
+    }
+
+    cgltf_accessor *accessor = skin->inverse_bind_matrices;
+    M_AssertAlways(accessor);
+    M_AssertAlways(accessor->count == skin->joints_count);
+    M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+    M_AssertAlways(accessor->type == cgltf_type_mat4);
+
+    U64 comp_count = cgltf_num_components(accessor->type);
+    U64 total_count = comp_count * accessor->count;
+
+    float *numbers = M_BufferPushFloat(&inv_mats, total_count);
+    U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
+    M_AssertAlways(unpacked == total_count);
+
+    // tranpose unloaded matrices (row major -> col major)
+    {
+      Mat4 *mats = (Mat4 *)numbers;
+      ForU64(mat_index, total_count/16)
+      {
+        mats[mat_index] = Mat4_Transpose(mats[mat_index]);
+      }
+    }
+
+
+#if 1
+    M_AssertAlways(skin->joints_count == (total_count/16));
+
+    // premultiply these matrices ... @todo fix? delete?
+    Mat4 *mats = (Mat4 *)numbers;
+    ForU64(joint_index, skin->joints_count)
+    {
+      cgltf_node *joint = skin->joints[joint_index];
+
+      Mat4 joint_mat = Mat4_Identity();
+#if 1
+      if (joint->has_translation)
+      {
+        V3 translation = (V3){joint->translation[0], joint->translation[1], joint->translation[2]};
+        joint_mat = Mat4_Mul(Mat4_Translation(translation), joint_mat);
+      }
+#endif
+#if 1
+      if (joint->has_rotation)
+      {
+        V3 rotation = (V3){joint->rotation[0], joint->rotation[1], joint->rotation[2]};
+        joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){1,0,0}, rotation.x), joint_mat);
+        joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, rotation.y), joint_mat);
+        joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, rotation.z), joint_mat);
+      }
+#endif
+#if 1
+      if (joint->has_scale)
+      {
+        V3 scale = (V3){joint->scale[0], joint->scale[1], joint->scale[2]};
+        joint_mat = Mat4_Mul(Mat4_Scale(scale), joint_mat);
+      }
+#endif
+
+      mats[joint_index] = Mat4_Mul(mats[joint_index], joint_mat);
+
+      // @todo apply joint_mat to joint's children
+
+    }
+#endif
+
+
+
+
+
+
+    // init anim mats
+    {
+      ForU64(mat_index, total_count/16)
+      {
+        Mat4 *anim_mat = (Mat4 *)M_BufferPushFloat(&animation_mats, 16);
+        *anim_mat = Mat4_Identity();
+      }
+    }
+  }
+
+  M_AssertAlways(inv_mats.used == animation_mats.used);
+  Mat4 *anim_mats = (Mat4 *)animation_mats.vals;
+
+  ForU64(animation_index, data->animations_count)
+  {
+    cgltf_animation *animation = data->animations + animation_index;
+
+    if (animation_index != 4)
+      continue;
+
+    ForU64(channel_index, animation->channels_count)
+    {
+      cgltf_animation_channel *channel = animation->channels + channel_index;
+      cgltf_node *target = channel->target_node; // figure out joint index
+
+      M_AssertAlways(target >= data->nodes);
+      M_AssertAlways(target < data->nodes + data->nodes_count);
+      U64 target_index = ((U64)target - (U64)data->nodes) / sizeof(*target);
+      M_AssertAlways(target_index < inv_mats.used/16);
+
+      Mat4 *target_anim = anim_mats + target_index;
+
+      cgltf_animation_sampler *sampler = channel->sampler;
+      M_AssertAlways(sampler->input->count == sampler->output->count);
+      U64 mid_index = sampler->input->count / 2;
+
+      float in = 0;
+      U64 read_in = cgltf_accessor_read_float(sampler->input, mid_index, &in, 1);
+      (void)read_in;
+      (void)in;
+
+      float outs[4] = {};
+      U64 read_out = 0;
+      ForArray(i, outs)
+      {
+        bool success = cgltf_accessor_read_float(sampler->output, mid_index + i, outs, ArrayCount(outs));
+        if (!success)
+          break;
+        read_out += 1;
+      }
+
+      if (channel->target_path == cgltf_animation_path_type_translation)
+      {
+        M_AssertAlways(read_out >= 3);
+        Mat4 translation = Mat4_Translation(*(V3 *)outs);
+        *target_anim = Mat4_Mul(*target_anim, translation);
+      }
+    }
+  }
+
+#if 0 // @todo apply rest pose first?
+  // modify inv matrices
+  ForU64(mat_index, inv_mats.used/16)
+  {
+    Mat4 *inv  = (Mat4 *)inv_mats.vals + mat_index;
+    Mat4 *anim = (Mat4 *)animation_mats.vals + mat_index;
+    *inv = Mat4_Mul(*inv, *anim);
+  }
+#endif
 
   //
   // Output collected data
