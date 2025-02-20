@@ -51,9 +51,11 @@ int main()
     ArenaScope tmp_scope = Arena_PushScope(M.tmp);
 
     Printer pr_out = Pr_Alloc(M.tmp, Megabyte(4));
-    M_GLTF_Load("../res/models/Worker.gltf", &pr_out);
+    Printer pr_out2 = Pr_Alloc(M.tmp, Megabyte(4));
+    M_GLTF_Load("../res/models/Worker.gltf", &pr_out, &pr_out2);
     //M_GLTF_Load("../res/models/Fox.glb", &pr_out);
     M_SaveFile("../src/gen/gen_models_gltf.h", Pr_S8(&pr_out));
+    M_SaveFile("../src/gen/gen_models_gltf_mat.h", Pr_S8(&pr_out2));
 
     Arena_PopScope(tmp_scope);
   }

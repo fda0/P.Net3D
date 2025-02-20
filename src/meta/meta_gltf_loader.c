@@ -11,16 +11,77 @@ static void M_FakeFree(void *user_data, void *ptr)
   // do nothing
 }
 
-static U64 M_NodeIndex(cgltf_data *data, cgltf_node *target_node)
+static U64 M_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
 {
-  M_AssertAlways(target_node >= data->nodes);
-  M_AssertAlways(target_node < data->nodes + data->nodes_count);
-  U64 index = ((U64)target_node - (U64)data->nodes) / sizeof(*target_node);
-  return index;
+  U64 result = skin->joints_count;
+  ForU64(joint_index, skin->joints_count)
+  {
+    if (find_node == skin->joints[joint_index])
+    {
+      result = joint_index;
+      break;
+    }
+  }
+  return result;
 }
 
+static void M_ExtractRestPose(cgltf_data *data, cgltf_skin *skin, U64 joint_index,
+                              M_Buffer *mat_buffer, Mat4 parent_mat, I32 stack_depth)
+{
+  float *float_nums = M_BufferAtFloat(mat_buffer, 0);
+  Mat4 *mats = (Mat4 *)float_nums;
+  U64 mat_count = mat_buffer->used / 16;
+  M_AssertAlways(skin->joints_count == mat_count);
 
-static void M_GLTF_Load(const char *path, Printer *out)
+  M_AssertAlways(joint_index < skin->joints_count);
+  cgltf_node *joint = skin->joints[joint_index];
+  M_AssertAlways(!joint->has_matrix);
+
+  Mat4 transform_mat = Mat4_Identity();
+#if 1
+  if (joint->has_scale)
+  {
+    V3 scale = *(V3 *)joint->scale;
+    static_assert(sizeof(joint->scale) == sizeof(scale));
+    transform_mat = Mat4_Mul(Mat4_Scale(scale), transform_mat);
+  }
+#endif
+#if 1
+  if (joint->has_rotation)
+  {
+    Quat rotation = *(Quat *)joint->rotation;
+    static_assert(sizeof(joint->rotation) == sizeof(rotation));
+    Mat4 rot_mat = Mat4_Rotation_Quat(rotation);
+    transform_mat = Mat4_Mul(rot_mat, transform_mat);
+  }
+#endif
+#if 1
+  if (joint->has_translation)
+  {
+    V3 translation = *(V3 *)joint->translation;
+    static_assert(sizeof(joint->translation) == sizeof(translation));
+    transform_mat = Mat4_Mul(Mat4_Translation(translation), transform_mat);
+  }
+#endif
+
+  mats[joint_index] = Mat4_Mul(parent_mat, transform_mat);
+
+#if 1
+  ForU64(child_index, joint->children_count)
+  {
+    cgltf_node *child = joint->children[child_index];
+    U64 next_joint_index = M_FindJointIndex(skin, child);
+    M_AssertAlways(next_joint_index < mat_count);
+    M_AssertAlways(next_joint_index > joint_index);
+    M_ExtractRestPose(data, skin, next_joint_index, mat_buffer, mats[joint_index], stack_depth + 1);
+  }
+#else
+  (void)data;
+  (void)joint;
+#endif
+}
+
+static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
 {
   //
   // Parse .gltf file using cgltf library
@@ -73,16 +134,31 @@ static void M_GLTF_Load(const char *path, Printer *out)
 
   U64 max_joints = 1024;
   M_Buffer inv_mats       = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
+  M_Buffer pose_mats      = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
   M_Buffer inv_mat_names  = M_BufferAlloc(M.tmp, max_joints,    sizeof(S8));
-  M_Buffer animation_mats = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
+  //M_Buffer animation_mats = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
+
+#if 0
+#if 0
+  U64 mesh_index_skip = 2;
+  U64 primitive_index_skip = 1;
+#else
+  U64 mesh_index_skip = 0;
+  U64 primitive_index_skip = 0;
+#endif
+#endif
 
   ForU64(mesh_index, data->meshes_count)
   {
     cgltf_mesh *mesh = data->meshes + mesh_index;
+    //if (mesh_index != mesh_index_skip)
+      //continue;
 
     ForU64(primitive_index, mesh->primitives_count)
     {
       cgltf_primitive *primitive = mesh->primitives + primitive_index;
+      //if (primitive_index != primitive_index_skip)
+        //continue;
 
       if (primitive->type != cgltf_primitive_type_triangles)
       {
@@ -191,6 +267,7 @@ static void M_GLTF_Load(const char *path, Printer *out)
     }
   }
 
+  M_AssertAlways(data->skins_count == 1);
   ForU64(skin_index, data->skins_count)
   {
     cgltf_skin *skin = data->skins + skin_index;
@@ -214,6 +291,7 @@ static void M_GLTF_Load(const char *path, Printer *out)
     U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
     M_AssertAlways(unpacked == total_count);
 
+#if 0
     // tranpose unloaded matrices (row major -> col major)
     {
       Mat4 *mats = (Mat4 *)numbers;
@@ -222,61 +300,43 @@ static void M_GLTF_Load(const char *path, Printer *out)
         mats[mat_index] = Mat4_Transpose(mats[mat_index]);
       }
     }
-
+#endif
 
 #if 1
-    M_AssertAlways(skin->joints_count == (total_count/16));
+    M_BufferPushFloat(&pose_mats, total_count);
+    Mat4 *invs  = (Mat4 *)M_BufferAtFloat(&inv_mats, 0);
+    Mat4 *poses = (Mat4 *)M_BufferAtFloat(&pose_mats, 0);
 
-    // premultiply these matrices ... @todo fix? delete?
-    Mat4 *mats = (Mat4 *)numbers;
-    ForU64(joint_index, skin->joints_count)
+    ForU64(mat_index, total_count/16)
     {
-      cgltf_node *joint = skin->joints[joint_index];
+      poses[mat_index] = Mat4_Identity();
+    }
 
-      Mat4 joint_mat = Mat4_Identity();
 #if 1
-      if (joint->has_translation)
-      {
-        V3 translation = (V3){joint->translation[0], joint->translation[1], joint->translation[2]};
-        joint_mat = Mat4_Mul(Mat4_Translation(translation), joint_mat);
-      }
-#endif
-#if 1
-      if (joint->has_rotation)
-      {
-        V3 rotation = (V3){joint->rotation[0], joint->rotation[1], joint->rotation[2]};
-        joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){1,0,0}, rotation.x), joint_mat);
-        joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, rotation.y), joint_mat);
-        joint_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, rotation.z), joint_mat);
-      }
-#endif
-#if 1
-      if (joint->has_scale)
-      {
-        V3 scale = (V3){joint->scale[0], joint->scale[1], joint->scale[2]};
-        joint_mat = Mat4_Mul(Mat4_Scale(scale), joint_mat);
-      }
-#endif
-
-      mats[joint_index] = Mat4_Mul(mats[joint_index], joint_mat);
-
-      // @todo apply joint_mat to joint's children
-
+    {
+      U64 joint_index = 0;
+      M_ExtractRestPose(data, skin, joint_index, &pose_mats, Mat4_Identity(), 0);
     }
 #endif
 
-
-
-
-
-
-    // init anim mats
+    // combine pose and inv matrices
     {
       ForU64(mat_index, total_count/16)
       {
-        Mat4 *anim_mat = (Mat4 *)M_BufferPushFloat(&animation_mats, 16);
-        *anim_mat = Mat4_Identity();
+        invs[mat_index] = Mat4_Mul(poses[mat_index], invs[mat_index]);
       }
+    }
+#endif
+  }
+
+
+#if 0
+  // init anim mats
+  {
+    ForU64(mat_index, total_count/16)
+    {
+      Mat4 *anim_mat = (Mat4 *)M_BufferPushFloat(&animation_mats, 16);
+      *anim_mat = Mat4_Identity();
     }
   }
 
@@ -325,10 +385,11 @@ static void M_GLTF_Load(const char *path, Printer *out)
       {
         M_AssertAlways(read_out >= 3);
         Mat4 translation = Mat4_Translation(*(V3 *)outs);
-        *target_anim = Mat4_Mul(*target_anim, translation);
+        *target_anim = Mat4_Mul(translation, *target_anim);
       }
     }
   }
+#endif
 
 #if 0 // @todo apply rest pose first?
   // modify inv matrices
@@ -464,24 +525,24 @@ static void M_GLTF_Load(const char *path, Printer *out)
   U64 inv_mat4_count = inv_mats.used / 16;
   M_AssertAlways(inv_mat_names.used == inv_mat4_count);
 
-  Pr_Add(out, S8Lit("// Mat4 count: "));
-  Pr_AddU64(out, inv_mat4_count);
-  Pr_Add(out, S8Lit("\n"));
-  Pr_Add(out, S8Lit("static float Model_Worker_inv_bind_mat[] =\n{"));
+  Pr_Add(out2, S8Lit("// Mat4 count: "));
+  Pr_AddU64(out2, inv_mat4_count);
+  Pr_Add(out2, S8Lit("\n"));
+  Pr_Add(out2, S8Lit("static float4x4 joint_inv_bind_mats[] =\n{"));
   ForU64(mat_index, inv_mat4_count)
   {
-    Pr_Add(out, S8Lit("\n  // "));
-    Pr_Add(out, *M_BufferAtS8(&inv_mat_names, mat_index));
+    Pr_Add(out2, S8Lit("\n  // "));
+    Pr_Add(out2, *M_BufferAtS8(&inv_mat_names, mat_index));
     ForU64(number_index, 16)
     {
       U64 i = mat_index*16 + number_index;
       if (number_index % 4 == 0)
-        Pr_Add(out, S8Lit("\n  "));
-      Pr_AddFloat(out, *M_BufferAtFloat(&inv_mats, i));
-      Pr_Add(out, S8Lit("f,"));
+        Pr_Add(out2, S8Lit("\n  "));
+      Pr_AddFloat(out2, *M_BufferAtFloat(&inv_mats, i));
+      Pr_Add(out2, S8Lit("f,"));
     }
   }
-  Pr_Add(out, S8Lit("\n};\n\n"));
+  Pr_Add(out2, S8Lit("\n};\n\n"));
 
 
   // Reset tmp arena

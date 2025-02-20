@@ -76,7 +76,7 @@ static void Game_DrawObjects()
       if (Obj_HasAnyFlag(obj, ObjFlag_AnimateRotation))
       {
         Mat4 rot_mat = Mat4_Rotation_Quat(obj->l.animated_rot);
-        transform = Mat4_Mul(transform, rot_mat);
+        transform = Mat4_Mul(transform, rot_mat); // rotate first, translate second
       }
 
       if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot))
@@ -305,8 +305,8 @@ static void Game_Iterate()
     Object *player = Obj_Get(APP.client.player_key, ObjStorage_Net);
     if (!Obj_IsNil(player))
     {
-      APP.camera_p = V3_Make_XY_Z(player->s.p, 200.f);
-      APP.camera_p.x -= 180.f;
+      APP.camera_p = V3_Make_XY_Z(player->s.p, 70.f);
+      APP.camera_p.x -= 40.f;
       APP.camera_rot.z = 0;
       APP.camera_rot.y = -0.15f;
     }
@@ -411,7 +411,7 @@ static void Game_Init()
 
   APP.frame_time = SDL_GetTicks();
   APP.camera_fov_y = 0.19f;
-  APP.camera_p = (V3){-120.f, 0.f, 275.f};
+  APP.camera_p = (V3){-70.f, 0.f, 150.f};
   APP.camera_rot = (V3){0, -0.2f, 0};
   APP.obj_serial_counter = 1;
   APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;
