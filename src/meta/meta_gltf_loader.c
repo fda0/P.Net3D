@@ -25,28 +25,21 @@ static U64 M_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
   return result;
 }
 
-static void M_ExtractRestPose(cgltf_data *data, cgltf_skin *skin, U64 joint_index,
-                              M_Buffer *mat_buffer, Mat4 parent_mat, I32 stack_depth)
+static void M_ExtractRestPose(cgltf_skin *skin, U64 joint_index,
+                              Mat4 *mats, U64 mat_count,
+                              Mat4 parent_mat)
 {
-  float *float_nums = M_BufferAtFloat(mat_buffer, 0);
-  Mat4 *mats = (Mat4 *)float_nums;
-  U64 mat_count = mat_buffer->used / 16;
-  M_AssertAlways(skin->joints_count == mat_count);
-
   M_AssertAlways(joint_index < skin->joints_count);
   cgltf_node *joint = skin->joints[joint_index];
   M_AssertAlways(!joint->has_matrix);
 
   Mat4 transform_mat = Mat4_Identity();
-#if 1
   if (joint->has_scale)
   {
     V3 scale = *(V3 *)joint->scale;
     static_assert(sizeof(joint->scale) == sizeof(scale));
     transform_mat = Mat4_Mul(Mat4_Scale(scale), transform_mat);
   }
-#endif
-#if 1
   if (joint->has_rotation)
   {
     Quat rotation = *(Quat *)joint->rotation;
@@ -54,32 +47,49 @@ static void M_ExtractRestPose(cgltf_data *data, cgltf_skin *skin, U64 joint_inde
     Mat4 rot_mat = Mat4_Rotation_Quat(rotation);
     transform_mat = Mat4_Mul(rot_mat, transform_mat);
   }
-#endif
-#if 1
   if (joint->has_translation)
   {
     V3 translation = *(V3 *)joint->translation;
     static_assert(sizeof(joint->translation) == sizeof(translation));
     transform_mat = Mat4_Mul(Mat4_Translation(translation), transform_mat);
   }
-#endif
 
   mats[joint_index] = Mat4_Mul(parent_mat, transform_mat);
 
-#if 1
   ForU64(child_index, joint->children_count)
   {
     cgltf_node *child = joint->children[child_index];
     U64 next_joint_index = M_FindJointIndex(skin, child);
     M_AssertAlways(next_joint_index < mat_count);
     M_AssertAlways(next_joint_index > joint_index);
-    M_ExtractRestPose(data, skin, next_joint_index, mat_buffer, mats[joint_index], stack_depth + 1);
+    M_ExtractRestPose(skin, next_joint_index, mats, mat_count, mats[joint_index]);
   }
-#else
-  (void)data;
-  (void)joint;
-#endif
 }
+
+
+static void M_WaterfallTransformsToChildren(cgltf_skin *skin, U64 joint_index,
+                                            Mat4 *mats, U64 mat_count,
+                                            Mat4 parent_transform)
+{
+  //Mat4 id = Mat4_Identity();
+  //if (Memeq(&id, &mats[joint_index], sizeof(id)) && joint_index != 0)
+    //return;
+
+  M_AssertAlways(joint_index < mat_count);
+  mats[joint_index] = Mat4_Mul(parent_transform, mats[joint_index]);
+
+  M_AssertAlways(joint_index < skin->joints_count);
+  cgltf_node *joint = skin->joints[joint_index];
+  ForU64(child_index, joint->children_count)
+  {
+    cgltf_node *child = joint->children[child_index];
+    U64 next_joint_index = M_FindJointIndex(skin, child);
+    M_AssertAlways(next_joint_index < mat_count);
+    M_AssertAlways(next_joint_index > joint_index);
+    M_WaterfallTransformsToChildren(skin, next_joint_index, mats, mat_count, mats[joint_index]);
+  }
+}
+
 
 static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
 {
@@ -133,32 +143,20 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
   M_Buffer weights       = M_BufferAlloc(M.tmp, max_verts*4, sizeof(float));
 
   U64 max_joints = 1024;
-  M_Buffer inv_mats       = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
-  M_Buffer pose_mats      = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
-  M_Buffer inv_mat_names  = M_BufferAlloc(M.tmp, max_joints,    sizeof(S8));
-  //M_Buffer animation_mats = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
-
-#if 0
-#if 0
-  U64 mesh_index_skip = 2;
-  U64 primitive_index_skip = 1;
-#else
-  U64 mesh_index_skip = 0;
-  U64 primitive_index_skip = 0;
-#endif
-#endif
+  M_Buffer inv_mats      = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
+  M_Buffer pose_mats     = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
+  M_Buffer inv_mat_names = M_BufferAlloc(M.tmp, max_joints,    sizeof(S8));
+  M_Buffer scale_anims   = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
+  M_Buffer rotate_anims  = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
+  M_Buffer transl_anims  = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
 
   ForU64(mesh_index, data->meshes_count)
   {
     cgltf_mesh *mesh = data->meshes + mesh_index;
-    //if (mesh_index != mesh_index_skip)
-      //continue;
 
     ForU64(primitive_index, mesh->primitives_count)
     {
       cgltf_primitive *primitive = mesh->primitives + primitive_index;
-      //if (primitive_index != primitive_index_skip)
-        //continue;
 
       if (primitive->type != cgltf_primitive_type_triangles)
       {
@@ -183,9 +181,7 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
         if (index_start_offset)
         {
           ForU64(i, accessor->count)
-          {
             numbers[i] += index_start_offset;
-          }
         }
       }
 
@@ -268,10 +264,8 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
   }
 
   M_AssertAlways(data->skins_count == 1);
-  ForU64(skin_index, data->skins_count)
+  cgltf_skin *skin = data->skins + 0;
   {
-    cgltf_skin *skin = data->skins + skin_index;
-
     ForU64(joint_index, skin->joints_count)
     {
       cgltf_node *joint = skin->joints[joint_index];
@@ -290,116 +284,101 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
     float *numbers = M_BufferPushFloat(&inv_mats, total_count);
     U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
     M_AssertAlways(unpacked == total_count);
-
-#if 0
-    // tranpose unloaded matrices (row major -> col major)
-    {
-      Mat4 *mats = (Mat4 *)numbers;
-      ForU64(mat_index, total_count/16)
-      {
-        mats[mat_index] = Mat4_Transpose(mats[mat_index]);
-      }
-    }
-#endif
-
-#if 1
-    M_BufferPushFloat(&pose_mats, total_count);
-    Mat4 *invs  = (Mat4 *)M_BufferAtFloat(&inv_mats, 0);
-    Mat4 *poses = (Mat4 *)M_BufferAtFloat(&pose_mats, 0);
-
-    ForU64(mat_index, total_count/16)
-    {
-      poses[mat_index] = Mat4_Identity();
-    }
-
-#if 1
-    {
-      U64 joint_index = 0;
-      M_ExtractRestPose(data, skin, joint_index, &pose_mats, Mat4_Identity(), 0);
-    }
-#endif
-
-    // combine pose and inv matrices
-    {
-      ForU64(mat_index, total_count/16)
-      {
-        invs[mat_index] = Mat4_Mul(poses[mat_index], invs[mat_index]);
-      }
-    }
-#endif
   }
 
+  M_BufferPushFloat(&pose_mats, inv_mats.used);
+  M_BufferPushFloat(&scale_anims, inv_mats.used);
+  M_BufferPushFloat(&rotate_anims, inv_mats.used);
+  M_BufferPushFloat(&transl_anims, inv_mats.used);
+  Mat4 *poses = (Mat4 *)M_BufferAtFloat(&pose_mats, 0);
+  Mat4 *invs  = (Mat4 *)M_BufferAtFloat(&inv_mats, 0);
+  Mat4 *s_anims = (Mat4 *)M_BufferAtFloat(&scale_anims, 0);
+  Mat4 *r_anims = (Mat4 *)M_BufferAtFloat(&rotate_anims, 0);
+  Mat4 *t_anims = (Mat4 *)M_BufferAtFloat(&transl_anims, 0);
+  U64 joint_mat_count = inv_mats.used / 16;
 
-#if 0
-  // init anim mats
+  // init poses & anim mats
+  ForU64(i, joint_mat_count)
   {
-    ForU64(mat_index, total_count/16)
-    {
-      Mat4 *anim_mat = (Mat4 *)M_BufferPushFloat(&animation_mats, 16);
-      *anim_mat = Mat4_Identity();
-    }
+    poses[i] = Mat4_Identity();
+    s_anims[i] = Mat4_Identity();
+    r_anims[i] = Mat4_Identity();
+    t_anims[i] = Mat4_Identity();
   }
-
-  M_AssertAlways(inv_mats.used == animation_mats.used);
-  Mat4 *anim_mats = (Mat4 *)animation_mats.vals;
 
   ForU64(animation_index, data->animations_count)
   {
     cgltf_animation *animation = data->animations + animation_index;
 
-    if (animation_index != 4)
+    if (animation_index != 12)
       continue;
 
     ForU64(channel_index, animation->channels_count)
     {
       cgltf_animation_channel *channel = animation->channels + channel_index;
-      cgltf_node *target = channel->target_node; // figure out joint index
 
-      M_AssertAlways(target >= data->nodes);
-      M_AssertAlways(target < data->nodes + data->nodes_count);
-      U64 target_index = ((U64)target - (U64)data->nodes) / sizeof(*target);
-      M_AssertAlways(target_index < inv_mats.used/16);
-
-      Mat4 *target_anim = anim_mats + target_index;
+      U64 joint_index = M_FindJointIndex(skin, channel->target_node);
+      M_AssertAlways(joint_index < skin->joints_count);
+      M_AssertAlways(joint_index < joint_mat_count);
 
       cgltf_animation_sampler *sampler = channel->sampler;
+      M_AssertAlways(sampler->interpolation == cgltf_interpolation_type_linear);
       M_AssertAlways(sampler->input->count == sampler->output->count);
-      U64 mid_index = sampler->input->count / 2;
 
+      U64 from_index = sampler->input->count / 2;
+      //U64 from_index = 0;
       float in = 0;
-      U64 read_in = cgltf_accessor_read_float(sampler->input, mid_index, &in, 1);
-      (void)read_in;
-      (void)in;
+      cgltf_accessor_read_float(sampler->input, from_index, &in, 1);
 
+      U64 comp_count = cgltf_num_components(sampler->output->type);
       float outs[4] = {};
-      U64 read_out = 0;
-      ForArray(i, outs)
-      {
-        bool success = cgltf_accessor_read_float(sampler->output, mid_index + i, outs, ArrayCount(outs));
-        if (!success)
-          break;
-        read_out += 1;
-      }
+      M_AssertAlways(ArrayCount(outs) >= comp_count);
+      cgltf_accessor_read_float(sampler->output, from_index, outs, comp_count);
 
-      if (channel->target_path == cgltf_animation_path_type_translation)
+      if (channel->target_path == cgltf_animation_path_type_scale)
       {
-        M_AssertAlways(read_out >= 3);
-        Mat4 translation = Mat4_Translation(*(V3 *)outs);
-        *target_anim = Mat4_Mul(translation, *target_anim);
+        Mat4 *anim_mat = s_anims + joint_index;
+        *anim_mat = Mat4_Mul(Mat4_Scale(*(V3 *)outs), *anim_mat);
+      }
+      else if (channel->target_path == cgltf_animation_path_type_rotation)
+      {
+        Mat4 *anim_mat = r_anims + joint_index;
+        *anim_mat = Mat4_Mul(Mat4_Rotation_Quat(*(Quat *)outs), *anim_mat);
+      }
+      else if (channel->target_path == cgltf_animation_path_type_translation)
+      {
+        Mat4 *anim_mat = t_anims + joint_index;
+        *anim_mat = Mat4_Mul(Mat4_Translation(*(V3 *)outs), *anim_mat);
+      }
+      else
+      {
+        M_AssertAlways(false);
       }
     }
   }
-#endif
 
-#if 0 // @todo apply rest pose first?
-  // modify inv matrices
-  ForU64(mat_index, inv_mats.used/16)
+
+  M_ExtractRestPose(skin, 0, poses, joint_mat_count, Mat4_Identity());
+
+#if 1
+  ForU64(i, joint_mat_count)
   {
-    Mat4 *inv  = (Mat4 *)inv_mats.vals + mat_index;
-    Mat4 *anim = (Mat4 *)animation_mats.vals + mat_index;
-    *inv = Mat4_Mul(*inv, *anim);
+    Mat4 rs = Mat4_Mul(r_anims[i], s_anims[i]);
+    t_anims[i] = Mat4_Mul(t_anims[i], rs);
+  }
+  M_WaterfallTransformsToChildren(skin, 0, t_anims, joint_mat_count, Mat4_Identity());
+
+  ForU64(i, joint_mat_count)
+  {
+    poses[i] = t_anims[i];
   }
 #endif
+
+  // combine pose and inv matrices
+  ForU64(i, joint_mat_count)
+  {
+    invs[i] = Mat4_Mul(poses[i], invs[i]);
+  }
 
   //
   // Output collected data
@@ -531,7 +510,9 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
   Pr_Add(out2, S8Lit("static float4x4 joint_inv_bind_mats[] =\n{"));
   ForU64(mat_index, inv_mat4_count)
   {
-    Pr_Add(out2, S8Lit("\n  // "));
+    Pr_Add(out2, S8Lit("\n  // ("));
+    Pr_AddU64(out2, mat_index);
+    Pr_Add(out2, S8Lit(") "));
     Pr_Add(out2, *M_BufferAtS8(&inv_mat_names, mat_index));
     ForU64(number_index, 16)
     {
