@@ -27,11 +27,28 @@ static U64 M_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
 
 static void M_ExtractRestPose(cgltf_skin *skin, U64 joint_index,
                               Mat4 *mats, U64 mat_count,
-                              Mat4 parent_mat)
+                              Mat4 parent_mat,
+                              I32 depth)
 {
   M_AssertAlways(joint_index < skin->joints_count);
   cgltf_node *joint = skin->joints[joint_index];
   M_AssertAlways(!joint->has_matrix);
+
+  // logging
+  {
+    Pr_MakeOnStack(p, 512);
+    ForI32(i, depth)
+      Pr_Add(&p, S8Lit("  "));
+
+    Pr_Add(&p, S8Lit("("));
+    Pr_AddU32(&p, depth);
+    Pr_Add(&p, S8Lit(")"));
+    Pr_AddCstr(&p, joint->name);
+
+    S8 p_s8 = Pr_S8(&p);
+    printf("%.*s\n", S8Print(p_s8));
+  }
+
 
   Mat4 transform_mat = Mat4_Identity();
   if (joint->has_scale)
@@ -62,31 +79,56 @@ static void M_ExtractRestPose(cgltf_skin *skin, U64 joint_index,
     U64 next_joint_index = M_FindJointIndex(skin, child);
     M_AssertAlways(next_joint_index < mat_count);
     M_AssertAlways(next_joint_index > joint_index);
-    M_ExtractRestPose(skin, next_joint_index, mats, mat_count, mats[joint_index]);
+
+    //Mat4 parent_mat_for_child = mats[joint_index];
+    Mat4 parent_mat_for_child = Mat4_Identity();
+    M_ExtractRestPose(skin, next_joint_index, mats, mat_count, parent_mat_for_child, depth + 1);
   }
 }
 
 
 static void M_WaterfallTransformsToChildren(cgltf_skin *skin, U64 joint_index,
                                             Mat4 *mats, U64 mat_count,
-                                            Mat4 parent_transform)
+                                            Mat4 parent_transform, I32 depth)
 {
-  //Mat4 id = Mat4_Identity();
-  //if (Memeq(&id, &mats[joint_index], sizeof(id)) && joint_index != 0)
-    //return;
-
   M_AssertAlways(joint_index < mat_count);
   mats[joint_index] = Mat4_Mul(parent_transform, mats[joint_index]);
 
   M_AssertAlways(joint_index < skin->joints_count);
   cgltf_node *joint = skin->joints[joint_index];
-  ForU64(child_index, joint->children_count)
+
+  // logging
   {
+    U64 parent_joint_index = M_FindJointIndex(skin, joint->parent);
+
+    Pr_MakeOnStack(p, 512);
+    ForI32(i, depth)
+      Pr_Add(&p, S8Lit("    "));
+
+    Pr_Add(&p, S8Lit("[d "));
+    Pr_AddI32(&p, depth);
+    Pr_Add(&p, S8Lit("; i "));
+    Pr_AddU64(&p, joint_index);
+    Pr_Add(&p, S8Lit("; p "));
+    Pr_AddU64(&p, parent_joint_index);
+    Pr_Add(&p, S8Lit("] "));
+    Pr_AddCstr(&p, joint->name);
+
+    S8 p_s8 = Pr_S8(&p);
+    printf("%.*s\n", S8Print(p_s8));
+  }
+
+  ForU64(child_index_, joint->children_count)
+  {
+    U64 child_index = child_index_;
+    //U64 child_index = joint->children_count - child_index_ - 1;
+
     cgltf_node *child = joint->children[child_index];
-    U64 next_joint_index = M_FindJointIndex(skin, child);
-    M_AssertAlways(next_joint_index < mat_count);
-    M_AssertAlways(next_joint_index > joint_index);
-    M_WaterfallTransformsToChildren(skin, next_joint_index, mats, mat_count, mats[joint_index]);
+    U64 child_joint_index = M_FindJointIndex(skin, child);
+    M_AssertAlways(child_joint_index < mat_count);
+    M_AssertAlways(child_joint_index > joint_index);
+
+    M_WaterfallTransformsToChildren(skin, child_joint_index, mats, mat_count, mats[joint_index], depth + 1);
   }
 }
 
@@ -153,10 +195,14 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
   ForU64(mesh_index, data->meshes_count)
   {
     cgltf_mesh *mesh = data->meshes + mesh_index;
+    //if (mesh_index != 1)
+      //continue;
 
     ForU64(primitive_index, mesh->primitives_count)
     {
       cgltf_primitive *primitive = mesh->primitives + primitive_index;
+      //if (primitive_index != 0)
+        //continue;
 
       if (primitive->type != cgltf_primitive_type_triangles)
       {
@@ -310,11 +356,13 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
   {
     cgltf_animation *animation = data->animations + animation_index;
 
-    if (animation_index != 12)
+    if (animation_index != 14)
       continue;
 
-    ForU64(channel_index, animation->channels_count)
+    ForU64(channel_index_, animation->channels_count)
     {
+      //U64 channel_index = animation->channels_count - channel_index_ - 1;
+      U64 channel_index = channel_index_;
       cgltf_animation_channel *channel = animation->channels + channel_index;
 
       U64 joint_index = M_FindJointIndex(skin, channel->target_node);
@@ -325,8 +373,9 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
       M_AssertAlways(sampler->interpolation == cgltf_interpolation_type_linear);
       M_AssertAlways(sampler->input->count == sampler->output->count);
 
-      U64 from_index = sampler->input->count / 2;
+      //U64 from_index = sampler->input->count / 2;
       //U64 from_index = 0;
+      U64 from_index = sampler->input->count - 1;
       float in = 0;
       cgltf_accessor_read_float(sampler->input, from_index, &in, 1);
 
@@ -335,18 +384,25 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
       M_AssertAlways(ArrayCount(outs) >= comp_count);
       cgltf_accessor_read_float(sampler->output, from_index, outs, comp_count);
 
+      char *type = "";
       if (channel->target_path == cgltf_animation_path_type_scale)
       {
+        M_AssertAlways(comp_count == 3);
+        type = "scale";
         Mat4 *anim_mat = s_anims + joint_index;
         *anim_mat = Mat4_Mul(Mat4_Scale(*(V3 *)outs), *anim_mat);
       }
       else if (channel->target_path == cgltf_animation_path_type_rotation)
       {
+        M_AssertAlways(comp_count == 4);
+        type = "rotation   ";
         Mat4 *anim_mat = r_anims + joint_index;
         *anim_mat = Mat4_Mul(Mat4_Rotation_Quat(*(Quat *)outs), *anim_mat);
       }
       else if (channel->target_path == cgltf_animation_path_type_translation)
       {
+        M_AssertAlways(comp_count == 3);
+        type = "translation";
         Mat4 *anim_mat = t_anims + joint_index;
         *anim_mat = Mat4_Mul(Mat4_Translation(*(V3 *)outs), *anim_mat);
       }
@@ -354,19 +410,36 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2)
       {
         M_AssertAlways(false);
       }
+
+
+      // logging
+      {
+        printf("channel_i: %03llu; in time: %f; joint_index: %02llu; %s;\t"
+               "%.2f %.2f %.2f %.2f\n",
+               channel_index, in, joint_index, type,
+               outs[0], outs[1], outs[2], outs[3]);
+      }
     }
   }
 
 
-  M_ExtractRestPose(skin, 0, poses, joint_mat_count, Mat4_Identity());
+  M_ExtractRestPose(skin, 0, poses, joint_mat_count, Mat4_Identity(), 0);
 
 #if 1
   ForU64(i, joint_mat_count)
   {
+    bool missing_t = Mat4_IsIdentity(t_anims[i]);
+    if (missing_t)
+    {
+      printf("missing translation for %llu\n", i);
+      t_anims[i] = Mat4_LeaveOnlyTranslation(poses[i]);
+    }
+
     Mat4 rs = Mat4_Mul(r_anims[i], s_anims[i]);
     t_anims[i] = Mat4_Mul(t_anims[i], rs);
   }
-  M_WaterfallTransformsToChildren(skin, 0, t_anims, joint_mat_count, Mat4_Identity());
+
+  M_WaterfallTransformsToChildren(skin, 0, t_anims, joint_mat_count, Mat4_Identity(), 0);
 
   ForU64(i, joint_mat_count)
   {

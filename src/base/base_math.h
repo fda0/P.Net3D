@@ -490,6 +490,12 @@ static Mat4 Mat4_Identity()
   return Mat4_Diagonal(1.f);
 }
 
+static bool Mat4_IsIdentity(Mat4 mat)
+{
+  Mat4 id = Mat4_Identity();
+  return Memeq(&id, &mat, sizeof(id));
+}
+
 static Mat4 Mat4_Transpose(Mat4 mat)
 {
   // @todo SIMD
@@ -601,6 +607,16 @@ static Mat4 Mat4_Translation(V3 move)
   res.elem[3][2] = move.z;
   return res;
 }
+
+static Mat4 Mat4_LeaveOnlyTranslation(Mat4 mat)
+{
+  Mat4 res = Mat4_Identity();
+  res.elem[3][0] = mat.elem[3][0];
+  res.elem[3][1] = mat.elem[3][1];
+  res.elem[3][2] = mat.elem[3][2];
+  return res;
+}
+
 
 static Mat4 Mat4_InvTranslation(Mat4 translation_mat)
 {
