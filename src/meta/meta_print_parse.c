@@ -91,7 +91,7 @@ static void Pr_U64(Printer *p, U64 value)
 
 static void Pr_FloatArray(Printer *p, float *numbers, U64 number_count)
 {
-  U64 per_row = 4;
+  U64 per_row = 8;
   ForU64(i, number_count)
   {
     Pr_Float(p, numbers[i]);

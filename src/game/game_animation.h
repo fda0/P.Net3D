@@ -7,7 +7,8 @@ typedef enum
 
 typedef struct
 {
-  Anim_ChannelType type;
+  U32 joint_index : 24;
+  Anim_ChannelType type : 8;
   U32 count;
   float *inputs; // 1 * count
   float *outputs; // (type == Rotation ? 4 : 3) * count

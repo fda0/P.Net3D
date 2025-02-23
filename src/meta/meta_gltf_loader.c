@@ -306,14 +306,7 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2, Printer *
     if (animation_index != 14)
       continue;
 
-    U64 anim_pr_size = Kilobyte(512);
-    Printer anim_pr = Pr_Make(Alloc(M.tmp, U8, anim_pr_size), anim_pr_size);
-
-    Pr_S8(&anim_pr, S8Lit("static Animation A_anim"));
-    Pr_U64(&anim_pr, animation_index);
-    Pr_S8(&anim_pr, S8Lit(" =\n{\n"));
-    Pr_S8(&anim_pr, S8Lit(".channels = (Anim_Channel[])\n{\n"));
-
+#if 0
     ForU64(channel_index, animation->channels_count)
     {
       cgltf_animation_channel *channel = animation->channels + channel_index;
@@ -354,6 +347,14 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2, Printer *
         M_AssertAlways(unpacked == number_count);
         Pr_FloatArray(out_a, numbers, unpacked);
 
+        // update t_min, t_max
+        ForU64(i, unpacked)
+        {
+          float n = numbers[i];
+          if (n > t_max) t_max = n;
+          if (n < t_min) t_min = n;
+        }
+
         Pr_S8(out_a, S8Lit("\n};\n"));
       }
 
@@ -378,51 +379,90 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2, Printer *
         Pr_S8(out_a, S8Lit("\n};\n"));
       }
     }
+#endif
 
+    // Animation
+    float t_min = FLT_MAX;
+    float t_max = -FLT_MAX;
+
+    Pr_S8(out_a, S8Lit("static Animation A_anim"));
+    Pr_U64(out_a, animation_index);
+    Pr_S8(out_a, S8Lit(" =\n{\n"));
+    Pr_S8(out_a, S8Lit(".channels = (Anim_Channel[])\n{\n"));
 
     ForU64(channel_index, animation->channels_count)
     {
       cgltf_animation_channel *channel = animation->channels + channel_index;
       cgltf_animation_sampler *sampler = channel->sampler;
+      M_AssertAlways(sampler->interpolation == cgltf_interpolation_type_linear);
+      M_AssertAlways(sampler->input->count == sampler->output->count);
+      U64 sample_count = sampler->input->count;
 
-      Pr_S8(&anim_pr, S8Lit("(Anim_Channel){"));
-      Pr_S8(&anim_pr, S8Lit(".type = AnimChannel_"));
-      if (channel->target_path == cgltf_animation_path_type_translation) Pr_S8(&anim_pr, S8Lit("Translation"));
-      if (channel->target_path == cgltf_animation_path_type_rotation)    Pr_S8(&anim_pr, S8Lit("Rotation"));
-      if (channel->target_path == cgltf_animation_path_type_scale)       Pr_S8(&anim_pr, S8Lit("Scale"));
+      Pr_S8(out_a, S8Lit("{\n"));
 
-      Pr_S8(&anim_pr, S8Lit(", .count = "));
-      Pr_U64(&anim_pr, sampler->input->count);
+      U64 target_joint_index = M_FindJointIndex(skin, channel->target_node);
+      Pr_S8(out_a, S8Lit(".joint_index = "));
+      Pr_U64(out_a, target_joint_index);
 
-      Pr_S8(&anim_pr, S8Lit(", .inputs = "));
-      Pr_S8(&anim_pr, S8Lit("A_anim"));
-      Pr_U64(&anim_pr, animation_index);
-      Pr_S8(&anim_pr, S8Lit("_ch"));
-      Pr_U64(&anim_pr, channel_index);
-      Pr_S8(&anim_pr, S8Lit("_in"));
+      Pr_S8(out_a, S8Lit(", .type = AnimChannel_"));
+      if (channel->target_path == cgltf_animation_path_type_translation) Pr_S8(out_a, S8Lit("Translation"));
+      if (channel->target_path == cgltf_animation_path_type_rotation)    Pr_S8(out_a, S8Lit("Rotation"));
+      if (channel->target_path == cgltf_animation_path_type_scale)       Pr_S8(out_a, S8Lit("Scale"));
 
-      Pr_S8(&anim_pr, S8Lit(", .outputs = "));
-      Pr_S8(&anim_pr, S8Lit("A_anim"));
-      Pr_U64(&anim_pr, animation_index);
-      Pr_S8(&anim_pr, S8Lit("_ch"));
-      Pr_U64(&anim_pr, channel_index);
-      Pr_S8(&anim_pr, S8Lit("_out"));
+      Pr_S8(out_a, S8Lit(", .count = "));
+      Pr_U64(out_a, sampler->input->count);
 
-      Pr_S8(&anim_pr, S8Lit("},\n"));
+      // inputs
+      {
+        Pr_S8(out_a, S8Lit(",\n.inputs = (float[])\n{\n"));
+
+        U64 number_count = sample_count;
+
+        float *numbers = Alloc(M.tmp, float, number_count);
+        U64 unpacked = cgltf_accessor_unpack_floats(sampler->input, numbers, number_count);
+        M_AssertAlways(unpacked == number_count);
+        Pr_FloatArray(out_a, numbers, unpacked);
+
+        // update t_min, t_max
+        ForU64(i, unpacked)
+        {
+          float n = numbers[i];
+          if (n > t_max) t_max = n;
+          if (n < t_min) t_min = n;
+        }
+
+        Pr_S8(out_a, S8Lit("\n},\n"));
+      }
+
+      // outputs
+      {
+        Pr_S8(out_a, S8Lit(".outputs = (float[])\n{\n"));
+
+        U64 comp_count = cgltf_num_components(sampler->output->type);
+        U64 number_count = sample_count * comp_count;
+
+        float *numbers = Alloc(M.tmp, float, number_count);
+        U64 unpacked = cgltf_accessor_unpack_floats(sampler->output, numbers, number_count);
+        M_AssertAlways(unpacked == number_count);
+        Pr_FloatArray(out_a, numbers, unpacked);
+
+        Pr_S8(out_a, S8Lit("\n},\n"));
+      }
+
+      Pr_S8(out_a, S8Lit("},\n"));
     }
 
-    Pr_S8(&anim_pr, S8Lit("},\n"));
-    Pr_S8(&anim_pr, S8Lit(".channel_count = "));
-    Pr_U64(&anim_pr, animation->channels_count);
-    Pr_S8(&anim_pr, S8Lit(",\n"));
-    Pr_S8(&anim_pr, S8Lit(".t_min = "));
-    Pr_Float(&anim_pr, 0.f);
-    Pr_S8(&anim_pr, S8Lit("f,\n"));
-    Pr_S8(&anim_pr, S8Lit(".t_max = "));
-    Pr_Float(&anim_pr, 10000.f);
-    Pr_S8(&anim_pr, S8Lit("f,\n"));
-    Pr_S8(&anim_pr, S8Lit("};"));
-    Pr_Printer(out_a, &anim_pr);
+    Pr_S8(out_a, S8Lit("},\n"));
+    Pr_S8(out_a, S8Lit(".channel_count = "));
+    Pr_U64(out_a, animation->channels_count);
+    Pr_S8(out_a, S8Lit(",\n"));
+    Pr_S8(out_a, S8Lit(".t_min = "));
+    Pr_Float(out_a, 0.f);
+    Pr_S8(out_a, S8Lit("f,\n"));
+    Pr_S8(out_a, S8Lit(".t_max = "));
+    Pr_Float(out_a, 10000.f);
+    Pr_S8(out_a, S8Lit("f,\n"));
+    Pr_S8(out_a, S8Lit("};"));
   }
 
   //

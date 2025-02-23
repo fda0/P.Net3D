@@ -28,6 +28,7 @@
 #include "game_client.h"
 #include "game_server.h"
 #include "game_render.h"
+#include "game_animation.h"
 #include "game_gpu.h"
 #include "game_core.h"
 
@@ -49,6 +50,7 @@ static AppState APP;
 #include "gen_shader_wall.frag.h"
 #include "gen_models.h"
 #include "gen_models_gltf.h"
+#include "gen_models_gltf_anim.h"
 #include "game_gpu.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)
@@ -181,7 +183,7 @@ static void Game_ParseCmd(int argc, char **argv)
 
       if (!found_number)
       {
-        LOG(LogFlags_Idk, "%s needs to be followed by positive number", arg);
+        LOG(LogFlags_Idk, "%.*s needs to be followed by positive number", S8Print(arg));
       }
     }
     else if (S8_Match(arg, S8Lit("-autolayout"), 0))
@@ -190,7 +192,7 @@ static void Game_ParseCmd(int argc, char **argv)
     }
     else
     {
-      LOG(LogFlags_Idk, "Unhandled argument: %s", arg);
+      LOG(LogFlags_Idk, "Unhandled argument: %.*s", S8Print(arg));
     }
   }
 }

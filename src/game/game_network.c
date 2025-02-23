@@ -609,7 +609,7 @@ static void Net_IterateTimeoutUsers()
       if (user->last_msg_frame_time + NET_TIMEOUT_DISCONNECT_MS < APP.frame_time)
       {
         LOG(LogFlags_NetInfo,
-            "%s: Timeout. Removing user #%u",
+            "%s: Timeout. Removing user #%llu",
             Net_Label(), user_index);
 
         Net_RemoveUser(user);

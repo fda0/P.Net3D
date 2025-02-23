@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #define SDL_ASSERT_LEVEL 2
 #include <SDL3/SDL.h>
 #include "stdio.h"
