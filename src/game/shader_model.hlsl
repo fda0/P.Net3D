@@ -48,10 +48,6 @@ struct VSModelInstanceData
 
 StructuredBuffer<VSModelInstanceData> InstanceBuffer : register(t0);
 
-#if IS_SKINNED
-#include "../gen/gen_models_gltf_mat.h"
-#endif
-
 float4x4 Mat4_RotationPart(float4x4 mat)
 {
   // @todo in the future this matrix will need to be normalized
@@ -105,7 +101,7 @@ VSOutput ShaderModelVS(VSInput input)
   model_transform = mul(camera_transform, model_transform);
 
   float4 position = float4(input.position, 1.0f);
-#if IS_SKINNED
+#if IS_SKINNED && 0
   uint joint0 = (input.joints_packed4      ) & 0xff;
   uint joint1 = (input.joints_packed4 >>  8) & 0xff;
   uint joint2 = (input.joints_packed4 >> 16) & 0xff;
@@ -117,14 +113,6 @@ VSOutput ShaderModelVS(VSInput input)
   float4x4 joint_mat2 = joint_inv_bind_mats[joint2];
   float4x4 joint_mat3 = joint_inv_bind_mats[joint3];
 
-#if 0
-  joint_mat0 = transpose(joint_mat0);
-  joint_mat1 = transpose(joint_mat1);
-  joint_mat2 = transpose(joint_mat2);
-  joint_mat3 = transpose(joint_mat3);
-#endif
-
-#if 1
   float4 pos0 = mul(position, joint_mat0);
   float4 pos1 = mul(position, joint_mat1);
   float4 pos2 = mul(position, joint_mat2);
@@ -135,7 +123,6 @@ VSOutput ShaderModelVS(VSInput input)
     pos1 * input.weights.y +
     pos2 * input.weights.z +
     pos3 * input.weights.w;
-#endif
 
   position = mul(Mat4_Scale(80.f), position);
   position = mul(instance.transform, position);

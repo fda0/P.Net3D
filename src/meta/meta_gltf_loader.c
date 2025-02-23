@@ -70,8 +70,208 @@ static void M_WaterfallTransformsToChildren(cgltf_skin *skin, U64 joint_index,
   }
 }
 
+static void M_GLTF_ExportAnimations(Printer *p, cgltf_data *data)
+{
+  M_AssertAlways(data->skins_count == 1);
+  cgltf_skin *skin = data->skins;
 
-static void M_GLTF_Load(const char *path, Printer *out, Printer *out2, Printer *out_a)
+  Pr_S8(p, S8Lit("static AN_Skeleton Worker_Skeleton = {\n"));
+
+  // anims[] + anims_count
+  {
+    Pr_S8(p, S8Lit(".animations =(AN_Animation []) {\n"));
+
+    ForU64(animation_index, data->animations_count)
+    {
+      cgltf_animation *animation = data->animations + animation_index;
+
+      // Animation
+      float t_min = FLT_MAX;
+      float t_max = -FLT_MAX;
+
+      Pr_S8(p, S8Lit("// animation: "));
+      Pr_U64(p, animation_index);
+      Pr_S8(p, S8Lit("\n"));
+      Pr_S8(p, S8Lit("{\n"));
+
+      Pr_S8(p, S8Lit(".name = \""));
+      Pr_Cstr(p, animation->name);
+      Pr_S8(p, S8Lit("\",\n"));
+
+      Pr_S8(p, S8Lit(".channels = (AN_Channel[]) {\n"));
+      ForU64(channel_index, animation->channels_count)
+      {
+        cgltf_animation_channel *channel = animation->channels + channel_index;
+        cgltf_animation_sampler *sampler = channel->sampler;
+        M_AssertAlways(sampler->interpolation == cgltf_interpolation_type_linear);
+        M_AssertAlways(sampler->input->count == sampler->output->count);
+        U64 sample_count = sampler->input->count;
+
+        Pr_S8(p, S8Lit("// channel: "));
+        Pr_U64(p, channel_index);
+        Pr_S8(p, S8Lit(" (animation "));
+        Pr_U64(p, animation_index);
+        Pr_S8(p, S8Lit(")\n"));
+        Pr_S8(p, S8Lit("{\n"));
+
+        U64 target_joint_index = M_FindJointIndex(skin, channel->target_node);
+        Pr_S8(p, S8Lit(".joint_index = "));
+        Pr_U64(p, target_joint_index);
+        Pr_S8(p, S8Lit(",\n"));
+
+        Pr_S8(p, S8Lit(".type = AN_"));
+        if (channel->target_path == cgltf_animation_path_type_translation) Pr_S8(p, S8Lit("Translation"));
+        if (channel->target_path == cgltf_animation_path_type_rotation)    Pr_S8(p, S8Lit("Rotation"));
+        if (channel->target_path == cgltf_animation_path_type_scale)       Pr_S8(p, S8Lit("Scale"));
+        Pr_S8(p, S8Lit(",\n"));
+
+        Pr_S8(p, S8Lit(".count = "));
+        Pr_U64(p, sampler->input->count);
+        Pr_S8(p, S8Lit(",\n"));
+
+        // inputs
+        {
+          Pr_S8(p, S8Lit(".inputs = (float[]) {\n"));
+
+          U64 number_count = sample_count;
+
+          float *numbers = Alloc(M.tmp, float, number_count);
+          U64 unpacked = cgltf_accessor_unpack_floats(sampler->input, numbers, number_count);
+          M_AssertAlways(unpacked == number_count);
+          Pr_FloatArray(p, numbers, unpacked);
+
+          // update t_min, t_max
+          ForU64(i, unpacked)
+          {
+            float n = numbers[i];
+            if (n > t_max) t_max = n;
+            if (n < t_min) t_min = n;
+          }
+
+          Pr_S8(p, S8Lit("\n},\n"));
+        }
+
+        // outputs
+        {
+          Pr_S8(p, S8Lit(".outputs = (float[]) {\n"));
+
+          U64 comp_count = cgltf_num_components(sampler->output->type);
+          U64 number_count = sample_count * comp_count;
+
+          float *numbers = Alloc(M.tmp, float, number_count);
+          U64 unpacked = cgltf_accessor_unpack_floats(sampler->output, numbers, number_count);
+          M_AssertAlways(unpacked == number_count);
+          Pr_FloatArray(p, numbers, unpacked);
+
+          Pr_S8(p, S8Lit("\n},\n"));
+        }
+
+        Pr_S8(p, S8Lit("},\n"));
+      }
+      Pr_S8(p, S8Lit("},\n"));
+
+      Pr_S8(p, S8Lit(".channels_count = "));
+      Pr_U64(p, animation->channels_count);
+      Pr_S8(p, S8Lit(",\n"));
+
+      Pr_S8(p, S8Lit(".t_min = "));
+      Pr_Float(p, t_min);
+      Pr_S8(p, S8Lit("f,\n"));
+
+      Pr_S8(p, S8Lit(".t_max = "));
+      Pr_Float(p, t_max);
+      Pr_S8(p, S8Lit("f,\n"));
+
+      Pr_S8(p, S8Lit("},\n"));
+    }
+
+    Pr_S8(p, S8Lit("},\n"));
+    Pr_S8(p, S8Lit(".animations_count = "));
+    Pr_U64(p, data->animations_count);
+    Pr_S8(p, S8Lit(",\n"));
+  }
+
+
+#if 0
+  // rest pose
+  {
+    Pr_S8(p, S8Lit(".rest_pose = {\n"));
+
+    // unpack rest pose transforms
+#if 1
+    {
+      Pr_S8(p, S8Lit(".translations = (V3[]){"));
+      ForU64(joint_index, skin->joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+        ForArray(i, joint->translation)
+        {
+          Pr_Float(p, joint->translation[i]);
+          Pr_S8(p, S8Lit("f,"));
+        }
+        Pr_S8(p, S8Lit(" "));
+      }
+      Pr_S8(p, S8Lit("},\n"));
+
+      Pr_S8(p, S8Lit(".rotations = (Quat[]){"));
+      ForU64(joint_index, skin->joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+        ForArray(i, joint->rotation)
+        {
+          Pr_Float(p, joint->rotation[i]);
+          Pr_S8(p, S8Lit("f,"));
+        }
+        Pr_S8(p, S8Lit(" "));
+      }
+      Pr_S8(p, S8Lit("},\n"));
+
+      Pr_S8(p, S8Lit(".scales = (V3[]){"));
+      ForU64(joint_index, skin->joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+        ForArray(i, joint->scale)
+        {
+          Pr_Float(p, joint->scale[i]);
+          Pr_S8(p, S8Lit("f,"));
+        }
+        Pr_S8(p, S8Lit(" "));
+      }
+      Pr_S8(p, S8Lit("},\n"));
+    }
+#endif
+
+    // unpack inverse bind matrices
+#if 1
+    {
+      Pr_S8(p, S8Lit(".inverse_bind_matrices = (Mat4[]){\n"));
+
+      cgltf_accessor *inv_bind = skin->inverse_bind_matrices;
+      M_AssertAlways(inv_bind);
+      M_AssertAlways(inv_bind->count == skin->joints_count);
+      M_AssertAlways(inv_bind->component_type == cgltf_component_type_r_32f);
+      M_AssertAlways(inv_bind->type == cgltf_type_mat4);
+
+      U64 comp_count = cgltf_num_components(inv_bind->type);
+      U64 number_count = comp_count * inv_bind->count;
+
+      float *numbers = Alloc(M.tmp, float, number_count);
+      U64 unpacked = cgltf_accessor_unpack_floats(inv_bind, numbers, number_count);
+      M_AssertAlways(unpacked == number_count);
+      Pr_FloatArray(p, numbers, number_count);
+
+      Pr_S8(p, S8Lit("\n},\n"));
+    }
+#endif
+
+    Pr_S8(p, S8Lit("},\n"));
+  }
+#endif
+
+  Pr_S8(p, S8Lit("};\n"));
+}
+
+static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
 {
   //
   // Parse .gltf file using cgltf library
@@ -121,14 +321,6 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2, Printer *
   M_Buffer texcoords     = M_BufferAlloc(M.tmp, max_verts*2, sizeof(float));
   M_Buffer joint_indices = M_BufferAlloc(M.tmp, max_verts*4, sizeof(U8));
   M_Buffer weights       = M_BufferAlloc(M.tmp, max_verts*4, sizeof(float));
-
-  U64 max_joints = 1024;
-  M_Buffer joint_names = M_BufferAlloc(M.tmp, max_joints,    sizeof(S8));
-  M_Buffer inv_mats    = M_BufferAlloc(M.tmp, max_joints*16, sizeof(float));
-
-  M_Buffer rest_t = M_BufferAlloc(M.tmp, max_joints, sizeof(V3));
-  M_Buffer rest_r = M_BufferAlloc(M.tmp, max_joints, sizeof(V4));
-  M_Buffer rest_s = M_BufferAlloc(M.tmp, max_joints, sizeof(V3));
 
   ForU64(mesh_index, data->meshes_count)
   {
@@ -243,227 +435,7 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2, Printer *
     }
   }
 
-  M_AssertAlways(data->skins_count == 1);
-  cgltf_skin *skin = data->skins + 0;
-  {
-    ForU64(joint_index, skin->joints_count)
-    {
-      cgltf_node *joint = skin->joints[joint_index];
-
-      // load joint's name
-      *M_BufferPushS8(&joint_names, 1) = S8_ScanCstr(joint->name);
-
-      // load joint's rest pose transformations
-      V3 joint_t = {};
-      if (joint->has_translation)
-      {
-        static_assert(sizeof(joint->translation) == sizeof(joint_t));
-        joint_t = *(V3 *)joint->translation;
-      }
-
-      Quat joint_r = Quat_Identity();
-      if (joint->has_rotation)
-      {
-        static_assert(sizeof(joint->rotation) == sizeof(joint_r));
-        joint_r = *(Quat *)joint->rotation;
-      }
-
-      V3 joint_s = (V3){1,1,1};
-      if (joint->has_scale)
-      {
-        static_assert(sizeof(joint->scale) == sizeof(joint_s));
-        joint_s = *(V3 *)joint->scale;
-      }
-
-      *M_BufferPushV3(&rest_t, 1) = joint_t;
-      *M_BufferPushV4(&rest_r, 1) = joint_r;
-      *M_BufferPushV3(&rest_s, 1) = joint_s;
-    }
-
-    cgltf_accessor *accessor = skin->inverse_bind_matrices;
-    M_AssertAlways(accessor);
-    M_AssertAlways(accessor->count == skin->joints_count);
-    M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
-    M_AssertAlways(accessor->type == cgltf_type_mat4);
-
-    U64 comp_count = cgltf_num_components(accessor->type);
-    U64 total_count = comp_count * accessor->count;
-
-    float *inv_bind_pose_values = M_BufferPushFloat(&inv_mats, total_count);
-    U64 unpacked = cgltf_accessor_unpack_floats(accessor, inv_bind_pose_values, total_count);
-    M_AssertAlways(unpacked == total_count);
-  }
-
-  M_AssertAlways(inv_mats.used / 16 == skin->joints_count);
-  M_AssertAlways(rest_t.used == skin->joints_count);
-  M_AssertAlways(rest_r.used == skin->joints_count);
-  M_AssertAlways(rest_s.used == skin->joints_count);
-
-  ForU64(animation_index, data->animations_count)
-  {
-    cgltf_animation *animation = data->animations + animation_index;
-
-    if (animation_index != 14)
-      continue;
-
-#if 0
-    ForU64(channel_index, animation->channels_count)
-    {
-      cgltf_animation_channel *channel = animation->channels + channel_index;
-
-      cgltf_animation_sampler *sampler = channel->sampler;
-      M_AssertAlways(sampler->interpolation == cgltf_interpolation_type_linear);
-      M_AssertAlways(sampler->input->count == sampler->output->count);
-      U64 sample_count = sampler->input->count;
-
-      // comment
-      {
-        char *type = "";
-        if (channel->target_path == cgltf_animation_path_type_translation) type = "translation";
-        if (channel->target_path == cgltf_animation_path_type_rotation) type = "rotation";
-        if (channel->target_path == cgltf_animation_path_type_scale) type = "scale";
-
-        Pr_S8(out_a, S8Lit("// joint: "));
-        Pr_Cstr(out_a, channel->target_node->name);
-        Pr_S8(out_a, S8Lit(", type: "));
-        Pr_Cstr(out_a, type);
-        Pr_S8(out_a, S8Lit("\n"));
-      }
-
-      // inputs
-      {
-        U64 number_count = sample_count;
-
-        Pr_S8(out_a, S8Lit("static float A_anim"));
-        Pr_U64(out_a, animation_index);
-        Pr_S8(out_a, S8Lit("_ch"));
-        Pr_U64(out_a, channel_index);
-        Pr_S8(out_a, S8Lit("_in["));
-        Pr_U64(out_a, number_count);
-        Pr_S8(out_a, S8Lit("] =\n{\n"));
-
-        float *numbers = Alloc(M.tmp, float, number_count);
-        U64 unpacked = cgltf_accessor_unpack_floats(sampler->input, numbers, number_count);
-        M_AssertAlways(unpacked == number_count);
-        Pr_FloatArray(out_a, numbers, unpacked);
-
-        // update t_min, t_max
-        ForU64(i, unpacked)
-        {
-          float n = numbers[i];
-          if (n > t_max) t_max = n;
-          if (n < t_min) t_min = n;
-        }
-
-        Pr_S8(out_a, S8Lit("\n};\n"));
-      }
-
-      // outputs
-      {
-        U64 comp_count = cgltf_num_components(sampler->output->type);
-        U64 number_count = sample_count * comp_count;
-
-        Pr_S8(out_a, S8Lit("static float A_anim"));
-        Pr_U64(out_a, animation_index);
-        Pr_S8(out_a, S8Lit("_ch"));
-        Pr_U64(out_a, channel_index);
-        Pr_S8(out_a, S8Lit("_out["));
-        Pr_U64(out_a, number_count);
-        Pr_S8(out_a, S8Lit("] =\n{\n"));
-
-        float *numbers = Alloc(M.tmp, float, number_count);
-        U64 unpacked = cgltf_accessor_unpack_floats(sampler->output, numbers, number_count);
-        M_AssertAlways(unpacked == number_count);
-        Pr_FloatArray(out_a, numbers, unpacked);
-
-        Pr_S8(out_a, S8Lit("\n};\n"));
-      }
-    }
-#endif
-
-    // Animation
-    float t_min = FLT_MAX;
-    float t_max = -FLT_MAX;
-
-    Pr_S8(out_a, S8Lit("static Animation A_anim"));
-    Pr_U64(out_a, animation_index);
-    Pr_S8(out_a, S8Lit(" =\n{\n"));
-    Pr_S8(out_a, S8Lit(".channels = (Anim_Channel[])\n{\n"));
-
-    ForU64(channel_index, animation->channels_count)
-    {
-      cgltf_animation_channel *channel = animation->channels + channel_index;
-      cgltf_animation_sampler *sampler = channel->sampler;
-      M_AssertAlways(sampler->interpolation == cgltf_interpolation_type_linear);
-      M_AssertAlways(sampler->input->count == sampler->output->count);
-      U64 sample_count = sampler->input->count;
-
-      Pr_S8(out_a, S8Lit("{\n"));
-
-      U64 target_joint_index = M_FindJointIndex(skin, channel->target_node);
-      Pr_S8(out_a, S8Lit(".joint_index = "));
-      Pr_U64(out_a, target_joint_index);
-
-      Pr_S8(out_a, S8Lit(", .type = AnimChannel_"));
-      if (channel->target_path == cgltf_animation_path_type_translation) Pr_S8(out_a, S8Lit("Translation"));
-      if (channel->target_path == cgltf_animation_path_type_rotation)    Pr_S8(out_a, S8Lit("Rotation"));
-      if (channel->target_path == cgltf_animation_path_type_scale)       Pr_S8(out_a, S8Lit("Scale"));
-
-      Pr_S8(out_a, S8Lit(", .count = "));
-      Pr_U64(out_a, sampler->input->count);
-
-      // inputs
-      {
-        Pr_S8(out_a, S8Lit(",\n.inputs = (float[])\n{\n"));
-
-        U64 number_count = sample_count;
-
-        float *numbers = Alloc(M.tmp, float, number_count);
-        U64 unpacked = cgltf_accessor_unpack_floats(sampler->input, numbers, number_count);
-        M_AssertAlways(unpacked == number_count);
-        Pr_FloatArray(out_a, numbers, unpacked);
-
-        // update t_min, t_max
-        ForU64(i, unpacked)
-        {
-          float n = numbers[i];
-          if (n > t_max) t_max = n;
-          if (n < t_min) t_min = n;
-        }
-
-        Pr_S8(out_a, S8Lit("\n},\n"));
-      }
-
-      // outputs
-      {
-        Pr_S8(out_a, S8Lit(".outputs = (float[])\n{\n"));
-
-        U64 comp_count = cgltf_num_components(sampler->output->type);
-        U64 number_count = sample_count * comp_count;
-
-        float *numbers = Alloc(M.tmp, float, number_count);
-        U64 unpacked = cgltf_accessor_unpack_floats(sampler->output, numbers, number_count);
-        M_AssertAlways(unpacked == number_count);
-        Pr_FloatArray(out_a, numbers, unpacked);
-
-        Pr_S8(out_a, S8Lit("\n},\n"));
-      }
-
-      Pr_S8(out_a, S8Lit("},\n"));
-    }
-
-    Pr_S8(out_a, S8Lit("},\n"));
-    Pr_S8(out_a, S8Lit(".channel_count = "));
-    Pr_U64(out_a, animation->channels_count);
-    Pr_S8(out_a, S8Lit(",\n"));
-    Pr_S8(out_a, S8Lit(".t_min = "));
-    Pr_Float(out_a, 0.f);
-    Pr_S8(out_a, S8Lit("f,\n"));
-    Pr_S8(out_a, S8Lit(".t_max = "));
-    Pr_Float(out_a, 10000.f);
-    Pr_S8(out_a, S8Lit("f,\n"));
-    Pr_S8(out_a, S8Lit("};"));
-  }
+  M_GLTF_ExportAnimations(out_a, data);
 
   //
   // Output collected data
@@ -483,6 +455,9 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2, Printer *
   M_AssertAlways(positions_count == normals_count);
   M_AssertAlways(positions_count == joint_indices_count);
   M_AssertAlways(positions_count == weights_count);
+
+  M_AssertAlways(data->skins_count == 1);
+  U64 joints_count = data->skins[0].joints_count;
 
   Pr_S8(out, S8Lit("static Rdr_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
   ForU64(vert_i, positions_count)
@@ -530,11 +505,11 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2, Printer *
       *M_BufferAtU8(&joint_indices, vert_i*4 + 2),
       *M_BufferAtU8(&joint_indices, vert_i*4 + 3),
     };
-    ForArray32(i, joint_index_vals)
+    ForArray(i, joint_index_vals)
     {
-      if (joint_index_vals[i] >= joint_names.used)
-        M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %u",
-              joint_index_vals[i], (U32)joint_names.used);
+      if (joint_index_vals[i] >= joints_count)
+        M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %llu",
+              joint_index_vals[i], joints_count);
     }
 
     U32 joint_packed4 = (joint_index_vals[0] | (joint_index_vals[1] << 8) |
@@ -583,32 +558,6 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out2, Printer *
     Pr_S8(out, S8Lit(","));
   }
   Pr_S8(out, S8Lit("\n};\n\n"));
-
-
-  M_AssertAlways(inv_mats.used % 16 == 0);
-  U64 inv_mat4_count = inv_mats.used / 16;
-  M_AssertAlways(joint_names.used == inv_mat4_count);
-
-  Pr_S8(out2, S8Lit("// Mat4 count: "));
-  Pr_U64(out2, inv_mat4_count);
-  Pr_S8(out2, S8Lit("\n"));
-  Pr_S8(out2, S8Lit("static float4x4 joint_inv_bind_mats[] =\n{"));
-  ForU64(mat_index, inv_mat4_count)
-  {
-    Pr_S8(out2, S8Lit("\n  // ("));
-    Pr_U64(out2, mat_index);
-    Pr_S8(out2, S8Lit(") "));
-    Pr_S8(out2, *M_BufferAtS8(&joint_names, mat_index));
-    ForU64(number_index, 16)
-    {
-      U64 i = mat_index*16 + number_index;
-      if (number_index % 4 == 0)
-        Pr_S8(out2, S8Lit("\n  "));
-      Pr_Float(out2, *M_BufferAtFloat(&inv_mats, i));
-      Pr_S8(out2, S8Lit("f,"));
-    }
-  }
-  Pr_S8(out2, S8Lit("\n};\n\n"));
 
 
   // Reset tmp arena
