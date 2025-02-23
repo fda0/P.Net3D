@@ -25,16 +25,25 @@ typedef struct
 
 typedef struct
 {
+  AN_Animation *animations;
+  U32 animations_count;
+
+  // --- joints section ---
+  // all pointers point to arrays with
+  // joints_count number of elements
+  U32 joints_count;
+  Mat4 *inverse_bind_matrices;
+  //
+  U32 *child_index_buf;
+  RngU32 *child_index_ranges;
+  // rest pose translations, rotations, scales
   V3 *translations;
   Quat *rotations;
   V3 *scales;
-  Mat4 *inverse_bind_matrices;
-  U32 count;
-} AN_RestPose;
+} AN_Skeleton;
 
 typedef struct
 {
-  AN_Animation *animations;
-  U32 animations_count;
-  AN_RestPose rest_pose;
-} AN_Skeleton;
+  Mat4 *matrices;
+  U32 matrices_count;
+} AN_SkeletonTransform;

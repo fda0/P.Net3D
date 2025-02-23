@@ -25,52 +25,7 @@ static U64 M_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
   return result;
 }
 
-static void M_WaterfallTransformsToChildren(cgltf_skin *skin, U64 joint_index,
-                                            Mat4 *mats, U64 mat_count,
-                                            Mat4 parent_transform, I32 depth)
-{
-  M_AssertAlways(joint_index < mat_count);
-  mats[joint_index] = Mat4_Mul(parent_transform, mats[joint_index]);
-
-  M_AssertAlways(joint_index < skin->joints_count);
-  cgltf_node *joint = skin->joints[joint_index];
-
-  // logging
-  {
-    U64 parent_joint_index = M_FindJointIndex(skin, joint->parent);
-
-    Pr_MakeOnStack(p, 512);
-    ForI32(i, depth)
-      Pr_S8(&p, S8Lit("    "));
-
-    Pr_S8(&p, S8Lit("[d "));
-    Pr_I32(&p, depth);
-    Pr_S8(&p, S8Lit("; i "));
-    Pr_U64(&p, joint_index);
-    Pr_S8(&p, S8Lit("; p "));
-    Pr_U64(&p, parent_joint_index);
-    Pr_S8(&p, S8Lit("] "));
-    Pr_Cstr(&p, joint->name);
-
-    S8 p_s8 = Pr_AsS8(&p);
-    printf("%.*s\n", S8Print(p_s8));
-  }
-
-  ForU64(child_index_, joint->children_count)
-  {
-    U64 child_index = child_index_;
-    //U64 child_index = joint->children_count - child_index_ - 1;
-
-    cgltf_node *child = joint->children[child_index];
-    U64 child_joint_index = M_FindJointIndex(skin, child);
-    M_AssertAlways(child_joint_index < mat_count);
-    M_AssertAlways(child_joint_index > joint_index);
-
-    M_WaterfallTransformsToChildren(skin, child_joint_index, mats, mat_count, mats[joint_index], depth + 1);
-  }
-}
-
-static void M_GLTF_ExportAnimations(Printer *p, cgltf_data *data)
+static void M_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
 {
   M_AssertAlways(data->skins_count == 1);
   cgltf_skin *skin = data->skins;
@@ -191,52 +146,11 @@ static void M_GLTF_ExportAnimations(Printer *p, cgltf_data *data)
     Pr_S8(p, S8Lit(",\n"));
   }
 
-
-  // rest pose
+  // joints section
   {
-    Pr_S8(p, S8Lit(".rest_pose = {\n"));
-
-    // unpack rest pose transforms
-    {
-      Pr_S8(p, S8Lit(".translations = (V3[]){"));
-      ForU64(joint_index, skin->joints_count)
-      {
-        cgltf_node *joint = skin->joints[joint_index];
-        ForArray(i, joint->translation)
-        {
-          Pr_Float(p, joint->translation[i]);
-          Pr_S8(p, S8Lit("f,"));
-        }
-        Pr_S8(p, S8Lit(" "));
-      }
-      Pr_S8(p, S8Lit("},\n"));
-
-      Pr_S8(p, S8Lit(".rotations = (Quat[]){"));
-      ForU64(joint_index, skin->joints_count)
-      {
-        cgltf_node *joint = skin->joints[joint_index];
-        ForArray(i, joint->rotation)
-        {
-          Pr_Float(p, joint->rotation[i]);
-          Pr_S8(p, S8Lit("f,"));
-        }
-        Pr_S8(p, S8Lit(" "));
-      }
-      Pr_S8(p, S8Lit("},\n"));
-
-      Pr_S8(p, S8Lit(".scales = (V3[]){"));
-      ForU64(joint_index, skin->joints_count)
-      {
-        cgltf_node *joint = skin->joints[joint_index];
-        ForArray(i, joint->scale)
-        {
-          Pr_Float(p, joint->scale[i]);
-          Pr_S8(p, S8Lit("f,"));
-        }
-        Pr_S8(p, S8Lit(" "));
-      }
-      Pr_S8(p, S8Lit("},\n"));
-    }
+    Pr_S8(p, S8Lit(".joints_count = "));
+    Pr_U64(p, skin->joints_count);
+    Pr_S8(p, S8Lit(",\n"));
 
     // unpack inverse bind matrices
     {
@@ -259,7 +173,98 @@ static void M_GLTF_ExportAnimations(Printer *p, cgltf_data *data)
       Pr_S8(p, S8Lit("\n},\n"));
     }
 
-    Pr_S8(p, S8Lit("},\n"));
+    // child hierarchy indices
+    {
+      U32 *indices = AllocZeroed(M.tmp, U32, skin->joints_count);
+      U32 indices_count = 0;
+      RngU32 *ranges = AllocZeroed(M.tmp, RngU32, skin->joints_count);
+
+      ForU64(joint_index, skin->joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+
+        ForU64(child_index, joint->children_count)
+        {
+          cgltf_node *child = joint->children[child_index];
+          U64 child_joint_index = M_FindJointIndex(skin, child);
+
+          if (child_index == 0)
+            ranges[joint_index].min = indices_count;
+
+          M_AssertAlways(indices_count < skin->joints_count);
+          indices[indices_count] = child_joint_index;
+          indices_count += 1;
+
+          ranges[joint_index].max = indices_count;
+        }
+      }
+
+      // index buf
+      Pr_S8(p, S8Lit(".child_index_buf = (U32[]){\n"));
+      ForU64(i, skin->joints_count)
+      {
+        Pr_U32(p, indices[i]);
+        Pr_S8(p, S8Lit(","));
+      }
+      Pr_S8(p, S8Lit("\n},\n"));
+
+      // index ranges
+      Pr_S8(p, S8Lit(".child_index_ranges = (RngU32[]){\n"));
+      ForU64(i, skin->joints_count)
+      {
+        Pr_S8(p, S8Lit("{"));
+        Pr_U32(p, ranges[i].min);
+        Pr_S8(p, S8Lit(","));
+        Pr_U32(p, ranges[i].max);
+        Pr_S8(p, S8Lit("},"));
+      }
+      Pr_S8(p, S8Lit("\n},\n"));
+    }
+
+    // rest pose transformations
+    {
+      // unpack rest pose transforms
+      {
+        Pr_S8(p, S8Lit(".translations = (V3[]){"));
+        ForU64(joint_index, skin->joints_count)
+        {
+          cgltf_node *joint = skin->joints[joint_index];
+          ForArray(i, joint->translation)
+          {
+            Pr_Float(p, joint->translation[i]);
+            Pr_S8(p, S8Lit("f,"));
+          }
+          Pr_S8(p, S8Lit(" "));
+        }
+        Pr_S8(p, S8Lit("},\n"));
+
+        Pr_S8(p, S8Lit(".rotations = (Quat[]){"));
+        ForU64(joint_index, skin->joints_count)
+        {
+          cgltf_node *joint = skin->joints[joint_index];
+          ForArray(i, joint->rotation)
+          {
+            Pr_Float(p, joint->rotation[i]);
+            Pr_S8(p, S8Lit("f,"));
+          }
+          Pr_S8(p, S8Lit(" "));
+        }
+        Pr_S8(p, S8Lit("},\n"));
+
+        Pr_S8(p, S8Lit(".scales = (V3[]){"));
+        ForU64(joint_index, skin->joints_count)
+        {
+          cgltf_node *joint = skin->joints[joint_index];
+          ForArray(i, joint->scale)
+          {
+            Pr_Float(p, joint->scale[i]);
+            Pr_S8(p, S8Lit("f,"));
+          }
+          Pr_S8(p, S8Lit(" "));
+        }
+        Pr_S8(p, S8Lit("},\n"));
+      }
+    }
   }
 
   Pr_S8(p, S8Lit("};\n"));
@@ -429,7 +434,7 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
     }
   }
 
-  M_GLTF_ExportAnimations(out_a, data);
+  M_GLTF_ExportSkeleton(out_a, data);
 
   //
   // Output collected data

@@ -79,23 +79,23 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   Game_Iterate();
   Gpu_Iterate();
 
+  // frame arena cleanup
+  Arena_Reset(APP.a_frame, 0);
+  Assert(APP.tmp->used == 0);
+
   // render cleanup
   {
     APP.rdr.wall_vert_count = 0;
+
     ForArray(i, APP.gpu.rigids)
-    {
       APP.rdr.rigids[i].instance_count = 0;
-    }
+
     ForArray(i, APP.gpu.skinneds)
-    {
       APP.rdr.skinneds[i].instance_count = 0;
-    }
   }
 
   // input cleanup
-  {
-    APP.mouse_delta = (V2){};
-  }
+  APP.mouse_delta = (V2){};
 
   return SDL_APP_CONTINUE;
 }
@@ -197,14 +197,17 @@ static void Game_ParseCmd(int argc, char **argv)
   }
 }
 
+static Arena *Arena_Malloc(U64 size)
+{
+  return Arena_MakeInside(malloc(size), size);
+}
+
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
   (void)appstate;
 
-  {
-    U64 arena_size = Megabyte(1);
-    APP.tmp = Arena_MakeInside(malloc(arena_size), arena_size);
-  }
+  APP.tmp = Arena_Malloc(Megabyte(1));
+  APP.a_frame = Arena_Malloc(Megabyte(1));
   APP.log_filter = ~(U32)LogFlags_NetAll;
   APP.init_window_width = WINDOW_WIDTH;
   APP.init_window_height = WINDOW_HEIGHT;

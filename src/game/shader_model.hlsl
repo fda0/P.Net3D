@@ -97,11 +97,11 @@ VSOutput ShaderModelVS(VSInput input)
   color *= instance.color;
   color.xyz *= clamp(in_sun_coef, 0.25f, 1.0f);
 
-  float4x4 model_transform = instance.transform;
-  model_transform = mul(camera_transform, model_transform);
-
+  float4x4 model_transform = mul(camera_transform, instance.transform);
   float4 position = float4(input.position, 1.0f);
-#if IS_SKINNED && 0
+
+#if IS_SKINNED
+#  if 0
   uint joint0 = (input.joints_packed4      ) & 0xff;
   uint joint1 = (input.joints_packed4 >>  8) & 0xff;
   uint joint2 = (input.joints_packed4 >> 16) & 0xff;
@@ -123,10 +123,10 @@ VSOutput ShaderModelVS(VSInput input)
     pos1 * input.weights.y +
     pos2 * input.weights.z +
     pos3 * input.weights.w;
+#  endif
+  position = mul(Mat4_Scale(40.f), position);
+  position = mul(model_transform, position);
 
-  position = mul(Mat4_Scale(80.f), position);
-  position = mul(instance.transform, position);
-  position = mul(camera_transform, position);
 #else
   position.z -= 200.f;
   position = mul(model_transform, position);

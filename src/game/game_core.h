@@ -60,6 +60,7 @@ struct AppState
   Rdr_State rdr;
 
   Arena *tmp;
+  Arena *a_frame;
 
   // window settings
   I32 init_window_px, init_window_py; // 0 if wasn't set
