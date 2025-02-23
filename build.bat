@@ -17,7 +17,7 @@ set compile_common=
 if "%asan%"=="1" set compile_common=%compile_common% -fsanitize=address && echo [asan enabled]
 
 :: --- Compile/Link Line Definitions ------------------------------------------
-set include_paths=-I..\src\base\ -I..\src\game\ -I..\src\meta\ -I..\src\gen\ -I..\libs\
+set include_paths=-I..\src\base\ -I..\src\game\ -I..\src\meta\ -I..\gen\ -I..\libs\
 set include_paths=%include_paths% -I..\libs\SDL\include\ -I..\libs\SDL_image\include\ -I..\libs\SDL_net\include\
 set compile_common=%compile_common% %include_paths%
 
@@ -112,8 +112,8 @@ if "%sdl%"=="1" (
 pushd build
 if "%game%"=="1" (
     :: --- Clean gen directory ------------------------------------------------
-    if exist ..\src\gen\ rmdir /q /s ..\src\gen\
-    mkdir ..\src\gen\
+    if exist ..\gen\ rmdir /q /s ..\gen\
+    mkdir ..\gen\
 
     :: --- Metaprogram --------------------------------------------------------
     %compile% ..\src\meta\meta_entry.c %compile_link% %out%meta.exe || exit /b 1
@@ -123,12 +123,12 @@ if "%game%"=="1" (
     %call_rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1
 
     :: --- Precompile shaders -------------------------------------------------
-    dxc ..\src\game\shader_model.hlsl /E ShaderRigidVS   /T vs_6_0 /D IS_RIGID=1   /Fh ..\src\gen\gen_shader_rigid.vert.h || exit /b 1
-    dxc ..\src\game\shader_model.hlsl /E ShaderRigidPS   /T ps_6_0 /D IS_RIGID=1   /Fh ..\src\gen\gen_shader_rigid.frag.h || exit /b 1
-    dxc ..\src\game\shader_model.hlsl /E ShaderSkinnedVS /T vs_6_0 /D IS_SKINNED=1 /Fh ..\src\gen\gen_shader_skinned.vert.h || exit /b 1
-    dxc ..\src\game\shader_model.hlsl /E ShaderSkinnedPS /T ps_6_0 /D IS_SKINNED=1 /Fh ..\src\gen\gen_shader_skinned.frag.h || exit /b 1
-    dxc ..\src\game\shader_wall.hlsl /E ShaderWallVS /T vs_6_0 /Fh ..\src\gen\gen_shader_wall.vert.h || exit /b 1
-    dxc ..\src\game\shader_wall.hlsl /E ShaderWallPS /T ps_6_0 /Fh ..\src\gen\gen_shader_wall.frag.h || exit /b 1
+    dxc ..\src\game\shader_model.hlsl /E ShaderRigidVS   /T vs_6_0 /D IS_RIGID=1   /Fh ..\gen\gen_shader_rigid.vert.h || exit /b 1
+    dxc ..\src\game\shader_model.hlsl /E ShaderRigidPS   /T ps_6_0 /D IS_RIGID=1   /Fh ..\gen\gen_shader_rigid.frag.h || exit /b 1
+    dxc ..\src\game\shader_model.hlsl /E ShaderSkinnedVS /T vs_6_0 /D IS_SKINNED=1 /Fh ..\gen\gen_shader_skinned.vert.h || exit /b 1
+    dxc ..\src\game\shader_model.hlsl /E ShaderSkinnedPS /T ps_6_0 /D IS_SKINNED=1 /Fh ..\gen\gen_shader_skinned.frag.h || exit /b 1
+    dxc ..\src\game\shader_wall.hlsl /E ShaderWallVS /T vs_6_0 /Fh ..\gen\gen_shader_wall.vert.h || exit /b 1
+    dxc ..\src\game\shader_wall.hlsl /E ShaderWallPS /T ps_6_0 /Fh ..\gen\gen_shader_wall.frag.h || exit /b 1
 
     :: --- Compile game -------------------------------------------------------
     %compile% ..\src\game\game_sdl_entry.c %compile_link_game% %link_icon% %out%p.exe || exit /b 1

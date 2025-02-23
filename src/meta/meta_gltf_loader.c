@@ -192,13 +192,11 @@ static void M_GLTF_ExportAnimations(Printer *p, cgltf_data *data)
   }
 
 
-#if 0
   // rest pose
   {
     Pr_S8(p, S8Lit(".rest_pose = {\n"));
 
     // unpack rest pose transforms
-#if 1
     {
       Pr_S8(p, S8Lit(".translations = (V3[]){"));
       ForU64(joint_index, skin->joints_count)
@@ -239,10 +237,8 @@ static void M_GLTF_ExportAnimations(Printer *p, cgltf_data *data)
       }
       Pr_S8(p, S8Lit("},\n"));
     }
-#endif
 
     // unpack inverse bind matrices
-#if 1
     {
       Pr_S8(p, S8Lit(".inverse_bind_matrices = (Mat4[]){\n"));
 
@@ -262,11 +258,9 @@ static void M_GLTF_ExportAnimations(Printer *p, cgltf_data *data)
 
       Pr_S8(p, S8Lit("\n},\n"));
     }
-#endif
 
     Pr_S8(p, S8Lit("},\n"));
   }
-#endif
 
   Pr_S8(p, S8Lit("};\n"));
 }

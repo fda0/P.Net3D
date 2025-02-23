@@ -43,7 +43,7 @@ int main()
     Printer pr_out = Pr_Alloc(M.tmp, Megabyte(1));
     M_ParseObj("../res/models/teapot.obj", &pr_out, (M_ModelSpec){.scale = 10.f, .rot_x = 0.25f});
     M_ParseObj("../res/models/flag.obj", &pr_out, (M_ModelSpec){.scale = 0.1f, .rot_x = 0.25f, .rot_z = 0.25f});
-    M_SaveFile("../src/gen/gen_models.h", Pr_AsS8(&pr_out));
+    M_SaveFile("../gen/gen_models.h", Pr_AsS8(&pr_out));
 
     Arena_PopScope(tmp_scope);
   }
@@ -55,8 +55,8 @@ int main()
     Printer pr_out = Pr_Alloc(M.tmp, Megabyte(4));
     Printer pr_anim = Pr_Alloc(M.tmp, Megabyte(4));
     M_GLTF_Load("../res/models/Worker.gltf", &pr_out, &pr_anim);
-    M_SaveFile("../src/gen/gen_models_gltf.h", Pr_AsS8(&pr_out));
-    M_SaveFile("../src/gen/gen_animations.h", Pr_AsS8(&pr_anim));
+    M_SaveFile("../gen/gen_models_gltf.h", Pr_AsS8(&pr_out));
+    M_SaveFile("../gen/gen_animations.h", Pr_AsS8(&pr_anim));
 
     Arena_PopScope(tmp_scope);
   }
