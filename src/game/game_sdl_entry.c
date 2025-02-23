@@ -40,6 +40,7 @@ static AppState APP;
 #include "game_network.c"
 #include "game_tick.c"
 #include "game_render.c"
+#include "game_animation.c"
 #include "game_core.c"
 
 #include "gen_shader_rigid.vert.h"

@@ -1,21 +1,26 @@
-static void AN_WaterfallTransformsToChildren(Mat4 *mats, U64 mat_count, Mat4 parent_transform)
+static void AN_WaterfallTransformsToChildren(AN_Skeleton *skeleton, Mat4 *mats, U32 joint_index, Mat4 parent_transform)
 {
-  M_AssertAlways(joint_index < mat_count);
+  if (joint_index >= skeleton->joints_count)
+  {
+    Assert(false);
+    return;
+  }
+
   mats[joint_index] = Mat4_Mul(parent_transform, mats[joint_index]);
 
-  M_AssertAlways(joint_index < skin->joints_count);
-  cgltf_node *joint = skin->joints[joint_index];
-
-  ForU64(child_index, joint->children_count)
+  RngU32 child_range = skeleton->child_index_ranges[joint_index];
+  for (U32 child_index = child_range.min;
+       child_index < child_range.max;
+       child_index += 1)
   {
-    U64 child_index = child_index;
+    if (child_index >= skeleton->joints_count)
+    {
+      Assert(false);
+      return;
+    }
 
-    cgltf_node *child = joint->children[child_index];
-    U64 child_joint_index = M_FindJointIndex(skin, child);
-    M_AssertAlways(child_joint_index < mat_count);
-    M_AssertAlways(child_joint_index > joint_index);
-
-    M_WaterfallTransformsToChildren(skin, child_joint_index, mats, mat_count, mats[joint_index], depth + 1);
+    U32 child_joint_index = skeleton->child_index_buf[child_index];
+    AN_WaterfallTransformsToChildren(skeleton, mats, child_joint_index, mats[joint_index]);
   }
 }
 
@@ -33,8 +38,6 @@ static AN_SkeletonTransform AN_SkeletonTransformFromAnimation(AN_Skeleton *skele
     return res;
   }
 
-  float t = WrapF(skeleton->t_min, skeleton->t_max, time);
-
   {
     Arena *a = APP.tmp;
     ArenaScope arena_scope = Arena_PushScope(a);
@@ -48,6 +51,8 @@ static AN_SkeletonTransform AN_SkeletonTransformFromAnimation(AN_Skeleton *skele
 
     // Overwrite translations, rotations, scales with values from animation
     AN_Animation *anim = skeleton->animations + animation_index;
+    float t = WrapF(anim->t_min, anim->t_max, time);
+
     ForU32(channel_index, anim->channels_count)
     {
       AN_Channel *channel = anim->channels + channel_index;
@@ -58,6 +63,7 @@ static AN_SkeletonTransform AN_SkeletonTransformFromAnimation(AN_Skeleton *skele
       }
 
       // @todo scan channel->inputs and select proper start_index, end_index, interpolate between them
+      (void)t;
       U32 sample_index = 0;
 
       if (channel->type == AN_Rotation)
@@ -78,7 +84,7 @@ static AN_SkeletonTransform AN_SkeletonTransformFromAnimation(AN_Skeleton *skele
 
     ForU32(i, res.matrices_count)
     {
-      Mat4 scale = Mat4_Scale(scales[i]);
+      Mat4 scale = Mat4_Scale(scales[i]); // @optimization skip scale matrices if they are always 1,1,1 ?
       Mat4 rot = Mat4_Rotation_Quat(rotations[i]);
       Mat4 trans = Mat4_Translation(translations[i]);
 
@@ -90,9 +96,12 @@ static AN_SkeletonTransform AN_SkeletonTransformFromAnimation(AN_Skeleton *skele
     Arena_PopScope(arena_scope);
   }
 
-  // @todo waterfall these transformations
+  AN_WaterfallTransformsToChildren(skeleton, res.matrices, 0, Mat4_Identity());
 
-  // @todo multiply by inverse bind matrices
+  ForU32(i, res.matrices_count)
+  {
+    res.matrices[i] = Mat4_Mul(res.matrices[i], skeleton->inverse_bind_matrices[i]);
+  }
 
   return res;
 }
