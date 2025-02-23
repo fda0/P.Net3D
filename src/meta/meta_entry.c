@@ -7,6 +7,7 @@
 #include "base_math.h"
 #include "base_printer.h"
 #include "game_render.h"
+#include "game_animation.h"
 
 #include "meta_obj.h"
 #include "meta_entry.h"
@@ -41,7 +42,7 @@ int main()
     Printer pr_out = Pr_Alloc(M.tmp, Megabyte(1));
     M_ParseObj("../res/models/teapot.obj", &pr_out, (M_ModelSpec){.scale = 10.f, .rot_x = 0.25f});
     M_ParseObj("../res/models/flag.obj", &pr_out, (M_ModelSpec){.scale = 0.1f, .rot_x = 0.25f, .rot_z = 0.25f});
-    M_SaveFile("../src/gen/gen_models.h", Pr_S8(&pr_out));
+    M_SaveFile("../src/gen/gen_models.h", Pr_AsS8(&pr_out));
 
     Arena_PopScope(tmp_scope);
   }
@@ -52,10 +53,11 @@ int main()
 
     Printer pr_out = Pr_Alloc(M.tmp, Megabyte(4));
     Printer pr_out2 = Pr_Alloc(M.tmp, Megabyte(4));
-    M_GLTF_Load("../res/models/Worker.gltf", &pr_out, &pr_out2);
-    //M_GLTF_Load("../res/models/Fox.glb", &pr_out);
-    M_SaveFile("../src/gen/gen_models_gltf.h", Pr_S8(&pr_out));
-    M_SaveFile("../src/gen/gen_models_gltf_mat.h", Pr_S8(&pr_out2));
+    Printer pr_anim = Pr_Alloc(M.tmp, Megabyte(4));
+    M_GLTF_Load("../res/models/Worker.gltf", &pr_out, &pr_out2, &pr_anim);
+    M_SaveFile("../src/gen/gen_models_gltf.h", Pr_AsS8(&pr_out));
+    M_SaveFile("../src/gen/gen_models_gltf_mat.h", Pr_AsS8(&pr_out2));
+    M_SaveFile("../src/gen/gen_models_gltf_anim.h", Pr_AsS8(&pr_anim));
 
     Arena_PopScope(tmp_scope);
   }

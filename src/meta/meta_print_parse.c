@@ -35,56 +35,73 @@ static V3 M_ParseV3(S8 x, S8 y, S8 z)
   return res;
 }
 
-static void Pr_AddFloat(Printer *p, float value)
+static void Pr_Float(Printer *p, float value)
 {
   // @todo remove clib dependency in the future
   char buf[128];
   snprintf(buf, sizeof(buf), "%f", value);
   S8 string = S8_ScanCstr(buf);
-  Pr_Add(p, string);
+  Pr_S8(p, string);
 }
 
-static void Pr_AddU16(Printer *p, U16 value)
+static void Pr_U16(Printer *p, U16 value)
 {
   // @todo remove clib dependency in the future
   char buf[128];
   snprintf(buf, sizeof(buf), "%u", (U32)value);
   S8 string = S8_ScanCstr(buf);
-  Pr_Add(p, string);
+  Pr_S8(p, string);
 }
 
-static void Pr_AddU32(Printer *p, U32 value)
+static void Pr_U32(Printer *p, U32 value)
 {
   // @todo remove clib dependency in the future
   char buf[128];
   snprintf(buf, sizeof(buf), "%u", value);
   S8 string = S8_ScanCstr(buf);
-  Pr_Add(p, string);
+  Pr_S8(p, string);
 }
 
-static void Pr_AddI32(Printer *p, I32 value)
+static void Pr_I32(Printer *p, I32 value)
 {
   // @todo remove clib dependency in the future
   char buf[128];
   snprintf(buf, sizeof(buf), "%d", value);
   S8 string = S8_ScanCstr(buf);
-  Pr_Add(p, string);
+  Pr_S8(p, string);
 }
 
-static void Pr_AddU32Hex(Printer *p, U32 value)
+static void Pr_U32Hex(Printer *p, U32 value)
 {
   // @todo remove clib dependency in the future
   char buf[128];
   snprintf(buf, sizeof(buf), "%x", value);
   S8 string = S8_ScanCstr(buf);
-  Pr_Add(p, string);
+  Pr_S8(p, string);
 }
 
-static void Pr_AddU64(Printer *p, U64 value)
+static void Pr_U64(Printer *p, U64 value)
 {
   // @todo remove clib dependency in the future
   char buf[128];
   snprintf(buf, sizeof(buf), "%llu", value);
   S8 string = S8_ScanCstr(buf);
-  Pr_Add(p, string);
+  Pr_S8(p, string);
+}
+
+static void Pr_FloatArray(Printer *p, float *numbers, U64 number_count)
+{
+  U64 per_row = 4;
+  ForU64(i, number_count)
+  {
+    Pr_Float(p, numbers[i]);
+    Pr_S8(p, S8Lit("f"));
+
+    if (i + 1 < number_count)
+    {
+      Pr_S8(p, S8Lit(","));
+      S8 whitespace = (i % per_row == per_row-1 ? S8Lit("\n") : S8Lit(" "));
+      Pr_S8(p, whitespace);
+    }
+  }
 }

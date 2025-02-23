@@ -518,8 +518,8 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
   //
   // Output - generating C header
   //
-  Pr_AddCstr(out, "// Model: "); Pr_Add(out, model_name); Pr_AddCstr(out, "\n");
-  Pr_AddCstr(out, "static Rdr_RigidVertex Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_vrt[] =\n{\n");
+  Pr_Cstr(out, "// Model: "); Pr_S8(out, model_name); Pr_Cstr(out, "\n");
+  Pr_Cstr(out, "static Rdr_RigidVertex Model_"); Pr_S8(out, model_name); Pr_Cstr(out, "_vrt[] =\n{\n");
   ForArray(i, M.vertex_table)
   {
     if (!M.vertex_table[i].filled)
@@ -527,39 +527,39 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
     Rdr_RigidVertex rdr = M.vertex_table[i].rdr;
 
-    Pr_AddCstr(out, "  ");
+    Pr_Cstr(out, "  ");
     // vert
-    Pr_AddFloat(out, rdr.p.x); Pr_AddCstr(out, "f, ");
-    Pr_AddFloat(out, rdr.p.y); Pr_AddCstr(out, "f, ");
-    Pr_AddFloat(out, rdr.p.z); Pr_AddCstr(out, "f, ");
+    Pr_Float(out, rdr.p.x); Pr_Cstr(out, "f, ");
+    Pr_Float(out, rdr.p.y); Pr_Cstr(out, "f, ");
+    Pr_Float(out, rdr.p.z); Pr_Cstr(out, "f, ");
 
     // color
-    Pr_Add(out, S8Lit("/*col*/"));
-    Pr_AddFloat(out, rdr.color.x); Pr_AddCstr(out, "f, ");
-    Pr_AddFloat(out, rdr.color.y); Pr_AddCstr(out, "f, ");
-    Pr_AddFloat(out, rdr.color.z); Pr_AddCstr(out, "f, ");
+    Pr_S8(out, S8Lit("/*col*/"));
+    Pr_Float(out, rdr.color.x); Pr_Cstr(out, "f, ");
+    Pr_Float(out, rdr.color.y); Pr_Cstr(out, "f, ");
+    Pr_Float(out, rdr.color.z); Pr_Cstr(out, "f, ");
 
     // normals
-    Pr_Add(out, S8Lit("/*nrm*/"));
+    Pr_S8(out, S8Lit("/*nrm*/"));
     rdr.normal = V3_Normalize(rdr.normal);
-    Pr_AddFloat(out, rdr.normal.x); Pr_AddCstr(out, "f, ");
-    Pr_AddFloat(out, rdr.normal.y); Pr_AddCstr(out, "f, ");
-    Pr_AddFloat(out, rdr.normal.z); Pr_AddCstr(out, "f,\n");
+    Pr_Float(out, rdr.normal.x); Pr_Cstr(out, "f, ");
+    Pr_Float(out, rdr.normal.y); Pr_Cstr(out, "f, ");
+    Pr_Float(out, rdr.normal.z); Pr_Cstr(out, "f,\n");
   }
-  Pr_AddCstr(out, "};\n\n");
+  Pr_Cstr(out, "};\n\n");
 
-  Pr_AddCstr(out, "static U16 Model_"); Pr_Add(out, model_name); Pr_AddCstr(out, "_ind[] =\n{\n");
+  Pr_Cstr(out, "static U16 Model_"); Pr_S8(out, model_name); Pr_Cstr(out, "_ind[] =\n{\n");
   for (U64 i = 0;
        i + 3 <= out_ind_count;
        i += 3)
   {
-    Pr_AddCstr(out, "  ");
+    Pr_Cstr(out, "  ");
     // data
-    Pr_AddU16(out, out_inds[i    ]); Pr_AddCstr(out, ", ");
-    Pr_AddU16(out, out_inds[i + 1]); Pr_AddCstr(out, ", ");
-    Pr_AddU16(out, out_inds[i + 2]); Pr_AddCstr(out, ",\n");
+    Pr_U16(out, out_inds[i    ]); Pr_Cstr(out, ", ");
+    Pr_U16(out, out_inds[i + 1]); Pr_Cstr(out, ", ");
+    Pr_U16(out, out_inds[i + 2]); Pr_Cstr(out, ",\n");
   }
-  Pr_AddCstr(out, "};\n\n");
+  Pr_Cstr(out, "};\n\n");
 
   // Log errors, cleanup
   if (out->err)

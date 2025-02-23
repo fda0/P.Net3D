@@ -24,7 +24,7 @@ static U64 Pr_FreeCount(Printer *p)
   return 0;
 }
 
-static char *Pr_Cstr(Printer *p)
+static char *Pr_AsCstr(Printer *p)
 {
   if (!p->cap)
     return "";
@@ -42,12 +42,12 @@ static char *Pr_Cstr(Printer *p)
   return (char *)p->buf;
 }
 
-static S8 Pr_S8(Printer *p)
+static S8 Pr_AsS8(Printer *p)
 {
   return S8_Make(p->buf, p->used);
 }
 
-static void Pr_Add(Printer *p, S8 str)
+static void Pr_S8(Printer *p, S8 str)
 {
   U64 free_count = Pr_FreeCount(p);
   if (free_count < str.size)
@@ -63,14 +63,14 @@ static void Pr_Add(Printer *p, S8 str)
   p->used += str.size;
 }
 
-static void Pr_AddCstr(Printer *p, const char *cstr)
+static void Pr_Cstr(Printer *p, const char *cstr)
 {
-  Pr_Add(p, S8_ScanCstr(cstr));
+  Pr_S8(p, S8_ScanCstr(cstr));
 }
 
-static void Pr_AddPrinter(Printer *p, Printer *copy)
+static void Pr_Printer(Printer *p, Printer *copy)
 {
-  Pr_Add(p, Pr_S8(copy));
+  Pr_S8(p, Pr_AsS8(copy));
 }
 
 
