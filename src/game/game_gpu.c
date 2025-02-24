@@ -3,6 +3,15 @@
 #define GPU_CLEAR_COLOR_G 0.6f
 #define GPU_CLEAR_COLOR_B 0.8f
 #define GPU_CLEAR_COLOR_A 1.0f
+#define GPU_JOINT_TRANSFORMS_MAX_SIZE (sizeof(Mat4)*62)
+
+static SDL_GPUBuffer *Gpu_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, const char *name)
+{
+  SDL_GPUBufferCreateInfo desc = {.usage = usage, .size = size};
+  SDL_GPUBuffer *result = SDL_CreateGPUBuffer(APP.gpu.device, &desc);
+  SDL_SetGPUBufferName(APP.gpu.device, result, name);
+  return result;
+}
 
 static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
 {
@@ -219,7 +228,7 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
   const char *vrt_buf_name = "";
   const char *ind_buf_name = "";
   const char *inst_buf_name = "";
-  U32 instance_size = (is_skinned ? sizeof(Rdr_SkinnedInstance) : sizeof(Rdr_RigidInstance));
+  U32 single_instance_size = (is_skinned ? sizeof(Rdr_SkinnedInstance) : sizeof(Rdr_RigidInstance));
 
   if (is_skinned)
   {
@@ -271,35 +280,17 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
   model->ind_count = indices_size / sizeof(U16);
 
   // create model vertex buffer
-  {
-    SDL_GPUBufferCreateInfo buffer_desc = {
-      .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-      .size = vertices_size,
-    };
-    model->vert_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-    Assert(model->vert_buf); // @todo report err
-    SDL_SetGPUBufferName(APP.gpu.device, model->vert_buf, vrt_buf_name);
-  }
+  model->vert_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, vertices_size, vrt_buf_name);
+  Assert(model->vert_buf); // @todo report err
+
   // create model index buffer
-  {
-    SDL_GPUBufferCreateInfo buffer_desc = {
-      .usage = SDL_GPU_BUFFERUSAGE_INDEX,
-      .size = indices_size,
-    };
-    model->ind_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-    Assert(model->ind_buf); // @todo report err
-    SDL_SetGPUBufferName(APP.gpu.device, model->ind_buf, ind_buf_name);
-  }
+  model->ind_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, indices_size, ind_buf_name);
+  Assert(model->ind_buf); // @todo report err
+
   // create model per instance storage buffer
-  {
-    SDL_GPUBufferCreateInfo buffer_desc = {
-      .usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-      .size = instance_size,
-    };
-    model->inst_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-    Assert(model->inst_buf); // @todo report err
-    SDL_SetGPUBufferName(APP.gpu.device, model->inst_buf, inst_buf_name);
-  }
+  U32 instances_size = single_instance_size * RDR_MAX_MODEL_INSTANCES;
+  model->inst_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, instances_size, inst_buf_name);
+  Assert(model->inst_buf); // @todo report err
 
   Gpu_TransferBuffer(model->vert_buf, vertices, vertices_size);
   Gpu_TransferBuffer(model->ind_buf, indices, indices_size);
@@ -311,21 +302,21 @@ static void Gpu_Init()
   {
     APP.gpu.clear_depth_props = SDL_CreateProperties();
     SDL_SetFloatProperty(APP.gpu.clear_depth_props,
-                         SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_DEPTH_FLOAT,
+                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_DEPTH_FLOAT,
                          GPU_CLEAR_DEPTH_FLOAT);
 
     APP.gpu.clear_color_props = SDL_CreateProperties();
     SDL_SetFloatProperty(APP.gpu.clear_color_props,
-                         SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_R_FLOAT,
+                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_R_FLOAT,
                          GPU_CLEAR_COLOR_R);
     SDL_SetFloatProperty(APP.gpu.clear_color_props,
-                         SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_G_FLOAT,
+                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_G_FLOAT,
                          GPU_CLEAR_COLOR_G);
     SDL_SetFloatProperty(APP.gpu.clear_color_props,
-                         SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_B_FLOAT,
+                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_B_FLOAT,
                          GPU_CLEAR_COLOR_B);
     SDL_SetFloatProperty(APP.gpu.clear_color_props,
-                         SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_A_FLOAT,
+                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_A_FLOAT,
                          GPU_CLEAR_COLOR_A);
   }
 
@@ -500,7 +491,7 @@ static void Gpu_Init()
         {
           .slot = 1,
           .pitch = sizeof(Rdr_SkinnedInstance),
-          .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+          .input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE,
           .instance_step_rate = 0,
         },
       },
@@ -767,25 +758,15 @@ static void Gpu_DrawModelBuffers(SDL_GPURenderPass *pass,
     return;
 
   // bind vertex buffer
-  {
-    SDL_GPUBufferBinding binding_vrt = {
-      .buffer = model->vert_buf,
-      .offset = 0,
-    };
-    SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
-  }
+  SDL_GPUBufferBinding binding_vrt = { .buffer = model->vert_buf };
+  SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
+
   // bind index buffer
-  {
-    SDL_GPUBufferBinding binding_ind = {
-      .buffer = model->ind_buf,
-      .offset = 0,
-    };
-    SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
-  }
+  SDL_GPUBufferBinding binding_ind = { .buffer = model->ind_buf };
+  SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+
   // bind instance storage buffer
-  {
-    SDL_BindGPUVertexStorageBuffers(pass, 0, &model->inst_buf, 1);
-  }
+  SDL_BindGPUVertexStorageBuffers(pass, 0, &model->inst_buf, 1);
 
   SDL_DrawGPUIndexedPrimitives(pass, model->ind_count, instance_count, 0, 0, 0);
 }

@@ -17,7 +17,7 @@
 #define ShaderModelPS ShaderSkinnedPS
 #endif
 
-cbuffer UBO : register(b0, space1)
+cbuffer UniformBuf : register(b0, space1)
 {
   float4x4 camera_transform;
 };
@@ -46,7 +46,7 @@ struct VSModelInstanceData
   float4 color;
 };
 
-StructuredBuffer<VSModelInstanceData> InstanceBuffer : register(t0);
+StructuredBuffer<VSModelInstanceData> InstanceBuf : register(t0);
 
 float4x4 Mat4_RotationPart(float4x4 mat)
 {
@@ -87,7 +87,7 @@ float4x4 Mat4_Scale(float scale)
 
 VSOutput ShaderModelVS(VSInput input)
 {
-  VSModelInstanceData instance = InstanceBuffer[input.InstanceIndex];
+  VSModelInstanceData instance = InstanceBuf[input.InstanceIndex];
 
   float3 normal = mul(Mat4_RotationPart(instance.transform), float4(input.normal, 1.f)).xyz;
   float3 world_sun_pos = normalize(float3(-0.5f, 0.5f, 1.f));
@@ -108,10 +108,10 @@ VSOutput ShaderModelVS(VSInput input)
   uint joint3 = (input.joints_packed4 >> 24) & 0xff;
   //joint0 = joint1 = joint2 = joint3 = 1;
 
-  float4x4 joint_mat0 = joint_inv_bind_mats[joint0];
-  float4x4 joint_mat1 = joint_inv_bind_mats[joint1];
-  float4x4 joint_mat2 = joint_inv_bind_mats[joint2];
-  float4x4 joint_mat3 = joint_inv_bind_mats[joint3];
+  float4x4 joint_mat0 = PoseBuf[joint0];
+  float4x4 joint_mat1 = PoseBuf[joint1];
+  float4x4 joint_mat2 = PoseBuf[joint2];
+  float4x4 joint_mat3 = PoseBuf[joint3];
 
   float4 pos0 = mul(position, joint_mat0);
   float4 pos1 = mul(position, joint_mat1);

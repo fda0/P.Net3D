@@ -2,7 +2,7 @@ typedef struct
 {
   SDL_GPUBuffer *vert_buf;
   SDL_GPUBuffer *ind_buf;
-  SDL_GPUBuffer *inst_buf;
+  SDL_GPUBuffer *inst_buf; // @todo move this out of model - there should be max instanced rigid + max instanced skinned models thing!
   U32 ind_count;
 } Gpu_ModelBuffers;
 
@@ -25,6 +25,7 @@ typedef struct
   // resources
   Gpu_ModelBuffers rigids[RdrRigid_COUNT];
   Gpu_ModelBuffers skinneds[RdrSkinned_COUNT];
+
   SDL_GPUBuffer *wall_vert_buf;
   SDL_GPUSampler *wall_sampler;
   SDL_GPUTexture *tex_wall;
