@@ -24,9 +24,9 @@ static void AN_WaterfallTransformsToChildren(AN_Skeleton *skeleton, Mat4 *mats, 
   }
 }
 
-static AN_SkeletonTransform AN_SkeletonTransformFromAnimation(AN_Skeleton *skeleton, U32 animation_index, float time)
+static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, float time)
 {
-  AN_SkeletonTransform res = {};
+  AN_Pose res = {};
   res.matrices = Alloc(APP.a_frame, Mat4, skeleton->joints_count);
   res.matrices_count = skeleton->joints_count;
 
@@ -38,6 +38,7 @@ static AN_SkeletonTransform AN_SkeletonTransformFromAnimation(AN_Skeleton *skele
     return res;
   }
 
+  // mix default rest pose + animation channels using temporary memory
   {
     Arena *a = APP.tmp;
     ArenaScope arena_scope = Arena_PushScope(a);
@@ -64,7 +65,7 @@ static AN_SkeletonTransform AN_SkeletonTransformFromAnimation(AN_Skeleton *skele
 
       // @todo scan channel->inputs and select proper start_index, end_index, interpolate between them
       (void)t;
-      U32 sample_index = 0;
+      U32 sample_index = channel->count / 2;
 
       if (channel->type == AN_Rotation)
       {

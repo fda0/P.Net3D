@@ -44,9 +44,15 @@ struct VSModelInstanceData
 {
   float4x4 transform;
   float4 color;
+#if IS_SKINNED
+  uint pose_offset;
+#endif
 };
 
 StructuredBuffer<VSModelInstanceData> InstanceBuf : register(t0);
+#if IS_SKINNED
+StructuredBuffer<float4x4> PoseBuf : register(t1);
+#endif
 
 float4x4 Mat4_RotationPart(float4x4 mat)
 {
@@ -101,22 +107,27 @@ VSOutput ShaderModelVS(VSInput input)
   float4 position = float4(input.position, 1.0f);
 
 #if IS_SKINNED
-#  if 0
+#  if 1
   uint joint0 = (input.joints_packed4      ) & 0xff;
   uint joint1 = (input.joints_packed4 >>  8) & 0xff;
   uint joint2 = (input.joints_packed4 >> 16) & 0xff;
   uint joint3 = (input.joints_packed4 >> 24) & 0xff;
-  //joint0 = joint1 = joint2 = joint3 = 1;
+  joint0 += instance.pose_offset;
+  joint1 += instance.pose_offset;
+  joint2 += instance.pose_offset;
+  joint3 += instance.pose_offset;
+
+  //joint0 = joint1 = joint2 = joint3 = 2;
 
   float4x4 joint_mat0 = PoseBuf[joint0];
   float4x4 joint_mat1 = PoseBuf[joint1];
   float4x4 joint_mat2 = PoseBuf[joint2];
   float4x4 joint_mat3 = PoseBuf[joint3];
 
-  float4 pos0 = mul(position, joint_mat0);
-  float4 pos1 = mul(position, joint_mat1);
-  float4 pos2 = mul(position, joint_mat2);
-  float4 pos3 = mul(position, joint_mat3);
+  float4 pos0 = mul(joint_mat0, position);
+  float4 pos1 = mul(joint_mat1, position);
+  float4 pos2 = mul(joint_mat2, position);
+  float4 pos3 = mul(joint_mat3, position);
 
   position =
     pos0 * input.weights.x +

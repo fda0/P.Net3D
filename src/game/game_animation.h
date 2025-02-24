@@ -46,4 +46,4 @@ typedef struct
 {
   Mat4 *matrices;
   U32 matrices_count;
-} AN_SkeletonTransform;
+} AN_Pose;

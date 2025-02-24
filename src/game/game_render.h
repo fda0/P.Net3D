@@ -1,4 +1,5 @@
-#define RDR_MAX_MODEL_INSTANCES 16
+#define RD_MAX_RIGID_INSTANCES 16
+#define RD_MAX_SKINNED_INSTANCES 16
 
 //
 // Enums @todo generate these or setup more dynamic key-like system
@@ -42,7 +43,7 @@ typedef struct
 
 typedef struct
 {
-  Rdr_RigidInstance instances[RDR_MAX_MODEL_INSTANCES];
+  Rdr_RigidInstance instances[RD_MAX_RIGID_INSTANCES];
   U32 instance_count;
 } Rdr_Rigid;
 
@@ -62,11 +63,18 @@ typedef struct
 {
   Mat4 transform;
   V4 color;
+  U32 pose_offset;
 } Rdr_SkinnedInstance;
 
 typedef struct
 {
-  Rdr_SkinnedInstance instances[RDR_MAX_MODEL_INSTANCES];
+  Mat4 mats[62];
+} Rdr_SkinnedPose;
+
+typedef struct
+{
+  Rdr_SkinnedInstance instances[RD_MAX_SKINNED_INSTANCES];
+  Rdr_SkinnedPose poses[RD_MAX_SKINNED_INSTANCES];
   U32 instance_count;
 } Rdr_Skinned;
 
@@ -86,6 +94,11 @@ typedef struct
 //
 typedef struct
 {
+  Rdr_RigidInstance rigid_instances[RD_MAX_RIGID_INSTANCES];
+  U32 rigid_instances_count;
+  Rdr_SkinnedInstance skinned_instances[RD_MAX_RIGID_INSTANCES];
+  U32 skinned_instances_count;
+
   Rdr_Rigid rigids[RdrRigid_COUNT];
   Rdr_Skinned skinneds[RdrSkinned_COUNT];
 

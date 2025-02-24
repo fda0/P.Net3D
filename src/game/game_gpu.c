@@ -228,7 +228,9 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
   const char *vrt_buf_name = "";
   const char *ind_buf_name = "";
   const char *inst_buf_name = "";
-  U32 single_instance_size = (is_skinned ? sizeof(Rdr_SkinnedInstance) : sizeof(Rdr_RigidInstance));
+  U32 instances_size = (is_skinned ?
+                        RD_MAX_SKINNED_INSTANCES * sizeof(Rdr_SkinnedInstance) :
+                        RD_MAX_RIGID_INSTANCES * sizeof(Rdr_RigidInstance));
 
   if (is_skinned)
   {
@@ -288,9 +290,16 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
   Assert(model->ind_buf); // @todo report err
 
   // create model per instance storage buffer
-  U32 instances_size = single_instance_size * RDR_MAX_MODEL_INSTANCES;
   model->inst_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, instances_size, inst_buf_name);
   Assert(model->inst_buf); // @todo report err
+
+  if (is_skinned)
+  {
+    APP.gpu.skinned_pose_bufs[model_index] =
+      Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+                       RD_MAX_SKINNED_INSTANCES * sizeof(Rdr_SkinnedPose),
+                       "skinned_pose_buf (todo: add model name)");
+  }
 
   Gpu_TransferBuffer(model->vert_buf, vertices, vertices_size);
   Gpu_TransferBuffer(model->ind_buf, indices, indices_size);
@@ -438,7 +447,7 @@ static void Gpu_Init()
       {
         .stage = SDL_GPU_SHADERSTAGE_VERTEX,
         .num_samplers = 0,
-        .num_storage_buffers = 1,
+        .num_storage_buffers = 2,
         .num_storage_textures = 0,
         .num_uniform_buffers = 1,
 
@@ -732,6 +741,7 @@ static void Gpu_Deinit()
     SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.skinneds[i].vert_buf);
     SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.skinneds[i].ind_buf);
     SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.skinneds[i].inst_buf);
+    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.skinned_pose_bufs[i]);
   }
 
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_vert_buf);
@@ -740,7 +750,8 @@ static void Gpu_Deinit()
 }
 
 static void Gpu_DrawModelBuffers(SDL_GPURenderPass *pass,
-                                 Gpu_ModelBuffers *model, U32 instance_count)
+                                 Gpu_ModelBuffers *model, U32 instance_count,
+                                 SDL_GPUBuffer *additional_storage_buf)
 {
   if (!instance_count)
     return;
@@ -754,7 +765,12 @@ static void Gpu_DrawModelBuffers(SDL_GPURenderPass *pass,
   SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
 
   // bind instance storage buffer
-  SDL_BindGPUVertexStorageBuffers(pass, 0, &model->inst_buf, 1);
+  SDL_GPUBuffer *storage_bufs[2] = {
+    model->inst_buf,
+    additional_storage_buf
+  };
+  U32 storage_bufs_count = (additional_storage_buf ? 2 : 1);
+  SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, storage_bufs_count);
 
   SDL_DrawGPUIndexedPrimitives(pass, model->ind_count, instance_count, 0, 0, 0);
 }
@@ -800,11 +816,17 @@ static void Gpu_Iterate()
   {
     Gpu_ModelBuffers *gpu_model = APP.gpu.skinneds + i;
     Rdr_Skinned *skinned = APP.rdr.skinneds + i;
+    SDL_GPUBuffer *pose_buf = APP.gpu.skinned_pose_bufs[i];
+
     if (skinned->instance_count)
     {
       Gpu_TransferBuffer(gpu_model->inst_buf,
                          skinned->instances,
                          skinned->instance_count * sizeof(skinned->instances[0]));
+
+      Gpu_TransferBuffer(pose_buf,
+                         skinned->poses,
+                         skinned->instance_count * sizeof(skinned->poses[0]));
     }
   }
 
@@ -884,7 +906,7 @@ static void Gpu_Iterate()
     {
       Gpu_ModelBuffers *model = APP.gpu.rigids + i;
       Rdr_Rigid *rigid = APP.rdr.rigids + i;
-      Gpu_DrawModelBuffers(pass, model, rigid->instance_count);
+      Gpu_DrawModelBuffers(pass, model, rigid->instance_count, 0);
     }
 
     // skinned
@@ -893,7 +915,9 @@ static void Gpu_Iterate()
     {
       Gpu_ModelBuffers *model = APP.gpu.skinneds + i;
       Rdr_Skinned *skinned = APP.rdr.skinneds + i;
-      Gpu_DrawModelBuffers(pass, model, skinned->instance_count);
+
+      SDL_GPUBuffer *pose_buf = APP.gpu.skinned_pose_bufs[i];
+      Gpu_DrawModelBuffers(pass, model, skinned->instance_count, pose_buf);
     }
 
     SDL_EndGPURenderPass(pass);

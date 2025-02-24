@@ -32,17 +32,6 @@
 #include "game_gpu.h"
 #include "game_core.h"
 
-static AppState APP;
-#include "game_key.c"
-#include "game_object.c"
-#include "game_client.c"
-#include "game_server.c"
-#include "game_network.c"
-#include "game_tick.c"
-#include "game_render.c"
-#include "game_animation.c"
-#include "game_core.c"
-
 #include "gen_shader_rigid.vert.h"
 #include "gen_shader_rigid.frag.h"
 #include "gen_shader_skinned.vert.h"
@@ -52,6 +41,17 @@ static AppState APP;
 #include "gen_models.h"
 #include "gen_models_gltf.h"
 #include "gen_animations.h"
+
+static AppState APP;
+#include "game_key.c"
+#include "game_object.c"
+#include "game_client.c"
+#include "game_server.c"
+#include "game_network.c"
+#include "game_tick.c"
+#include "game_animation.c"
+#include "game_render.c"
+#include "game_core.c"
 #include "game_gpu.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)
