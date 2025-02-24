@@ -384,18 +384,12 @@ static void Gpu_Init()
 
     pipeline.vertex_input_state = (SDL_GPUVertexInputState)
     {
-      .num_vertex_buffers = 2,
+      .num_vertex_buffers = 1,
       .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[])
       {
         {
           .slot = 0,
           .pitch = sizeof(Rdr_RigidVertex),
-          .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-          .instance_step_rate = 0,
-        },
-        {
-          .slot = 1,
-          .pitch = sizeof(Rdr_RigidInstance),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -479,19 +473,13 @@ static void Gpu_Init()
 
     pipeline.vertex_input_state = (SDL_GPUVertexInputState)
     {
-      .num_vertex_buffers = 2,
+      .num_vertex_buffers = 1,
       .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[])
       {
         {
           .slot = 0,
           .pitch = sizeof(Rdr_SkinnedVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
-          .instance_step_rate = 0,
-        },
-        {
-          .slot = 1,
-          .pitch = sizeof(Rdr_SkinnedInstance),
-          .input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE,
           .instance_step_rate = 0,
         },
       },
