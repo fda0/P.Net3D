@@ -56,12 +56,27 @@ StructuredBuffer<float4x4> PoseBuf : register(t1);
 
 float4x4 Mat4_RotationPart(float4x4 mat)
 {
-  // @todo in the future this matrix will need to be normalized
-  // to eliminate scaling from the matrix
-  mat._m03 = 0.f;
-  mat._m13 = 0.f;
-  mat._m23 = 0.f;
-  mat._m33 = 1.f;
+  // Extract the 3x3 submatrix columns
+  // @todo is this extraction correct? - check with non-uniform scaling
+  float3 axis_x = float3(mat._m00, mat._m10, mat._m20);
+  float3 axis_y = float3(mat._m01, mat._m11, mat._m21);
+  float3 axis_z = float3(mat._m02, mat._m12, mat._m22);
+
+  // Normalize each axis to remove scaling
+  float len_x = length(axis_x);
+  if (len_x > 0.0001f) axis_x = axis_x / len_x;
+
+  float len_y = length(axis_y);
+  if (len_y > 0.0001f) axis_y = axis_y / len_y;
+
+  float len_z = length(axis_z);
+  if (len_z > 0.0001f) axis_z = axis_z / len_z;
+
+  // Rebuild the matrix with normalized vectors and zero translation
+  mat._m00 = axis_x.x; mat._m01 = axis_y.x; mat._m02 = axis_z.x; mat._m03 = 0.f;
+  mat._m10 = axis_x.y; mat._m11 = axis_y.y; mat._m12 = axis_z.y; mat._m13 = 0.f;
+  mat._m20 = axis_x.z; mat._m21 = axis_y.z; mat._m22 = axis_z.z; mat._m23 = 0.f;
+  mat._m30 = 0.f;      mat._m31 = 0.f;      mat._m32 = 0.f;      mat._m33 = 1.f;
   return mat;
 }
 
@@ -95,19 +110,9 @@ VSOutput ShaderModelVS(VSInput input)
 {
   VSModelInstanceData instance = InstanceBuf[input.InstanceIndex];
 
-  float3 normal = mul(Mat4_RotationPart(instance.transform), float4(input.normal, 1.f)).xyz;
-  float3 world_sun_pos = normalize(float3(-0.5f, 0.5f, 1.f));
-  float in_sun_coef = dot(world_sun_pos, normal);
-
-  float4 color = float4(input.color, 1.0f);
-  color *= instance.color;
-  color.xyz *= clamp(in_sun_coef, 0.25f, 1.0f);
-
-  float4x4 model_transform = mul(camera_transform, instance.transform);
   float4 position = float4(input.position, 1.0f);
 
 #if IS_SKINNED
-#  if 1
   uint joint0 = (input.joints_packed4      ) & 0xff;
   uint joint1 = (input.joints_packed4 >>  8) & 0xff;
   uint joint2 = (input.joints_packed4 >> 16) & 0xff;
@@ -117,31 +122,34 @@ VSOutput ShaderModelVS(VSInput input)
   joint2 += instance.pose_offset;
   joint3 += instance.pose_offset;
 
-  //joint0 = joint1 = joint2 = joint3 = 2;
+  float4x4 pose_transform0 = PoseBuf[joint0];
+  float4x4 pose_transform1 = PoseBuf[joint1];
+  float4x4 pose_transform2 = PoseBuf[joint2];
+  float4x4 pose_transform3 = PoseBuf[joint3];
 
-  float4x4 joint_mat0 = PoseBuf[joint0];
-  float4x4 joint_mat1 = PoseBuf[joint1];
-  float4x4 joint_mat2 = PoseBuf[joint2];
-  float4x4 joint_mat3 = PoseBuf[joint3];
+  float4x4 pose_transform =
+    pose_transform0 * input.weights.x +
+    pose_transform1 * input.weights.y +
+    pose_transform2 * input.weights.z +
+    pose_transform3 * input.weights.w;
 
-  float4 pos0 = mul(joint_mat0, position);
-  float4 pos1 = mul(joint_mat1, position);
-  float4 pos2 = mul(joint_mat2, position);
-  float4 pos3 = mul(joint_mat3, position);
-
-  position =
-    pos0 * input.weights.x +
-    pos1 * input.weights.y +
-    pos2 * input.weights.z +
-    pos3 * input.weights.w;
-#  endif
-  position = mul(Mat4_Scale(40.f), position);
-  position = mul(model_transform, position);
-
+  float4x4 position_transform = mul(instance.transform, pose_transform);
+  //position_transform = mul(Mat4_RotationPart(position_transform), position_transform);
 #else
+  float4x4 position_transform = instance.transform;
   position.z -= 200.f;
-  position = mul(model_transform, position);
 #endif
+
+  position = mul(position_transform, position);
+  position = mul(camera_transform, position);
+
+  float3 normal = mul(Mat4_RotationPart(position_transform), float4(input.normal, 1.f)).xyz;
+  float3 world_sun_pos = normalize(float3(-0.4f, 0.5f, 1.f));
+  float in_sun_coef = dot(world_sun_pos, normal);
+
+  float4 color = float4(input.color, 1.0f);
+  color *= instance.color;
+  color.xyz *= clamp(in_sun_coef, 0.2f, 1.0f);
 
   VSOutput output;
   output.color = color;

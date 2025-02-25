@@ -52,7 +52,7 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
 
     // Overwrite translations, rotations, scales with values from animation
     AN_Animation *anim = skeleton->animations + animation_index;
-    float t = WrapF(anim->t_min, anim->t_max, time);
+    time = WrapF(anim->t_min, anim->t_max, time);
 
     ForU32(channel_index, anim->channels_count)
     {
@@ -63,18 +63,46 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
         continue;
       }
 
-      // @todo scan channel->inputs and select proper start_index, end_index, interpolate between them
-      (void)t;
-      U32 sample_index = channel->count / 2;
+      float t = 1.f;
+      U32 sample_start = 0;
+      U32 sample_end = 0;
+      // find t, sample_start, sample_end
+      {
+        // @speed binary search might be faster?
+        ForU32(input_index, channel->count)
+        {
+          if (channel->inputs[input_index] >= time)
+            break;
+          sample_start = input_index;
+        }
+
+        sample_end = sample_start + 1;
+        if (sample_end >= channel->count)
+          sample_end = sample_start;
+
+        float time_start = channel->inputs[sample_start];
+        float time_end = channel->inputs[sample_end];
+
+        if (time_start < time_end)
+        {
+          float time_range = time_end - time_start;
+          t = (time - time_start) / time_range;
+        }
+      }
 
       if (channel->type == AN_Rotation)
       {
-        Quat value = ((Quat *)channel->outputs)[sample_index];
+        Quat v0 = ((Quat *)channel->outputs)[sample_start];
+        Quat v1 = ((Quat *)channel->outputs)[sample_end];
+        Quat value = Quat_Lerp(v0, v1, t);
+
         rotations[channel->joint_index] = value;
       }
       else
       {
-        V3 value = ((V3 *)channel->outputs)[sample_index];
+        V3 v0 = ((V3 *)channel->outputs)[sample_start];
+        V3 v1 = ((V3 *)channel->outputs)[sample_end];
+        V3 value = V3_Lerp(v0, v1, t);
 
         if (channel->type == AN_Translation)
           translations[channel->joint_index] = value;
@@ -97,12 +125,14 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
     Arena_PopScope(arena_scope);
   }
 
-  AN_WaterfallTransformsToChildren(skeleton, res.matrices, 0, Mat4_Identity());
+  float scale = 30.f;
+  Mat4 root_transform = Mat4_Scale((V3){scale, scale, scale});
+  root_transform = Mat4_Mul(Mat4_Rotation_RH((V3){1,0,0}, 0.25f), root_transform);
+  root_transform = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, 0.25f), root_transform);
+  AN_WaterfallTransformsToChildren(skeleton, res.matrices, 0, root_transform);
 
   ForU32(i, res.matrices_count)
-  {
     res.matrices[i] = Mat4_Mul(res.matrices[i], skeleton->inverse_bind_matrices[i]);
-  }
 
   return res;
 }
