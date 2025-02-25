@@ -479,8 +479,6 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
     Pr_Float(out, *M_BufferAtFloat(&positions, vert_i*3 + 2));
     Pr_S8(out, S8Lit("f, "));
 
-    Pr_S8(out, S8Lit("/*col*/1.f,1.f,1.f, "));
-
     V3 normal =
     {
       *M_BufferAtFloat(&normals, vert_i*3 + 0),
@@ -498,7 +496,6 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
       M_LOG(M_LogGltfWarning, "[GLTF LOADER] Normal wasn't normalized");
       normal = V3_Scale(normal, InvSqrtF(normal_lensq));
     }
-
     Pr_S8(out, S8Lit("/*nrm*/"));
     Pr_Float(out, normal.x);
     Pr_S8(out, S8Lit("f,"));
@@ -506,6 +503,8 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
     Pr_S8(out, S8Lit("f,"));
     Pr_Float(out, normal.z);
     Pr_S8(out, S8Lit("f, "));
+
+    Pr_S8(out, S8Lit("/*col*/0xffffffff, "));
 
     U32 joint_index_vals[4] =
     {

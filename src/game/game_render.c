@@ -1,4 +1,4 @@
-static void Rdr_AddRigid(Rdr_RigidType type, Mat4 transform, V4 color)
+static void Rdr_AddRigid(Rdr_RigidType type, Mat4 transform, U32 color)
 {
   Assert(type < RdrRigid_COUNT);
 
@@ -14,7 +14,7 @@ static void Rdr_AddRigid(Rdr_RigidType type, Mat4 transform, V4 color)
     };
   }
 }
-static void Rdr_AddSkinned(Rdr_SkinnedType type, Mat4 transform, V4 color, float animation_t)
+static void Rdr_AddSkinned(Rdr_SkinnedType type, Mat4 transform, U32 color, float animation_t)
 {
   Assert(type < RdrSkinned_COUNT);
 

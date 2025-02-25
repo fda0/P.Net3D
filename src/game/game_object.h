@@ -45,7 +45,7 @@ typedef struct
   V2 prev_p; // position from the last frame
 
   // visuals
-  V4 color;
+  U32 color;
   bool hide_above_map;
 
   // input actions

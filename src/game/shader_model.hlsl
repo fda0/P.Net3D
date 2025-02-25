@@ -25,8 +25,8 @@ cbuffer UniformBuf : register(b0, space1)
 struct VSInput
 {
   float3 position : TEXCOORD0;
-  float3 color    : TEXCOORD1;
-  float3 normal   : TEXCOORD2;
+  float3 normal   : TEXCOORD1;
+  uint color      : TEXCOORD2;
 #if IS_SKINNED
   uint joints_packed4 : TEXCOORD3;
   float4 weights      : TEXCOORD4;
@@ -43,7 +43,7 @@ struct VSOutput
 struct VSModelInstanceData
 {
   float4x4 transform;
-  float4 color;
+  uint color;
 #if IS_SKINNED
   uint pose_offset;
 #endif
@@ -106,39 +106,53 @@ float4x4 Mat4_Scale(float scale)
   return res;
 }
 
+float4 UnpackColor32(uint packed)
+{
+  float inv = 1.f / 255.f;
+  float4 res;
+  res.r = (packed & 255) * inv;
+  res.g = ((packed >> 8) & 255) * inv;
+  res.b = ((packed >> 16) & 255) * inv;
+  res.a = ((packed >> 24) & 255) * inv;
+  return res;
+}
+
 VSOutput ShaderModelVS(VSInput input)
 {
   VSModelInstanceData instance = InstanceBuf[input.InstanceIndex];
+  float4 input_color = UnpackColor32(input.color);
+  float4 instance_color = UnpackColor32(instance.color);
+
+  float4x4 position_transform;
+  {
+#if IS_SKINNED
+    uint joint0 = (input.joints_packed4      ) & 0xff;
+    uint joint1 = (input.joints_packed4 >>  8) & 0xff;
+    uint joint2 = (input.joints_packed4 >> 16) & 0xff;
+    uint joint3 = (input.joints_packed4 >> 24) & 0xff;
+    joint0 += instance.pose_offset;
+    joint1 += instance.pose_offset;
+    joint2 += instance.pose_offset;
+    joint3 += instance.pose_offset;
+
+    float4x4 pose_transform0 = PoseBuf[joint0];
+    float4x4 pose_transform1 = PoseBuf[joint1];
+    float4x4 pose_transform2 = PoseBuf[joint2];
+    float4x4 pose_transform3 = PoseBuf[joint3];
+
+    float4x4 pose_transform =
+      pose_transform0 * input.weights.x +
+      pose_transform1 * input.weights.y +
+      pose_transform2 * input.weights.z +
+      pose_transform3 * input.weights.w;
+
+    position_transform = mul(instance.transform, pose_transform);
+#else
+    position_transform = instance.transform;
+#endif
+  }
 
   float4 position = float4(input.position, 1.0f);
-
-#if IS_SKINNED
-  uint joint0 = (input.joints_packed4      ) & 0xff;
-  uint joint1 = (input.joints_packed4 >>  8) & 0xff;
-  uint joint2 = (input.joints_packed4 >> 16) & 0xff;
-  uint joint3 = (input.joints_packed4 >> 24) & 0xff;
-  joint0 += instance.pose_offset;
-  joint1 += instance.pose_offset;
-  joint2 += instance.pose_offset;
-  joint3 += instance.pose_offset;
-
-  float4x4 pose_transform0 = PoseBuf[joint0];
-  float4x4 pose_transform1 = PoseBuf[joint1];
-  float4x4 pose_transform2 = PoseBuf[joint2];
-  float4x4 pose_transform3 = PoseBuf[joint3];
-
-  float4x4 pose_transform =
-    pose_transform0 * input.weights.x +
-    pose_transform1 * input.weights.y +
-    pose_transform2 * input.weights.z +
-    pose_transform3 * input.weights.w;
-
-  float4x4 position_transform = mul(instance.transform, pose_transform);
-  //position_transform = mul(Mat4_RotationPart(position_transform), position_transform);
-#else
-  float4x4 position_transform = instance.transform;
-#endif
-
   position = mul(position_transform, position);
   position = mul(camera_transform, position);
 
@@ -146,8 +160,7 @@ VSOutput ShaderModelVS(VSInput input)
   float3 world_sun_pos = normalize(float3(-0.4f, 0.5f, 1.f));
   float in_sun_coef = dot(world_sun_pos, normal);
 
-  float4 color = float4(input.color, 1.0f);
-  color *= instance.color;
+  float4 color = input_color * instance_color;
   color.xyz *= clamp(in_sun_coef, 0.2f, 1.0f);
 
   VSOutput output;

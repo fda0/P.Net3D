@@ -489,18 +489,18 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
       }
 
       S8 material = parts[part_i].material;
-      rdr_vertex.color = (V3){1,1,1};
+      rdr_vertex.color = Color32_RGBf(1,1,1);
       if (S8_Match(material, S8Lit(""), 0))
       {
       }
       else if (S8_Match(material, S8Lit("Brown"), 0))
       {
-        rdr_vertex.color = (V3){0.5f, 0.32f, 0.22f};
-        rdr_vertex.color = (V3){1,1,1};
+        rdr_vertex.color = Color32_RGBf(0.5f, 0.32f, 0.22f);
+        rdr_vertex.color = Color32_RGBf(1,1,1);
       }
       else if (S8_Match(material, S8Lit("LightRed"), 0))
       {
-        rdr_vertex.color = (V3){1.f, 0.15f, 0.08f};
+        rdr_vertex.color = Color32_RGBf(1.f, 0.15f, 0.08f);
       }
       else
       {
@@ -529,22 +529,20 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
     Pr_Cstr(out, "  ");
     // vert
-    Pr_Float(out, rdr.p.x); Pr_Cstr(out, "f, ");
-    Pr_Float(out, rdr.p.y); Pr_Cstr(out, "f, ");
+    Pr_Float(out, rdr.p.x); Pr_Cstr(out, "f,");
+    Pr_Float(out, rdr.p.y); Pr_Cstr(out, "f,");
     Pr_Float(out, rdr.p.z); Pr_Cstr(out, "f, ");
-
-    // color
-    Pr_S8(out, S8Lit("/*col*/"));
-    Pr_Float(out, rdr.color.x); Pr_Cstr(out, "f, ");
-    Pr_Float(out, rdr.color.y); Pr_Cstr(out, "f, ");
-    Pr_Float(out, rdr.color.z); Pr_Cstr(out, "f, ");
 
     // normals
     Pr_S8(out, S8Lit("/*nrm*/"));
     rdr.normal = V3_Normalize(rdr.normal);
-    Pr_Float(out, rdr.normal.x); Pr_Cstr(out, "f, ");
-    Pr_Float(out, rdr.normal.y); Pr_Cstr(out, "f, ");
-    Pr_Float(out, rdr.normal.z); Pr_Cstr(out, "f,\n");
+    Pr_Float(out, rdr.normal.x); Pr_Cstr(out, "f,");
+    Pr_Float(out, rdr.normal.y); Pr_Cstr(out, "f,");
+    Pr_Float(out, rdr.normal.z); Pr_Cstr(out, "f, ");
+
+    // color
+    Pr_S8(out, S8Lit("/*col*/"));
+    Pr_U32(out, rdr.color); Pr_Cstr(out, ",\n");
   }
   Pr_Cstr(out, "};\n\n");
 

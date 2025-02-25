@@ -31,14 +31,14 @@ typedef enum
 typedef struct
 {
   V3 p;
-  V3 color;
   V3 normal;
+  U32 color;
 } Rdr_RigidVertex;
 
 typedef struct
 {
   Mat4 transform;
-  V4 color;
+  U32 color;
 } Rdr_RigidInstance;
 
 typedef struct
@@ -53,8 +53,8 @@ typedef struct
 typedef struct
 {
   V3 p;
-  V3 color;
   V3 normal;
+  U32 color;
   U32 joints_packed4;
   V4 weights;
 } Rdr_SkinnedVertex;
@@ -62,7 +62,7 @@ typedef struct
 typedef struct
 {
   Mat4 transform;
-  V4 color;
+  U32 color;
   U32 pose_offset;
 } Rdr_SkinnedInstance;
 
@@ -84,9 +84,9 @@ typedef struct
 typedef struct
 {
   V3 p;
-  V3 color;
   V3 normal;
   V3 uv;
+  U32 color;
 } Rdr_WallVertex;
 
 //

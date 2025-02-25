@@ -120,7 +120,7 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
 
   obj->s.flags = flags;
   obj->s.init = true;
-  obj->s.color = ColorF_RGB(1,1,1);
+  obj->s.color = Color32_RGBf(1,1,1);
   return obj;
 }
 
@@ -131,7 +131,7 @@ static Object *Obj_CreateWall(V2 p, V2 dim)
   obj->s.p = p;
   obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
   Collision_RecalculateNormals(&obj->s.collision);
-  obj->s.color = (V4){1, 0.7f, 0.1f, 1};
+  obj->s.color = Color32_RGBf(1,1,1);
   return obj;
 }
 
@@ -148,7 +148,7 @@ static Object *Obj_CreatePlayer()
   player->s.collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
   Collision_RecalculateNormals(&player->s.collision);
 
-  player->s.color = ColorF_RGB(1,1,1);
+  player->s.color = Color32_RGBf(1,1,1);
   return player;
 }
 

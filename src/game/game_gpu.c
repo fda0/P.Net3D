@@ -420,7 +420,7 @@ static void Gpu_Init()
         },
         {
           .buffer_slot = 0,
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 2,
           .offset = sizeof(float) * 6,
         },
@@ -506,19 +506,19 @@ static void Gpu_Init()
           .offset = sizeof(float)*3,
         },
         {
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 2,
           .offset = sizeof(float)*6,
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 3,
-          .offset = sizeof(float)*9,
+          .offset = sizeof(float)*6 + sizeof(U32),
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
           .location = 4,
-          .offset = sizeof(float)*9 + sizeof(U32),
+          .offset = sizeof(float)*6 + sizeof(U32)*2,
         },
       },
     };
@@ -701,7 +701,7 @@ static void Gpu_Init()
         },
         {
           .buffer_slot = 0,
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 3,
           .offset = sizeof(float) * 9,
         },

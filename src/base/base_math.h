@@ -437,29 +437,6 @@ static float RngF_MaxDistance(RngF a, RngF b)
 }
 
 // ---
-// Color specific V4 helpers
-// ---
-static V4 V4_Clamp01(V4 a)
-{
-  ForArray(i, a.E)
-    a.E[i] = Clamp(0.f, 1.f, a.E[i]);
-  return a;
-}
-static V4 V4_RGBA(float r, float g, float b, float a)
-{
-  return (V4){r, g, b, a};
-}
-static V4 ColorF_RGB(float r, float g, float b)
-{
-  return (V4){r, g, b, 1.f};
-}
-static V4 V4_ChangeW(V4 vec, float w)
-{
-  vec.w = w;
-  return vec;
-}
-
-// ---
 // Matrix
 // Heavy duty matrix math funcs were ported from HandmadeMath.h
 // ---
@@ -917,4 +894,68 @@ static V3 V3_Rotate(V3 v, Quat q)
   V3 q3 = {q.x, q.y, q.z};
   V3 t = V3_Scale(V3_Cross(q3, v), 2);
   return V3_Add(v, V3_Add(V3_Scale(t, q.w), V3_Cross(q3, t)));
+}
+
+//
+// Color
+//
+static U32 Color32_RGBAi(U32 r, U32 g, U32 b, U32 a)
+{
+  U32 res = ((a << 24) |
+             (b << 16) |
+             (g << 8) |
+             r);
+  return res;
+}
+
+static U32 Color32_RGBi(U32 r, U32 g, U32 b)
+{
+  return Color32_RGBAi(r, g, b, 255);
+}
+
+static U32 Color32_RGBAf(float r, float g, float b, float a)
+{
+  U32 ri = (U32)(r * 255.f) & 255;
+  U32 gi = (U32)(g * 255.f) & 255;
+  U32 bi = (U32)(b * 255.f) & 255;
+  U32 ai = (U32)(a * 255.f) & 255;
+  return Color32_RGBAi(ri, gi, bi, ai);
+}
+
+static U32 Color32_RGBf(float r, float g, float b)
+{
+  U32 ri = (U32)(r * 255.f) & 255;
+  U32 gi = (U32)(g * 255.f) & 255;
+  U32 bi = (U32)(b * 255.f) & 255;
+  return Color32_RGBAi(ri, gi, bi, 255);
+}
+
+static U32 Color32_V3(V3 color)
+{
+  return Color32_RGBf(color.x, color.y, color.z);
+}
+
+static U32 Color32_V4(V4 color)
+{
+  return Color32_RGBAf(color.x, color.y, color.z, color.w);
+}
+
+static V4 V4_UnpackColor32(U32 packed)
+{
+  float inv = 1.f / 255.f;
+  V4 res;
+  res.x = (packed & 255) * inv;
+  res.y = ((packed >> 8) & 255) * inv;
+  res.z = ((packed >> 16) & 255) * inv;
+  res.w = ((packed >> 24) & 255) * inv;
+  return res;
+}
+
+static U32 Color32_Lerp(U32 c0, U32 c1, float t)
+{
+  V4 v0 = V4_UnpackColor32(c0);
+  V4 v1 = V4_UnpackColor32(c1);
+  V4 lerped = V4_Lerp(v0, v1, t);
+  U32 res = Color32_V4(lerped);
+  return res;
 }

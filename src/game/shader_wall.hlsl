@@ -6,9 +6,9 @@ cbuffer UBO : register(b0, space1)
 struct VSInput
 {
   float3 position : TEXCOORD0;
-  float3 color : TEXCOORD1;
-  float3 normal : TEXCOORD2;
-  float3 uv : TEXCOORD3;
+  float3 normal : TEXCOORD1;
+  float3 uv : TEXCOORD2;
+  uint color : TEXCOORD3;
 };
 
 struct VSOutput
@@ -18,12 +18,23 @@ struct VSOutput
   float4 position : SV_Position;
 };
 
+float4 UnpackColor32(uint packed)
+{
+  float inv = 1.f / 255.f;
+  float4 res;
+  res.r = (packed & 255) * inv;
+  res.g = ((packed >> 8) & 255) * inv;
+  res.b = ((packed >> 16) & 255) * inv;
+  res.a = ((packed >> 24) & 255) * inv;
+  return res;
+}
+
 VSOutput ShaderWallVS(VSInput input)
 {
-  float3 world_sun_pos = normalize(float3(-0.5f, 0.5f, 1.f));
+  float3 world_sun_pos = normalize(float3(-0.4f, 0.5f, 1.f));
   float in_sun_coef = dot(world_sun_pos, input.normal);
-  float4 color = float4(input.color, 1.0f);
-  color.xyz *= clamp(in_sun_coef, 0.25f, 1.0f);
+  float4 color = UnpackColor32(input.color);
+  color.xyz *= clamp(in_sun_coef, 0.2f, 1.0f);
 
   float4x4 model_transform = CameraTransform;
 
