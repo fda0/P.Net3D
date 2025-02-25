@@ -137,7 +137,6 @@ VSOutput ShaderModelVS(VSInput input)
   //position_transform = mul(Mat4_RotationPart(position_transform), position_transform);
 #else
   float4x4 position_transform = instance.transform;
-  position.z -= 200.f;
 #endif
 
   position = mul(position_transform, position);

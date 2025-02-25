@@ -140,9 +140,10 @@ static Object *Obj_CreatePlayer()
   Object *player = Obj_Create(ObjStorage_Net,
                               ObjFlag_Draw | ObjFlag_Move |
                               ObjFlag_Collide |
-                              ObjFlag_ModelTeapot |
+                              //ObjFlag_ModelTeapot |
                               ObjFlag_ModelWorker |
-                              ObjFlag_AnimateRotation);
+                              ObjFlag_AnimateRotation |
+                              ObjFlag_AnimateT);
 
   player->s.collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
   Collision_RecalculateNormals(&player->s.collision);

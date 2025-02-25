@@ -152,6 +152,16 @@ static void M_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
     Pr_U64(p, skin->joints_count);
     Pr_S8(p, S8Lit(",\n"));
 
+    Pr_S8(p, S8Lit(".names = (const char *[]){\n"));
+    ForU64(joint_index, skin->joints_count)
+    {
+      cgltf_node *joint = skin->joints[joint_index];
+      Pr_S8(p, S8Lit("  \""));
+      Pr_Cstr(p, joint->name);
+      Pr_S8(p, S8Lit("\",\n"));
+    }
+    Pr_S8(p, S8Lit("},\n"));
+
     // unpack inverse bind matrices
     {
       Pr_S8(p, S8Lit(".inverse_bind_matrices = (Mat4[]){\n"));

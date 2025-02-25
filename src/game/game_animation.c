@@ -94,7 +94,7 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
       {
         Quat v0 = ((Quat *)channel->outputs)[sample_start];
         Quat v1 = ((Quat *)channel->outputs)[sample_end];
-        Quat value = Quat_Lerp(v0, v1, t);
+        Quat value = Quat_SLerp(v0, v1, t);
 
         rotations[channel->joint_index] = value;
       }
@@ -125,7 +125,7 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
     Arena_PopScope(arena_scope);
   }
 
-  float scale = 30.f;
+  float scale = 40.f;
   Mat4 root_transform = Mat4_Scale((V3){scale, scale, scale});
   root_transform = Mat4_Mul(Mat4_Rotation_RH((V3){1,0,0}, 0.25f), root_transform);
   root_transform = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, 0.25f), root_transform);

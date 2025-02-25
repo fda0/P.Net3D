@@ -12,22 +12,17 @@ static void Game_AnimateObjects()
 
     if (Obj_HasAllFlags(obj, ObjFlag_AnimateRotation))
     {
-      //V2 obj_dir = obj->dp;
       V2 obj_dir = V2_Sub(obj->s.p, obj->s.prev_p);
       if (obj_dir.x || obj_dir.y)
       {
         obj_dir = V2_Normalize(obj_dir);
 
         float rot = -Atan2F(obj_dir) + 0.25f;
-        obj->s.rot_z = WrapF(-0.5f, 0.5f, rot);
-        //LOG(LogFlags_Debug, "rot_z: %f", obj->rot_z);
+        obj->l.rot_z = WrapF(-0.5f, 0.5f, rot);
       }
-    }
 
-    if (Obj_HasAnyFlag(obj, ObjFlag_AnimateRotation))
-    {
       Quat q0 = obj->l.animated_rot;
-      Quat q1 = Quat_FromAxisAngle_RH((V3){0,0,1}, obj->s.rot_z);
+      Quat q1 = Quat_FromAxisAngle_RH((V3){0,0,1}, obj->l.rot_z);
 
       float w1 = APP.dt * 25.f;
       float w0 = 1.f - w1;
@@ -52,6 +47,13 @@ static void Game_AnimateObjects()
         if (AbsF(delta.E[i]) < 0.1f)
           obj->l.animated_p.E[i] = pos.E[i];
       }
+    }
+
+    if (Obj_HasAnyFlag(obj, ObjFlag_AnimateT))
+    {
+      V2 p_delta = V2_Sub(obj->s.p, obj->s.prev_p);
+      float dist = V2_Length(p_delta);
+      obj->l.animation_t += dist * 0.02f;
     }
   }
 }
@@ -86,7 +88,7 @@ static void Game_DrawObjects()
         Rdr_AddRigid(RdrRigid_Flag, transform, obj->s.color);
 
       if (Obj_HasAnyFlag(obj, ObjFlag_ModelWorker))
-        Rdr_AddSkinned(RdrSkinned_Worker, transform, obj->s.color);
+        Rdr_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->l.animation_t);
     }
     else
     {
@@ -305,9 +307,8 @@ static void Game_Iterate()
     Object *player = Obj_Get(APP.client.player_key, ObjStorage_Net);
     if (!Obj_IsNil(player))
     {
-      APP.camera_p = V3_Make_XY_Z(player->s.p, 70.f);
-      APP.camera_p.x -= 40.f;
-      APP.camera_rot.z = 0;
+      APP.camera_p = V3_Make_XY_Z(player->s.p, 120.f);
+      APP.camera_p.x -= 80.f;
       APP.camera_rot.y = -0.15f;
     }
   }

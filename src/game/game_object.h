@@ -15,9 +15,10 @@ typedef enum
   ObjFlag_Collide         = (1 << 2),
   ObjFlag_AnimateRotation = (1 << 3),
   ObjFlag_AnimatePosition = (1 << 4),
-  ObjFlag_ModelTeapot     = (1 << 5),
-  ObjFlag_ModelFlag       = (1 << 6),
-  ObjFlag_ModelWorker     = (1 << 7),
+  ObjFlag_AnimateT        = (1 << 5),
+  ObjFlag_ModelTeapot     = (1 << 6),
+  ObjFlag_ModelFlag       = (1 << 7),
+  ObjFlag_ModelWorker     = (1 << 8),
 } Obj_Flags;
 
 typedef enum
@@ -35,13 +36,6 @@ typedef struct
 
 typedef struct
 {
-  // Object data that'ss kept on client side only
-  Quat animated_rot; // animates towards model_rot_z
-  V3 animated_p; // animates towards (V3){p.x, p.y, 0}
-} Obj_Local;
-
-typedef struct
-{
   // Object data that's synced with the server
   Obj_Key key;
   U32 flags;
@@ -52,7 +46,6 @@ typedef struct
 
   // visuals
   V4 color;
-  float rot_z;
   bool hide_above_map;
 
   // input actions
@@ -61,6 +54,15 @@ typedef struct
 
   Collision_Data collision;
 } Obj_Sync;
+
+typedef struct
+{
+  float rot_z;
+  // Object data that'ss kept on client side only
+  Quat animated_rot; // animates towards model_rot_z
+  V3 animated_p; // animates towards (V3){p.x, p.y, 0}
+  float animation_t;
+} Obj_Local;
 
 typedef struct
 {
