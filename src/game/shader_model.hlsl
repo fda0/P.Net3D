@@ -19,7 +19,7 @@
 
 cbuffer UniformBuf : register(b0, space1)
 {
-  float4x4 camera_transform;
+  float4x4 CameraTransform;
 };
 
 struct VSInput
@@ -58,19 +58,9 @@ float4x4 Mat4_RotationPart(float4x4 mat)
 {
   // Extract the 3x3 submatrix columns
   // @todo is this extraction correct? - check with non-uniform scaling
-  float3 axis_x = float3(mat._m00, mat._m10, mat._m20);
-  float3 axis_y = float3(mat._m01, mat._m11, mat._m21);
-  float3 axis_z = float3(mat._m02, mat._m12, mat._m22);
-
-  // Normalize each axis to remove scaling
-  float len_x = length(axis_x);
-  if (len_x > 0.0001f) axis_x = axis_x / len_x;
-
-  float len_y = length(axis_y);
-  if (len_y > 0.0001f) axis_y = axis_y / len_y;
-
-  float len_z = length(axis_z);
-  if (len_z > 0.0001f) axis_z = axis_z / len_z;
+  float3 axis_x = normalize(float3(mat._m00, mat._m10, mat._m20));
+  float3 axis_y = normalize(float3(mat._m01, mat._m11, mat._m21));
+  float3 axis_z = normalize(float3(mat._m02, mat._m12, mat._m22));
 
   // Rebuild the matrix with normalized vectors and zero translation
   mat._m00 = axis_x.x; mat._m01 = axis_y.x; mat._m02 = axis_z.x; mat._m03 = 0.f;
@@ -154,7 +144,7 @@ VSOutput ShaderModelVS(VSInput input)
 
   float4 position = float4(input.position, 1.0f);
   position = mul(position_transform, position);
-  position = mul(camera_transform, position);
+  position = mul(CameraTransform, position);
 
   float3 normal = mul(Mat4_RotationPart(position_transform), float4(input.normal, 1.f)).xyz;
   float3 world_sun_pos = normalize(float3(-0.4f, 0.5f, 1.f));

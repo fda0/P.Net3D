@@ -63,10 +63,8 @@ static void Game_DrawObjects()
   ForArray(obj_index, APP.all_objects)
   {
     Object *obj = APP.all_objects + obj_index;
-    if (!Obj_HasAnyFlag(obj, ObjFlag_Draw)) continue;
 
-    if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot |
-                       ObjFlag_ModelFlag | ObjFlag_ModelWorker))
+    if (Obj_HasAnyFlag(obj, ObjFlag_DrawTeapot | ObjFlag_DrawFlag | ObjFlag_DrawWorker))
     {
       V3 pos = V3_Make_XY_Z(obj->s.p, 0);
       if (Obj_HasAnyFlag(obj, ObjFlag_AnimatePosition))
@@ -81,16 +79,17 @@ static void Game_DrawObjects()
         transform = Mat4_Mul(transform, rot_mat); // rotate first, translate second
       }
 
-      if (Obj_HasAnyFlag(obj, ObjFlag_ModelTeapot))
+      if (Obj_HasAnyFlag(obj, ObjFlag_DrawTeapot))
         Rdr_AddRigid(RdrRigid_Teapot, transform, obj->s.color);
 
-      if (Obj_HasAnyFlag(obj, ObjFlag_ModelFlag))
+      if (Obj_HasAnyFlag(obj, ObjFlag_DrawFlag))
         Rdr_AddRigid(RdrRigid_Flag, transform, obj->s.color);
 
-      if (Obj_HasAnyFlag(obj, ObjFlag_ModelWorker))
+      if (Obj_HasAnyFlag(obj, ObjFlag_DrawWorker))
         Rdr_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->l.animation_t);
     }
-    else
+
+    if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionWall))
     {
       U32 face_count = 6;
       U32 vertices_per_face = 3*2;
@@ -381,7 +380,7 @@ static void Game_Iterate()
 
     if (Key_Held(Key_MouseRight) && APP.world_mouse_valid)
     {
-      marker->s.flags |= ObjFlag_Draw;
+      marker->s.flags |= ObjFlag_DrawFlag;
       marker->s.p = APP.world_mouse;
       marker->s.hide_above_map = false;
 
@@ -441,7 +440,6 @@ static void Game_Init()
 
   // pathing marker
   {
-    APP.pathing_marker = Obj_Create(ObjStorage_Local, ObjFlag_ModelFlag |
-                                    ObjFlag_AnimatePosition)->s.key;
+    APP.pathing_marker = Obj_Create(ObjStorage_Local, ObjFlag_AnimatePosition)->s.key;
   }
 }

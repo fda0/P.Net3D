@@ -13,12 +13,15 @@ typedef enum
   ObjFlag_Draw            = (1 << 0),
   ObjFlag_Move            = (1 << 1),
   ObjFlag_Collide         = (1 << 2),
+
   ObjFlag_AnimateRotation = (1 << 3),
   ObjFlag_AnimatePosition = (1 << 4),
   ObjFlag_AnimateT        = (1 << 5),
-  ObjFlag_ModelTeapot     = (1 << 6),
-  ObjFlag_ModelFlag       = (1 << 7),
-  ObjFlag_ModelWorker     = (1 << 8),
+
+  ObjFlag_DrawTeapot        = (1 << 6),
+  ObjFlag_DrawFlag          = (1 << 7),
+  ObjFlag_DrawWorker        = (1 << 8),
+  ObjFlag_DrawCollisionWall = (1 << 9),
 } Obj_Flags;
 
 typedef enum

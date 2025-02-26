@@ -1,4 +1,4 @@
-cbuffer UBO : register(b0, space1)
+cbuffer UniformBuf : register(b0, space1)
 {
   float4x4 CameraTransform;
 };

@@ -127,7 +127,7 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
 static Object *Obj_CreateWall(V2 p, V2 dim)
 {
   Object *obj = Obj_Create(ObjStorage_Local,
-                           ObjFlag_Draw|ObjFlag_Collide);
+                           ObjFlag_DrawCollisionWall | ObjFlag_Collide);
   obj->s.p = p;
   obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
   Collision_RecalculateNormals(&obj->s.collision);
@@ -138,14 +138,15 @@ static Object *Obj_CreateWall(V2 p, V2 dim)
 static Object *Obj_CreatePlayer()
 {
   Object *player = Obj_Create(ObjStorage_Net,
-                              ObjFlag_Draw | ObjFlag_Move |
+                              ObjFlag_Move |
                               ObjFlag_Collide |
-                              //ObjFlag_ModelTeapot |
-                              ObjFlag_ModelWorker |
+                              //ObjFlag_DrawTeapot |
+                              ObjFlag_DrawWorker |
+                              //ObjFlag_DrawCollisionWall |
                               ObjFlag_AnimateRotation |
                               ObjFlag_AnimateT);
 
-  player->s.collision.verts = CollisionVertices_FromRectDim((V2){30, 30});
+  player->s.collision.verts = CollisionVertices_FromRectDim((V2){20, 20});
   Collision_RecalculateNormals(&player->s.collision);
 
   player->s.color = Color32_RGBf(1,1,1);
