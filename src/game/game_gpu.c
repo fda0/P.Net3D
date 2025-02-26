@@ -546,14 +546,16 @@ static void Gpu_Init()
 
     // wall texture
     {
-      SDL_Surface *imgs[WorldDir_COUNT] =
+      SDL_Surface *imgs[] =
       {
-        IMG_Load("../res/tex/brick_e.png"),
-        IMG_Load("../res/tex/brick_w.png"),
-        IMG_Load("../res/tex/brick_n.png"),
-        IMG_Load("../res/tex/brick_s.png"),
-        IMG_Load("../res/tex/brick_t.png"),
-        IMG_Load("../res/tex/brick_b.png"),
+        //IMG_Load("../res/tex/brick_e.png"),
+        //IMG_Load("../res/tex/brick_w.png"),
+        //IMG_Load("../res/tex/brick_n.png"),
+        //IMG_Load("../res/tex/brick_s.png"),
+        //IMG_Load("../res/tex/brick_t.png"),
+        //IMG_Load("../res/tex/brick_b.png"),
+        IMG_Load("../res/tex/brick2.jpg"),
+        IMG_Load("../res/tex/paved.jpg"),
       };
       ForArray(i, imgs)
       {

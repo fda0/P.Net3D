@@ -89,7 +89,7 @@ static void Game_DrawObjects()
         Rdr_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
-    if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionWall))
+    if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionBrick|ObjFlag_DrawCollisionCobble))
     {
       U32 face_count = 6;
       U32 vertices_per_face = 3*2;
@@ -108,6 +108,8 @@ static void Game_DrawObjects()
 
         float height = 20.f;
         float bot_z = 0;
+        if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionCobble))
+          bot_z = -height;
         float top_z = bot_z + height;
 
         CollisionVertices collision = obj->s.collision.verts;
@@ -164,7 +166,10 @@ static void Game_DrawObjects()
         float w1 = V2_Length(V2_Sub(collision.arr[1], collision.arr[2]));
         float w2 = V2_Length(V2_Sub(collision.arr[2], collision.arr[3]));
         float w3 = V2_Length(V2_Sub(collision.arr[3], collision.arr[0]));
+
         float texels_per_cm = 0.05f;
+        if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionCobble))
+          texels_per_cm = 0.03f;
 
         ForU32(face_i, face_count)
         {
@@ -203,10 +208,14 @@ static void Game_DrawObjects()
             case 5: /* B */ face_normal = (V3){0,0,-1}; break;
           }
 
+          float tex_z = 0.f;
+          if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionCobble))
+            tex_z = 1.f;
+
           ForU32(vert_i, vertices_per_face)
           {
             U32 i = (face_i * vertices_per_face) + vert_i;
-            wall_verts[i].uv = V3_Make_XY_Z(face_uvs[vert_i], (float)face_i);
+            wall_verts[i].uv = V3_Make_XY_Z(face_uvs[vert_i], tex_z);
             wall_verts[i].normal = face_normal;
           }
         }
@@ -435,6 +444,12 @@ static void Game_Init()
                       0.1f);
 
       Collision_RecalculateNormals(&rotated_wall->s.collision);
+    }
+
+    {
+      Object *ground = Obj_Create(ObjStorage_Local, ObjFlag_DrawCollisionCobble);
+      ground->s.collision.verts = CollisionVertices_FromRectDim((V2){800, 800});
+      Collision_RecalculateNormals(&ground->s.collision);
     }
   }
 

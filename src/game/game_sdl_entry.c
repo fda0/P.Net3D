@@ -207,7 +207,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
   (void)appstate;
 
-  APP.tmp = Arena_Malloc(Megabyte(1));
+  APP.tmp = Arena_Malloc(Megabyte(16));
   APP.a_frame = Arena_Malloc(Megabyte(1));
   APP.log_filter = ~(U32)LogFlags_NetAll;
   APP.init_window_width = WINDOW_WIDTH;
