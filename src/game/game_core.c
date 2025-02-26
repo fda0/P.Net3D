@@ -331,7 +331,7 @@ static void Game_Iterate()
 
     APP.camera_perspective_mat = Mat4_Perspective_RH_NO(APP.camera_fov_y,
                                                         (float)APP.window_width/APP.window_height,
-                                                        1.f, 1000.f);
+                                                        2.f, 3000.f);
 
     APP.camera_all_mat = Mat4_Mul(APP.camera_perspective_mat, Mat4_Mul(APP.camera_rot_mat, APP.camera_move_mat));
   }
@@ -448,7 +448,7 @@ static void Game_Init()
 
     {
       Object *ground = Obj_Create(ObjStorage_Local, ObjFlag_DrawCollisionGround);
-      ground->s.collision.verts = CollisionVertices_FromRectDim((V2){800, 800});
+      ground->s.collision.verts = CollisionVertices_FromRectDim((V2){2000, 2000});
       Collision_RecalculateNormals(&ground->s.collision);
     }
   }
