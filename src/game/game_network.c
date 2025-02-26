@@ -253,36 +253,32 @@ static void Net_IterateSend()
       if (APP.window_autolayout)
       {
         U32 window_count = 1 + client_count;
-        U32 side_chunks = 1;
-        ForU32(timeout, 8)
+
+        U32 rows = 1;
+        U32 cols = 1;
+        ForU32(timeout, 16)
         {
-          U32 total_chunks = side_chunks * side_chunks;
-          if (total_chunks >= window_count)
+          U32 total_slots = rows * cols;
+          if (total_slots >= window_count)
             break;
-          side_chunks += 1;
+
+          if (rows > cols) cols += 1;
+          else rows += 1;
         }
 
         U32 win_x = APP.init_window_px;
         U32 win_y = APP.init_window_py;
-        U32 win_w = APP.init_window_width / side_chunks;
-        U32 win_h = APP.init_window_height / side_chunks;
+        U32 win_w = APP.init_window_width / cols;
+        U32 win_h = APP.init_window_height / rows;
 
         // calc server window
-        {
-          U32 window_index = 0;
-          U32 x = window_index / side_chunks;
-          U32 y = window_index % side_chunks;
-
-          Game_AutoLayoutApply(client_count,
-                               win_x + x*win_w, win_y + y*win_h,
-                               win_w, win_h);
-        }
+        Game_AutoLayoutApply(client_count, win_x, win_y, win_w, win_h);
 
         // calc client window
         {
           U32 window_index = user_number;
-          U32 x = window_index / side_chunks;
-          U32 y = window_index % side_chunks;
+          U32 x = window_index / rows;
+          U32 y = window_index % rows;
 
           Net_SendHeader head = {};
           head.tick_id = APP.tick_id;

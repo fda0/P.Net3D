@@ -11,7 +11,7 @@
 #define NET_SIMULATE_PACKETLOSS 0 // doesn't seem to work on localhost
 
 #define NET_INACTIVE_MS (100)
-#define NET_TIMEOUT_DISCONNECT_MS (500)
+#define NET_TIMEOUT_DISCONNECT_MS (250)
 
 typedef struct
 {
