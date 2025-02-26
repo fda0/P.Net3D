@@ -89,7 +89,7 @@ static void Game_DrawObjects()
         Rdr_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
-    if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionBrick|ObjFlag_DrawCollisionCobble))
+    if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionWall | ObjFlag_DrawCollisionGround))
     {
       U32 face_count = 6;
       U32 vertices_per_face = 3*2;
@@ -108,7 +108,7 @@ static void Game_DrawObjects()
 
         float height = 20.f;
         float bot_z = 0;
-        if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionCobble))
+        if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
           bot_z = -height;
         float top_z = bot_z + height;
 
@@ -168,8 +168,8 @@ static void Game_DrawObjects()
         float w3 = V2_Length(V2_Sub(collision.arr[3], collision.arr[0]));
 
         float texels_per_cm = 0.05f;
-        if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionCobble))
-          texels_per_cm = 0.03f;
+        if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
+          texels_per_cm = 0.02f;
 
         ForU32(face_i, face_count)
         {
@@ -209,7 +209,7 @@ static void Game_DrawObjects()
           }
 
           float tex_z = 0.f;
-          if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionCobble))
+          if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
             tex_z = 1.f;
 
           ForU32(vert_i, vertices_per_face)
@@ -447,7 +447,7 @@ static void Game_Init()
     }
 
     {
-      Object *ground = Obj_Create(ObjStorage_Local, ObjFlag_DrawCollisionCobble);
+      Object *ground = Obj_Create(ObjStorage_Local, ObjFlag_DrawCollisionGround);
       ground->s.collision.verts = CollisionVertices_FromRectDim((V2){800, 800});
       Collision_RecalculateNormals(&ground->s.collision);
     }

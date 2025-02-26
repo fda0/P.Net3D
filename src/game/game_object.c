@@ -127,7 +127,7 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
 static Object *Obj_CreateWall(V2 p, V2 dim)
 {
   Object *obj = Obj_Create(ObjStorage_Local,
-                           ObjFlag_DrawCollisionBrick | ObjFlag_Collide);
+                           ObjFlag_DrawCollisionWall | ObjFlag_Collide);
   obj->s.p = p;
   obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
   Collision_RecalculateNormals(&obj->s.collision);

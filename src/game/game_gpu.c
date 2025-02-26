@@ -544,18 +544,12 @@ static void Gpu_Init()
       SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.wall_vert_buf, "Wall vertex buffer");
     }
 
-    // wall texture
+    // Load textures
     {
       SDL_Surface *imgs[] =
       {
-        //IMG_Load("../res/tex/brick_e.png"),
-        //IMG_Load("../res/tex/brick_w.png"),
-        //IMG_Load("../res/tex/brick_n.png"),
-        //IMG_Load("../res/tex/brick_s.png"),
-        //IMG_Load("../res/tex/brick_t.png"),
-        //IMG_Load("../res/tex/brick_b.png"),
-        IMG_Load("../res/tex/brick2.jpg"),
-        IMG_Load("../res/tex/paved.jpg"),
+        IMG_Load("../res/tex/1.jpg"),
+        IMG_Load("../res/tex/2.jpg"),
       };
       ForArray(i, imgs)
       {
@@ -573,8 +567,8 @@ static void Gpu_Init()
         .width = imgs[0]->w,
         .height = imgs[0]->h,
         .layer_count_or_depth = ArrayCount(imgs),
-        .num_levels = 1,
-        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
+        .num_levels = 9,
+        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
       };
       APP.gpu.tex_wall = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
       SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.tex_wall, "Tex Wall");
@@ -615,7 +609,14 @@ static void Gpu_Init()
       }
     }
 
-    // wall sampler
+    // Generate texture mipmap
+    {
+      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+      SDL_GenerateMipmapsForGPUTexture(cmd, APP.gpu.tex_wall);
+      SDL_SubmitGPUCommandBuffer(cmd);
+    }
+
+    // Texture sampler
     {
       SDL_GPUSamplerCreateInfo sampler_info =
       {
@@ -625,6 +626,8 @@ static void Gpu_Init()
         .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
         .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
         .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT,
+        .min_lod = 0.f,
+        .max_lod = 100.f,
       };
       APP.gpu.wall_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
     }

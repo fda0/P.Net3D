@@ -20,8 +20,8 @@ typedef enum
   ObjFlag_DrawTeapot          = (1 << 5),
   ObjFlag_DrawFlag            = (1 << 6),
   ObjFlag_DrawWorker          = (1 << 7),
-  ObjFlag_DrawCollisionBrick  = (1 << 8),
-  ObjFlag_DrawCollisionCobble = (1 << 9),
+  ObjFlag_DrawCollisionWall   = (1 << 8),
+  ObjFlag_DrawCollisionGround = (1 << 9),
 } Obj_Flags;
 
 typedef enum
