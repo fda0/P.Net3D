@@ -10,18 +10,17 @@ typedef struct
 
 typedef enum
 {
-  ObjFlag_Draw            = (1 << 0),
-  ObjFlag_Move            = (1 << 1),
-  ObjFlag_Collide         = (1 << 2),
+  ObjFlag_Move            = (1 << 0),
+  ObjFlag_Collide         = (1 << 1),
 
-  ObjFlag_AnimateRotation = (1 << 3),
-  ObjFlag_AnimatePosition = (1 << 4),
-  ObjFlag_AnimateT        = (1 << 5),
+  ObjFlag_AnimateRotation = (1 << 2),
+  ObjFlag_AnimatePosition = (1 << 3),
+  ObjFlag_AnimateT        = (1 << 4),
 
-  ObjFlag_DrawTeapot        = (1 << 6),
-  ObjFlag_DrawFlag          = (1 << 7),
-  ObjFlag_DrawWorker        = (1 << 8),
-  ObjFlag_DrawCollisionWall = (1 << 9),
+  ObjFlag_DrawTeapot        = (1 << 5),
+  ObjFlag_DrawFlag          = (1 << 6),
+  ObjFlag_DrawWorker        = (1 << 7),
+  ObjFlag_DrawCollisionWall = (1 << 8),
 } Obj_Flags;
 
 typedef enum
@@ -50,6 +49,8 @@ typedef struct
   // visuals
   U32 color;
   bool hide_above_map;
+  U32 animation_index;
+  Quat rotation;
 
   // input actions
   bool is_pathing;
@@ -60,9 +61,8 @@ typedef struct
 
 typedef struct
 {
-  float rot_z;
-  // Object data that'ss kept on client side only
-  Quat animated_rot; // animates towards model_rot_z
+  // Object data that's kept on client side only
+  Quat animated_rot; // animates towards rotation
   V3 animated_p; // animates towards (V3){p.x, p.y, 0}
   float animation_t;
 } Obj_Local;

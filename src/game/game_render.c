@@ -14,7 +14,8 @@ static void Rdr_AddRigid(Rdr_RigidType type, Mat4 transform, U32 color)
     };
   }
 }
-static void Rdr_AddSkinned(Rdr_SkinnedType type, Mat4 transform, U32 color, float animation_t)
+static void Rdr_AddSkinned(Rdr_SkinnedType type, Mat4 transform, U32 color,
+                           U32 animation_index, float animation_t)
 {
   Assert(type < RdrSkinned_COUNT);
 
@@ -34,7 +35,7 @@ static void Rdr_AddSkinned(Rdr_SkinnedType type, Mat4 transform, U32 color, floa
       .pose_offset = inst_index*62,
     };
 
-    AN_Pose animation_pose = AN_PoseFromAnimation(&Worker_Skeleton, 22, animation_t);
+    AN_Pose animation_pose = AN_PoseFromAnimation(&Worker_Skeleton, animation_index, animation_t);
     if (animation_pose.matrices_count > ArrayCount(pose->mats))
     {
       Assert(false);

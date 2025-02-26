@@ -162,6 +162,31 @@ static void Tick_AdvanceSimulation()
       }
     } // collision_iteration
   } // obj_index
+
+  ForArray(obj_index, APP.all_objects)
+  {
+    Object *obj = APP.all_objects + obj_index;
+    if (Obj_HasAnyFlag(obj, ObjFlag_AnimateT))
+    {
+      // set walking animation if player moves
+      if (obj->s.dp.x || obj->s.dp.y)
+      {
+        obj->s.animation_index = 22;
+      }
+    }
+
+    if (Obj_HasAllFlags(obj, ObjFlag_AnimateRotation))
+    {
+      V2 dir = V2_Sub(obj->s.p, obj->s.prev_p);
+      if (dir.x || dir.y)
+      {
+        dir = V2_Normalize(dir);
+        float rot = -Atan2F(dir) + 0.25f;
+        rot = WrapF(-0.5f, 0.5f, rot);
+        obj->s.rotation = Quat_FromAxisAngle_RH((V3){0,0,1}, rot);
+      }
+    }
+  }
 }
 
 static Obj_Sync Obj_SyncLerp(Obj_Sync prev, Obj_Sync next, float t)
@@ -171,6 +196,7 @@ static Obj_Sync Obj_SyncLerp(Obj_Sync prev, Obj_Sync next, float t)
   res.dp = V2_Lerp(prev.dp, next.dp, t);
   res.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
   res.color = Color32_Lerp(prev.color, next.color, t);
+  res.rotation = Quat_SLerp(prev.rotation, next.rotation, t);
   return res;
 }
 

@@ -150,6 +150,8 @@ static Object *Obj_CreatePlayer()
   Collision_RecalculateNormals(&player->s.collision);
 
   player->s.color = Color32_RGBf(1,1,1);
+  player->s.animation_index = 23;
+  player->s.rotation = Quat_FromAxisAngle_RH((V3){0,0,1}, -0.5f);
   return player;
 }
 

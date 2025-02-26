@@ -24,6 +24,19 @@ static void AN_WaterfallTransformsToChildren(AN_Skeleton *skeleton, Mat4 *mats, 
   }
 }
 
+static float AN_WrapAnimationTime(AN_Skeleton *skeleton, U32 animation_index, float time)
+{
+  if (animation_index > skeleton->animations_count)
+  {
+    Assert(false);
+    return time;
+  }
+
+  AN_Animation *anim = skeleton->animations + animation_index;
+  time = WrapF(anim->t_min, anim->t_max, time);
+  return time;
+}
+
 static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, float time)
 {
   AN_Pose res = {};
@@ -52,7 +65,7 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
 
     // Overwrite translations, rotations, scales with values from animation
     AN_Animation *anim = skeleton->animations + animation_index;
-    time = WrapF(anim->t_min, anim->t_max, time);
+    time = Clamp(anim->t_min, anim->t_max, time);
 
     ForU32(channel_index, anim->channels_count)
     {
@@ -94,7 +107,7 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
       {
         Quat v0 = ((Quat *)channel->outputs)[sample_start];
         Quat v1 = ((Quat *)channel->outputs)[sample_end];
-        Quat value = Quat_SLerp(v0, v1, t);
+        Quat value = Quat_SLerp(v0, v1, t); // @todo NLerp with "neighborhood operator" could be used here?
 
         rotations[channel->joint_index] = value;
       }

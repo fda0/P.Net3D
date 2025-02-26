@@ -12,17 +12,8 @@ static void Game_AnimateObjects()
 
     if (Obj_HasAllFlags(obj, ObjFlag_AnimateRotation))
     {
-      V2 obj_dir = V2_Sub(obj->s.p, obj->s.prev_p);
-      if (obj_dir.x || obj_dir.y)
-      {
-        obj_dir = V2_Normalize(obj_dir);
-
-        float rot = -Atan2F(obj_dir) + 0.25f;
-        obj->l.rot_z = WrapF(-0.5f, 0.5f, rot);
-      }
-
       Quat q0 = obj->l.animated_rot;
-      Quat q1 = Quat_FromAxisAngle_RH((V3){0,0,1}, obj->l.rot_z);
+      Quat q1 = obj->s.rotation;
 
       float w1 = APP.dt * 25.f;
       float w0 = 1.f - w1;
@@ -51,9 +42,18 @@ static void Game_AnimateObjects()
 
     if (Obj_HasAnyFlag(obj, ObjFlag_AnimateT))
     {
-      V2 p_delta = V2_Sub(obj->s.p, obj->s.prev_p);
-      float dist = V2_Length(p_delta);
-      obj->l.animation_t += dist * 0.02f;
+      if (obj->s.animation_index == 23)
+      {
+        obj->l.animation_t += APP.dt;
+      }
+      else
+      {
+        V2 p_delta = V2_Sub(obj->s.p, obj->s.prev_p);
+        float dist = V2_Length(p_delta);
+        obj->l.animation_t += dist * 0.02f;
+      }
+
+      obj->l.animation_t = AN_WrapAnimationTime(&Worker_Skeleton, obj->s.animation_index, obj->l.animation_t);
     }
   }
 }
@@ -86,7 +86,7 @@ static void Game_DrawObjects()
         Rdr_AddRigid(RdrRigid_Flag, transform, obj->s.color);
 
       if (Obj_HasAnyFlag(obj, ObjFlag_DrawWorker))
-        Rdr_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->l.animation_t);
+        Rdr_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
     if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionWall))
