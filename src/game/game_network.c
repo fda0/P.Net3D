@@ -228,9 +228,9 @@ static void Net_IterateSend()
             player->s.p.y = -150.f + user_index * 70.f;
             player->s.prev_p = player->s.p;
             V3 color = {};
-            color.x = (user_index & 4) ? .3f : 1;
-            color.y = (user_index & 2) ? .3f : 1;
-            color.z = (user_index & 1) ? .3f : 1;
+            color.x = (user_index & 4) ? .3f : 0.8f;
+            color.y = (user_index & 2) ? .3f : 0.8f;
+            color.z = (user_index & 1) ? .3f : 0.8f;
             player->s.color = Color32_V3(color);
           }
           *player_key = player->s.key;

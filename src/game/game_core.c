@@ -169,7 +169,7 @@ static void Game_DrawObjects()
 
         float texels_per_cm = 0.05f;
         if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
-          texels_per_cm = 0.02f;
+          texels_per_cm = 0.025f;
 
         ForU32(face_i, face_count)
         {
@@ -315,8 +315,8 @@ static void Game_Iterate()
     Object *player = Obj_Get(APP.client.player_key, ObjStorage_Net);
     if (!Obj_IsNil(player))
     {
-      APP.camera_p = V3_Make_XY_Z(player->s.p, 120.f);
-      APP.camera_p.x -= 80.f;
+      APP.camera_p = V3_Make_XY_Z(player->s.p, 130.f);
+      APP.camera_p.x -= 60.f;
       APP.camera_rot.y = -0.15f;
     }
   }
@@ -420,7 +420,7 @@ static void Game_Init()
 
   APP.frame_time = SDL_GetTicks();
   APP.camera_fov_y = 0.19f;
-  APP.camera_p = (V3){-70.f, 0.f, 150.f};
+  APP.camera_p = (V3){-50.f, 0.f, 200.f};
   APP.camera_rot = (V3){0, -0.2f, 0};
   APP.obj_serial_counter = 1;
   APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;

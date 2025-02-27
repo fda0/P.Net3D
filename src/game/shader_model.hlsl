@@ -150,8 +150,10 @@ VSOutput ShaderModelVS(VSInput input)
   float3 world_sun_pos = normalize(float3(-0.4f, 0.5f, 1.f));
   float in_sun_coef = dot(world_sun_pos, normal);
 
-  float4 color = input_color * instance_color;
-  color.xyz *= clamp(in_sun_coef, 0.2f, 1.0f);
+  float4 color = input_color;
+  if (input.color == 0xff014b74) // @todo obviously temporary solution
+    color = instance_color;
+  color.xyz *= clamp(in_sun_coef, 0.2f, 1.0f)*0.8f + 0.2f;
 
   VSOutput output;
   output.color = color;

@@ -330,6 +330,7 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
   M_Buffer texcoords     = M_BufferAlloc(M.tmp, max_verts*2, sizeof(float));
   M_Buffer joint_indices = M_BufferAlloc(M.tmp, max_verts*4, sizeof(U8));
   M_Buffer weights       = M_BufferAlloc(M.tmp, max_verts*4, sizeof(float));
+  M_Buffer colors        = M_BufferAlloc(M.tmp, max_verts*1, sizeof(U32)); // this doesn't need such a big array actually
 
   ForU64(mesh_index, data->meshes_count)
   {
@@ -440,6 +441,20 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
           unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
         }
         M_AssertAlways(unpacked == total_count);
+
+        // @todo this is a temporary hack that saves a color per position
+        if (attribute->type == cgltf_attribute_type_position)
+        {
+          ForU64(vert_i, accessor->count)
+          {
+            cgltf_material* material = primitive->material;
+            V4 material_color = *(V4 *)material->pbr_metallic_roughness.base_color_factor;
+            static_assert(sizeof(material->pbr_metallic_roughness.base_color_factor) == sizeof(material_color));
+
+            U32 *color_value = M_BufferPushU32(&colors, 1);
+            *color_value = Color32_V4(material_color);
+          }
+        }
       }
     }
   }
@@ -449,27 +464,20 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
   //
   // Output collected data
   //
+  U64 vert_count = positions.used / 3;
   M_AssertAlways(positions.used % 3 == 0);
-  U64 positions_count = positions.used / 3;
-
   M_AssertAlways(normals.used % 3 == 0);
-  U64 normals_count = normals.used / 3;
-
+  M_AssertAlways(vert_count == normals.used / 3);
   M_AssertAlways(joint_indices.used % 4 == 0);
-  U64 joint_indices_count = joint_indices.used / 4;
-
+  M_AssertAlways(vert_count == joint_indices.used / 4);
   M_AssertAlways(weights.used % 4 == 0);
-  U64 weights_count = weights.used / 4;
-
-  M_AssertAlways(positions_count == normals_count);
-  M_AssertAlways(positions_count == joint_indices_count);
-  M_AssertAlways(positions_count == weights_count);
+  M_AssertAlways(vert_count == weights.used / 4);
 
   M_AssertAlways(data->skins_count == 1);
   U64 joints_count = data->skins[0].joints_count;
 
   Pr_S8(out, S8Lit("static Rdr_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
-  ForU64(vert_i, positions_count)
+  ForU64(vert_i, vert_count)
   {
     Pr_S8(out, S8Lit("  /*pos*/"));
     Pr_Float(out, *M_BufferAtFloat(&positions, vert_i*3 + 0));
@@ -504,7 +512,9 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
     Pr_Float(out, normal.z);
     Pr_S8(out, S8Lit("f, "));
 
-    Pr_S8(out, S8Lit("/*col*/0xffffffff, "));
+    Pr_S8(out, S8Lit("/*col*/0x"));
+    Pr_U32Hex(out, *M_BufferAtU32(&colors, vert_i));
+    Pr_S8(out, S8Lit(", "));
 
     U32 joint_index_vals[4] =
     {
