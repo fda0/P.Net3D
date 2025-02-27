@@ -15,7 +15,7 @@ static void Game_AnimateObjects()
       Quat q0 = obj->l.animated_rot;
       Quat q1 = obj->s.rotation;
 
-      float w1 = APP.dt * 25.f;
+      float w1 = APP.dt * 10.f;
       float w0 = 1.f - w1;
 
       if (Quat_Inner(q0, q1) < 0.f)
@@ -420,8 +420,8 @@ static void Game_Init()
 
   APP.frame_time = SDL_GetTicks();
   APP.camera_fov_y = 0.19f;
-  APP.camera_p = (V3){-50.f, 0.f, 200.f};
-  APP.camera_rot = (V3){0, -0.2f, 0};
+  APP.camera_p = (V3){-50.f, 0.f, 70.f};
+  APP.camera_rot = (V3){0, -0.05f, 0};
   APP.obj_serial_counter = 1;
   APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;
 
