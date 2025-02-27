@@ -1,11 +1,11 @@
-- animated models (bone animation, skinned meshes)
-- debug ui interface
-- multithreading (+ put input polling on client thread)
-- support more shapes in the collision system (add circles!)
-- pathfinding
+- Interpolate client state based on render DT instead of tick DT. The goal is to make both cases look good: [270fps monitor + 16 tick rate] and [30fps monitor + 128 tick rate].
+- Explore client side input prediction improvements.
+- Debug ui interface.
+- Multithreading (+ put input polling on client thread)/
+- Support more shapes in the collision system (add circles!).
+- Pathfinding.
 - gameplay gameplay gameplay
+- Just an idea: Stop using SDL_gpu and use DX12 directly? To use bindless everywhere for simplicity?
 
-# Network
-I think networking is in a good enough state for local (single PC) development. I would like to make more progress on all other parts of the engine before making decisions about how to optimize network transfers. Two things I'll want to do eventually:
-- send less data - bitpacking, data compression; don't send zeroes, etc.
-- client-server acknowledgments - compress payloads against data that was confirmed as received by the other side
+- Eventually optimize network transfer - bitpacking, data compression; don't send zeroes, etc.
+- Client-server acknowledgments - compress payloads against data that was confirmed as received by the other side.

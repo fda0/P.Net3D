@@ -11,71 +11,71 @@
 #define NET_SIMULATE_PACKETLOSS 0 // doesn't seem to work on localhost
 
 #define NET_INACTIVE_MS (100)
-#define NET_TIMEOUT_DISCONNECT_MS (500)
+#define NET_TIMEOUT_DISCONNECT_MS (250)
 
 typedef struct
 {
-    SDLNet_Address *address;
-    U16 port;
-    U64 last_msg_frame_time;
+  SDLNet_Address *address;
+  U16 port;
+  U64 last_msg_frame_time;
 } Net_User;
 
 typedef enum
 {
-    NetSendKind_None,
-    NetSendKind_Ping = 10000,
-    NetSendKind_ObjUpdate,
-    NetSendKind_ObjEmpty,
-    NetSendKind_NetworkTest,
-    NetSendKind_Inputs,
-    NetSendKind_AssignPlayerKey,
-    NetSendKind_WindowLayout,
+  NetSendKind_None,
+  NetSendKind_Ping = 10000,
+  NetSendKind_ObjUpdate,
+  NetSendKind_ObjEmpty,
+  NetSendKind_NetworkTest,
+  NetSendKind_Inputs,
+  NetSendKind_AssignPlayerKey,
+  NetSendKind_WindowLayout,
 } Net_SendKind;
 
 typedef struct
 {
-    U64 tick_id; // this is already send via packet header
-    Net_SendKind kind;
+  U64 tick_id; // this is already send via packet header
+  Net_SendKind kind;
 } Net_SendHeader;
 
 typedef struct
 {
-    Tick_Input inputs[NET_MAX_INPUT_TICKS];
-    U16 input_count;
+  Tick_Input inputs[NET_MAX_INPUT_TICKS];
+  U16 input_count;
 } Net_SendInputs;
 
 typedef struct
 {
-    U64 number;
+  U64 number;
 } Net_SendPing;
 
 typedef struct
 {
-    U32 net_index;
-    Obj_Sync sync;
+  U32 net_index;
+  Obj_Sync sync;
 } Net_SendObjSync;
 
 typedef struct
 {
-    U32 net_index;
+  U32 net_index;
 } Net_SendObjEmpty;
 
 typedef struct
 {
-    Obj_Key player_key;
+  Obj_Key player_key;
 } Net_SendAssignPlayerKey;
 
 typedef struct
 {
-    U32 user_count;
-    I32 px, py, w, h;
+  U32 user_count;
+  I32 px, py, w, h;
 } Net_SendWindowLayout;
 
 #pragma pack(push, 1)
 typedef struct
 {
-    U16 magic_value; // use this as seed for hash calculation instead
-    U16 payload_hash;
+  U16 magic_value; // use this as seed for hash calculation instead
+  U16 payload_hash;
 } Net_PacketHeader;
 #pragma pack(pop)
 
