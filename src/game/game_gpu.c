@@ -378,7 +378,7 @@ static void Gpu_Init()
         .num_samplers = 0,
         .num_storage_buffers = 0,
         .num_storage_textures = 0,
-        .num_uniform_buffers = 0,
+        .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
         .code = g_ShaderRigidPS,
@@ -467,7 +467,7 @@ static void Gpu_Init()
         .num_samplers = 0,
         .num_storage_buffers = 0,
         .num_storage_textures = 0,
-        .num_uniform_buffers = 0,
+        .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
         .code = g_ShaderSkinnedPS,

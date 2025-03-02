@@ -37,6 +37,9 @@ struct VSInput
 struct VSOutput
 {
   float4 color : TEXCOORD0;
+  float3 world_p : TEXCOORD1;
+  float3 normal : TEXCOORD2;
+  float3 camera_p : TEXCOORD3;
   float4 position : SV_Position;
 };
 
@@ -107,12 +110,18 @@ float4 UnpackColor32(uint packed)
   return res;
 }
 
+static float3 SunDir()
+{
+  return normalize(float3(-0.4f, 0.5f, 1.f));
+}
+
 VSOutput ShaderModelVS(VSInput input)
 {
   VSModelInstanceData instance = InstanceBuf[input.InstanceIndex];
   float4 input_color = UnpackColor32(input.color);
   float4 instance_color = UnpackColor32(instance.color);
 
+  // Position
   float4x4 position_transform;
   {
 #if IS_SKINNED
@@ -144,24 +153,43 @@ VSOutput ShaderModelVS(VSInput input)
 
   float4 position = float4(input.position, 1.0f);
   position = mul(position_transform, position);
+  float3 world_p = position.xyz;
   position = mul(CameraTransform, position);
 
-  float3 normal = mul(Mat4_RotationPart(position_transform), float4(input.normal, 1.f)).xyz;
-  float3 world_sun_pos = normalize(float3(-0.4f, 0.5f, 1.f));
-  float in_sun_coef = dot(world_sun_pos, normal);
-
+  // Color
   float4 color = input_color;
   if (input.color == 0xff014b74) // @todo obviously temporary solution
     color = instance_color;
-  color.xyz *= clamp(in_sun_coef, 0.2f, 1.0f)*0.8f + 0.2f;
 
+  float3 normal = mul(Mat4_RotationPart(position_transform), float4(input.normal, 1.f)).xyz;
+  float diffuse = max(dot(SunDir(), normal), 0.f);
+  float ambient = 0.2f;
+  color.xyz *= ambient + 0.8f*diffuse;
+
+  // @todo get from unifrom directly
+  float3 camera_p;
+  camera_p.x = CameraTransform._m03;
+  camera_p.y = CameraTransform._m13;
+  camera_p.z = CameraTransform._m23;
+
+  // Return
   VSOutput output;
   output.color = color;
+  output.world_p = world_p;
   output.position = position;
+  output.normal = normal;
+  output.camera_p = camera_p;
   return output;
 }
 
 float4 ShaderModelPS(VSOutput input) : SV_Target0
 {
-  return input.color;
+  float3 sun_dir = SunDir();
+  float3 view_dir = normalize(input.camera_p - input.world_p);
+  float3 reflect_dir = reflect(-sun_dir, input.normal);
+  float3 halfway_dir = normalize(view_dir + sun_dir);
+  float specular = pow(max(dot(input.normal, halfway_dir), 0.f), 16);
+
+  float4 white = float4(1.f,1.f,1.f,1.f);
+  return lerp(input.color, white, specular);
 }
