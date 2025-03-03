@@ -27,6 +27,7 @@
 cbuffer UniformBuf : register(b0, space1)
 {
   float4x4 CameraTransform;
+  float3 CameraPosition;
 };
 
 struct VSInput
@@ -137,9 +138,9 @@ float4 UnpackColor32(uint packed)
   return res;
 }
 
-static float3 SunDir()
+static float3 TowardsSunDir()
 {
-  return normalize(float3(-0.4f, 0.5f, 1.f));
+  return normalize(float3(-1.f, 1.0f, 1.f));
 }
 
 VSOutput ShaderModelVS(VSInput input)
@@ -190,19 +191,13 @@ VSOutput ShaderModelVS(VSInput input)
 
   float3 normal = mul(Mat4_RotationPart(position_transform), float4(input.normal, 1.f)).xyz;
 
-  // @todo get from unifrom directly
-  float3 camera_p;
-  camera_p.x = CameraTransform._m03;
-  camera_p.y = CameraTransform._m13;
-  camera_p.z = CameraTransform._m23;
-
   // Return
   VSOutput output;
   output.color = color;
   output.world_p = world_p;
   output.position = position;
   output.normal = normal;
-  output.camera_p = camera_p;
+  output.camera_p = CameraPosition;
 #if IS_TEXTURED
   output.uv = input.uv;
 #endif
@@ -216,20 +211,21 @@ SamplerState Sampler : register(s0, space2);
 
 float4 ShaderModelPS(VSOutput input) : SV_Target0
 {
-  float3 sun_dir = SunDir();
+  float3 towards_light_dir = TowardsSunDir();
   float4 color = input.color;
 
   float ambient = 0.2f;
   float specular = 0.0f;
-  float diffuse = max(dot(sun_dir, input.normal), 0.f);
+  float diffuse = max(dot(towards_light_dir, input.normal), 0.f);
   if (diffuse > 0.f)
   {
     float shininess = 16.f;
 
     float3 view_dir = normalize(input.camera_p - input.world_p);
-    float3 reflect_dir = reflect(-sun_dir, input.normal);
-    float3 halfway_dir = normalize(view_dir + sun_dir);
-    specular = pow(max(dot(input.normal, halfway_dir), 0.f), shininess);
+    float3 reflect_dir = reflect(-towards_light_dir, input.normal);
+    float3 halfway_dir = normalize(view_dir + towards_light_dir);
+    float specular_angle = max(dot(input.normal, halfway_dir), 0.f);
+    specular = pow(specular_angle, shininess);
   }
   color.xyz *= ambient + diffuse + specular;
 

@@ -840,7 +840,18 @@ static void Gpu_Iterate()
 
   // transform uniforms
   {
-    SDL_PushGPUVertexUniformData(cmd, 0, &APP.camera_all_mat, sizeof(APP.camera_all_mat));
+    struct
+    {
+      Mat4 camera_transform;
+      V3 camera_p;
+    }
+    uniform_data =
+    {
+      APP.camera_all_mat,
+      APP.camera_p,
+    };
+
+    SDL_PushGPUVertexUniformData(cmd, 0, &uniform_data, sizeof(uniform_data));
   }
 
   SDL_GPUDepthStencilTargetInfo depth_target = {

@@ -106,7 +106,7 @@ static void Game_DrawObjects()
           wall_verts[i].color = obj->s.color;
         }
 
-        float height = 20.f;
+        float height = 40.f;
         float bot_z = 0;
         if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
           bot_z = -height;
@@ -139,7 +139,10 @@ static void Game_DrawObjects()
 
           ForArray(i, cube_index_map)
           {
+            AssertBounds(i, cube_index_map);
             U32 index = cube_index_map[i];
+
+            AssertBounds(index, cube_verts);
             wall_verts[i].p = cube_verts[index];
             wall_verts[i].p.x += obj->s.p.x;
             wall_verts[i].p.y += obj->s.p.y;
