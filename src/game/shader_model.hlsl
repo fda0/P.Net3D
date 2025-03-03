@@ -31,24 +31,41 @@ cbuffer UniformBuf : register(b0, space1)
 
 struct VSInput
 {
+#if IS_RIGID
   float3 position : TEXCOORD0;
   float3 normal   : TEXCOORD1;
-#if IS_TEXTURED
-#endif
   uint color      : TEXCOORD2;
+#endif
+
 #if IS_SKINNED
+  float3 position     : TEXCOORD0;
+  float3 normal       : TEXCOORD1;
+  uint color          : TEXCOORD2;
   uint joints_packed4 : TEXCOORD3;
   float4 weights      : TEXCOORD4;
 #endif
+
+#if IS_TEXTURED
+  float3 position : TEXCOORD0;
+  float3 normal   : TEXCOORD1;
+  float3 uv       : TEXCOORD2;
+  uint color      : TEXCOORD3;
+#endif
+
   uint InstanceIndex : SV_InstanceID;
 };
 
 struct VSOutput
 {
-  float4 color : TEXCOORD0;
-  float3 world_p : TEXCOORD1;
-  float3 normal : TEXCOORD2;
+  float4 color    : TEXCOORD0;
+  float3 world_p  : TEXCOORD1;
+  float3 normal   : TEXCOORD2;
   float3 camera_p : TEXCOORD3;
+
+#if IS_TEXTURED
+  float3 uv       : TEXCOORD4;
+#endif
+
   float4 position : SV_Position;
 };
 
@@ -56,6 +73,7 @@ struct VSModelInstanceData
 {
   float4x4 transform;
   uint color;
+
 #if IS_SKINNED
   uint pose_offset;
 #endif
@@ -185,8 +203,16 @@ VSOutput ShaderModelVS(VSInput input)
   output.position = position;
   output.normal = normal;
   output.camera_p = camera_p;
+#if IS_TEXTURED
+  output.uv = input.uv;
+#endif
   return output;
 }
+
+#if IS_TEXTURED
+Texture2DArray<float4> Texture : register(t0, space2);
+SamplerState Sampler : register(s0, space2);
+#endif
 
 float4 ShaderModelPS(VSOutput input) : SV_Target0
 {
@@ -195,7 +221,7 @@ float4 ShaderModelPS(VSOutput input) : SV_Target0
 
   float ambient = 0.2f;
   float specular = 0.0f;
-  float diffuse = max(dot(SunDir(), input.normal), 0.f);
+  float diffuse = max(dot(sun_dir, input.normal), 0.f);
   if (diffuse > 0.f)
   {
     float shininess = 16.f;
@@ -206,6 +232,11 @@ float4 ShaderModelPS(VSOutput input) : SV_Target0
     specular = pow(max(dot(input.normal, halfway_dir), 0.f), shininess);
   }
   color.xyz *= ambient + diffuse + specular;
+
+#if IS_TEXTURED
+  float4 tex_color = Texture.Sample(Sampler, input.uv);
+  color *= tex_color;
+#endif
 
   return color;
 }

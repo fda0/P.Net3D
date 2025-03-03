@@ -9,6 +9,7 @@ static SDL_GPUBuffer *Gpu_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, 
 {
   SDL_GPUBufferCreateInfo desc = {.usage = usage, .size = size};
   SDL_GPUBuffer *result = SDL_CreateGPUBuffer(APP.gpu.device, &desc);
+  Assert(result);
   SDL_SetGPUBufferName(APP.gpu.device, result, name);
   return result;
 }
@@ -533,15 +534,17 @@ static void Gpu_Init()
   // Wall pipeline
   {
     // create wall vertex buffer
+    APP.gpu.wall_vert_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+                                             sizeof(APP.rdr.wall_verts),
+                                             "Wall vertex buffer");
     {
-      SDL_GPUBufferCreateInfo buffer_desc = {
-        .usage = SDL_GPU_BUFFERUSAGE_VERTEX,
-        .size = sizeof(APP.rdr.wall_verts),
-        .props = 0,
-      };
-      APP.gpu.wall_vert_buf = SDL_CreateGPUBuffer(APP.gpu.device, &buffer_desc);
-      Assert(APP.gpu.wall_vert_buf); // @todo report err
-      SDL_SetGPUBufferName(APP.gpu.device, APP.gpu.wall_vert_buf, "Wall vertex buffer");
+      Rdr_RigidInstance inst = {};
+      inst.transform = Mat4_Identity();
+      inst.color = Color32_RGBf(1,1,1);
+      APP.gpu.wall_inst_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+                                               sizeof(inst),
+                                               "Wall instance buffer");
+      Gpu_TransferBuffer(APP.gpu.wall_inst_buf, &inst, sizeof(inst));
     }
 
     // Load textures
@@ -638,7 +641,7 @@ static void Gpu_Init()
       {
         .stage = SDL_GPU_SHADERSTAGE_VERTEX,
         .num_samplers = 0,
-        .num_storage_buffers = 0,
+        .num_storage_buffers = 1,
         .num_storage_textures = 0,
         .num_uniform_buffers = 1,
 
@@ -884,23 +887,19 @@ static void Gpu_Iterate()
     SDL_BindGPUGraphicsPipeline(pass, APP.gpu.wall_pipeline);
     {
       // bind vertex buffer
-      {
-        SDL_GPUBufferBinding binding_vrt =
-        {
-          .buffer = APP.gpu.wall_vert_buf,
-          .offset = 0,
-        };
-        SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
-      }
+      SDL_GPUBufferBinding binding_vrt = { .buffer = APP.gpu.wall_vert_buf };
+      SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
+
+      // bind instance storage buffer
+      SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.wall_inst_buf, 1);
+
       // bind fragment sampler
+      SDL_GPUTextureSamplerBinding binding_sampl =
       {
-        SDL_GPUTextureSamplerBinding binding_sampl =
-        {
-          .texture = APP.gpu.tex_wall,
-          .sampler = APP.gpu.wall_sampler,
-        };
-        SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
-      }
+        .texture = APP.gpu.tex_wall,
+        .sampler = APP.gpu.wall_sampler,
+      };
+      SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
 
       SDL_DrawGPUPrimitives(pass, APP.rdr.wall_vert_count, 1, 0, 0);
     }

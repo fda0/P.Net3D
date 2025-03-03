@@ -28,6 +28,7 @@ typedef struct
   SDL_GPUBuffer *skinned_pose_bufs[RdrSkinned_COUNT];
 
   SDL_GPUBuffer *wall_vert_buf;
+  SDL_GPUBuffer *wall_inst_buf;
   SDL_GPUSampler *wall_sampler;
   SDL_GPUTexture *tex_wall;
 
