@@ -4,8 +4,11 @@
 #ifndef IS_SKINNED
   #define IS_SKINNED 0
 #endif
-#if IS_RIGID == IS_SKINNED
-  #error "IS_RIGID is equal to IS_SKINNED"
+#ifndef IS_TEXTURED
+  #define IS_TEXTURED 0
+#endif
+#if (IS_RIGID + IS_SKINNED + IS_TEXTURED) != 1
+  #error "(IS_RIGID + IS_SKINNED + IS_TEXTURED) has to be equal to 1"
 #endif
 
 #if IS_RIGID
@@ -15,6 +18,10 @@
 #if IS_SKINNED
 #define ShaderModelVS ShaderSkinnedVS
 #define ShaderModelPS ShaderSkinnedPS
+#endif
+#if IS_TEXTURED
+#define ShaderModelVS ShaderWallVS
+#define ShaderModelPS ShaderWallPS
 #endif
 
 cbuffer UniformBuf : register(b0, space1)
@@ -26,6 +33,8 @@ struct VSInput
 {
   float3 position : TEXCOORD0;
   float3 normal   : TEXCOORD1;
+#if IS_TEXTURED
+#endif
   uint color      : TEXCOORD2;
 #if IS_SKINNED
   uint joints_packed4 : TEXCOORD3;
@@ -57,6 +66,14 @@ StructuredBuffer<VSModelInstanceData> InstanceBuf : register(t0);
 StructuredBuffer<float4x4> PoseBuf : register(t1);
 #endif
 
+float4x4 Mat4_Identity()
+{
+  return float4x4(1.0f, 0.0f, 0.0f, 0.0f,
+                  0.0f, 1.0f, 0.0f, 0.0f,
+                  0.0f, 0.0f, 1.0f, 0.0f,
+                  0.0f, 0.0f, 0.0f, 1.0f);
+}
+
 float4x4 Mat4_RotationPart(float4x4 mat)
 {
   // Extract the 3x3 submatrix columns
@@ -71,14 +88,6 @@ float4x4 Mat4_RotationPart(float4x4 mat)
   mat._m20 = axis_x.z; mat._m21 = axis_y.z; mat._m22 = axis_z.z; mat._m23 = 0.f;
   mat._m30 = 0.f;      mat._m31 = 0.f;      mat._m32 = 0.f;      mat._m33 = 1.f;
   return mat;
-}
-
-float4x4 Mat4_Identity()
-{
-  return float4x4(1.0f, 0.0f, 0.0f, 0.0f,
-                  0.0f, 1.0f, 0.0f, 0.0f,
-                  0.0f, 0.0f, 1.0f, 0.0f,
-                  0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 float4x4 Mat4_TranslationPart(float4x4 mat)
@@ -162,9 +171,6 @@ VSOutput ShaderModelVS(VSInput input)
     color = instance_color;
 
   float3 normal = mul(Mat4_RotationPart(position_transform), float4(input.normal, 1.f)).xyz;
-  float diffuse = max(dot(SunDir(), normal), 0.f);
-  float ambient = 0.2f;
-  color.xyz *= ambient + 0.8f*diffuse;
 
   // @todo get from unifrom directly
   float3 camera_p;
@@ -185,11 +191,21 @@ VSOutput ShaderModelVS(VSInput input)
 float4 ShaderModelPS(VSOutput input) : SV_Target0
 {
   float3 sun_dir = SunDir();
-  float3 view_dir = normalize(input.camera_p - input.world_p);
-  float3 reflect_dir = reflect(-sun_dir, input.normal);
-  float3 halfway_dir = normalize(view_dir + sun_dir);
-  float specular = pow(max(dot(input.normal, halfway_dir), 0.f), 16);
+  float4 color = input.color;
 
-  float4 white = float4(1.f,1.f,1.f,1.f);
-  return lerp(input.color, white, specular);
+  float ambient = 0.2f;
+  float specular = 0.0f;
+  float diffuse = max(dot(SunDir(), input.normal), 0.f);
+  if (diffuse > 0.f)
+  {
+    float shininess = 16.f;
+
+    float3 view_dir = normalize(input.camera_p - input.world_p);
+    float3 reflect_dir = reflect(-sun_dir, input.normal);
+    float3 halfway_dir = normalize(view_dir + sun_dir);
+    specular = pow(max(dot(input.normal, halfway_dir), 0.f), shininess);
+  }
+  color.xyz *= ambient + diffuse + specular;
+
+  return color;
 }
