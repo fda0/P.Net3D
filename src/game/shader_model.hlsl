@@ -24,12 +24,15 @@
 #define ShaderModelPS ShaderWallPS
 #endif
 
-cbuffer UniformBuf : register(b0, space1)
+struct UniformData
 {
   float4x4 CameraTransform;
   float3 CameraPosition;
   float3 BackgroundColor;
 };
+
+cbuffer VertexUniformBuf : register(b0, space1) { UniformData UniV; };
+cbuffer PixelUniformBuf  : register(b0, space3) { UniformData UniP; };
 
 struct VSInput
 {
@@ -63,12 +66,8 @@ struct VSOutput
   float3 world_p  : TEXCOORD1;
   float3 normal   : TEXCOORD2;
 
-  // use uniform in PX shader
-  float3 camera_p : TEXCOORD3;
-  float3 background_color : TEXCOORD4;
-
 #if IS_TEXTURED
-  float3 uv       : TEXCOORD5;
+  float3 uv       : TEXCOORD3;
 #endif
 
   float4 position : SV_Position;
@@ -186,7 +185,7 @@ VSOutput ShaderModelVS(VSInput input)
   float4 position = float4(input.position, 1.0f);
   position = mul(position_transform, position);
   float3 world_p = position.xyz;
-  position = mul(CameraTransform, position);
+  position = mul(UniV.CameraTransform, position);
 
   // Color
   float4 color = input_color;
@@ -201,8 +200,6 @@ VSOutput ShaderModelVS(VSInput input)
   output.world_p = world_p;
   output.position = position;
   output.normal = normal;
-  output.camera_p = CameraPosition;
-  output.background_color = BackgroundColor;
 #if IS_TEXTURED
   output.uv = input.uv;
 #endif
@@ -226,7 +223,7 @@ float4 ShaderModelPS(VSOutput input) : SV_Target0
   {
     float shininess = 16.f;
 
-    float3 view_dir = normalize(input.camera_p - input.world_p);
+    float3 view_dir = normalize(UniP.CameraPosition - input.world_p);
     float3 reflect_dir = reflect(-towards_light_dir, input.normal);
     float3 halfway_dir = normalize(view_dir + towards_light_dir);
     float specular_angle = max(dot(input.normal, halfway_dir), 0.f);
@@ -241,12 +238,12 @@ float4 ShaderModelPS(VSOutput input) : SV_Target0
 
   // apply fog
   {
-    float pixel_distance = distance(input.world_p, input.camera_p);
+    float pixel_distance = distance(input.world_p, UniP.CameraPosition);
     float fog_min = 800.f;
     float fog_max = 1000.f;
 
     float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
-    color = lerp(color, float4(input.background_color, 1.f), fog_t);
+    color = lerp(color, float4(UniP.BackgroundColor, 1.f), fog_t);
   }
 
   return color;

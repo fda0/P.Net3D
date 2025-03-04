@@ -661,7 +661,7 @@ static void Gpu_Init()
         .num_samplers = 1,
         .num_storage_buffers = 0,
         .num_storage_textures = 0,
-        .num_uniform_buffers = 0,
+        .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
         .code = g_ShaderWallPS,
@@ -753,6 +753,7 @@ static void Gpu_Deinit()
   }
 
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_vert_buf);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_inst_buf);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.wall_sampler);
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_wall);
 }
