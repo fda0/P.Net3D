@@ -28,6 +28,7 @@ cbuffer UniformBuf : register(b0, space1)
 {
   float4x4 CameraTransform;
   float3 CameraPosition;
+  float3 BackgroundColor;
 };
 
 struct VSInput
@@ -61,10 +62,13 @@ struct VSOutput
   float4 color    : TEXCOORD0;
   float3 world_p  : TEXCOORD1;
   float3 normal   : TEXCOORD2;
+
+  // use uniform in PX shader
   float3 camera_p : TEXCOORD3;
+  float3 background_color : TEXCOORD4;
 
 #if IS_TEXTURED
-  float3 uv       : TEXCOORD4;
+  float3 uv       : TEXCOORD5;
 #endif
 
   float4 position : SV_Position;
@@ -198,6 +202,7 @@ VSOutput ShaderModelVS(VSInput input)
   output.position = position;
   output.normal = normal;
   output.camera_p = CameraPosition;
+  output.background_color = BackgroundColor;
 #if IS_TEXTURED
   output.uv = input.uv;
 #endif
@@ -233,6 +238,16 @@ float4 ShaderModelPS(VSOutput input) : SV_Target0
   float4 tex_color = Texture.Sample(Sampler, input.uv);
   color *= tex_color;
 #endif
+
+  // apply fog
+  {
+    float pixel_distance = distance(input.world_p, input.camera_p);
+    float fog_min = 800.f;
+    float fog_max = 1000.f;
+
+    float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
+    color = lerp(color, float4(input.background_color, 1.f), fog_t);
+  }
 
   return color;
 }

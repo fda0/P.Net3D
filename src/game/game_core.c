@@ -451,7 +451,7 @@ static void Game_Init()
 
     {
       Object *ground = Obj_Create(ObjStorage_Local, ObjFlag_DrawCollisionGround);
-      ground->s.collision.verts = CollisionVertices_FromRectDim((V2){2000, 2000});
+      ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
       Collision_RecalculateNormals(&ground->s.collision);
     }
   }

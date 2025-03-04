@@ -1,7 +1,7 @@
 #define GPU_CLEAR_DEPTH_FLOAT 1.0f
-#define GPU_CLEAR_COLOR_R 0.6f
-#define GPU_CLEAR_COLOR_G 0.6f
-#define GPU_CLEAR_COLOR_B 0.8f
+#define GPU_CLEAR_COLOR_R 0.78f
+#define GPU_CLEAR_COLOR_G 0.78f
+#define GPU_CLEAR_COLOR_B 0.96f
 #define GPU_CLEAR_COLOR_A 1.0f
 #define GPU_JOINT_TRANSFORMS_MAX_SIZE (sizeof(Mat4)*62)
 
@@ -842,16 +842,18 @@ static void Gpu_Iterate()
   {
     struct
     {
-      Mat4 camera_transform;
-      V3 camera_p;
-    }
-    uniform_data =
-    {
-      APP.camera_all_mat,
-      APP.camera_p,
-    };
+      Mat4 CameraTransform;
+      V3 CameraPosition;
+      float pad0;
+      V3 BackgroundColor;
+      float pad1;
+    } uniform = {};
 
-    SDL_PushGPUVertexUniformData(cmd, 0, &uniform_data, sizeof(uniform_data));
+    uniform.CameraTransform = APP.camera_all_mat;
+    uniform.CameraPosition = APP.camera_p;
+    uniform.BackgroundColor = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B};
+
+    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
   }
 
   SDL_GPUDepthStencilTargetInfo depth_target = {
