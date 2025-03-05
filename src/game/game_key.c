@@ -1,4 +1,4 @@
-static void Key_Update(U32 key_code, bool is_held_down)
+static void KEY_Update(U32 key_code, bool is_held_down)
 {
   if (key_code >= ArrayCount(APP.keys))
   {
@@ -22,12 +22,12 @@ static void Key_Update(U32 key_code, bool is_held_down)
 
 typedef enum
 {
-  Key_IsHeld,
-  Key_IsPressed,
-  Key_IsReleased,
+  KEY_IsHeld,
+  KEY_IsPressed,
+  KEY_IsReleased,
 } KeyCheck;
 
-static bool Key_Check(U32 key_code, KeyCheck check)
+static bool KEY_Check(U32 key_code, KeyCheck check)
 {
   if (key_code >= ArrayCount(APP.keys))
   {
@@ -36,25 +36,25 @@ static bool Key_Check(U32 key_code, KeyCheck check)
   }
 
   Key key = APP.keys[key_code];
-  if (check == Key_IsHeld) return key.held;
-  if (check == Key_IsPressed) return key.pressed;
-  if (check == Key_IsReleased) return key.released;
+  if (check == KEY_IsHeld) return key.held;
+  if (check == KEY_IsPressed) return key.pressed;
+  if (check == KEY_IsReleased) return key.released;
 
   Assert(false);
   return false;
 }
 
-static bool Key_Held(U32 key_code)
+static bool KEY_Held(U32 key_code)
 {
-  return Key_Check(key_code, Key_IsHeld);
+  return KEY_Check(key_code, KEY_IsHeld);
 }
 
-static bool Key_Pressed(U32 key_code)
+static bool KEY_Pressed(U32 key_code)
 {
-  return Key_Check(key_code, Key_IsPressed);
+  return KEY_Check(key_code, KEY_IsPressed);
 }
 
-static bool Key_Released(U32 key_code)
+static bool KEY_Released(U32 key_code)
 {
-  return Key_Check(key_code, Key_IsReleased);
+  return KEY_Check(key_code, KEY_IsReleased);
 }

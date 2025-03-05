@@ -1,19 +1,19 @@
-static Obj_Sync *Client_ObjSyncAtTick(Client_ObjSnapshots *snaps, U64 tick_id)
+static OBJ_Sync *CLIENT_ObjSyncAtTick(CLIENT_ObjSnapshots *snaps, U64 tick_id)
 {
   U64 state_index = tick_id % ArrayCount(snaps->tick_states);
   return snaps->tick_states + state_index;
 }
 
-static Obj_Sync Client_LerpObjSync(U32 net_index, U64 tick_id)
+static OBJ_Sync CLIENT_LerpObjSync(U32 net_index, U64 tick_id)
 {
   Assert(net_index < ArrayCount(APP.client.snaps_of_objs));
-  Client_ObjSnapshots *snaps = APP.client.snaps_of_objs + net_index;
+  CLIENT_ObjSnapshots *snaps = APP.client.snaps_of_objs + net_index;
 
   Assert(tick_id <= snaps->latest_server_tick &&
          tick_id >= snaps->oldest_server_tick);
 
-  Obj_Sync *exact_obj = Client_ObjSyncAtTick(snaps, tick_id);
-  if (Obj_SyncIsInit(exact_obj)) // exact object found
+  OBJ_Sync *exact_obj = CLIENT_ObjSyncAtTick(snaps, tick_id);
+  if (OBJ_SyncIsInit(exact_obj)) // exact object found
     return *exact_obj;
 
   // find nearest prev_id/next_id objects
@@ -22,27 +22,27 @@ static Obj_Sync Client_LerpObjSync(U32 net_index, U64 tick_id)
   while (prev_id > snaps->oldest_server_tick)
   {
     prev_id -= 1;
-    if (Obj_SyncIsInit(Client_ObjSyncAtTick(snaps, prev_id)))
+    if (OBJ_SyncIsInit(CLIENT_ObjSyncAtTick(snaps, prev_id)))
       break;
   }
   while (next_id < snaps->latest_server_tick)
   {
     next_id += 1;
-    if (Obj_SyncIsInit(Client_ObjSyncAtTick(snaps, next_id)))
+    if (OBJ_SyncIsInit(CLIENT_ObjSyncAtTick(snaps, next_id)))
       break;
   }
 
-  Obj_Sync *prev = Client_ObjSyncAtTick(snaps, prev_id);
-  Obj_Sync *next = Client_ObjSyncAtTick(snaps, next_id);
+  OBJ_Sync *prev = CLIENT_ObjSyncAtTick(snaps, prev_id);
+  OBJ_Sync *next = CLIENT_ObjSyncAtTick(snaps, next_id);
 
   // handle cases where we can't interpolate
-  if (!Obj_SyncIsInit(prev) && !Obj_SyncIsInit(next)) // disaster
+  if (!OBJ_SyncIsInit(prev) && !OBJ_SyncIsInit(next)) // disaster
     return *exact_obj;
 
-  if (!Obj_SyncIsInit(prev))
+  if (!OBJ_SyncIsInit(prev))
     return *next;
 
-  if (!Obj_SyncIsInit(next))
+  if (!OBJ_SyncIsInit(next))
     return *prev;
 
   // lock lerp range; new packets in this range will be rejected
@@ -53,11 +53,11 @@ static Obj_Sync Client_LerpObjSync(U32 net_index, U64 tick_id)
   U64 id_range = next_id - prev_id;
   U64 id_offset = tick_id - prev_id;
   float t = (float)id_offset / (float)id_range;
-  Obj_Sync result = Obj_SyncLerp(*prev, *next, t);
+  OBJ_Sync result = OBJ_SyncLerp(*prev, *next, t);
   return result;
 }
 
-static bool Client_InsertSnapshot(Client_ObjSnapshots *snaps, U64 insert_at_tick_id, Obj_Sync new_value)
+static bool CLIENT_InsertSnapshot(CLIENT_ObjSnapshots *snaps, U64 insert_at_tick_id, OBJ_Sync new_value)
 {
   // function returns true on error
   static_assert(ArrayCount(snaps->tick_states) == NET_CLIENT_MAX_SNAPSHOTS);
@@ -72,7 +72,7 @@ static bool Client_InsertSnapshot(Client_ObjSnapshots *snaps, U64 insert_at_tick
         "latest server tick: %llu; "
         "insert tick: %llu; "
         "diff: %llu (max: %d)",
-        Net_Label(), snaps->latest_server_tick, insert_at_tick_id,
+        NET_Label(), snaps->latest_server_tick, insert_at_tick_id,
         snaps->latest_server_tick - insert_at_tick_id, (int)NET_CLIENT_MAX_SNAPSHOTS);
     return true;
   }
@@ -96,7 +96,7 @@ static bool Client_InsertSnapshot(Client_ObjSnapshots *snaps, U64 insert_at_tick
         "latest server tick: %llu; "
         "insert tick: %llu; "
         "diff: %llu (max: %llu)",
-        Net_Label(), snaps->latest_server_tick, insert_at_tick_id,
+        NET_Label(), snaps->latest_server_tick, insert_at_tick_id,
         insert_at_tick_id - snaps->latest_server_tick,
         (U64)NET_CLIENT_MAX_SNAPSHOTS);
     return true;
@@ -121,7 +121,7 @@ static bool Client_InsertSnapshot(Client_ObjSnapshots *snaps, U64 insert_at_tick
            i < insert_at_tick_id;
            i += 1)
       {
-        Obj_Sync *obj = Client_ObjSyncAtTick(snaps, i);
+        OBJ_Sync *obj = CLIENT_ObjSyncAtTick(snaps, i);
         SDL_zerop(obj);
       }
     }
@@ -135,8 +135,8 @@ static bool Client_InsertSnapshot(Client_ObjSnapshots *snaps, U64 insert_at_tick
            i < insert_at_tick_id;
            i += 1)
       {
-        Obj_Sync *obj = Client_ObjSyncAtTick(snaps, i);
-        if (Obj_SyncIsInit(obj))
+        OBJ_Sync *obj = CLIENT_ObjSyncAtTick(snaps, i);
+        if (OBJ_SyncIsInit(obj))
         {
           snaps->oldest_server_tick = i;
           break;
@@ -159,7 +159,7 @@ static bool Client_InsertSnapshot(Client_ObjSnapshots *snaps, U64 insert_at_tick
 
   // insert object
   {
-    Obj_Sync *insert_at_obj = Client_ObjSyncAtTick(snaps, insert_at_tick_id);
+    OBJ_Sync *insert_at_obj = CLIENT_ObjSyncAtTick(snaps, insert_at_tick_id);
     *insert_at_obj = new_value;
   }
 
@@ -167,17 +167,17 @@ static bool Client_InsertSnapshot(Client_ObjSnapshots *snaps, U64 insert_at_tick
   return false; // no error
 }
 
-static Tick_Input *Client_PollInput()
+static TICK_Input *CLIENT_PollInput()
 {
   // @todo input polling from SDL/OS should be done here directly?
   // Will make sense to revisit it when implementing multithreading.
   V2 dir = {0};
-  if (Key_Held(SDL_SCANCODE_W)) dir.x += 1;
-  if (Key_Held(SDL_SCANCODE_S)) dir.x -= 1;
-  if (Key_Held(SDL_SCANCODE_A)) dir.y += 1;
-  if (Key_Held(SDL_SCANCODE_D)) dir.y -= 1;
+  if (KEY_Held(SDL_SCANCODE_W)) dir.x += 1;
+  if (KEY_Held(SDL_SCANCODE_S)) dir.x -= 1;
+  if (KEY_Held(SDL_SCANCODE_A)) dir.y += 1;
+  if (KEY_Held(SDL_SCANCODE_D)) dir.y -= 1;
 
-  Tick_Input *input = Q_Push(APP.client.inputs_qbuf, &APP.client.inputs_range);
+  TICK_Input *input = Q_Push(APP.client.inputs_qbuf, &APP.client.inputs_range);
   SDL_zerop(input);
 
   input->move_dir = V2_Normalize(dir);
@@ -185,7 +185,7 @@ static Tick_Input *Client_PollInput()
   {
     APP.pathing_marker_set = false;
     input->is_pathing = true;
-    input->pathing_world_p = Obj_Get(APP.pathing_marker, ObjStorage_Local)->s.p;
+    input->pathing_world_p = OBJ_Get(APP.pathing_marker, ObjStorage_Local)->s.p;
   }
 
   return input;

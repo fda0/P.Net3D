@@ -1,6 +1,6 @@
 typedef struct
 {
-  Rdr_RigidVertex rdr;
+  RDR_RigidVertex rdr;
   bool filled;
 } M_VertexEntry;
 

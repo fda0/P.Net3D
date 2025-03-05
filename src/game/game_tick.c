@@ -2,19 +2,19 @@
 // Physics update tick
 // @todo this should run on a separate thread
 //
-static Tick_Input Tick_NormalizeInput(Tick_Input input)
+static TICK_Input TICK_NormalizeInput(TICK_Input input)
 {
   input.move_dir = V2_Normalize(V2_NanToZero(input.move_dir));
   return input;
 }
 
-static void Tick_AdvanceSimulation()
+static void TICK_AdvanceSimulation()
 {
   // update prev_p
   ForArray(obj_index, APP.all_objects)
   {
     Object *obj = APP.all_objects + obj_index;
-    if (Obj_HasAnyFlag(obj, ObjFlag_Move|ObjFlag_AnimateRotation))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_Move|ObjFlag_AnimateRotation))
     {
       obj->s.prev_p = obj->s.p;
     }
@@ -23,12 +23,12 @@ static void Tick_AdvanceSimulation()
   // apply player input
   ForArray32(player_index, APP.server.player_keys)
   {
-    Obj_Key player_key = APP.server.player_keys[player_index];
-    Object *player = Obj_Get(player_key, ObjStorage_Net);
-    if (Obj_IsNil(player))
+    OBJ_Key player_key = APP.server.player_keys[player_index];
+    Object *player = OBJ_Get(player_key, ObjStorage_Net);
+    if (OBJ_IsNil(player))
       continue;
 
-    Tick_Input input = Server_GetPlayerInput(player_index);
+    TICK_Input input = SERVER_GetPlayerInput(player_index);
 
     if (input.is_pathing)
     {
@@ -64,7 +64,7 @@ static void Tick_AdvanceSimulation()
   ForArray(obj_index, APP.all_objects)
   {
     Object *obj = APP.all_objects + obj_index;
-    if (!Obj_HasAnyFlag(obj, ObjFlag_Move)) continue;
+    if (!OBJ_HasAnyFlag(obj, ObjFlag_Move)) continue;
 
     // move object
     obj->s.p = V2_Add(obj->s.p, obj->s.dp);
@@ -82,7 +82,7 @@ static void Tick_AdvanceSimulation()
       ForArray(obstacle_index, APP.all_objects)
       {
         Object *obstacle = APP.all_objects + obstacle_index;
-        if (!Obj_HasAnyFlag(obstacle, ObjFlag_Collide)) continue;
+        if (!OBJ_HasAnyFlag(obstacle, ObjFlag_Collide)) continue;
         if (obj == obstacle) continue;
 
         CollisionVertices obstacle_verts = obstacle->s.collision.verts;
@@ -166,7 +166,7 @@ static void Tick_AdvanceSimulation()
   ForArray(obj_index, APP.all_objects)
   {
     Object *obj = APP.all_objects + obj_index;
-    if (Obj_HasAnyFlag(obj, ObjFlag_AnimateT))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateT))
     {
       // set walking animation if player moves
       if (obj->s.dp.x || obj->s.dp.y)
@@ -175,7 +175,7 @@ static void Tick_AdvanceSimulation()
       }
     }
 
-    if (Obj_HasAllFlags(obj, ObjFlag_AnimateRotation))
+    if (OBJ_HasAllFlags(obj, ObjFlag_AnimateRotation))
     {
       V2 dir = V2_Sub(obj->s.p, obj->s.prev_p);
       if (dir.x || dir.y)
@@ -189,9 +189,9 @@ static void Tick_AdvanceSimulation()
   }
 }
 
-static Obj_Sync Obj_SyncLerp(Obj_Sync prev, Obj_Sync next, float t)
+static OBJ_Sync OBJ_SyncLerp(OBJ_Sync prev, OBJ_Sync next, float t)
 {
-  Obj_Sync res = prev;
+  OBJ_Sync res = prev;
   res.p = V2_Lerp(prev.p, next.p, t);
   res.dp = V2_Lerp(prev.dp, next.dp, t);
   res.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
@@ -200,13 +200,13 @@ static Obj_Sync Obj_SyncLerp(Obj_Sync prev, Obj_Sync next, float t)
   return res;
 }
 
-static void Tick_Playback()
+static void TICK_Playback()
 {
   U64 smallest_latest_server_tick = ~0ull;
   U64 biggest_oldest_server_tick = 0;
   ForArray(obj_i, APP.client.snaps_of_objs)
   {
-    Client_ObjSnapshots *snap = APP.client.snaps_of_objs + obj_i;
+    CLIENT_ObjSnapshots *snap = APP.client.snaps_of_objs + obj_i;
     if (snap->latest_server_tick < smallest_latest_server_tick)
     {
       smallest_latest_server_tick = snap->latest_server_tick;
@@ -227,7 +227,7 @@ static void Tick_Playback()
         "playback delay: %d, "
         "playback catchup %d, "
         "[bumping client's next_playback_tick]",
-        Net_Label(),
+        NET_Label(),
         biggest_oldest_server_tick,
         smallest_latest_server_tick,
         APP.client.next_playback_tick,
@@ -245,7 +245,7 @@ static void Tick_Playback()
         "smallest_latest_server_tick: %llu, "
         "playback delay: %d, "
         "playback catchup %d",
-        Net_Label(),
+        NET_Label(),
         APP.client.next_playback_tick,
         smallest_latest_server_tick,
         (int)APP.client.current_playback_delay,
@@ -267,7 +267,7 @@ static void Tick_Playback()
       LOG(LogFlags_NetCatchup,
           "%s: Current playback delay: %d, "
           " Setting playback catchup to %d",
-          Net_Label(),
+          NET_Label(),
           (int)APP.client.current_playback_delay,
           (int)APP.client.playable_tick_deltas.tick_catchup);
     }
@@ -275,27 +275,27 @@ static void Tick_Playback()
 
   ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
   {
-    Obj_Sync interpolated_sync = Client_LerpObjSync(net_index, APP.client.next_playback_tick);
-    Object *net_obj = Obj_FromNetIndex(net_index);
+    OBJ_Sync interpolated_sync = CLIENT_LerpObjSync(net_index, APP.client.next_playback_tick);
+    Object *net_obj = OBJ_FromNetIndex(net_index);
     net_obj->s = interpolated_sync;
   }
   APP.client.next_playback_tick += 1;
 }
 
-static void Tick_Iterate()
+static void TICK_Iterate()
 {
-  if (Net_IsServer())
+  if (NET_IsServer())
   {
-    Tick_AdvanceSimulation();
+    TICK_AdvanceSimulation();
   }
 
-  if (Net_IsClient())
+  if (NET_IsClient())
   {
-    Tick_Playback();
+    TICK_Playback();
     if (APP.client.playable_tick_deltas.tick_catchup > 0)
     {
       APP.client.playable_tick_deltas.tick_catchup -= 1;
-      Tick_Playback();
+      TICK_Playback();
     }
   }
 }

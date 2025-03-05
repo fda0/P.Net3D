@@ -63,8 +63,8 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     SDL_MouseButtonFlags mouse_keys = SDL_GetMouseState(&APP.mouse.x, &APP.mouse.y);
     APP.mouse.y = APP.window_height - APP.mouse.y;
 
-    Key_Update(Key_MouseLeft, mouse_keys & SDL_BUTTON_LMASK);
-    Key_Update(Key_MouseRight, mouse_keys & SDL_BUTTON_RMASK);
+    KEY_Update(KEY_MouseLeft, mouse_keys & SDL_BUTTON_LMASK);
+    KEY_Update(KEY_MouseRight, mouse_keys & SDL_BUTTON_RMASK);
 
     // keyboard state
     {
@@ -72,13 +72,13 @@ SDL_AppResult SDL_AppIterate(void *appstate)
       const bool *key_states = SDL_GetKeyboardState(&num_keys);
       ForI32(i, num_keys)
       {
-        Key_Update(i, key_states[i]);
+        KEY_Update(i, key_states[i]);
       }
     }
   }
 
   Game_Iterate();
-  Gpu_Iterate();
+  GPU_Iterate();
 
   // frame arena cleanup
   Arena_Reset(APP.a_frame, 0);
@@ -268,7 +268,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(APP.window));
   SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
 
-  Gpu_Init();
+  GPU_Init();
 
   SDL_ShowWindow(APP.window);
 
@@ -283,7 +283,7 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
   (void)appstate;
 
   SDLNet_Quit();
-  Gpu_Deinit();
+  GPU_Deinit();
 
   SDL_ReleaseWindowFromGPUDevice(APP.gpu.device, APP.window);
   SDL_DestroyWindow(APP.window);

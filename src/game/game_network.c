@@ -1,24 +1,24 @@
-static bool Net_IsServer()
+static bool NET_IsServer()
 {
   return APP.net.is_server;
 }
 
-static bool Net_IsClient()
+static bool NET_IsClient()
 {
   return !APP.net.is_server;
 }
 
-static const char *Net_Label()
+static const char *NET_Label()
 {
   return APP.net.is_server ? "SERVER" : "CLIENT";
 }
 
-static bool Net_UserIsInactive(Net_User *user)
+static bool NET_UserIsInactive(NET_User *user)
 {
   return (user->last_msg_frame_time + NET_INACTIVE_MS < APP.frame_time);
 }
 
-static U8 *Net_PayloadAlloc(U32 size)
+static U8 *NET_PayloadAlloc(U32 size)
 {
   U8 *result = APP.net.packet_payload_buf + APP.net.payload_used;
   {
@@ -36,44 +36,44 @@ static U8 *Net_PayloadAlloc(U32 size)
   return result;
 }
 
-static U8 *Net_PayloadMemcpy(void *data, U32 size)
+static U8 *NET_PayloadMemcpy(void *data, U32 size)
 {
-  U8 *result = Net_PayloadAlloc(size);
+  U8 *result = NET_PayloadAlloc(size);
   memcpy(result, data, size);
   return result;
 }
 
-static void Net_SendS8(Net_User *destination, S8 msg)
+static void NET_SendS8(NET_User *destination, S8 msg)
 {
   Assert(msg.size < 1280); // that seems to be a realistic reasonable max size? https://gafferongames.com/post/packet_fragmentation_and_reassembly/
 
-  if (APP.net.is_server && Net_UserIsInactive(destination))
+  if (APP.net.is_server && NET_UserIsInactive(destination))
     return;
 
   bool send_res = SDLNet_SendDatagram(APP.net.socket,
                                       destination->address,
                                       destination->port,
                                       msg.str, (U32)msg.size);
-
+  
   if (!send_res)
   {
     LOG(LogFlags_NetSend,
         "%s: Sending buffer of size %lluB to %s:%d; %s",
-        Net_Label(), msg.size,
+        NET_Label(), msg.size,
         SDLNet_GetAddressString(destination->address),
         (int)destination->port,
         send_res ? "success" : "fail");
   }
 }
 
-static void Net_RecalculatePacketHeader()
+static void NET_RecalculatePacketHeader()
 {
   S8 payload = S8_Make(APP.net.packet_payload_buf, APP.net.payload_used);
   APP.net.packet_header.magic_value = NET_MAGIC_VALUE;
   APP.net.packet_header.payload_hash = (U16)S8_Hash(0, payload);
 }
 
-static S8 Net_GetPacketString()
+static S8 NET_GetPacketString()
 {
   // there should be no padding between these
   static_assert(offsetof(AppState, net.packet_header) + sizeof(APP.net.packet_header) ==
@@ -84,14 +84,14 @@ static S8 Net_GetPacketString()
   return result;
 }
 
-static void Net_PacketSendAndResetPayload(Net_User *destination /* null for broadcast */)
+static void NET_PacketSendAndResetPayload(NET_User *destination /* null for broadcast */)
 {
-  Net_RecalculatePacketHeader();
-  S8 packet = Net_GetPacketString();
+  NET_RecalculatePacketHeader();
+  S8 packet = NET_GetPacketString();
 
   if (destination)
   {
-    Net_SendS8(destination, packet);
+    NET_SendS8(destination, packet);
   }
   else
   {
@@ -99,23 +99,23 @@ static void Net_PacketSendAndResetPayload(Net_User *destination /* null for broa
     {
       ForArray(user_index, APP.server.users)
       {
-        Net_User *user = APP.server.users + user_index;
+        NET_User *user = APP.server.users + user_index;
         if (!user->address)
           continue;
 
-        Net_SendS8(user, packet);
+        NET_SendS8(user, packet);
       }
     }
     else
     {
-      Net_SendS8(&APP.net.server_user, packet);
+      NET_SendS8(&APP.net.server_user, packet);
     }
   }
 
   APP.net.payload_used = 0;
 }
 
-static bool Net_ConsumeS8(S8 *msg, void *dest, U64 size)
+static bool NET_ConsumeS8(S8 *msg, void *dest, U64 size)
 {
   U64 copy_size = Min(size, msg->size);
   bool err = copy_size != size;
@@ -129,13 +129,13 @@ static bool Net_ConsumeS8(S8 *msg, void *dest, U64 size)
   return err;
 }
 
-static bool Net_UserMatch(Net_User *a, Net_User *b)
+static bool NET_UserMatch(NET_User *a, NET_User *b)
 {
   return (a->port == b->port &&
           SDLNet_CompareAddresses(a->address, b->address) == 0);
 }
 
-static bool Net_UserMatchAddrPort(Net_User *user, SDLNet_Address *address, U16 port)
+static bool NET_UserMatchAddrPort(NET_User *user, SDLNet_Address *address, U16 port)
 {
   if (!user->address)
     return false;
@@ -144,23 +144,23 @@ static bool Net_UserMatchAddrPort(Net_User *user, SDLNet_Address *address, U16 p
           SDLNet_CompareAddresses(user->address, address) == 0);
 }
 
-static Net_User *Net_FindUser(SDLNet_Address *address, U16 port)
+static NET_User *NET_FindUser(SDLNet_Address *address, U16 port)
 {
   ForArray(i, APP.server.users)
   {
-    Net_User *user = APP.server.users + i;
-    if (Net_UserMatchAddrPort(user, address, port))
+    NET_User *user = APP.server.users + i;
+    if (NET_UserMatchAddrPort(user, address, port))
       return user;
   }
   return 0;
 }
 
-static Net_User *Net_AddUser(SDLNet_Address *address, U16 port)
+static NET_User *NET_AddUser(SDLNet_Address *address, U16 port)
 {
-  Net_User *new_user_slot = 0;
+  NET_User *new_user_slot = 0;
   ForArray(i, APP.server.users)
   {
-    Net_User *user = APP.server.users + i;
+    NET_User *user = APP.server.users + i;
     if (!user->address)
     {
       new_user_slot = user;
@@ -176,13 +176,13 @@ static Net_User *Net_AddUser(SDLNet_Address *address, U16 port)
   return new_user_slot;
 }
 
-static void Net_RemoveUser(Net_User *user)
+static void NET_RemoveUser(NET_User *user)
 {
   SDLNet_UnrefAddress(user->address);
-  *user = (Net_User){};
+  *user = (NET_User){};
 }
 
-static void Net_IterateSend()
+static void NET_IterateSend()
 {
   bool is_server = APP.net.is_server;
   bool is_client = !APP.net.is_server;
@@ -209,7 +209,7 @@ static void Net_IterateSend()
     U32 user_number = 0;
     ForArray(user_index, APP.server.users)
     {
-      Net_User *user = APP.server.users + user_index;
+      NET_User *user = APP.server.users + user_index;
       if (!user->address)
         continue;
 
@@ -218,12 +218,12 @@ static void Net_IterateSend()
       // create player characters and send them to users
       {
         AssertBounds(user_index, APP.server.player_keys);
-        Obj_Key *player_key = APP.server.player_keys + user_index;
+        OBJ_Key *player_key = APP.server.player_keys + user_index;
 
         if (!player_key->serial_number)
         {
-          Object *player = Obj_CreatePlayer();
-          if (!Obj_IsNil(player))
+          Object *player = OBJ_CreatePlayer();
+          if (!OBJ_IsNil(player))
           {
             player->s.p.y = -150.f + user_index * 70.f;
             player->s.prev_p = player->s.p;
@@ -236,16 +236,16 @@ static void Net_IterateSend()
           *player_key = player->s.key;
         }
 
-        Net_SendHeader head = {};
+        NET_SendHeader head = {};
         head.tick_id = APP.tick_id;
         head.kind = NetSendKind_AssignPlayerKey;
-        Net_PayloadMemcpy(&head, sizeof(head));
+        NET_PayloadMemcpy(&head, sizeof(head));
 
-        Net_SendAssignPlayerKey assign = {0};
+        NET_SendAssignPlayerKey assign = {0};
         assign.player_key = *player_key;
-        Net_PayloadMemcpy(&assign, sizeof(assign));
+        NET_PayloadMemcpy(&assign, sizeof(assign));
 
-        Net_PacketSendAndResetPayload(user);
+        NET_PacketSendAndResetPayload(user);
       }
 
       // calculate autolayout for clients
@@ -280,20 +280,20 @@ static void Net_IterateSend()
           U32 x = window_index / rows;
           U32 y = window_index % rows;
 
-          Net_SendHeader head = {};
+          NET_SendHeader head = {};
           head.tick_id = APP.tick_id;
           head.kind = NetSendKind_WindowLayout;
-          Net_PayloadMemcpy(&head, sizeof(head));
+          NET_PayloadMemcpy(&head, sizeof(head));
 
-          Net_SendWindowLayout body = {};
+          NET_SendWindowLayout body = {};
           body.user_count = client_count;
           body.px = win_x + x*win_w;
           body.py = win_y + y*win_h;
           body.w = win_w;
           body.h = win_h;
-          Net_PayloadMemcpy(&body, sizeof(body));
+          NET_PayloadMemcpy(&body, sizeof(body));
 
-          Net_PacketSendAndResetPayload(user);
+          NET_PacketSendAndResetPayload(user);
         }
       }
     }
@@ -301,59 +301,59 @@ static void Net_IterateSend()
     // iterate over network objects
     ForU32(net_index, OBJ_MAX_NETWORK_OBJECTS)
     {
-      Object *net_obj = Obj_FromNetIndex(net_index);
+      Object *net_obj = OBJ_FromNetIndex(net_index);
 
-      if (Obj_HasData(net_obj))
+      if (OBJ_HasData(net_obj))
       {
-        Net_SendHeader head = {};
+        NET_SendHeader head = {};
         head.tick_id = APP.tick_id;
         head.kind = NetSendKind_ObjUpdate;
-        Net_PayloadMemcpy(&head, sizeof(head));
+        NET_PayloadMemcpy(&head, sizeof(head));
 
-        Net_SendObjSync update = {0};
+        NET_SendObjSync update = {0};
         update.net_index = net_index;
         update.sync = net_obj->s;
-        Net_PayloadMemcpy(&update, sizeof(update));
+        NET_PayloadMemcpy(&update, sizeof(update));
       }
       else
       {
-        Net_SendHeader head = {};
+        NET_SendHeader head = {};
         head.tick_id = APP.tick_id;
         head.kind = NetSendKind_ObjEmpty;
-        Net_PayloadMemcpy(&head, sizeof(head));
+        NET_PayloadMemcpy(&head, sizeof(head));
 
-        Net_SendObjEmpty update = {0};
+        NET_SendObjEmpty update = {0};
         update.net_index = net_index;
-        Net_PayloadMemcpy(&update, sizeof(update));
+        NET_PayloadMemcpy(&update, sizeof(update));
       }
 
-      Net_PacketSendAndResetPayload(0);
+      NET_PacketSendAndResetPayload(0);
     }
   }
 
   if (is_client)
   {
     {
-      Net_SendHeader head = {};
+      NET_SendHeader head = {};
       head.tick_id = APP.tick_id;
       head.kind = NetSendKind_Ping;
-      Net_PayloadMemcpy(&head, sizeof(head));
+      NET_PayloadMemcpy(&head, sizeof(head));
 
-      Net_SendPing ping = {0};
-      Net_PayloadMemcpy(&ping, sizeof(ping));
-      Net_PacketSendAndResetPayload(0);
+      NET_SendPing ping = {0};
+      NET_PayloadMemcpy(&ping, sizeof(ping));
+      NET_PacketSendAndResetPayload(0);
     }
 
 
     {
-      Client_PollInput();
+      CLIENT_PollInput();
 
-      Net_SendHeader head = {};
+      NET_SendHeader head = {};
       head.tick_id = APP.tick_id;
       head.kind = NetSendKind_Inputs;
-      Net_PayloadMemcpy(&head, sizeof(head));
+      NET_PayloadMemcpy(&head, sizeof(head));
 
-      Net_SendInputs inputs = {0};
+      NET_SendInputs inputs = {0};
       U16 input_count = 0;
 
       for (U64 i = APP.client.inputs_range.min;
@@ -366,7 +366,7 @@ static void Net_IterateSend()
           break;
         }
 
-        Tick_Input *peek = Q_PeekAt(APP.client.inputs_qbuf,
+        TICK_Input *peek = Q_PeekAt(APP.client.inputs_qbuf,
                                     &APP.client.inputs_range,
                                     i);
         if (!peek)
@@ -381,37 +381,37 @@ static void Net_IterateSend()
 
       inputs.input_count = input_count;
 
-      Net_PayloadMemcpy(&inputs, sizeof(inputs));
-      Net_PacketSendAndResetPayload(0);
+      NET_PayloadMemcpy(&inputs, sizeof(inputs));
+      NET_PacketSendAndResetPayload(0);
     }
   }
 }
 
-static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
+static void NET_ProcessReceivedPayload(U16 player_id, S8 full_message)
 {
   S8 msg = full_message;
   while (msg.size)
   {
-    Net_SendHeader head;
-    Net_ConsumeS8(&msg, &head, sizeof(head));
+    NET_SendHeader head;
+    NET_ConsumeS8(&msg, &head, sizeof(head));
 
     if (head.kind == NetSendKind_Ping)
     {
-      Net_SendPing ping = {0};
-      Net_ConsumeS8(&msg, &ping, sizeof(ping));
+      NET_SendPing ping = {0};
+      NET_ConsumeS8(&msg, &ping, sizeof(ping));
     }
     else if (head.kind == NetSendKind_ObjUpdate ||
              head.kind == NetSendKind_ObjEmpty)
     {
-      Net_SendObjSync update = {0};
+      NET_SendObjSync update = {0};
       if (head.kind == NetSendKind_ObjUpdate)
       {
-        Net_ConsumeS8(&msg, &update, sizeof(update));
+        NET_ConsumeS8(&msg, &update, sizeof(update));
       }
       else
       {
-        Net_SendObjEmpty empty;
-        Net_ConsumeS8(&msg, &empty, sizeof(empty));
+        NET_SendObjEmpty empty;
+        NET_ConsumeS8(&msg, &empty, sizeof(empty));
         update.net_index = empty.net_index;
         update.sync.init = true;
       }
@@ -420,7 +420,7 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
       {
         LOG(LogFlags_NetPayload,
             "%s: Rejecting payload(%d) - net index overflow: %u",
-            Net_Label(), head.kind, update.net_index);
+            NET_Label(), head.kind, update.net_index);
         continue;
       }
 
@@ -428,27 +428,27 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
       {
         LOG(LogFlags_NetPayload,
             "%s: Rejecting payload(%d) - head tick at: %llu < next playback tick: %llu",
-            Net_Label(), head.kind, head.tick_id, APP.client.next_playback_tick);
+            NET_Label(), head.kind, head.tick_id, APP.client.next_playback_tick);
         continue;
       }
 
       Assert(update.net_index < ArrayCount(APP.client.snaps_of_objs));
-      Client_ObjSnapshots *snap = APP.client.snaps_of_objs + update.net_index;
-      Client_InsertSnapshot(snap, head.tick_id, update.sync);
+      CLIENT_ObjSnapshots *snap = APP.client.snaps_of_objs + update.net_index;
+      CLIENT_InsertSnapshot(snap, head.tick_id, update.sync);
     }
     else if (head.kind == NetSendKind_Inputs)
     {
-      Net_SendInputs in_net;
-      Net_ConsumeS8(&msg, &in_net, sizeof(in_net));
+      NET_SendInputs in_net;
+      NET_ConsumeS8(&msg, &in_net, sizeof(in_net));
 
       Assert(player_id < ArrayCount(APP.server.player_inputs));
-      Server_PlayerInputs *pi = APP.server.player_inputs + player_id;
-      Server_InsertPlayerInput(pi, &in_net, head.tick_id);
+      SERVER_PlayerInputs *pi = APP.server.player_inputs + player_id;
+      SERVER_InsertPlayerInput(pi, &in_net, head.tick_id);
     }
     else if (head.kind == NetSendKind_AssignPlayerKey)
     {
-      Net_SendAssignPlayerKey assign;
-      Net_ConsumeS8(&msg, &assign, sizeof(assign));
+      NET_SendAssignPlayerKey assign;
+      NET_ConsumeS8(&msg, &assign, sizeof(assign));
 
       if (APP.client.player_key_latest_tick_id < head.tick_id)
       {
@@ -458,8 +458,8 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
     }
     else if (head.kind == NetSendKind_WindowLayout)
     {
-      Net_SendWindowLayout layout;
-      Net_ConsumeS8(&msg, &layout, sizeof(layout));
+      NET_SendWindowLayout layout;
+      NET_ConsumeS8(&msg, &layout, sizeof(layout));
 
       if (APP.window_autolayout)
       {
@@ -471,33 +471,33 @@ static void Net_ProcessReceivedPayload(U16 player_id, S8 full_message)
     {
       LOG(LogFlags_NetPayload,
           "%s: Unsupported payload head kind: %d",
-          Net_Label(), (int)head.kind);
+          NET_Label(), (int)head.kind);
       return;
     }
   }
 }
 
-static void Net_ReceivePacket(U16 player_id, S8 packet)
+static void NET_ReceivePacket(U16 player_id, S8 packet)
 {
   if (APP.net.is_server && player_id >= NET_MAX_PLAYERS)
     return;
 
-  if (packet.size < sizeof(Net_PacketHeader))
+  if (packet.size < sizeof(NET_PacketHeader))
   {
     LOG(LogFlags_NetPacket,
         "%s: packet rejected - it's too small, size: %llu",
-        Net_Label(), packet.size);
+        NET_Label(), packet.size);
     return;
   }
 
-  Net_PacketHeader header;
-  Net_ConsumeS8(&packet, &header, sizeof(header));
+  NET_PacketHeader header;
+  NET_ConsumeS8(&packet, &header, sizeof(header));
 
   if (!packet.size)
   {
     LOG(LogFlags_NetPacket,
         "%s: packet rejected - empty payload",
-        Net_Label());
+        NET_Label());
     return;
   }
 
@@ -505,7 +505,7 @@ static void Net_ReceivePacket(U16 player_id, S8 packet)
   {
     LOG(LogFlags_NetPacket,
         "%s: packet rejected - invalid magic value: %u; expected: %u",
-        Net_Label(), (U32)header.magic_value, NET_MAGIC_VALUE);
+        NET_Label(), (U32)header.magic_value, NET_MAGIC_VALUE);
     return;
   }
 
@@ -516,14 +516,14 @@ static void Net_ReceivePacket(U16 player_id, S8 packet)
   {
     LOG(LogFlags_NetPacket,
         "%s: packet rejected - invalid hash: %u; calculated: %u",
-        Net_Label(), header.payload_hash, hash16);
+        NET_Label(), header.payload_hash, hash16);
     return;
   }
 
-  Net_ProcessReceivedPayload(player_id, packet);
+  NET_ProcessReceivedPayload(player_id, packet);
 }
 
-static void Net_IterateReceive()
+static void NET_IterateReceive()
 {
   bool is_server = APP.net.is_server;
   bool is_client = !APP.net.is_server;
@@ -546,18 +546,18 @@ static void Net_IterateReceive()
 
     LOG(LogFlags_NetDatagram,
         "%s: got %d-byte datagram from %s:%d",
-        Net_Label(),
+        NET_Label(),
         (int)dgram->buflen,
         SDLNet_GetAddressString(dgram->addr),
         (int)dgram->port);
 
     if (is_client)
     {
-      if (!Net_UserMatchAddrPort(&APP.net.server_user, dgram->addr, dgram->port))
+      if (!NET_UserMatchAddrPort(&APP.net.server_user, dgram->addr, dgram->port))
       {
         LOG(LogFlags_NetDatagram,
             "%s: dgram rejected - received from non-server address %s:%d",
-            Net_Label(),
+            NET_Label(),
             SDLNet_GetAddressString(dgram->addr), (int)dgram->port);
         goto datagram_cleanup;
       }
@@ -569,39 +569,39 @@ static void Net_IterateReceive()
     // save user
     if (is_server)
     {
-      Net_User *user = Net_FindUser(dgram->addr, dgram->port);
+      NET_User *user = NET_FindUser(dgram->addr, dgram->port);
       if (!user)
       {
         LOG(LogFlags_NetInfo,
             "%s: saving user with port: %d",
-            Net_Label(), (int)dgram->port);
-        user = Net_AddUser(dgram->addr, dgram->port);
+            NET_Label(), (int)dgram->port);
+        user = NET_AddUser(dgram->addr, dgram->port);
       }
 
       if (user)
       {
         user->last_msg_frame_time = APP.frame_time;
 
-        U64 user_id = ((U64)user - (U64)APP.server.users) / sizeof(Net_User);
+        U64 user_id = ((U64)user - (U64)APP.server.users) / sizeof(NET_User);
         player_id = Checked_U64toU16(user_id);
       }
     }
 
     S8 packet = S8_Make(dgram->buf, dgram->buflen);
-    Net_ReceivePacket(player_id, packet);
+    NET_ReceivePacket(player_id, packet);
 
     datagram_cleanup:
     SDLNet_DestroyDatagram(dgram);
   }
 }
 
-static void Net_IterateTimeoutUsers()
+static void NET_IterateTimeoutUsers()
 {
-  if (Net_IsServer())
+  if (NET_IsServer())
   {
     ForArray(user_index, APP.server.users)
     {
-      Net_User *user = APP.server.users + user_index;
+      NET_User *user = APP.server.users + user_index;
       if (!user->address)
         continue;
 
@@ -609,15 +609,15 @@ static void Net_IterateTimeoutUsers()
       {
         LOG(LogFlags_NetInfo,
             "%s: Timeout. Removing user #%llu",
-            Net_Label(), user_index);
+            NET_Label(), user_index);
 
-        Net_RemoveUser(user);
+        NET_RemoveUser(user);
       }
     }
   }
 }
 
-static void Net_Init()
+static void NET_Init()
 {
   bool is_server = APP.net.is_server;
   bool is_client = !APP.net.is_server;
@@ -630,7 +630,7 @@ static void Net_Init()
     const char *hostname = "localhost";
     LOG(LogFlags_NetInfo,
         "%s: Resolving server hostname '%s' ...",
-        Net_Label(), hostname);
+        NET_Label(), hostname);
     APP.net.server_user.address = SDLNet_ResolveHostname(hostname);
     APP.net.server_user.port = NET_DEFAULT_SEVER_PORT;
     if (APP.net.server_user.address)
@@ -647,7 +647,7 @@ static void Net_Init()
       APP.net.err = true;
       LOG(LogFlags_NetInfo,
           "%s: Failed to resolve server hostname '%s'",
-          Net_Label(), hostname);
+          NET_Label(), hostname);
     }
   }
 
@@ -658,24 +658,24 @@ static void Net_Init()
     APP.net.err = true;
     LOG(LogFlags_NetInfo,
         "%s: Failed to create socket",
-        Net_Label());
+        NET_Label());
   }
   else
   {
     LOG(LogFlags_NetInfo,
         "%s: Created socket",
-        Net_Label());
+        NET_Label());
 
 #if NET_SIMULATE_PACKETLOSS
     SDLNet_SimulateDatagramPacketLoss(APP.net.socket, NET_SIMULATE_PACKETLOSS);
     LOG(LogFlags_NetInfo,
         "%s: Simulating packetloss: %d",
-        Net_Label(), NET_SIMULATE_PACKETLOSS);
+        NET_Label(), NET_SIMULATE_PACKETLOSS);
 #endif
   }
 }
 
-static void Net_Deinit()
+static void NET_Deinit()
 {
   Assert(!"@todo");
 }

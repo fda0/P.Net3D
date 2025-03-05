@@ -5,7 +5,7 @@
 #define GPU_CLEAR_COLOR_A 1.0f
 #define GPU_JOINT_TRANSFORMS_MAX_SIZE (sizeof(Mat4)*62)
 
-static SDL_GPUBuffer *Gpu_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, const char *name)
+static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, const char *name)
 {
   SDL_GPUBufferCreateInfo desc = {.usage = usage, .size = size};
   SDL_GPUBuffer *result = SDL_CreateGPUBuffer(APP.gpu.device, &desc);
@@ -14,7 +14,7 @@ static SDL_GPUBuffer *Gpu_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, 
   return result;
 }
 
-static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
+static SDL_GPUTexture *GPU_CreateDepthTexture(U32 width, U32 height)
 {
   SDL_GPUTextureCreateInfo createinfo = {
     .type = SDL_GPU_TEXTURETYPE_2D,
@@ -34,7 +34,7 @@ static SDL_GPUTexture *Gpu_CreateDepthTexture(U32 width, U32 height)
   return result;
 }
 
-static SDL_GPUTexture *Gpu_CreateMSAATexture(U32 width, U32 height)
+static SDL_GPUTexture *GPU_CreateMSAATexture(U32 width, U32 height)
 {
   if (APP.gpu.sample_count == SDL_GPU_SAMPLECOUNT_1)
     return 0;
@@ -56,7 +56,7 @@ static SDL_GPUTexture *Gpu_CreateMSAATexture(U32 width, U32 height)
   return result;
 }
 
-static SDL_GPUTexture *Gpu_CreateResolveTexture(U32 width, U32 height)
+static SDL_GPUTexture *GPU_CreateResolveTexture(U32 width, U32 height)
 {
   if (APP.gpu.sample_count == SDL_GPU_SAMPLECOUNT_1)
     return 0;
@@ -78,7 +78,7 @@ static SDL_GPUTexture *Gpu_CreateResolveTexture(U32 width, U32 height)
   return result;
 }
 
-static void Gpu_ProcessWindowResize()
+static void GPU_ProcessWindowResize()
 {
   U32 draw_width, draw_height;
   SDL_GetWindowSizeInPixels(APP.window, (int *)&draw_width, (int *)&draw_height);
@@ -93,16 +93,16 @@ static void Gpu_ProcessWindowResize()
     if (APP.gpu.tex_resolve)
       SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
 
-    APP.gpu.tex_depth = Gpu_CreateDepthTexture(draw_width, draw_height);
-    APP.gpu.tex_msaa = Gpu_CreateMSAATexture(draw_width, draw_height);
-    APP.gpu.tex_resolve = Gpu_CreateResolveTexture(draw_width, draw_height);
+    APP.gpu.tex_depth = GPU_CreateDepthTexture(draw_width, draw_height);
+    APP.gpu.tex_msaa = GPU_CreateMSAATexture(draw_width, draw_height);
+    APP.gpu.tex_resolve = GPU_CreateResolveTexture(draw_width, draw_height);
   }
 
   APP.gpu.draw_width = draw_width;
   APP.gpu.draw_height = draw_height;
 }
 
-static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U32 data_size)
+static void GPU_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U32 data_size)
 {
   // create transfer buffer
   SDL_GPUTransferBufferCreateInfo trans_desc =
@@ -143,7 +143,7 @@ static void Gpu_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U32 data_s
   SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
 }
 
-static void Gpu_TransferTexture(SDL_GPUTexture *gpu_tex,
+static void GPU_TransferTexture(SDL_GPUTexture *gpu_tex,
                                 U32 layer, U32 w, U32 h,
                                 void *data, U32 data_size)
 {
@@ -189,7 +189,7 @@ static void Gpu_TransferTexture(SDL_GPUTexture *gpu_tex,
 }
 
 
-static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultPipeline(SDL_GPUColorTargetDescription *color,
+static SDL_GPUGraphicsPipelineCreateInfo GPU_DefaultPipeline(SDL_GPUColorTargetDescription *color,
                                                              SDL_GPUShader *vertex,
                                                              SDL_GPUShader *fragment)
 {
@@ -220,7 +220,7 @@ static SDL_GPUGraphicsPipelineCreateInfo Gpu_DefaultPipeline(SDL_GPUColorTargetD
   return pipeline;
 }
 
-static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
+static void GPU_InitModelBuffers(bool is_skinned, U32 model_index)
 {
   void *vertices = 0;
   U32 vertices_size = 0;
@@ -230,8 +230,8 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
   const char *ind_buf_name = "";
   const char *inst_buf_name = "";
   U32 instances_size = (is_skinned ?
-                        RD_MAX_SKINNED_INSTANCES * sizeof(Rdr_SkinnedInstance) :
-                        RD_MAX_RIGID_INSTANCES * sizeof(Rdr_RigidInstance));
+                        RD_MAX_SKINNED_INSTANCES * sizeof(RDR_SkinnedInstance) :
+                        RD_MAX_RIGID_INSTANCES * sizeof(RDR_RigidInstance));
 
   if (is_skinned)
   {
@@ -278,35 +278,35 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
     }
   }
 
-  Gpu_ModelBuffers *models_base = (is_skinned ? APP.gpu.skinneds : APP.gpu.rigids);
-  Gpu_ModelBuffers *model = models_base + model_index;
+  GPU_ModelBuffers *models_base = (is_skinned ? APP.gpu.skinneds : APP.gpu.rigids);
+  GPU_ModelBuffers *model = models_base + model_index;
   model->ind_count = indices_size / sizeof(U16);
 
   // create model vertex buffer
-  model->vert_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, vertices_size, vrt_buf_name);
+  model->vert_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, vertices_size, vrt_buf_name);
   Assert(model->vert_buf); // @todo report err
 
   // create model index buffer
-  model->ind_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, indices_size, ind_buf_name);
+  model->ind_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, indices_size, ind_buf_name);
   Assert(model->ind_buf); // @todo report err
 
   // create model per instance storage buffer
-  model->inst_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, instances_size, inst_buf_name);
+  model->inst_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, instances_size, inst_buf_name);
   Assert(model->inst_buf); // @todo report err
 
   if (is_skinned)
   {
     APP.gpu.skinned_pose_bufs[model_index] =
-      Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                       RD_MAX_SKINNED_INSTANCES * sizeof(Rdr_SkinnedPose),
+      GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+                       RD_MAX_SKINNED_INSTANCES * sizeof(RDR_SkinnedPose),
                        "skinned_pose_buf (todo: add model name)");
   }
 
-  Gpu_TransferBuffer(model->vert_buf, vertices, vertices_size);
-  Gpu_TransferBuffer(model->ind_buf, indices, indices_size);
+  GPU_TransferBuffer(model->vert_buf, vertices, vertices_size);
+  GPU_TransferBuffer(model->ind_buf, indices, indices_size);
 }
 
-static SDL_GPUTexture *Gpu_CreateAndLoadTexture2DArray(const char **paths, U64 path_count,
+static SDL_GPUTexture *GPU_CreateAndLoadTexture2DArray(const char **paths, U64 path_count,
                                                        const char *texture_name)
 {
   Arena *a = APP.tmp;
@@ -360,7 +360,7 @@ static SDL_GPUTexture *Gpu_CreateAndLoadTexture2DArray(const char **paths, U64 p
     }
 
     // @todo these transfer could be optimized
-    Gpu_TransferTexture(result,
+    GPU_TransferTexture(result,
                         i, imgs[i]->w, imgs[i]->h,
                         buffer, img_size);
 
@@ -382,7 +382,7 @@ static SDL_GPUTexture *Gpu_CreateAndLoadTexture2DArray(const char **paths, U64 p
   return result;
 }
 
-static void Gpu_Init()
+static void GPU_Init()
 {
   // preapre props
   {
@@ -426,7 +426,7 @@ static void Gpu_Init()
   {
     ForU32(model_index, RdrRigid_COUNT)
     {
-      Gpu_InitModelBuffers(false, model_index);
+      GPU_InitModelBuffers(false, model_index);
     }
 
     SDL_GPUShader *vertex_shader = 0;
@@ -466,7 +466,7 @@ static void Gpu_Init()
     }
 
     SDL_GPUGraphicsPipelineCreateInfo pipeline =
-      Gpu_DefaultPipeline(&color_desc, vertex_shader, fragment_shader);
+      GPU_DefaultPipeline(&color_desc, vertex_shader, fragment_shader);
 
     pipeline.vertex_input_state = (SDL_GPUVertexInputState)
     {
@@ -475,7 +475,7 @@ static void Gpu_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(Rdr_RigidVertex),
+          .pitch = sizeof(RDR_RigidVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -515,7 +515,7 @@ static void Gpu_Init()
   {
     ForU32(model_index, RdrSkinned_COUNT)
     {
-      Gpu_InitModelBuffers(true, model_index);
+      GPU_InitModelBuffers(true, model_index);
     }
 
     SDL_GPUShader *vertex_shader = 0;
@@ -555,7 +555,7 @@ static void Gpu_Init()
     }
 
     SDL_GPUGraphicsPipelineCreateInfo pipeline =
-      Gpu_DefaultPipeline(&color_desc, vertex_shader, fragment_shader);
+      GPU_DefaultPipeline(&color_desc, vertex_shader, fragment_shader);
 
     pipeline.vertex_input_state = (SDL_GPUVertexInputState)
     {
@@ -564,7 +564,7 @@ static void Gpu_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(Rdr_SkinnedVertex),
+          .pitch = sizeof(RDR_SkinnedVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -610,17 +610,17 @@ static void Gpu_Init()
   // Wall pipeline
   {
     // create wall vertex buffer
-    APP.gpu.wall_vert_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+    APP.gpu.wall_vert_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
                                              sizeof(APP.rdr.wall_verts),
                                              "Wall vertex buffer");
     {
-      Rdr_RigidInstance inst = {};
+      RDR_RigidInstance inst = {};
       inst.transform = Mat4_Identity();
       inst.color = Color32_RGBf(1,1,1);
-      APP.gpu.wall_inst_buf = Gpu_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+      APP.gpu.wall_inst_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
                                                sizeof(inst),
                                                "Wall instance buffer");
-      Gpu_TransferBuffer(APP.gpu.wall_inst_buf, &inst, sizeof(inst));
+      GPU_TransferBuffer(APP.gpu.wall_inst_buf, &inst, sizeof(inst));
     }
 
     // Load textures
@@ -630,7 +630,7 @@ static void Gpu_Init()
         "../res/tex/1.jpg",
         "../res/tex/2.jpg",
       };
-      APP.gpu.wall_tex = Gpu_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain tex");
+      APP.gpu.wall_tex = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain tex");
     }
 
     {
@@ -642,7 +642,7 @@ static void Gpu_Init()
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Displacement.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_AmbientOcclusion.jpg",
       };
-      APP.gpu.wall_pbr_tex = Gpu_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain PBR tex");
+      APP.gpu.wall_pbr_tex = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain PBR tex");
     }
 
     // Texture sampler
@@ -698,7 +698,7 @@ static void Gpu_Init()
     }
 
     SDL_GPUGraphicsPipelineCreateInfo pipeline =
-      Gpu_DefaultPipeline(&color_desc, vertex_shader, fragment_shader);
+      GPU_DefaultPipeline(&color_desc, vertex_shader, fragment_shader);
 
     pipeline.vertex_input_state = (SDL_GPUVertexInputState)
     {
@@ -707,7 +707,7 @@ static void Gpu_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(Rdr_WallVertex),
+          .pitch = sizeof(RDR_WallVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -749,10 +749,10 @@ static void Gpu_Init()
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
   }
 
-  Gpu_ProcessWindowResize();
+  GPU_ProcessWindowResize();
 }
 
-static void Gpu_Deinit()
+static void GPU_Deinit()
 {
   SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.rigid_pipeline);
   SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.skinned_pipeline);
@@ -785,8 +785,8 @@ static void Gpu_Deinit()
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.wall_pbr_tex);
 }
 
-static void Gpu_DrawModelBuffers(SDL_GPURenderPass *pass,
-                                 Gpu_ModelBuffers *model, U32 instance_count,
+static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
+                                 GPU_ModelBuffers *model, U32 instance_count,
                                  SDL_GPUBuffer *additional_storage_buf)
 {
   if (!instance_count)
@@ -811,7 +811,7 @@ static void Gpu_DrawModelBuffers(SDL_GPURenderPass *pass,
   SDL_DrawGPUIndexedPrimitives(pass, model->ind_count, instance_count, 0, 0, 0);
 }
 
-static void Gpu_Iterate()
+static void GPU_Iterate()
 {
   SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
   Assert(cmd); // @todo report err
@@ -828,39 +828,39 @@ static void Gpu_Iterate()
     return;
   }
 
-  Gpu_ProcessWindowResize();
+  GPU_ProcessWindowResize();
 
   // upload wall vertices
   if (APP.rdr.wall_vert_count)
   {
-    Gpu_TransferBuffer(APP.gpu.wall_vert_buf, APP.rdr.wall_verts, sizeof(APP.rdr.wall_verts));
+    GPU_TransferBuffer(APP.gpu.wall_vert_buf, APP.rdr.wall_verts, sizeof(APP.rdr.wall_verts));
   }
 
   // upload model instance data
   ForArray(i, APP.gpu.rigids)
   {
-    Gpu_ModelBuffers *gpu_model = APP.gpu.rigids + i;
-    Rdr_Rigid *rigid = APP.rdr.rigids + i;
+    GPU_ModelBuffers *gpu_model = APP.gpu.rigids + i;
+    RDR_Rigid *rigid = APP.rdr.rigids + i;
     if (rigid->instance_count)
     {
-      Gpu_TransferBuffer(gpu_model->inst_buf,
+      GPU_TransferBuffer(gpu_model->inst_buf,
                          rigid->instances,
                          rigid->instance_count * sizeof(rigid->instances[0]));
     }
   }
   ForArray(i, APP.gpu.skinneds)
   {
-    Gpu_ModelBuffers *gpu_model = APP.gpu.skinneds + i;
-    Rdr_Skinned *skinned = APP.rdr.skinneds + i;
+    GPU_ModelBuffers *gpu_model = APP.gpu.skinneds + i;
+    RDR_Skinned *skinned = APP.rdr.skinneds + i;
     SDL_GPUBuffer *pose_buf = APP.gpu.skinned_pose_bufs[i];
 
     if (skinned->instance_count)
     {
-      Gpu_TransferBuffer(gpu_model->inst_buf,
+      GPU_TransferBuffer(gpu_model->inst_buf,
                          skinned->instances,
                          skinned->instance_count * sizeof(skinned->instances[0]));
 
-      Gpu_TransferBuffer(pose_buf,
+      GPU_TransferBuffer(pose_buf,
                          skinned->poses,
                          skinned->instance_count * sizeof(skinned->poses[0]));
     }
@@ -949,20 +949,20 @@ static void Gpu_Iterate()
     SDL_BindGPUGraphicsPipeline(pass, APP.gpu.rigid_pipeline);
     ForArray(i, APP.gpu.rigids)
     {
-      Gpu_ModelBuffers *model = APP.gpu.rigids + i;
-      Rdr_Rigid *rigid = APP.rdr.rigids + i;
-      Gpu_DrawModelBuffers(pass, model, rigid->instance_count, 0);
+      GPU_ModelBuffers *model = APP.gpu.rigids + i;
+      RDR_Rigid *rigid = APP.rdr.rigids + i;
+      GPU_DrawModelBuffers(pass, model, rigid->instance_count, 0);
     }
 
     // skinned
     SDL_BindGPUGraphicsPipeline(pass, APP.gpu.skinned_pipeline);
     ForArray(i, APP.gpu.skinneds)
     {
-      Gpu_ModelBuffers *model = APP.gpu.skinneds + i;
-      Rdr_Skinned *skinned = APP.rdr.skinneds + i;
+      GPU_ModelBuffers *model = APP.gpu.skinneds + i;
+      RDR_Skinned *skinned = APP.rdr.skinneds + i;
 
       SDL_GPUBuffer *pose_buf = APP.gpu.skinned_pose_bufs[i];
-      Gpu_DrawModelBuffers(pass, model, skinned->instance_count, pose_buf);
+      GPU_DrawModelBuffers(pass, model, skinned->instance_count, pose_buf);
     }
 
     SDL_EndGPURenderPass(pass);

@@ -10,7 +10,7 @@ static void Game_AnimateObjects()
   {
     Object *obj = APP.all_objects + obj_index;
 
-    if (Obj_HasAllFlags(obj, ObjFlag_AnimateRotation))
+    if (OBJ_HasAllFlags(obj, ObjFlag_AnimateRotation))
     {
       Quat q0 = obj->l.animated_rot;
       Quat q1 = obj->s.rotation;
@@ -24,7 +24,7 @@ static void Game_AnimateObjects()
       obj->l.animated_rot = Quat_Normalize(Quat_Mix(q0, q1, w0, w1));
     }
 
-    if (Obj_HasAnyFlag(obj, ObjFlag_AnimatePosition))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_AnimatePosition))
     {
       V3 pos = V3_Make_XY_Z(obj->s.p, (obj->s.hide_above_map ? 200 : 0));
       V3 delta = V3_Sub(pos, obj->l.animated_p);
@@ -40,7 +40,7 @@ static void Game_AnimateObjects()
       }
     }
 
-    if (Obj_HasAnyFlag(obj, ObjFlag_AnimateT))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateT))
     {
       if (obj->s.animation_index == 23)
       {
@@ -64,32 +64,32 @@ static void Game_DrawObjects()
   {
     Object *obj = APP.all_objects + obj_index;
 
-    if (Obj_HasAnyFlag(obj, ObjFlag_DrawTeapot | ObjFlag_DrawFlag | ObjFlag_DrawWorker))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_DrawTeapot | ObjFlag_DrawFlag | ObjFlag_DrawWorker))
     {
       V3 pos = V3_Make_XY_Z(obj->s.p, 0);
-      if (Obj_HasAnyFlag(obj, ObjFlag_AnimatePosition))
+      if (OBJ_HasAnyFlag(obj, ObjFlag_AnimatePosition))
       {
         pos = obj->l.animated_p;
       }
 
       Mat4 transform = Mat4_Translation(pos);
-      if (Obj_HasAnyFlag(obj, ObjFlag_AnimateRotation))
+      if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateRotation))
       {
         Mat4 rot_mat = Mat4_Rotation_Quat(obj->l.animated_rot);
         transform = Mat4_Mul(transform, rot_mat); // rotate first, translate second
       }
 
-      if (Obj_HasAnyFlag(obj, ObjFlag_DrawTeapot))
-        Rdr_AddRigid(RdrRigid_Teapot, transform, obj->s.color);
+      if (OBJ_HasAnyFlag(obj, ObjFlag_DrawTeapot))
+        RDR_AddRigid(RdrRigid_Teapot, transform, obj->s.color);
 
-      if (Obj_HasAnyFlag(obj, ObjFlag_DrawFlag))
-        Rdr_AddRigid(RdrRigid_Flag, transform, obj->s.color);
+      if (OBJ_HasAnyFlag(obj, ObjFlag_DrawFlag))
+        RDR_AddRigid(RdrRigid_Flag, transform, obj->s.color);
 
-      if (Obj_HasAnyFlag(obj, ObjFlag_DrawWorker))
-        Rdr_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
+      if (OBJ_HasAnyFlag(obj, ObjFlag_DrawWorker))
+        RDR_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
-    if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionWall | ObjFlag_DrawCollisionGround))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionWall | ObjFlag_DrawCollisionGround))
     {
       U32 face_count = 6;
       U32 vertices_per_face = 3*2;
@@ -97,7 +97,7 @@ static void Game_DrawObjects()
 
       if (APP.rdr.wall_vert_count + vert_count <= ArrayCount(APP.rdr.wall_verts))
       {
-        Rdr_WallVertex *wall_verts = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
+        RDR_WallVertex *wall_verts = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
         APP.rdr.wall_vert_count += vert_count;
 
         ForU32(i, vert_count)
@@ -108,7 +108,7 @@ static void Game_DrawObjects()
 
         float height = 40.f;
         float bot_z = 0;
-        if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
+        if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
           bot_z = -height;
         float top_z = bot_z + height;
 
@@ -171,7 +171,7 @@ static void Game_DrawObjects()
         float w3 = V2_Length(V2_Sub(collision.arr[3], collision.arr[0]));
 
         float texels_per_cm = 0.05f;
-        if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
+        if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
           texels_per_cm = 0.025f;
 
         ForU32(face_i, face_count)
@@ -212,7 +212,7 @@ static void Game_DrawObjects()
           }
 
           float tex_z = 0.f;
-          if (Obj_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
+          if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
             tex_z = 1.f;
 
           ForU32(vert_i, vertices_per_face)
@@ -264,14 +264,14 @@ static void Game_Iterate()
     APP.at = WrapF(0.f, 1000.f, APP.at + APP.dt);
   }
 
-  Net_IterateReceive();
+  NET_IterateReceive();
 
   if (APP.debug.single_tick_stepping)
   {
     if (APP.debug.unpause_one_tick)
     {
       APP.tick_id += 1;
-      Tick_Iterate();
+      TICK_Iterate();
       APP.debug.unpause_one_tick = false;
     }
   }
@@ -281,31 +281,31 @@ static void Game_Iterate()
     {
       APP.tick_id += 1;
       APP.tick_dt_accumulator -= TIME_STEP;
-      Tick_Iterate();
+      TICK_Iterate();
     }
   }
 
-  Net_IterateTimeoutUsers();
-  Net_IterateSend();
+  NET_IterateTimeoutUsers();
+  NET_IterateSend();
 
-  if (Key_Pressed(SDL_SCANCODE_RETURN))
+  if (KEY_Pressed(SDL_SCANCODE_RETURN))
     APP.debug.noclip_camera = !APP.debug.noclip_camera;
 
   // move camera; calculate camera scale
   if (APP.debug.noclip_camera)
   {
     V3 camera_dir = {0};
-    if (Key_Held(SDL_SCANCODE_UP))    camera_dir.x += 1;
-    if (Key_Held(SDL_SCANCODE_DOWN))  camera_dir.x -= 1;
-    if (Key_Held(SDL_SCANCODE_LEFT))  camera_dir.y += 1;
-    if (Key_Held(SDL_SCANCODE_RIGHT)) camera_dir.y -= 1;
-    if (Key_Held(SDL_SCANCODE_SPACE)) camera_dir.z += 1;
-    if (Key_Held(SDL_SCANCODE_LSHIFT) || Key_Held(SDL_SCANCODE_RSHIFT)) camera_dir.z -= 1;
+    if (KEY_Held(SDL_SCANCODE_UP))    camera_dir.x += 1;
+    if (KEY_Held(SDL_SCANCODE_DOWN))  camera_dir.x -= 1;
+    if (KEY_Held(SDL_SCANCODE_LEFT))  camera_dir.y += 1;
+    if (KEY_Held(SDL_SCANCODE_RIGHT)) camera_dir.y -= 1;
+    if (KEY_Held(SDL_SCANCODE_SPACE)) camera_dir.z += 1;
+    if (KEY_Held(SDL_SCANCODE_LSHIFT) || KEY_Held(SDL_SCANCODE_RSHIFT)) camera_dir.z -= 1;
     camera_dir = V3_Normalize(camera_dir);
     camera_dir = V3_Scale(camera_dir, APP.dt * 200.f);
     APP.camera_p = V3_Add(APP.camera_p, camera_dir);
 
-    if (Key_Held(Key_MouseLeft))
+    if (KEY_Held(KEY_MouseLeft))
     {
       float rot_speed = 0.1f * APP.dt;
       APP.camera_rot.z += rot_speed * APP.mouse_delta.x;
@@ -315,8 +315,8 @@ static void Game_Iterate()
   }
   else
   {
-    Object *player = Obj_Get(APP.client.player_key, ObjStorage_Net);
-    if (!Obj_IsNil(player))
+    Object *player = OBJ_Get(APP.client.player_key, ObjStorage_Net);
+    if (!OBJ_IsNil(player))
     {
       APP.camera_p = V3_Make_XY_Z(player->s.p, 130.f);
       APP.camera_p.x -= 60.f;
@@ -379,18 +379,18 @@ static void Game_Iterate()
 
   Game_AnimateObjects();
 
-  Object *marker = Obj_Get(APP.pathing_marker, ObjStorage_Local);
-  if (!Obj_IsNil(marker))
+  Object *marker = OBJ_Get(APP.pathing_marker, ObjStorage_Local);
+  if (!OBJ_IsNil(marker))
   {
-    if (Key_Held(SDL_SCANCODE_W) ||
-        Key_Held(SDL_SCANCODE_S) ||
-        Key_Held(SDL_SCANCODE_A) ||
-        Key_Held(SDL_SCANCODE_D))
+    if (KEY_Held(SDL_SCANCODE_W) ||
+        KEY_Held(SDL_SCANCODE_S) ||
+        KEY_Held(SDL_SCANCODE_A) ||
+        KEY_Held(SDL_SCANCODE_D))
     {
       marker->s.hide_above_map = true;
     }
 
-    if (Key_Held(Key_MouseRight) && APP.world_mouse_valid)
+    if (KEY_Held(KEY_MouseRight) && APP.world_mouse_valid)
     {
       marker->s.flags |= ObjFlag_DrawFlag;
       marker->s.p = APP.world_mouse;
@@ -398,7 +398,7 @@ static void Game_Iterate()
 
       marker->l.animated_p.x = marker->s.p.x;
       marker->l.animated_p.y = marker->s.p.y;
-      if (Key_Pressed(Key_MouseRight))
+      if (KEY_Pressed(KEY_MouseRight))
         marker->l.animated_p.z = 50.f;
 
       APP.pathing_marker_set = true;
@@ -419,7 +419,7 @@ static void Game_Init()
     APP.log_filter &= ~(LogFlags_NetDatagram);
   }
 
-  Net_Init();
+  NET_Init();
 
   APP.frame_time = SDL_GetTicks();
   APP.camera_fov_y = 0.19f;
@@ -433,13 +433,13 @@ static void Game_Init()
     float thickness = 20.f;
     float length = 400.f;
     float off = length*0.5f - thickness*0.5f;
-    Obj_CreateWall((V2){off, 0}, (V2){thickness, length});
-    Obj_CreateWall((V2){-off, 0}, (V2){thickness, length});
-    Obj_CreateWall((V2){0, off}, (V2){length, thickness});
-    Obj_CreateWall((V2){0,-off}, (V2){length*0.5f, thickness});
+    OBJ_CreateWall((V2){off, 0}, (V2){thickness, length});
+    OBJ_CreateWall((V2){-off, 0}, (V2){thickness, length});
+    OBJ_CreateWall((V2){0, off}, (V2){length, thickness});
+    OBJ_CreateWall((V2){0,-off}, (V2){length*0.5f, thickness});
 
     {
-      Object *rotated_wall = Obj_CreateWall((V2){0.75f*off, -0.5f*off},
+      Object *rotated_wall = OBJ_CreateWall((V2){0.75f*off, -0.5f*off},
                                             (V2){thickness, 5.f*thickness});
 
       Vertices_Rotate(rotated_wall->s.collision.verts.arr,
@@ -450,7 +450,7 @@ static void Game_Init()
     }
 
     {
-      Object *ground = Obj_Create(ObjStorage_Local, ObjFlag_DrawCollisionGround);
+      Object *ground = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollisionGround);
       ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
       Collision_RecalculateNormals(&ground->s.collision);
     }
@@ -458,6 +458,6 @@ static void Game_Init()
 
   // pathing marker
   {
-    APP.pathing_marker = Obj_Create(ObjStorage_Local, ObjFlag_AnimatePosition)->s.key;
+    APP.pathing_marker = OBJ_Create(ObjStorage_Local, ObjFlag_AnimatePosition)->s.key;
   }
 }

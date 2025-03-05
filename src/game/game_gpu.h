@@ -4,7 +4,7 @@ typedef struct
   SDL_GPUBuffer *ind_buf;
   SDL_GPUBuffer *inst_buf;
   U32 ind_count;
-} Gpu_ModelBuffers;
+} GPU_ModelBuffers;
 
 typedef struct
 {
@@ -23,8 +23,8 @@ typedef struct
   SDL_GPUSampleCount sample_count;
 
   // resources
-  Gpu_ModelBuffers rigids[RdrRigid_COUNT];
-  Gpu_ModelBuffers skinneds[RdrSkinned_COUNT];
+  GPU_ModelBuffers rigids[RdrRigid_COUNT];
+  GPU_ModelBuffers skinneds[RdrSkinned_COUNT];
   SDL_GPUBuffer *skinned_pose_bufs[RdrSkinned_COUNT];
 
   SDL_GPUBuffer *wall_vert_buf;
@@ -35,4 +35,4 @@ typedef struct
 
   SDL_PropertiesID clear_depth_props;
   SDL_PropertiesID clear_color_props;
-} Gpu_State;
+} GPU_State;

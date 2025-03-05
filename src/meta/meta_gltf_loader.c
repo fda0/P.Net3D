@@ -476,7 +476,7 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
   M_AssertAlways(data->skins_count == 1);
   U64 joints_count = data->skins[0].joints_count;
 
-  Pr_S8(out, S8Lit("static Rdr_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
+  Pr_S8(out, S8Lit("static RDR_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
   ForU64(vert_i, vert_count)
   {
     Pr_S8(out, S8Lit("  /*pos*/"));

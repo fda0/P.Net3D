@@ -36,12 +36,12 @@ typedef enum
 
 typedef enum
 {
-  Key_START = SDL_SCANCODE_COUNT + 1,
+  KEY_START = SDL_SCANCODE_COUNT + 1,
 
-  Key_MouseLeft,
-  Key_MouseRight,
+  KEY_MouseLeft,
+  KEY_MouseRight,
 
-  Key_COUNT
+  KEY_COUNT
 } KeyCode;
 
 typedef struct
@@ -56,8 +56,8 @@ struct AppState
   // SDL, window stuff
   SDL_Window* window;
   //SDL_Renderer* renderer;
-  Gpu_State gpu;
-  Rdr_State rdr;
+  GPU_State gpu;
+  RDR_State rdr;
 
   Arena *tmp;
   Arena *a_frame;
@@ -75,7 +75,7 @@ struct AppState
   U32 log_filter; // active log filer flags
 
   // special objects
-  Obj_Key pathing_marker;
+  OBJ_Key pathing_marker;
   bool pathing_marker_set;
 
   // camera
@@ -101,7 +101,7 @@ struct AppState
   V2 mouse_delta;
   bool world_mouse_valid;
   V2 world_mouse;
-  Key keys[Key_COUNT];
+  Key keys[KEY_COUNT];
 
   // objects
   union
@@ -121,17 +121,17 @@ struct AppState
     bool is_server;
     SDLNet_DatagramSocket *socket;
 
-    Net_User server_user;
+    NET_User server_user;
 
     // msg payload
     bool packet_err; // set on internal buffer overflow errors etc
-    Net_PacketHeader packet_header;
+    NET_PacketHeader packet_header;
     U8 packet_payload_buf[1024 * 1024 * 1]; // 1 MB scratch buffer for network payload construction
     U32 payload_used;
   } net;
 
-  Client_State client;
-  Server_State server;
+  CLIENT_State client;
+  SERVER_State server;
 
   // debug
   struct

@@ -4,6 +4,6 @@ typedef struct
   // action buttons etc will be added here
   bool is_pathing;
   V2 pathing_world_p;
-} Tick_Input;
+} TICK_Input;
 
-static Tick_Input Tick_NormalizeInput(Tick_Input input);
+static TICK_Input TICK_NormalizeInput(TICK_Input input);

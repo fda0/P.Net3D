@@ -22,25 +22,25 @@ typedef enum
   ObjFlag_DrawWorker          = (1 << 7),
   ObjFlag_DrawCollisionWall   = (1 << 8),
   ObjFlag_DrawCollisionGround = (1 << 9),
-} Obj_Flags;
+} OBJ_Flags;
 
 typedef enum
 {
   ObjStorage_Local = (1 << 0),
   ObjStorage_Net   = (1 << 1),
   ObjStorage_All = (ObjStorage_Local | ObjStorage_Net)
-} Obj_Category;
+} OBJ_Category;
 
 typedef struct
 {
   U32 serial_number;
   U32 index;
-} Obj_Key;
+} OBJ_Key;
 
 typedef struct
 {
   // Object data that's synced with the server
-  Obj_Key key;
+  OBJ_Key key;
   U32 flags;
   bool init;
   V2 p; // position of center
@@ -58,7 +58,7 @@ typedef struct
   V2 pathing_dest_p;
 
   Collision_Data collision;
-} Obj_Sync;
+} OBJ_Sync;
 
 typedef struct
 {
@@ -66,14 +66,14 @@ typedef struct
   Quat animated_rot; // animates towards rotation
   V3 animated_p; // animates towards (V3){p.x, p.y, 0}
   float animation_t;
-} Obj_Local;
+} OBJ_Local;
 
 typedef struct
 {
-  Obj_Sync s;
-  Obj_Local l;
+  OBJ_Sync s;
+  OBJ_Local l;
 } Object;
 
-static Obj_Sync Obj_SyncLerp(Obj_Sync prev, Obj_Sync next, float t);
-static Object *Obj_CreatePlayer();
+static OBJ_Sync OBJ_SyncLerp(OBJ_Sync prev, OBJ_Sync next, float t);
+static Object *OBJ_CreatePlayer();
 static void Collision_RecalculateNormals(Collision_Data *collision);

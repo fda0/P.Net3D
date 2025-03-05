@@ -1,34 +1,34 @@
-static void Rdr_AddRigid(Rdr_RigidType type, Mat4 transform, U32 color)
+static void RDR_AddRigid(RDR_RigidType type, Mat4 transform, U32 color)
 {
   Assert(type < RdrRigid_COUNT);
 
-  Rdr_Rigid *model = APP.rdr.rigids + type;
+  RDR_Rigid *model = APP.rdr.rigids + type;
   if (model->instance_count < ArrayCount(model->instances))
   {
-    Rdr_RigidInstance *inst = model->instances + model->instance_count;
+    RDR_RigidInstance *inst = model->instances + model->instance_count;
     model->instance_count += 1;
-    *inst = (Rdr_RigidInstance)
+    *inst = (RDR_RigidInstance)
     {
       .transform = transform,
       .color = color,
     };
   }
 }
-static void Rdr_AddSkinned(Rdr_SkinnedType type, Mat4 transform, U32 color,
+static void RDR_AddSkinned(RDR_SkinnedType type, Mat4 transform, U32 color,
                            U32 animation_index, float animation_t)
 {
   Assert(type < RdrSkinned_COUNT);
 
-  Rdr_Skinned *model = APP.rdr.skinneds + type;
+  RDR_Skinned *model = APP.rdr.skinneds + type;
   if (model->instance_count < ArrayCount(model->instances))
   {
     U32 inst_index = model->instance_count;
     model->instance_count += 1;
 
-    Rdr_SkinnedInstance *inst = model->instances + inst_index;
-    Rdr_SkinnedPose *pose = model->poses + inst_index;
+    RDR_SkinnedInstance *inst = model->instances + inst_index;
+    RDR_SkinnedPose *pose = model->poses + inst_index;
 
-    *inst = (Rdr_SkinnedInstance)
+    *inst = (RDR_SkinnedInstance)
     {
       .transform = transform,
       .color = color,

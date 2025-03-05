@@ -1,24 +1,24 @@
 READ_ONLY static Object nil_object = {};
 
-static Object *Obj_GetNil()
+static Object *OBJ_GetNil()
 {
   return &nil_object;
 }
 
-static bool Obj_IsNil(Object *obj)
+static bool OBJ_IsNil(Object *obj)
 {
   return obj == &nil_object;
 }
 
-static bool Obj_KeyMatch(Obj_Key a, Obj_Key b)
+static bool OBJ_KeyMatch(OBJ_Key a, OBJ_Key b)
 {
   return (a.serial_number == b.serial_number &&
           a.index == b.index);
 }
 
-static Object *Obj_Get(Obj_Key key, U32 storage_mask)
+static Object *OBJ_Get(OBJ_Key key, U32 storage_mask)
 {
-  Object *result = Obj_GetNil();
+  Object *result = OBJ_GetNil();
 
   bool index_in_valid_storage = false;
   {
@@ -36,42 +36,42 @@ static Object *Obj_Get(Obj_Key key, U32 storage_mask)
   if (index_in_valid_storage)
   {
     Object *obj = APP.all_objects + key.index;
-    if (Obj_KeyMatch(obj->s.key, key))
+    if (OBJ_KeyMatch(obj->s.key, key))
       result = obj;
   }
   return result;
 }
 
-static bool Obj_SyncIsInit(Obj_Sync *sync)
+static bool OBJ_SyncIsInit(OBJ_Sync *sync)
 {
   return sync->init;
 }
 
-static bool Obj_HasData(Object *obj)
+static bool OBJ_HasData(Object *obj)
 {
   return !!obj->s.flags;
 }
 
-static bool Obj_HasAnyFlag(Object *obj, U32 flag)
+static bool OBJ_HasAnyFlag(Object *obj, U32 flag)
 {
   return !!(obj->s.flags & flag);
 }
-static bool Obj_HasAllFlags(Object *obj, U32 flags)
+static bool OBJ_HasAllFlags(Object *obj, U32 flags)
 {
   return (obj->s.flags & flags) == flags;
 }
 
-static Object *Obj_FromNetIndex(U32 net_index)
+static Object *OBJ_FromNetIndex(U32 net_index)
 {
   if (net_index > ArrayCount(APP.net_objects))
   {
-    return Obj_GetNil();
+    return OBJ_GetNil();
   }
 
   return APP.net_objects + net_index;
 }
 
-static Object *Obj_Create(Obj_Category storage, U32 flags)
+static Object *OBJ_Create(OBJ_Category storage, U32 flags)
 {
   bool matched_storage = false;
   Object *obj = 0;
@@ -84,7 +84,7 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
     ForArray(i, APP.const_objects)
     {
       Object *search = APP.const_objects + i;
-      if (!Obj_SyncIsInit(&search->s))
+      if (!OBJ_SyncIsInit(&search->s))
       {
         obj = search;
         break;
@@ -99,7 +99,7 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
     ForArray(i, APP.net_objects)
     {
       Object *search = APP.net_objects + i;
-      if (!Obj_SyncIsInit(&search->s))
+      if (!OBJ_SyncIsInit(&search->s))
       {
         obj = search;
         break;
@@ -108,7 +108,7 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
   }
 
   if (!obj)
-    return Obj_GetNil();
+    return OBJ_GetNil();
 
   // init object
   SDL_zerop(obj);
@@ -124,9 +124,9 @@ static Object *Obj_Create(Obj_Category storage, U32 flags)
   return obj;
 }
 
-static Object *Obj_CreateWall(V2 p, V2 dim)
+static Object *OBJ_CreateWall(V2 p, V2 dim)
 {
-  Object *obj = Obj_Create(ObjStorage_Local,
+  Object *obj = OBJ_Create(ObjStorage_Local,
                            ObjFlag_DrawCollisionWall | ObjFlag_Collide);
   obj->s.p = p;
   obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
@@ -135,9 +135,9 @@ static Object *Obj_CreateWall(V2 p, V2 dim)
   return obj;
 }
 
-static Object *Obj_CreatePlayer()
+static Object *OBJ_CreatePlayer()
 {
-  Object *player = Obj_Create(ObjStorage_Net,
+  Object *player = OBJ_Create(ObjStorage_Net,
                               ObjFlag_Move |
                               ObjFlag_Collide |
                               //ObjFlag_DrawTeapot |
