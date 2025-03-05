@@ -306,6 +306,82 @@ static void Gpu_InitModelBuffers(bool is_skinned, U32 model_index)
   Gpu_TransferBuffer(model->ind_buf, indices, indices_size);
 }
 
+static SDL_GPUTexture *Gpu_CreateAndLoadTexture2DArray(const char **paths, U64 path_count,
+                                                       const char *texture_name)
+{
+  Arena *a = APP.tmp;
+  ArenaScope scope0 = Arena_PushScope(a);
+
+  SDL_Surface **imgs = Alloc(a, SDL_Surface *, path_count);
+  ForU64(i, path_count)
+    imgs[i] = IMG_Load(paths[i]);
+
+  ForU64(i, path_count)
+  {
+    Assert(imgs[i]); // @todo report err & use fallback textures
+    Assert(imgs[0]->w == imgs[i]->w);
+    Assert(imgs[0]->h == imgs[i]->h);
+    Assert(imgs[0]->format == SDL_PIXELFORMAT_RGB24);
+  }
+
+  SDL_GPUTextureCreateInfo tex_info =
+  {
+    .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
+    .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+    .width = imgs[0]->w,
+    .height = imgs[0]->h,
+    .layer_count_or_depth = path_count,
+    .num_levels = 9,
+    .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
+  };
+  SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
+  SDL_SetGPUTextureName(APP.gpu.device, result, texture_name);
+
+  U32 img_size = imgs[0]->w * imgs[0]->h * 4;
+  ForU64(i, path_count)
+  {
+    ArenaScope scope1 = Arena_PushScope(a);
+
+    // temporary: convert rgb -> rgba
+    U8 *buffer = Alloc(a, U8, img_size);
+    U8 *pixels = (U8 *)imgs[i]->pixels;
+
+    ForI32(y, imgs[i]->h)
+    {
+      U8 *buffer_row = buffer + y*imgs[i]->w*4;
+      U8 *px_row = pixels + y*imgs[i]->pitch;
+      ForI32(x, imgs[i]->w)
+      {
+        buffer_row[x*4 + 0] = px_row[x*3 + 0];
+        buffer_row[x*4 + 1] = px_row[x*3 + 1];
+        buffer_row[x*4 + 2] = px_row[x*3 + 2];
+        buffer_row[x*4 + 3] = 255;
+      }
+    }
+
+    // @todo these transfer could be optimized
+    Gpu_TransferTexture(result,
+                        i, imgs[i]->w, imgs[i]->h,
+                        buffer, img_size);
+
+    Arena_PopScope(scope1);
+  }
+
+  ForU64(i, path_count)
+    SDL_DestroySurface(imgs[i]);
+
+  Arena_PopScope(scope0);
+
+  // Generate texture mipmap
+  {
+    SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+    SDL_GenerateMipmapsForGPUTexture(cmd, result);
+    SDL_SubmitGPUCommandBuffer(cmd);
+  }
+
+  return result;
+}
+
 static void Gpu_Init()
 {
   // preapre props
@@ -549,74 +625,24 @@ static void Gpu_Init()
 
     // Load textures
     {
-      SDL_Surface *imgs[] =
+      const char *paths[] =
       {
-        IMG_Load("../res/tex/1.jpg"),
-        IMG_Load("../res/tex/2.jpg"),
+        "../res/tex/1.jpg",
+        "../res/tex/2.jpg",
       };
-      ForArray(i, imgs)
-      {
-        Assert(imgs[i]); // @todo report err & use fallback textures
-        Assert(imgs[0]->w == imgs[i]->w);
-        Assert(imgs[0]->h == imgs[i]->h);
-        Assert(imgs[0]->pitch == imgs[i]->pitch);
-      }
-      Assert(imgs[0]->pitch == imgs[0]->w*3); // rgb format expected
-
-      SDL_GPUTextureCreateInfo tex_info =
-      {
-        .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-        .width = imgs[0]->w,
-        .height = imgs[0]->h,
-        .layer_count_or_depth = ArrayCount(imgs),
-        .num_levels = 9,
-        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
-      };
-      APP.gpu.tex_wall = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
-      SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.tex_wall, "Tex Wall");
-
-      U32 img_size = imgs[0]->w * imgs[0]->h * 4;
-      ForArray32(i, imgs)
-      {
-        ArenaScope scope = Arena_PushScope(APP.tmp);
-
-        // temporary: convert rgb -> rgba
-        U8 *buffer = Alloc(APP.tmp, U8, img_size);
-        U8 *pixels = (U8 *)imgs[i]->pixels;
-
-        ForI32(y, imgs[i]->h)
-        {
-          U8 *buffer_row = buffer + y*imgs[i]->w*4;
-          U8 *px_row = pixels + y*imgs[i]->pitch;
-          ForI32(x, imgs[i]->w)
-          {
-            buffer_row[x*4 + 0] = px_row[x*3 + 0];
-            buffer_row[x*4 + 1] = px_row[x*3 + 1];
-            buffer_row[x*4 + 2] = px_row[x*3 + 2];
-            buffer_row[x*4 + 3] = 255;
-          }
-        }
-
-        // @todo these transfer could be optimized
-        Gpu_TransferTexture(APP.gpu.tex_wall,
-                            i, imgs[i]->w, imgs[i]->h,
-                            buffer, img_size);
-
-        Arena_PopScope(scope);
-      }
-
-      ForArray(i, imgs)
-      {
-        SDL_DestroySurface(imgs[i]);
-      }
+      APP.gpu.wall_tex = Gpu_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain tex");
     }
 
-    // Generate texture mipmap
     {
-      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-      SDL_GenerateMipmapsForGPUTexture(cmd, APP.gpu.tex_wall);
-      SDL_SubmitGPUCommandBuffer(cmd);
+      const char *paths[] =
+      {
+        "../res/tex/PavingStones067/PavingStones067_1K-JPG_Color.jpg",
+        "../res/tex/PavingStones067/PavingStones067_1K-JPG_NormalDX.jpg",
+        "../res/tex/PavingStones067/PavingStones067_1K-JPG_Roughness.jpg",
+        "../res/tex/PavingStones067/PavingStones067_1K-JPG_Displacement.jpg",
+        "../res/tex/PavingStones067/PavingStones067_1K-JPG_AmbientOcclusion.jpg",
+      };
+      APP.gpu.wall_pbr_tex = Gpu_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain PBR tex");
     }
 
     // Texture sampler
@@ -755,7 +781,8 @@ static void Gpu_Deinit()
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_vert_buf);
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_inst_buf);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.wall_sampler);
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_wall);
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.wall_tex);
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.wall_pbr_tex);
 }
 
 static void Gpu_DrawModelBuffers(SDL_GPURenderPass *pass,
@@ -910,7 +937,7 @@ static void Gpu_Iterate()
       // bind fragment sampler
       SDL_GPUTextureSamplerBinding binding_sampl =
       {
-        .texture = APP.gpu.tex_wall,
+        .texture = APP.gpu.wall_tex,
         .sampler = APP.gpu.wall_sampler,
       };
       SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
