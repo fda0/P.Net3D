@@ -294,24 +294,26 @@ static void Game_Iterate()
   // move camera; calculate camera scale
   if (APP.debug.noclip_camera)
   {
-    V3 camera_dir = {0};
-    if (KEY_Held(SDL_SCANCODE_UP))    camera_dir.x += 1;
-    if (KEY_Held(SDL_SCANCODE_DOWN))  camera_dir.x -= 1;
-    if (KEY_Held(SDL_SCANCODE_LEFT))  camera_dir.y += 1;
-    if (KEY_Held(SDL_SCANCODE_RIGHT)) camera_dir.y -= 1;
-    if (KEY_Held(SDL_SCANCODE_SPACE)) camera_dir.z += 1;
-    if (KEY_Held(SDL_SCANCODE_LSHIFT) || KEY_Held(SDL_SCANCODE_RSHIFT)) camera_dir.z -= 1;
-    camera_dir = V3_Normalize(camera_dir);
-    camera_dir = V3_Scale(camera_dir, APP.dt * 200.f);
-    APP.camera_p = V3_Add(APP.camera_p, camera_dir);
-
     if (KEY_Held(KEY_MouseLeft))
     {
-      float rot_speed = 0.1f * APP.dt;
+      float rot_speed = 0.05f * APP.dt;
       APP.camera_rot.z += rot_speed * APP.mouse_delta.x;
       APP.camera_rot.y += rot_speed * APP.mouse_delta.y * (-2.f / 3.f);
+      APP.camera_rot.z = WrapF(-0.5f, 0.5f, APP.camera_rot.z);
+      APP.camera_rot.y = Clamp(-0.2f, 0.2f, APP.camera_rot.y);
     }
 
+    V3 move_dir = {0};
+    if (KEY_Held(SDL_SCANCODE_UP))    move_dir.x += 1;
+    if (KEY_Held(SDL_SCANCODE_DOWN))  move_dir.x -= 1;
+    if (KEY_Held(SDL_SCANCODE_LEFT))  move_dir.y += 1;
+    if (KEY_Held(SDL_SCANCODE_RIGHT)) move_dir.y -= 1;
+    if (KEY_Held(SDL_SCANCODE_SPACE)) move_dir.z += 1;
+    if (KEY_Held(SDL_SCANCODE_LSHIFT) || KEY_Held(SDL_SCANCODE_RSHIFT)) move_dir.z -= 1;
+    move_dir = V3_Normalize(move_dir);
+    move_dir = V3_Rotate(move_dir, Quat_FromAxisAngle_RH((V3){0,0,-1} /* @todo figure out why -1 here fixes things */, APP.camera_rot.z));
+    move_dir = V3_Scale(move_dir, APP.dt * 200.f);
+    APP.camera_p = V3_Add(APP.camera_p, move_dir);
   }
   else
   {
