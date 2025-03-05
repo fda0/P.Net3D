@@ -1,14 +1,14 @@
 #ifndef IS_RIGID
-  #define IS_RIGID 0
+#define IS_RIGID 0
 #endif
 #ifndef IS_SKINNED
-  #define IS_SKINNED 0
+#define IS_SKINNED 0
 #endif
 #ifndef IS_TEXTURED
-  #define IS_TEXTURED 0
+#define IS_TEXTURED 0
 #endif
 #if (IS_RIGID + IS_SKINNED + IS_TEXTURED) != 1
-  #error "(IS_RIGID + IS_SKINNED + IS_TEXTURED) has to be equal to 1"
+#error "(IS_RIGID + IS_SKINNED + IS_TEXTURED) has to be equal to 1"
 #endif
 
 #if IS_RIGID
@@ -60,17 +60,18 @@ struct VSInput
   uint InstanceIndex : SV_InstanceID;
 };
 
-struct VSOutput
+struct VertexToFragment
 {
-  float4 color    : TEXCOORD0;
-  float3 world_p  : TEXCOORD1;
-  float3 normal   : TEXCOORD2;
-
+  float4 color      : TEXCOORD0;
+  float3 world_p    : TEXCOORD1;
+  float3 normal     : TEXCOORD2;
 #if IS_TEXTURED
-  float3 uv       : TEXCOORD3;
+  float3 uv         : TEXCOORD3;
+  float3x3 rotation : TEXCOORD4;
+#else
+  float3x3 rotation : TEXCOORD3;
 #endif
-
-  float4 position : SV_Position;
+  float4 position   : SV_Position;
 };
 
 struct VSModelInstanceData
@@ -88,7 +89,7 @@ StructuredBuffer<VSModelInstanceData> InstanceBuf : register(t0);
 StructuredBuffer<float4x4> PoseBuf : register(t1);
 #endif
 
-float4x4 Mat4_Identity()
+static float4x4 Mat4_Identity()
 {
   return float4x4(1.0f, 0.0f, 0.0f, 0.0f,
                   0.0f, 1.0f, 0.0f, 0.0f,
@@ -96,7 +97,7 @@ float4x4 Mat4_Identity()
                   0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-float4x4 Mat4_RotationPart(float4x4 mat)
+static float4x4 Mat4_RotationPart(float4x4 mat)
 {
   // Extract the 3x3 submatrix columns
   // @todo is this extraction correct? - check with non-uniform scaling
@@ -112,7 +113,7 @@ float4x4 Mat4_RotationPart(float4x4 mat)
   return mat;
 }
 
-float4x4 Mat4_TranslationPart(float4x4 mat)
+static float4x4 Mat4_TranslationPart(float4x4 mat)
 {
   float4x4 res = Mat4_Identity();
   res._m03 = mat._m03;
@@ -121,7 +122,7 @@ float4x4 Mat4_TranslationPart(float4x4 mat)
   return res;
 }
 
-float4x4 Mat4_Scale(float scale)
+static float4x4 Mat4_Scale(float scale)
 {
   float4x4 res = Mat4_Identity();
   res._11 = scale;
@@ -130,7 +131,22 @@ float4x4 Mat4_Scale(float scale)
   return res;
 }
 
-float4 UnpackColor32(uint packed)
+static float3x3 Mat3_FromMat4(float4x4 mat)
+{
+  float3x3 res;
+  res._m00 = mat._m00;
+  res._m01 = mat._m01;
+  res._m02 = mat._m02;
+  res._m10 = mat._m10;
+  res._m11 = mat._m11;
+  res._m12 = mat._m12;
+  res._m20 = mat._m20;
+  res._m21 = mat._m21;
+  res._m22 = mat._m22;
+  return res;
+}
+
+static float4 UnpackColor32(uint packed)
 {
   float inv = 1.f / 255.f;
   float4 res;
@@ -143,10 +159,60 @@ float4 UnpackColor32(uint packed)
 
 static float3 TowardsSunDir()
 {
-  return normalize(float3(-1.f, 1.0f, 1.f));
+  return normalize(float3(-0.5f, 0.25f, 1.f));
 }
 
-VSOutput ShaderModelVS(VSInput input)
+typedef float4 Quat;
+typedef float3 V3;
+typedef float3x3 Mat3;
+
+static Quat Quat_FromNormalizedPair(V3 a, V3 b)
+{
+  V3 cross_product = cross(a, b);
+  Quat res =
+  {
+    cross_product.x,
+    cross_product.y,
+    cross_product.z,
+    1.f + dot(a, b),
+  };
+  return res;
+}
+static Quat Quat_FromPair(V3 a, V3 b)
+{
+  return Quat_FromNormalizedPair(normalize(a), normalize(b));
+}
+static Mat3 Mat3_Rotation_Quat(Quat q)
+{
+  Quat norm = normalize(q);
+  float xx = norm.x * norm.x;
+  float yy = norm.y * norm.y;
+  float zz = norm.z * norm.z;
+  float xy = norm.x * norm.y;
+  float xz = norm.x * norm.z;
+  float yz = norm.y * norm.z;
+  float wx = norm.w * norm.x;
+  float wy = norm.w * norm.y;
+  float wz = norm.w * norm.z;
+
+  Mat3 res;
+  res._m00 = 1.0f - 2.0f * (yy + zz);
+  res._m10 = 2.0f * (xy + wz);
+  res._m20 = 2.0f * (xz - wy);
+
+  res._m01 = 2.0f * (xy - wz);
+  res._m11 = 1.0f - 2.0f * (xx + zz);
+  res._m21 = 2.0f * (yz + wx);
+
+  res._m02 = 2.0f * (xz + wy);
+  res._m12 = 2.0f * (yz - wx);
+  res._m22 = 1.0f - 2.0f * (xx + yy);
+  return res;
+}
+
+
+
+VertexToFragment ShaderModelVS(VSInput input)
 {
   VSModelInstanceData instance = InstanceBuf[input.InstanceIndex];
   float4 input_color = UnpackColor32(input.color);
@@ -192,18 +258,22 @@ VSOutput ShaderModelVS(VSInput input)
   if (input.color == 0xff014b74) // @todo obviously temporary solution
     color = instance_color;
 
-  float3 normal = mul(Mat4_RotationPart(position_transform), float4(input.normal, 1.f)).xyz;
+  Mat3 input_normal_rot = Mat3_Rotation_Quat(Quat_FromNormalizedPair(float3(0,0,1), input.normal));
+  Mat3 position_rotation = Mat3_FromMat4(Mat4_RotationPart(position_transform));
+  float3 normal = mul(position_rotation, input.normal);
+  Mat3 normal_rotation = mul(input_normal_rot, position_rotation);
 
   // Return
-  VSOutput output;
-  output.color = color;
-  output.world_p = world_p;
-  output.position = position;
-  output.normal = normal;
+  VertexToFragment frag;
+  frag.color = color;
+  frag.world_p = world_p;
+  frag.position = position;
+  frag.normal = normal;
+  frag.rotation = normal_rotation;
 #if IS_TEXTURED
-  output.uv = input.uv;
+  frag.uv = input.uv;
 #endif
-  return output;
+  return frag;
 }
 
 #if IS_TEXTURED
@@ -211,34 +281,60 @@ Texture2DArray<float4> Texture : register(t0, space2);
 SamplerState Sampler : register(s0, space2);
 #endif
 
-float4 ShaderModelPS(VSOutput input) : SV_Target0
+float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
 {
   float3 towards_light_dir = TowardsSunDir();
-  float4 color = input.color;
+  float4 color = frag.color;
+  float3 normal = frag.normal;
+  float shininess = 16.f;
+
+#if IS_TEXTURED
+  float2 tex_uv = frag.uv.xy;
+
+  // load tex data
+  float4 tex_color        = Texture.Sample(Sampler, float3(tex_uv, 0.f));
+  float4 tex_normal_og    = Texture.Sample(Sampler, float3(tex_uv, 1.f));
+  float4 tex_roughness    = Texture.Sample(Sampler, float3(tex_uv, 2.f));
+  //float4 tex_displacement = Texture.Sample(Sampler, float3(tex_uv, 3.f));
+  float4 tex_occlusion    = Texture.Sample(Sampler, float3(tex_uv, 4.f));
+
+  // apply color
+  color *= tex_color;
+
+  // swizzle normal components into engine format - ideally this would be done by asset preprocessor
+  float4 tex_normal = tex_normal_og;
+  tex_normal.x = 1.f - tex_normal_og.y;
+  tex_normal.y = tex_normal_og.x;
+
+  // transform normal
+  tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
+  normal = mul(frag.rotation, tex_normal.xyz);
+
+  // apply shininess
+  shininess = 64.f - 64.f*tex_roughness.x;
+#endif
 
   float ambient = 0.2f;
   float specular = 0.0f;
-  float diffuse = max(dot(towards_light_dir, input.normal), 0.f);
+  float diffuse = max(dot(towards_light_dir, normal), 0.f);
   if (diffuse > 0.f)
   {
-    float shininess = 16.f;
-
-    float3 view_dir = normalize(UniP.CameraPosition - input.world_p);
-    float3 reflect_dir = reflect(-towards_light_dir, input.normal);
+    float3 view_dir = normalize(UniP.CameraPosition - frag.world_p);
+    float3 reflect_dir = reflect(-towards_light_dir, normal);
     float3 halfway_dir = normalize(view_dir + towards_light_dir);
-    float specular_angle = max(dot(input.normal, halfway_dir), 0.f);
+    float specular_angle = max(dot(normal, halfway_dir), 0.f);
     specular = pow(specular_angle, shininess);
+
+    // @todo multiple things about specular light seems bugged
+    // 1. is camera_p one frame delayed?
+    // 2. calculations/directions seem off, I need to play with simple programmer reference test assets
+    // 3. shiny point seems offseted? idk! maybe it's the lack of ambient lighting
   }
   color.xyz *= ambient + diffuse + specular;
 
-#if IS_TEXTURED
-  float4 tex_color = Texture.Sample(Sampler, input.uv);
-  color *= tex_color;
-#endif
-
   // apply fog
   {
-    float pixel_distance = distance(input.world_p, UniP.CameraPosition);
+    float pixel_distance = distance(frag.world_p, UniP.CameraPosition);
     float fog_min = 800.f;
     float fog_max = 1000.f;
 

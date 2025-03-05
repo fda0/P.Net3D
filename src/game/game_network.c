@@ -54,7 +54,7 @@ static void NET_SendS8(NET_User *destination, S8 msg)
                                       destination->address,
                                       destination->port,
                                       msg.str, (U32)msg.size);
-  
+
   if (!send_res)
   {
     LOG(LogFlags_NetSend,

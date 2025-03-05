@@ -106,7 +106,7 @@ static void Game_DrawObjects()
           wall_verts[i].color = obj->s.color;
         }
 
-        float height = 40.f;
+        float height = 300.f;
         float bot_z = 0;
         if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
           bot_z = -height;

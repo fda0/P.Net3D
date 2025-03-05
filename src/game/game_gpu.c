@@ -937,7 +937,8 @@ static void GPU_Iterate()
       // bind fragment sampler
       SDL_GPUTextureSamplerBinding binding_sampl =
       {
-        .texture = APP.gpu.wall_tex,
+        //.texture = APP.gpu.wall_tex,
+        .texture = APP.gpu.wall_pbr_tex,
         .sampler = APP.gpu.wall_sampler,
       };
       SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
