@@ -25,16 +25,32 @@ typedef enum
   RdrModel_COUNT
 } RDR_ModelType;
 
-//
-// Rigid models
-//
+// Vertices
 typedef struct
 {
+  Quat normal_rot;
   V3 p;
-  V3 normal;
   U32 color;
 } RDR_RigidVertex;
 
+typedef struct
+{
+  Quat normal_rot;
+  V3 p;
+  U32 color;
+  U32 joints_packed4;
+  V4 weights;
+} RDR_SkinnedVertex;
+
+typedef struct
+{
+  Quat normal_rot;
+  V3 p;
+  V3 uv;
+  U32 color;
+} RDR_WallVertex;
+
+// Instance buffers
 typedef struct
 {
   Mat4 transform;
@@ -43,33 +59,23 @@ typedef struct
 
 typedef struct
 {
-  RDR_RigidInstance instances[RD_MAX_RIGID_INSTANCES];
-  U32 instance_count;
-} RDR_Rigid;
-
-//
-// Skinned models
-//
-typedef struct
-{
-  V3 p;
-  V3 normal;
-  U32 color;
-  U32 joints_packed4;
-  V4 weights;
-} RDR_SkinnedVertex;
-
-typedef struct
-{
   Mat4 transform;
   U32 color;
   U32 pose_offset;
 } RDR_SkinnedInstance;
 
+// Pose buffer
 typedef struct
 {
   Mat4 mats[62];
 } RDR_SkinnedPose;
+
+// Structs that hold things
+typedef struct
+{
+  RDR_RigidInstance instances[RD_MAX_RIGID_INSTANCES];
+  U32 instance_count;
+} RDR_Rigid;
 
 typedef struct
 {
@@ -78,20 +84,7 @@ typedef struct
   U32 instance_count;
 } RDR_Skinned;
 
-//
-// Wall models
-//
-typedef struct
-{
-  V3 p;
-  V3 normal;
-  V3 uv;
-  U32 color;
-} RDR_WallVertex;
-
-//
-//
-//
+// State
 typedef struct
 {
   RDR_RigidInstance rigid_instances[RD_MAX_RIGID_INSTANCES];

@@ -480,12 +480,13 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
       if (parts[part_i].nrm)
       {
         U32 nrm_offset = (parts[part_i].nrm - 1) * 3;
-        rdr_vertex.normal = (V3)
+        V3 normal =
         {
           obj_normals[nrm_offset + 0],
           obj_normals[nrm_offset + 1],
           obj_normals[nrm_offset + 2],
         };
+        rdr_vertex.normal_rot = Quat_FromZupCrossV3(normal);
       }
 
       S8 material = parts[part_i].material;
@@ -528,17 +529,18 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
     RDR_RigidVertex rdr = M.vertex_table[i].rdr;
 
     Pr_Cstr(out, "  ");
-    // vert
+
+    // normal rotation
+    Pr_S8(out, S8Lit("/*nrm*/"));
+    Pr_Float(out, rdr.normal_rot.x); Pr_Cstr(out, "f,");
+    Pr_Float(out, rdr.normal_rot.y); Pr_Cstr(out, "f,");
+    Pr_Float(out, rdr.normal_rot.z); Pr_Cstr(out, "f, ");
+    Pr_Float(out, rdr.normal_rot.w); Pr_Cstr(out, "f, ");
+
+    // position
     Pr_Float(out, rdr.p.x); Pr_Cstr(out, "f,");
     Pr_Float(out, rdr.p.y); Pr_Cstr(out, "f,");
     Pr_Float(out, rdr.p.z); Pr_Cstr(out, "f, ");
-
-    // normals
-    Pr_S8(out, S8Lit("/*nrm*/"));
-    rdr.normal = V3_Normalize(rdr.normal);
-    Pr_Float(out, rdr.normal.x); Pr_Cstr(out, "f,");
-    Pr_Float(out, rdr.normal.y); Pr_Cstr(out, "f,");
-    Pr_Float(out, rdr.normal.z); Pr_Cstr(out, "f, ");
 
     // color
     Pr_S8(out, S8Lit("/*col*/"));

@@ -210,6 +210,7 @@ static void Game_DrawObjects()
             case 4: /* T */ face_normal = (V3){0,0,1}; break;
             case 5: /* B */ face_normal = (V3){0,0,-1}; break;
           }
+          Quat face_normal_rot = Quat_FromZupCrossV3(face_normal);
 
           float tex_z = 0.f;
           if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
@@ -219,7 +220,7 @@ static void Game_DrawObjects()
           {
             U32 i = (face_i * vertices_per_face) + vert_i;
             wall_verts[i].uv = V3_Make_XY_Z(face_uvs[vert_i], tex_z);
-            wall_verts[i].normal = face_normal;
+            wall_verts[i].normal_rot = face_normal_rot;
           }
         }
       }

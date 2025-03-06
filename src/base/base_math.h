@@ -889,6 +889,11 @@ static Quat Quat_FromPair(V3 a, V3 b)
   return Quat_FromNormalizedPair(V3_Normalize(a), V3_Normalize(b));
 }
 
+static Quat Quat_FromZupCrossV3(V3 a)
+{
+  return Quat_FromNormalizedPair((V3){0,0,1}, V3_Normalize(a));
+}
+
 static V3 V3_Rotate(V3 v, Quat q)
 {
   V3 q3 = {q.x, q.y, q.z};

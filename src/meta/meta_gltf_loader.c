@@ -479,14 +479,6 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
   Pr_S8(out, S8Lit("static RDR_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
   ForU64(vert_i, vert_count)
   {
-    Pr_S8(out, S8Lit("  /*pos*/"));
-    Pr_Float(out, *M_BufferAtFloat(&positions, vert_i*3 + 0));
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, *M_BufferAtFloat(&positions, vert_i*3 + 1));
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, *M_BufferAtFloat(&positions, vert_i*3 + 2));
-    Pr_S8(out, S8Lit("f, "));
-
     V3 normal =
     {
       *M_BufferAtFloat(&normals, vert_i*3 + 0),
@@ -504,12 +496,23 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
       M_LOG(M_LogGltfWarning, "[GLTF LOADER] Normal wasn't normalized");
       normal = V3_Scale(normal, InvSqrtF(normal_lensq));
     }
+    Quat normal_rot = Quat_FromZupCrossV3(normal);
     Pr_S8(out, S8Lit("/*nrm*/"));
-    Pr_Float(out, normal.x);
+    Pr_Float(out, normal_rot.x);
     Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, normal.y);
+    Pr_Float(out, normal_rot.y);
     Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, normal.z);
+    Pr_Float(out, normal_rot.z);
+    Pr_S8(out, S8Lit("f,"));
+    Pr_Float(out, normal_rot.w);
+    Pr_S8(out, S8Lit("f, "));
+
+    Pr_S8(out, S8Lit("  /*pos*/"));
+    Pr_Float(out, *M_BufferAtFloat(&positions, vert_i*3 + 0));
+    Pr_S8(out, S8Lit("f,"));
+    Pr_Float(out, *M_BufferAtFloat(&positions, vert_i*3 + 1));
+    Pr_S8(out, S8Lit("f,"));
+    Pr_Float(out, *M_BufferAtFloat(&positions, vert_i*3 + 2));
     Pr_S8(out, S8Lit("f, "));
 
     Pr_S8(out, S8Lit("/*col*/0x"));

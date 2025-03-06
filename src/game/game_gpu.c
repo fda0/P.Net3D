@@ -484,22 +484,19 @@ static void GPU_Init()
       .vertex_attributes = (SDL_GPUVertexAttribute[])
       {
         {
-          .buffer_slot = 0,
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
           .location = 0,
           .offset = 0,
         },
         {
-          .buffer_slot = 0,
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 1,
-          .offset = sizeof(float) * 3,
+          .offset = sizeof(float)*4,
         },
         {
-          .buffer_slot = 0,
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 2,
-          .offset = sizeof(float) * 6,
+          .offset = sizeof(float)*7,
         },
       },
     };
@@ -573,29 +570,29 @@ static void GPU_Init()
       .vertex_attributes = (SDL_GPUVertexAttribute[])
       {
         {
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
           .location = 0,
           .offset = 0,
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 1,
-          .offset = sizeof(float)*3,
+          .offset = sizeof(float)*4,
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 2,
-          .offset = sizeof(float)*6,
+          .offset = sizeof(float)*7,
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 3,
-          .offset = sizeof(float)*6 + sizeof(U32),
+          .offset = sizeof(float)*7 + sizeof(U32),
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
           .location = 4,
-          .offset = sizeof(float)*6 + sizeof(U32)*2,
+          .offset = sizeof(float)*7 + sizeof(U32)*2,
         },
       },
     };
@@ -637,7 +634,7 @@ static void GPU_Init()
       const char *paths[] =
       {
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Color.jpg",
-        "../res/tex/PavingStones067/PavingStones067_1K-JPG_NormalDX.jpg",
+        "../res/tex/PavingStones067/PavingStones067_1K-JPG_NormalGL.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Roughness.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Displacement.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_AmbientOcclusion.jpg",
@@ -716,28 +713,24 @@ static void GPU_Init()
       .vertex_attributes = (SDL_GPUVertexAttribute[])
       {
         {
-          .buffer_slot = 0,
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
           .location = 0,
           .offset = 0,
         },
         {
-          .buffer_slot = 0,
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 1,
-          .offset = sizeof(float) * 3,
+          .offset = sizeof(float)*4,
         },
         {
-          .buffer_slot = 0,
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 2,
-          .offset = sizeof(float) * 6,
+          .offset = sizeof(float)*7,
         },
         {
-          .buffer_slot = 0,
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 3,
-          .offset = sizeof(float) * 9,
+          .offset = sizeof(float)*10,
         },
       },
     };

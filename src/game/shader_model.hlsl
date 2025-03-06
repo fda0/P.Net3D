@@ -24,11 +24,18 @@
 #define ShaderModelPS ShaderWallPS
 #endif
 
+typedef float4 Quat;
+typedef float4 V4;
+typedef float3 V3;
+typedef float2 V2;
+typedef float4x4 Mat4;
+typedef float3x3 Mat3;
+
 struct UniformData
 {
-  float4x4 CameraTransform;
-  float3 CameraPosition;
-  float3 BackgroundColor;
+  Mat4 CameraTransform;
+  V3 CameraPosition;
+  V3 BackgroundColor;
 };
 
 cbuffer VertexUniformBuf : register(b0, space1) { UniformData UniV; };
@@ -36,25 +43,22 @@ cbuffer PixelUniformBuf  : register(b0, space3) { UniformData UniP; };
 
 struct VSInput
 {
+  Quat normal_rot : TEXCOORD0;
+  V3   position   : TEXCOORD1;
+
 #if IS_RIGID
-  float3 position : TEXCOORD0;
-  float3 normal   : TEXCOORD1;
-  uint color      : TEXCOORD2;
+  uint color : TEXCOORD2;
 #endif
 
 #if IS_SKINNED
-  float3 position     : TEXCOORD0;
-  float3 normal       : TEXCOORD1;
   uint color          : TEXCOORD2;
   uint joints_packed4 : TEXCOORD3;
-  float4 weights      : TEXCOORD4;
+  V4   weights        : TEXCOORD4;
 #endif
 
 #if IS_TEXTURED
-  float3 position : TEXCOORD0;
-  float3 normal   : TEXCOORD1;
-  float3 uv       : TEXCOORD2;
-  uint color      : TEXCOORD3;
+  V3 uv      : TEXCOORD2;
+  uint color : TEXCOORD3;
 #endif
 
   uint InstanceIndex : SV_InstanceID;
@@ -62,16 +66,15 @@ struct VSInput
 
 struct VertexToFragment
 {
-  float4 color      : TEXCOORD0;
-  float3 world_p    : TEXCOORD1;
-  float3 normal     : TEXCOORD2;
+  V4 color      : TEXCOORD0;
+  V3 world_p    : TEXCOORD1;
 #if IS_TEXTURED
-  float3 uv         : TEXCOORD3;
-  float3x3 rotation : TEXCOORD4;
+  V3 uv         : TEXCOORD2;
+  Mat3 normal_rot : TEXCOORD3;
 #else
-  float3x3 rotation : TEXCOORD3;
+  Mat3 normal_rot : TEXCOORD2;
 #endif
-  float4 position   : SV_Position;
+  V4 position   : SV_Position;
 };
 
 struct VSModelInstanceData
@@ -162,10 +165,6 @@ static float3 TowardsSunDir()
   return normalize(float3(-0.5f, 0.25f, 1.f));
 }
 
-typedef float4 Quat;
-typedef float3 V3;
-typedef float3x3 Mat3;
-
 static Quat Quat_FromNormalizedPair(V3 a, V3 b)
 {
   V3 cross_product = cross(a, b);
@@ -207,6 +206,30 @@ static Mat3 Mat3_Rotation_Quat(Quat q)
   res._m02 = 2.0f * (xz + wy);
   res._m12 = 2.0f * (yz - wx);
   res._m22 = 1.0f - 2.0f * (xx + yy);
+  return res;
+}
+static Quat Quat_Mul(Quat a, Quat b)
+{
+  Quat res;
+  res.x = b.w * +a.x;
+  res.y = b.z * -a.x;
+  res.z = b.y * +a.x;
+  res.w = b.x * -a.x;
+
+  res.x += b.z * +a.y;
+  res.y += b.w * +a.y;
+  res.z += b.x * -a.y;
+  res.w += b.y * -a.y;
+
+  res.x += b.y * -a.z;
+  res.y += b.x * +a.z;
+  res.z += b.w * +a.z;
+  res.w += b.z * -a.z;
+
+  res.x += b.x * +a.w;
+  res.y += b.y * +a.w;
+  res.z += b.z * +a.w;
+  res.w += b.w * +a.w;
   return res;
 }
 
@@ -258,21 +281,19 @@ VertexToFragment ShaderModelVS(VSInput input)
   if (input.color == 0xff014b74) // @todo obviously temporary solution
     color = instance_color;
 
-  Mat3 input_normal_rot = Mat3_Rotation_Quat(Quat_FromNormalizedPair(float3(0,0,1), input.normal));
+  Mat3 input_normal_mat = Mat3_Rotation_Quat(input.normal_rot);
   Mat3 position_rotation = Mat3_FromMat4(Mat4_RotationPart(position_transform));
-  float3 normal = mul(position_rotation, input.normal);
-  Mat3 normal_rotation = mul(input_normal_rot, position_rotation);
+  Mat3 normal_rotation = mul(position_rotation, input_normal_mat);
 
   // Return
   VertexToFragment frag;
+  frag.normal_rot = normal_rotation;
   frag.color = color;
   frag.world_p = world_p;
-  frag.position = position;
-  frag.normal = normal;
-  frag.rotation = normal_rotation;
 #if IS_TEXTURED
   frag.uv = input.uv;
 #endif
+  frag.position = position;
   return frag;
 }
 
@@ -283,35 +304,37 @@ SamplerState Sampler : register(s0, space2);
 
 float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
 {
-  float3 towards_light_dir = TowardsSunDir();
-  float4 color = frag.color;
-  float3 normal = frag.normal;
+  V3 towards_light_dir = TowardsSunDir();
+  V4 color = frag.color;
   float shininess = 16.f;
 
 #if IS_TEXTURED
-  float2 tex_uv = frag.uv.xy;
+  V2 tex_uv = frag.uv.xy;
 
   // load tex data
-  float4 tex_color        = Texture.Sample(Sampler, float3(tex_uv, 0.f));
-  float4 tex_normal_og    = Texture.Sample(Sampler, float3(tex_uv, 1.f));
-  float4 tex_roughness    = Texture.Sample(Sampler, float3(tex_uv, 2.f));
-  //float4 tex_displacement = Texture.Sample(Sampler, float3(tex_uv, 3.f));
-  float4 tex_occlusion    = Texture.Sample(Sampler, float3(tex_uv, 4.f));
+  V4 tex_color        = Texture.Sample(Sampler, V3(tex_uv, 0.f));
+  V4 tex_normal_og    = Texture.Sample(Sampler, V3(tex_uv, 1.f));
+  V4 tex_roughness    = Texture.Sample(Sampler, V3(tex_uv, 2.f));
+  //V4 tex_displacement = Texture.Sample(Sampler, V3(tex_uv, 3.f));
+  V4 tex_occlusion    = Texture.Sample(Sampler, V3(tex_uv, 4.f));
 
   // apply color
   color *= tex_color;
 
   // swizzle normal components into engine format - ideally this would be done by asset preprocessor
-  float4 tex_normal = tex_normal_og;
-  tex_normal.x = 1.f - tex_normal_og.y;
-  tex_normal.y = tex_normal_og.x;
+  V3 tex_normal = tex_normal_og.yxz;
+  //tex_normal.x = 1.f - tex_normal_og.y;
+  //tex_normal.y = tex_normal_og.x;
 
   // transform normal
   tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
-  normal = mul(frag.rotation, tex_normal.xyz);
+  V3 normal = mul(frag.normal_rot, tex_normal);
+  //return V4(normal.x*1.f, normal.y*1.f, normal.z*1.f, 1.f);
 
   // apply shininess
   shininess = 64.f - 64.f*tex_roughness.x;
+#else
+  V3 normal = mul(frag.normal_rot, V3(0,0,1));
 #endif
 
   float ambient = 0.2f;
@@ -319,9 +342,9 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
   float diffuse = max(dot(towards_light_dir, normal), 0.f);
   if (diffuse > 0.f)
   {
-    float3 view_dir = normalize(UniP.CameraPosition - frag.world_p);
-    float3 reflect_dir = reflect(-towards_light_dir, normal);
-    float3 halfway_dir = normalize(view_dir + towards_light_dir);
+    V3 view_dir = normalize(UniP.CameraPosition - frag.world_p);
+    V3 reflect_dir = reflect(-towards_light_dir, normal);
+    V3 halfway_dir = normalize(view_dir + towards_light_dir);
     float specular_angle = max(dot(normal, halfway_dir), 0.f);
     specular = pow(specular_angle, shininess);
 
@@ -339,7 +362,7 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
     float fog_max = 1000.f;
 
     float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
-    color = lerp(color, float4(UniP.BackgroundColor, 1.f), fog_t);
+    color = lerp(color, V4(UniP.BackgroundColor, 1.f), fog_t);
   }
 
   return color;
