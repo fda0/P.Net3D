@@ -117,24 +117,24 @@ static void Game_DrawObjects()
           U32 cube_index_map[] =
           {
             4,5,0,5,1,0, // E
-            7,6,3,6,2,3, // W
-            4,7,0,7,3,0, // N
-            6,5,2,5,1,2, // S
-            4,5,7,5,6,7, // Top
-            3,2,0,2,1,0, // Bottom
+            6,7,2,7,3,2, // W
+            5,6,1,6,2,1, // N
+            7,4,3,4,0,3, // S
+            5,4,6,4,7,6, // Top
+            2,3,1,3,0,1, // Bottom
           };
           Assert(ArrayCount(cube_index_map) == vert_count);
 
           V3 cube_verts[8] =
           {
-            V3_Make_XY_Z(collision.arr[0], bot_z),
-            V3_Make_XY_Z(collision.arr[1], bot_z),
-            V3_Make_XY_Z(collision.arr[2], bot_z),
-            V3_Make_XY_Z(collision.arr[3], bot_z),
-            V3_Make_XY_Z(collision.arr[0], top_z),
-            V3_Make_XY_Z(collision.arr[1], top_z),
-            V3_Make_XY_Z(collision.arr[2], top_z),
-            V3_Make_XY_Z(collision.arr[3], top_z),
+            V3_Make_XY_Z(collision.arr[0], bot_z), // 0
+            V3_Make_XY_Z(collision.arr[1], bot_z), // 1
+            V3_Make_XY_Z(collision.arr[2], bot_z), // 2
+            V3_Make_XY_Z(collision.arr[3], bot_z), // 3
+            V3_Make_XY_Z(collision.arr[0], top_z), // 4
+            V3_Make_XY_Z(collision.arr[1], top_z), // 5
+            V3_Make_XY_Z(collision.arr[2], top_z), // 6
+            V3_Make_XY_Z(collision.arr[3], top_z), // 7
           };
 
           ForArray(i, cube_index_map)

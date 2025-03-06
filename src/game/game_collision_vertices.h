@@ -10,10 +10,10 @@ static CollisionVertices CollisionVertices_FromRectDim(V2 dim)
   V2 p1 = V2_Scale(dim, 0.5f);
 
   CollisionVertices result = {0};
-  result.arr[0] = (V2){p1.x, p0.y};
-  result.arr[1] = (V2){p1.x, p1.y};
-  result.arr[2] = (V2){p0.x, p1.y};
-  result.arr[3] = (V2){p0.x, p0.y};
+  result.arr[0] = (V2){p1.x, p0.y}; // SE
+  result.arr[1] = (V2){p1.x, p1.y}; // NE
+  result.arr[2] = (V2){p0.x, p1.y}; // NW
+  result.arr[3] = (V2){p0.x, p0.y}; // SW
   return result;
 }
 
