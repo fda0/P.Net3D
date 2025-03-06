@@ -46,7 +46,7 @@ typedef struct
 {
   Quat normal_rot;
   V3 p;
-  V3 uv;
+  V2 uv;
   U32 color;
 } RDR_WallVertex;
 

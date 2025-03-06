@@ -57,7 +57,7 @@ struct VSInput
 #endif
 
 #if IS_TEXTURED
-  V3 uv      : TEXCOORD2;
+  V2 uv      : TEXCOORD2;
   uint color : TEXCOORD3;
 #endif
 
@@ -69,7 +69,7 @@ struct VertexToFragment
   V4 color      : TEXCOORD0;
   V3 world_p    : TEXCOORD1;
 #if IS_TEXTURED
-  V3 uv         : TEXCOORD2;
+  V2 uv         : TEXCOORD2;
   Mat3 normal_rot : TEXCOORD3;
 #else
   Mat3 normal_rot : TEXCOORD2;
@@ -309,14 +309,12 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
   float shininess = 16.f;
 
 #if IS_TEXTURED
-  V2 tex_uv = frag.uv.xy;
-
   // load tex data
-  V4 tex_color        = Texture.Sample(Sampler, V3(tex_uv, 0.f));
-  V4 tex_normal_og    = Texture.Sample(Sampler, V3(tex_uv, 1.f));
-  V4 tex_roughness    = Texture.Sample(Sampler, V3(tex_uv, 2.f));
-  //V4 tex_displacement = Texture.Sample(Sampler, V3(tex_uv, 3.f));
-  V4 tex_occlusion    = Texture.Sample(Sampler, V3(tex_uv, 4.f));
+  V4 tex_color        = Texture.Sample(Sampler, V3(frag.uv, 0.f));
+  V4 tex_normal_og    = Texture.Sample(Sampler, V3(frag.uv, 1.f));
+  V4 tex_roughness    = Texture.Sample(Sampler, V3(frag.uv, 2.f));
+  //V4 tex_displacement = Texture.Sample(Sampler, V3(frag.uv, 3.f));
+  V4 tex_occlusion    = Texture.Sample(Sampler, V3(frag.uv, 4.f));
 
   // apply color
   color *= tex_color;
@@ -329,7 +327,15 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
   // transform normal
   tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
   V3 normal = mul(frag.normal_rot, tex_normal);
-  //return V4(normal.x*1.f, normal.y*1.f, normal.z*1.f, 1.f);
+  normal = normalize(normal);
+  normal = V3(0,0,1);
+  //normal.x = -1.f;
+  //normal.y = -1.f;
+  //normal.z = -1.f;
+  //if (normal.x < 0.f) normal.x = -1.f;
+  //if (normal.y < 0.f) normal.y = -1.f;
+  //if (normal.z < 0.f) normal.z = -1.f;
+  //return V4(normal*0.5f + 0.5f, 1.f);
 
   // apply shininess
   shininess = 64.f - 64.f*tex_roughness.x;

@@ -180,12 +180,12 @@ static void Game_DrawObjects()
           V2 face_dim = {};
           switch (face_i)
           {
-            case 0: /* E */ face_dim = (V2){w0, height}; break;
-            case 1: /* W */ face_dim = (V2){w2, height}; break;
-            case 2: /* N */ face_dim = (V2){w3, height}; break;
-            case 3: /* S */ face_dim = (V2){w1, height}; break;
-            case 4: /* T */ face_dim = (V2){w0, w1}; break; // works for rects only
-            case 5: /* B */ face_dim = (V2){w0, w1}; break; // works for rects only
+            case WorldDir_E: face_dim = (V2){w0, height}; break;
+            case WorldDir_W: face_dim = (V2){w2, height}; break;
+            case WorldDir_N: face_dim = (V2){w3, height}; break;
+            case WorldDir_S: face_dim = (V2){w1, height}; break;
+            case WorldDir_T: face_dim = (V2){w0, w1}; break; // works for rects only
+            case WorldDir_B: face_dim = (V2){w0, w1}; break; // works for rects only
           }
 
           face_dim = V2_Scale(face_dim, texels_per_cm);
@@ -203,24 +203,26 @@ static void Game_DrawObjects()
           V3 face_normal = {};
           switch (face_i)
           {
-            case 0: /* E */ face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[0], 0); break;
-            case 1: /* W */ face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[2], 0); break;
-            case 2: /* N */ face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[3], 0); break;
-            case 3: /* S */ face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[1], 0); break;
-            case 4: /* T */ face_normal = (V3){0,0,1}; break;
-            case 5: /* B */ face_normal = (V3){0,0,-1}; break;
+            case WorldDir_E: face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[0], 0); break;
+            case WorldDir_W: face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[2], 0); break;
+            case WorldDir_N: face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[3], 0); break;
+            case WorldDir_S: face_normal = V3_Make_XY_Z(obj->s.collision.norms.arr[1], 0); break;
+            case WorldDir_T: face_normal = (V3){0,0,1}; break;
+            case WorldDir_B: face_normal = (V3){0,0,-1}; break;
           }
-          Quat face_normal_rot = Quat_FromZupCrossV3(face_normal);
 
-          float tex_z = 0.f;
-          if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
-            tex_z = 1.f;
+          Quat normal_rot = Quat_FromZupCrossV3(face_normal);
+          switch (face_i)
+          {
+            case WorldDir_S: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(V3_Z(), -0.25f)); break;
+            case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(V3_Z(), 0.25f)); break;
+          }
 
           ForU32(vert_i, vertices_per_face)
           {
             U32 i = (face_i * vertices_per_face) + vert_i;
-            wall_verts[i].uv = V3_Make_XY_Z(face_uvs[vert_i], tex_z);
-            wall_verts[i].normal_rot = face_normal_rot;
+            wall_verts[i].uv = face_uvs[vert_i];
+            wall_verts[i].normal_rot = normal_rot;
           }
         }
       }

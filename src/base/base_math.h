@@ -200,6 +200,10 @@ static V2 V2_Normalize(V2 a)
 //
 // V3
 //
+static V3 V3_X() { return (V3){1,0,0}; }
+static V3 V3_Y() { return (V3){0,1,0}; }
+static V3 V3_Z() { return (V3){0,0,1}; }
+
 static V3 V3_Make_XY_Z(V2 xy, float z)
 {
   return (V3){xy.x, xy.y, z};

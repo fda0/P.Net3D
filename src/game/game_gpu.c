@@ -633,11 +633,19 @@ static void GPU_Init()
     {
       const char *paths[] =
       {
+#if 0
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Color.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_NormalGL.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Roughness.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Displacement.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_AmbientOcclusion.jpg",
+#else
+        "../res/tex/TestPBR001/TestPBR001_Color.png",
+        "../res/tex/TestPBR001/TestPBR001_NormalGL.png",
+        "../res/tex/TestPBR001/TestPBR001_Roughness.jpg",
+        "../res/tex/TestPBR001/TestPBR001_Displacement.jpg",
+        "../res/tex/TestPBR001/TestPBR001_AmbientOcclusion.jpg",
+#endif
       };
       APP.gpu.wall_pbr_tex = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain PBR tex");
     }
@@ -723,14 +731,14 @@ static void GPU_Init()
           .offset = sizeof(float)*4,
         },
         {
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
           .location = 2,
           .offset = sizeof(float)*7,
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 3,
-          .offset = sizeof(float)*10,
+          .offset = sizeof(float)*9,
         },
       },
     };
