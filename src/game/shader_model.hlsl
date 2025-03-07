@@ -321,21 +321,20 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
 
   // swizzle normal components into engine format - ideally this would be done by asset preprocessor
   V3 tex_normal = tex_normal_og.yxz;
-  //tex_normal.x = 1.f - tex_normal_og.y;
-  //tex_normal.y = tex_normal_og.x;
+  tex_normal.y = 1.f - tex_normal.y;
 
   // transform normal
   tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
   V3 normal = mul(frag.normal_rot, tex_normal);
   normal = normalize(normal);
-  normal = V3(0,0,1);
+  //normal = V3(0,0,1);
   //normal.x = -1.f;
   //normal.y = -1.f;
   //normal.z = -1.f;
   //if (normal.x < 0.f) normal.x = -1.f;
   //if (normal.y < 0.f) normal.y = -1.f;
   //if (normal.z < 0.f) normal.z = -1.f;
-  //return V4(normal*0.5f + 0.5f, 1.f);
+  return V4(normal*0.5f + 0.5f, 1.f);
 
   // apply shininess
   shininess = 64.f - 64.f*tex_roughness.x;
