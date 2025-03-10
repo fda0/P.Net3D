@@ -10,16 +10,6 @@ static TICK_Input TICK_NormalizeInput(TICK_Input input)
 
 static void TICK_AdvanceSimulation()
 {
-  // update prev_p
-  ForArray(obj_index, APP.all_objects)
-  {
-    Object *obj = APP.all_objects + obj_index;
-    if (OBJ_HasAnyFlag(obj, ObjFlag_Move|ObjFlag_AnimateRotation))
-    {
-      obj->s.prev_p = obj->s.p;
-    }
-  }
-
   // apply player input
   ForArray32(player_index, APP.server.player_keys)
   {
@@ -43,7 +33,7 @@ static void TICK_AdvanceSimulation()
     V2 player_dir = input.move_dir;
     if (player->s.is_pathing)
     {
-      V2 dir = V2_Sub(player->s.pathing_dest_p, player->s.p);
+      V2 dir = V2_Sub(player->s.pathing_dest_p, V2_FromV3_XY(player->s.p));
       float len_sq = V2_LengthSq(dir);
       if (len_sq > 1.f)
       {
@@ -58,7 +48,7 @@ static void TICK_AdvanceSimulation()
     }
 
     float player_speed = 60.f * TIME_STEP;
-    player->s.dp = V2_Scale(player_dir, player_speed);
+    player->s.desired_dp = V3_From_XY_Z(V2_Scale(player_dir, player_speed), 0);
   }
 
   ForArray(obj_index, APP.all_objects)
@@ -66,8 +56,9 @@ static void TICK_AdvanceSimulation()
     Object *obj = APP.all_objects + obj_index;
     if (!OBJ_HasAnyFlag(obj, ObjFlag_Move)) continue;
 
-    // move object
-    obj->s.p = V2_Add(obj->s.p, obj->s.dp);
+    // movement simulation
+    V2 obj_dp = V2_FromV3_XY(obj->s.desired_dp);
+    V2 obj_pos = V2_Add(V2_FromV3_XY(obj->s.p), obj_dp); // move obj
 
     // check collision
     ForU32(collision_iteration, 8) // support up to 8 overlapping wall collisions
@@ -76,8 +67,7 @@ static void TICK_AdvanceSimulation()
       V2 closest_obstacle_wall_normal = {0};
 
       CollisionVertices obj_verts = obj->s.collision.verts;
-      Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj->s.p);
-      V2 obj_center = obj->s.p;
+      Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj_pos);
 
       ForArray(obstacle_index, APP.all_objects)
       {
@@ -85,9 +75,9 @@ static void TICK_AdvanceSimulation()
         if (!OBJ_HasAnyFlag(obstacle, ObjFlag_Collide)) continue;
         if (obj == obstacle) continue;
 
+        V2 obstacle_pos = V2_FromV3_XY(obstacle->s.p);
         CollisionVertices obstacle_verts = obstacle->s.collision.verts;
-        Vertices_Offset(obstacle_verts.arr, ArrayCount(obstacle_verts.arr), obstacle->s.p);
-        V2 obstacle_center = obstacle->s.p;
+        Vertices_Offset(obstacle_verts.arr, ArrayCount(obstacle_verts.arr), obstacle_pos);
 
         float biggest_dist = -FLT_MAX;
         V2 wall_normal = {0};
@@ -110,7 +100,7 @@ static void TICK_AdvanceSimulation()
             static_assert(ArrayCount(proj_obj.arr) == ArrayCount(normals.arr));
             V2 normal = normals.arr[i];
 
-            V2 obstacle_dir = V2_Sub(obstacle_center, obj_center);
+            V2 obstacle_dir = V2_Sub(obstacle_pos, obj_pos);
             if (V2_Inner(normal, obstacle_dir) < 0)
             {
               continue;
@@ -148,12 +138,12 @@ static void TICK_AdvanceSimulation()
         float move_out_magnitude = -closest_obstacle_separation_dist;
 
         V2 move_out = V2_Scale(move_out_dir, move_out_magnitude);
-        obj->s.p = V2_Add(obj->s.p, move_out);
+        obj_pos = V2_Add(obj_pos, move_out);
 
         // remove all velocity on collision axis
         // we might want to do something different here!
-        if (move_out.x) obj->s.dp.x = 0;
-        if (move_out.y) obj->s.dp.y = 0;
+        if (move_out.x) obj_dp.x = 0;
+        if (move_out.y) obj_dp.y = 0;
       }
       else
       {
@@ -161,6 +151,11 @@ static void TICK_AdvanceSimulation()
         break;
       }
     } // collision_iteration
+
+    V3 prev_pos = obj->s.p;
+    obj->s.p.x = obj_pos.x;
+    obj->s.p.y = obj_pos.y;
+    obj->s.moved_dp = V3_Sub(obj->s.p, prev_pos);
   } // obj_index
 
   ForArray(obj_index, APP.all_objects)
@@ -169,7 +164,7 @@ static void TICK_AdvanceSimulation()
     if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateT))
     {
       // set walking animation if player moves
-      if (obj->s.dp.x || obj->s.dp.y)
+      if (V3_HasLength(obj->s.desired_dp))
       {
         obj->s.animation_index = 22;
       }
@@ -177,10 +172,9 @@ static void TICK_AdvanceSimulation()
 
     if (OBJ_HasAllFlags(obj, ObjFlag_AnimateRotation))
     {
-      V2 dir = V2_Sub(obj->s.p, obj->s.prev_p);
-      if (dir.x || dir.y)
+      if (V3_HasLength(obj->s.moved_dp))
       {
-        dir = V2_Normalize(dir);
+        V2 dir = V2_Normalize(V2_FromV3_XY(obj->s.moved_dp));
         float rot = -Atan2F(dir) + 0.25f;
         rot = WrapF(-0.5f, 0.5f, rot);
         obj->s.rotation = Quat_FromAxisAngle_RH((V3){0,0,1}, rot);
@@ -192,9 +186,9 @@ static void TICK_AdvanceSimulation()
 static OBJ_Sync OBJ_SyncLerp(OBJ_Sync prev, OBJ_Sync next, float t)
 {
   OBJ_Sync res = prev;
-  res.p = V2_Lerp(prev.p, next.p, t);
-  res.dp = V2_Lerp(prev.dp, next.dp, t);
-  res.prev_p = V2_Lerp(prev.prev_p, next.prev_p, t);
+  res.p = V3_Lerp(prev.p, next.p, t);
+  res.desired_dp = V3_Lerp(prev.desired_dp, next.desired_dp, t);
+  res.moved_dp = V3_Lerp(prev.moved_dp, next.moved_dp, t);
   res.color = Color32_Lerp(prev.color, next.color, t);
   res.rotation = Quat_SLerp(prev.rotation, next.rotation, t);
   return res;

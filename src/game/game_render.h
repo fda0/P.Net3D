@@ -17,14 +17,6 @@ typedef enum
   RdrSkinned_COUNT
 } RDR_SkinnedType;
 
-typedef enum
-{
-  RdrModel_Rigid_Teapot,
-  RdrModel_Rigid_Flag,
-  RdrModel_Skinned_Worker,
-  RdrModel_COUNT
-} RDR_ModelType;
-
 // Vertices
 typedef struct
 {

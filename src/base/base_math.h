@@ -200,32 +200,9 @@ static V2 V2_Normalize(V2 a)
 //
 // V3
 //
-static V3 V3_X() { return (V3){1,0,0}; }
-static V3 V3_Y() { return (V3){0,1,0}; }
-static V3 V3_Z() { return (V3){0,0,1}; }
-
-static V3 V3_Make_XY_Z(V2 xy, float z)
-{
-  return (V3){xy.x, xy.y, z};
-}
-static V3 V3_Make_XZ_Y(V2 xz, float y)
-{
-  return (V3){xz.x, y, xz.y};
-}
-static V3 V3_Make_YX_Z(V2 xy, float z)
-{
-  return (V3){xy.y, xy.x, z};
-}
-static V3 V3_Make_ZY_X(V2 zy, float x)
-{
-  return (V3){zy.x, zy.y, x};
-}
-
-static V3 V3_FromV4_XYZ(V4 vec)
-{
-  return (V3){vec.x, vec.y, vec.z};
-}
-
+static V3 Axis3_X() { return (V3){1,0,0}; }
+static V3 Axis3_Y() { return (V3){0,1,0}; }
+static V3 Axis3_Z() { return (V3){0,0,1}; }
 
 static V3 V3_Scale(V3 a, float scale)
 {
@@ -288,6 +265,11 @@ static V3 V3_Normalize(V3 a)
     a = V3_Scale(a, len_inv);
   }
   return a;
+}
+
+static bool V3_HasLength(V3 a)
+{
+  return a.x || a.y || a.z;
 }
 
 //
@@ -397,6 +379,21 @@ static V2 V2_CalculateNormal(V2 a, V2 b)
   V2 dir = V2_Normalize(vec);
   return V2_RotateClockwise90(dir);
 }
+
+// ---
+// Vector constructors, swizzles
+// ---
+
+// V2
+static V2 V2_FromV3_XY(V3 vec) { return (V2){vec.x, vec.y}; }
+
+// V3
+static V3 V3_From_XY_Z(V2 xy, float z) { return (V3){xy.x, xy.y, z}; }
+static V3 V3_From_XZ_Y(V2 xz, float y) { return (V3){xz.x, y, xz.y}; }
+static V3 V3_From_YX_Z(V2 xy, float z) { return (V3){xy.y, xy.x, z}; }
+static V3 V3_From_ZY_X(V2 zy, float x) { return (V3){zy.x, zy.y, x}; }
+static V3 V3_FromV4_XYZ(V4 vec) { return (V3){vec.x, vec.y, vec.z}; }
+
 
 
 // ---

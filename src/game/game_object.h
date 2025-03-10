@@ -10,6 +10,24 @@ typedef struct
 
 typedef enum
 {
+  TEX_None,
+  TEX_Leather001,
+  TEX_PavingStones067,
+  TEX_TestPBR001,
+  TEX_COUNT
+} TEX_Kind;
+
+typedef enum
+{
+  MODEL_None,
+  MODEL_Teapot,
+  MODEL_Flag,
+  MODEL_FemaleWorker,
+  MODEL_COUNT
+} MODEL_Kind;
+
+typedef enum
+{
   ObjFlag_Move            = (1 << 0),
   ObjFlag_Collide         = (1 << 1),
 
@@ -17,11 +35,8 @@ typedef enum
   ObjFlag_AnimatePosition = (1 << 3),
   ObjFlag_AnimateT        = (1 << 4),
 
-  ObjFlag_DrawTeapot          = (1 << 5),
-  ObjFlag_DrawFlag            = (1 << 6),
-  ObjFlag_DrawWorker          = (1 << 7),
-  ObjFlag_DrawCollisionWall   = (1 << 8),
-  ObjFlag_DrawCollisionGround = (1 << 9),
+  ObjFlag_DrawModel       = (1 << 5),
+  ObjFlag_DrawCollision   = (1 << 6),
 } OBJ_Flags;
 
 typedef enum
@@ -43,15 +58,18 @@ typedef struct
   OBJ_Key key;
   U32 flags;
   bool init;
-  V2 p; // position of center
-  V2 dp; // change of p
-  V2 prev_p; // position from the last frame
+  V3 p; // XY center, Z at bottom
+  V3 desired_dp; // move that Object wanted to make
+  V3 moved_dp; // move that Object did after collision simulation
 
   // visuals
   U32 color;
-  bool hide_above_map;
-  U32 animation_index;
   Quat rotation;
+  U32 animation_index; // used by DrawModel
+  MODEL_Kind model; // used by DrawModel
+  float collision_height; // used by DrawCollision
+  TEX_Kind texture; // used by DrawCollision
+  float texture_texels_per_cm; // used by DrawCollision
 
   // input actions
   bool is_pathing;
@@ -64,7 +82,7 @@ typedef struct
 {
   // Object data that's kept on client side only
   Quat animated_rot; // animates towards rotation
-  V3 animated_p; // animates towards (V3){p.x, p.y, 0}
+  V3 animated_p; // animates towards (V3){p.x, p.y, p.z}
   float animation_t;
 } OBJ_Local;
 

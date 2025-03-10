@@ -226,7 +226,6 @@ static void NET_IterateSend()
           if (!OBJ_IsNil(player))
           {
             player->s.p.y = -150.f + user_index * 70.f;
-            player->s.prev_p = player->s.p;
             V3 color = {};
             color.x = (user_index & 4) ? .3f : 0.8f;
             color.y = (user_index & 2) ? .3f : 0.8f;

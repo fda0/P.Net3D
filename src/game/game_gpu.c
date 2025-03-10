@@ -633,18 +633,25 @@ static void GPU_Init()
     {
       const char *paths[] =
       {
-#if 0
+#if 1
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Color.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_NormalGL.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Roughness.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Displacement.jpg",
-        "../res/tex/PavingStones067/PavingStones067_1K-JPG_AmbientOcclusion.jpg",
-#else
+        //"../res/tex/PavingStones067/PavingStones067_1K-JPG_AmbientOcclusion.jpg",
+#endif
+#if 0
+        "../res/tex/Leather011/Leather011_1K-JPG_Color.jpg",
+        "../res/tex/Leather011/Leather011_1K-JPG_NormalGL.jpg",
+        "../res/tex/Leather011/Leather011_1K-JPG_Roughness.jpg",
+        "../res/tex/Leather011/Leather011_1K-JPG_Displacement.jpg",
+#endif
+#if 0
         "../res/tex/TestPBR001/TestPBR001_Color.png",
         "../res/tex/TestPBR001/TestPBR001_NormalGL.png",
         "../res/tex/TestPBR001/TestPBR001_Roughness.jpg",
         "../res/tex/TestPBR001/TestPBR001_Displacement.jpg",
-        "../res/tex/TestPBR001/TestPBR001_AmbientOcclusion.jpg",
+        //"../res/tex/TestPBR001/TestPBR001_AmbientOcclusion.jpg",
 #endif
       };
       APP.gpu.wall_pbr_tex = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain PBR tex");

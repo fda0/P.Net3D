@@ -185,7 +185,7 @@ static TICK_Input *CLIENT_PollInput()
   {
     APP.pathing_marker_set = false;
     input->is_pathing = true;
-    input->pathing_world_p = OBJ_Get(APP.pathing_marker, ObjStorage_Local)->s.p;
+    input->pathing_world_p = V2_FromV3_XY(OBJ_Get(APP.pathing_marker, ObjStorage_Local)->s.p);
   }
 
   return input;

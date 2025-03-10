@@ -334,7 +334,7 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
   //if (normal.x < 0.f) normal.x = -1.f;
   //if (normal.y < 0.f) normal.y = -1.f;
   //if (normal.z < 0.f) normal.z = -1.f;
-  return V4(normal*0.5f + 0.5f, 1.f);
+  //return V4(normal*0.5f + 0.5f, 1.f);
 
   // apply shininess
   shininess = 64.f - 64.f*tex_roughness.x;

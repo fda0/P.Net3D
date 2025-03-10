@@ -127,11 +127,12 @@ static Object *OBJ_Create(OBJ_Category storage, U32 flags)
 static Object *OBJ_CreateWall(V2 p, V2 dim)
 {
   Object *obj = OBJ_Create(ObjStorage_Local,
-                           ObjFlag_DrawCollisionWall | ObjFlag_Collide);
-  obj->s.p = p;
+                           ObjFlag_DrawCollision | ObjFlag_Collide);
+  obj->s.p = V3_From_XY_Z(p, 0);
   obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
   Collision_RecalculateNormals(&obj->s.collision);
   obj->s.color = Color32_RGBf(1,1,1);
+  obj->s.collision_height = 120.f;
   return obj;
 }
 
@@ -140,14 +141,14 @@ static Object *OBJ_CreatePlayer()
   Object *player = OBJ_Create(ObjStorage_Net,
                               ObjFlag_Move |
                               ObjFlag_Collide |
-                              //ObjFlag_DrawTeapot |
-                              ObjFlag_DrawWorker |
-                              //ObjFlag_DrawCollisionWall |
+                              ObjFlag_DrawModel |
                               ObjFlag_AnimateRotation |
                               ObjFlag_AnimateT);
 
   player->s.collision.verts = CollisionVertices_FromRectDim((V2){20, 20});
   Collision_RecalculateNormals(&player->s.collision);
+
+  player->s.model = MODEL_FemaleWorker;
 
   player->s.color = Color32_RGBf(1,1,1);
   player->s.animation_index = 23;

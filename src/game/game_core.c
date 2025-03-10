@@ -26,9 +26,7 @@ static void Game_AnimateObjects()
 
     if (OBJ_HasAnyFlag(obj, ObjFlag_AnimatePosition))
     {
-      V3 pos = V3_Make_XY_Z(obj->s.p, (obj->s.hide_above_map ? 200 : 0));
-      V3 delta = V3_Sub(pos, obj->l.animated_p);
-
+      V3 delta = V3_Sub(obj->s.p, obj->l.animated_p);
       float speed = APP.dt * 10.f;
       delta = V3_Scale(delta, speed);
 
@@ -36,7 +34,7 @@ static void Game_AnimateObjects()
       ForArray(i, obj->l.animated_p.E)
       {
         if (AbsF(delta.E[i]) < 0.1f)
-          obj->l.animated_p.E[i] = pos.E[i];
+          obj->l.animated_p.E[i] = obj->s.p.E[i];
       }
     }
 
@@ -48,8 +46,7 @@ static void Game_AnimateObjects()
       }
       else
       {
-        V2 p_delta = V2_Sub(obj->s.p, obj->s.prev_p);
-        float dist = V2_Length(p_delta);
+        float dist = V3_Length(obj->s.moved_dp);
         obj->l.animation_t += dist * 0.02f;
       }
 
@@ -64,13 +61,11 @@ static void Game_DrawObjects()
   {
     Object *obj = APP.all_objects + obj_index;
 
-    if (OBJ_HasAnyFlag(obj, ObjFlag_DrawTeapot | ObjFlag_DrawFlag | ObjFlag_DrawWorker))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_DrawModel))
     {
-      V3 pos = V3_Make_XY_Z(obj->s.p, 0);
+      V3 pos = obj->s.p;
       if (OBJ_HasAnyFlag(obj, ObjFlag_AnimatePosition))
-      {
         pos = obj->l.animated_p;
-      }
 
       Mat4 transform = Mat4_Translation(pos);
       if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateRotation))
@@ -79,17 +74,15 @@ static void Game_DrawObjects()
         transform = Mat4_Mul(transform, rot_mat); // rotate first, translate second
       }
 
-      if (OBJ_HasAnyFlag(obj, ObjFlag_DrawTeapot))
+      if      (obj->s.model == MODEL_Teapot)
         RDR_AddRigid(RdrRigid_Teapot, transform, obj->s.color);
-
-      if (OBJ_HasAnyFlag(obj, ObjFlag_DrawFlag))
+      else if (obj->s.model == MODEL_Flag)
         RDR_AddRigid(RdrRigid_Flag, transform, obj->s.color);
-
-      if (OBJ_HasAnyFlag(obj, ObjFlag_DrawWorker))
+      else if (obj->s.model == MODEL_FemaleWorker)
         RDR_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
-    if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionWall | ObjFlag_DrawCollisionGround))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollision))
     {
       U32 face_count = 6;
       U32 vertices_per_face = 3*2;
@@ -106,10 +99,13 @@ static void Game_DrawObjects()
           wall_verts[i].color = obj->s.color;
         }
 
-        float height = 300.f;
-        float bot_z = 0;
-        if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
-          bot_z = -height;
+        float bot_z = obj->s.p.z;
+        float height = obj->s.collision_height;
+        if (height <= 0.f)
+        {
+          height = 10.f;
+          bot_z -= height; // @todo do not draw floor/walls if height == 0
+        }
         float top_z = bot_z + height;
 
         CollisionVertices collision = obj->s.collision.verts;
@@ -127,14 +123,14 @@ static void Game_DrawObjects()
 
           V3 cube_verts[8] =
           {
-            V3_Make_XY_Z(collision.arr[0], bot_z), // 0
-            V3_Make_XY_Z(collision.arr[1], bot_z), // 1
-            V3_Make_XY_Z(collision.arr[2], bot_z), // 2
-            V3_Make_XY_Z(collision.arr[3], bot_z), // 3
-            V3_Make_XY_Z(collision.arr[0], top_z), // 4
-            V3_Make_XY_Z(collision.arr[1], top_z), // 5
-            V3_Make_XY_Z(collision.arr[2], top_z), // 6
-            V3_Make_XY_Z(collision.arr[3], top_z), // 7
+            V3_From_XY_Z(collision.arr[0], bot_z), // 0
+            V3_From_XY_Z(collision.arr[1], bot_z), // 1
+            V3_From_XY_Z(collision.arr[2], bot_z), // 2
+            V3_From_XY_Z(collision.arr[3], bot_z), // 3
+            V3_From_XY_Z(collision.arr[0], top_z), // 4
+            V3_From_XY_Z(collision.arr[1], top_z), // 5
+            V3_From_XY_Z(collision.arr[2], top_z), // 6
+            V3_From_XY_Z(collision.arr[3], top_z), // 7
           };
 
           ForArray(i, cube_index_map)
@@ -170,9 +166,9 @@ static void Game_DrawObjects()
         float w2 = V2_Length(V2_Sub(collision.arr[2], collision.arr[3]));
         float w3 = V2_Length(V2_Sub(collision.arr[3], collision.arr[0]));
 
-        float texels_per_cm = 0.05f;
-        if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollisionGround))
-          texels_per_cm = 0.025f;
+        float texels_per_cm = obj->s.texture_texels_per_cm;
+        if (texels_per_cm <= 0.f)
+          texels_per_cm = 0.05f;
 
         ForU32(face_i, face_count)
         {
@@ -206,15 +202,15 @@ static void Game_DrawObjects()
             case WorldDir_E:
             case WorldDir_W:
             case WorldDir_N:
-            case WorldDir_S: normal_rot = Quat_FromAxisAngle_RH(V3_Y(), -0.25f); break;
-            case WorldDir_B: normal_rot = Quat_FromAxisAngle_RH(V3_Y(), 0.5f); break;
+            case WorldDir_S: normal_rot = Quat_FromAxisAngle_RH(Axis3_Y(), -0.25f); break;
+            case WorldDir_B: normal_rot = Quat_FromAxisAngle_RH(Axis3_Y(), 0.5f); break;
           }
 
           switch (face_i)
           {
-            case WorldDir_E: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(V3_X(), 0.5f)); break;
-            case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(V3_X(), -0.25f)); break;
-            case WorldDir_S: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(V3_X(), 0.25f)); break;
+            case WorldDir_E: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(Axis3_X(), 0.5f)); break;
+            case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(Axis3_X(), -0.25f)); break;
+            case WorldDir_S: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(Axis3_X(), 0.25f)); break;
           }
 
           V3 ideal_E = (V3){1,0,0};
@@ -222,10 +218,10 @@ static void Game_DrawObjects()
           V3 ideal_N = (V3){0,1,0};
           V3 ideal_S = (V3){0,-1,0};
 
-          V3 obj_norm_E = V3_Make_XY_Z(obj->s.collision.norms.arr[0], 0);
-          V3 obj_norm_W = V3_Make_XY_Z(obj->s.collision.norms.arr[2], 0);
-          V3 obj_norm_N = V3_Make_XY_Z(obj->s.collision.norms.arr[1], 0);
-          V3 obj_norm_S = V3_Make_XY_Z(obj->s.collision.norms.arr[3], 0);
+          V3 obj_norm_E = V3_From_XY_Z(obj->s.collision.norms.arr[0], 0);
+          V3 obj_norm_W = V3_From_XY_Z(obj->s.collision.norms.arr[2], 0);
+          V3 obj_norm_N = V3_From_XY_Z(obj->s.collision.norms.arr[1], 0);
+          V3 obj_norm_S = V3_From_XY_Z(obj->s.collision.norms.arr[3], 0);
 
           Quat correction_E = Quat_FromNormalizedPair(ideal_E, obj_norm_E);
           Quat correction_W = Quat_FromNormalizedPair(ideal_W, obj_norm_W);
@@ -345,9 +341,10 @@ static void Game_Iterate()
     Object *player = OBJ_Get(APP.client.player_key, ObjStorage_Net);
     if (!OBJ_IsNil(player))
     {
-      APP.camera_p = V3_Make_XY_Z(player->s.p, 130.f);
+      APP.camera_p = player->s.p;
+      APP.camera_p.z += 130.f;
       APP.camera_p.x -= 60.f;
-      APP.camera_rot.y = -0.15f;
+      APP.camera_rot = (V3){0, -0.15f, 0};
     }
   }
 
@@ -414,14 +411,14 @@ static void Game_Iterate()
         KEY_Held(SDL_SCANCODE_A) ||
         KEY_Held(SDL_SCANCODE_D))
     {
-      marker->s.hide_above_map = true;
+      marker->s.p.z = 400.f;
     }
 
     if (KEY_Held(KEY_MouseRight) && APP.world_mouse_valid)
     {
-      marker->s.flags |= ObjFlag_DrawFlag;
-      marker->s.p = APP.world_mouse;
-      marker->s.hide_above_map = false;
+      marker->s.flags |= ObjFlag_DrawModel;
+      marker->s.model = MODEL_Flag;
+      marker->s.p = V3_From_XY_Z(APP.world_mouse, 0);
 
       marker->l.animated_p.x = marker->s.p.x;
       marker->l.animated_p.y = marker->s.p.y;
@@ -477,7 +474,7 @@ static void Game_Init()
     }
 
     {
-      Object *ground = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollisionGround);
+      Object *ground = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
       ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
       Collision_RecalculateNormals(&ground->s.collision);
     }
