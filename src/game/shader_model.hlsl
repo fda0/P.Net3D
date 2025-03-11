@@ -162,7 +162,7 @@ static float4 UnpackColor32(uint packed)
 
 static float3 TowardsSunDir()
 {
-  return normalize(float3(-0.5f, 0.25f, 1.f));
+  return normalize(float3(1.f, 0.f, 0.01f));
 }
 
 static Quat Quat_FromNormalizedPair(V3 a, V3 b)
@@ -327,14 +327,6 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
   tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
   V3 normal = mul(frag.normal_rot, tex_normal);
   normal = normalize(normal);
-  //normal = V3(0,0,1);
-  //normal.x = -1.f;
-  //normal.y = -1.f;
-  //normal.z = -1.f;
-  //if (normal.x < 0.f) normal.x = -1.f;
-  //if (normal.y < 0.f) normal.y = -1.f;
-  //if (normal.z < 0.f) normal.z = -1.f;
-  //return V4(normal*0.5f + 0.5f, 1.f);
 
   // apply shininess
   shininess = 64.f - 64.f*tex_roughness.x;
@@ -352,11 +344,6 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
     V3 halfway_dir = normalize(view_dir + towards_light_dir);
     float specular_angle = max(dot(normal, halfway_dir), 0.f);
     specular = pow(specular_angle, shininess);
-
-    // @todo multiple things about specular light seems bugged
-    // 1. is camera_p one frame delayed?
-    // 2. calculations/directions seem off, I need to play with simple programmer reference test assets
-    // 3. shiny point seems offseted? idk! maybe it's the lack of ambient lighting
   }
   color.xyz *= ambient + diffuse + specular;
 

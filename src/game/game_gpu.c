@@ -903,10 +903,8 @@ static void GPU_Iterate()
     struct
     {
       Mat4 CameraTransform;
-      V3 CameraPosition;
-      float pad0;
-      V3 BackgroundColor;
-      float pad1;
+      _Alignas(16) V3 CameraPosition;
+      _Alignas(16) V3 BackgroundColor;
     } uniform = {};
 
     uniform.CameraTransform = APP.camera_all_mat;
@@ -914,6 +912,7 @@ static void GPU_Iterate()
     uniform.BackgroundColor = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B};
 
     SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
+    SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));
   }
 
   SDL_GPUDepthStencilTargetInfo depth_target = {

@@ -26,7 +26,7 @@ if "%release%"=="1"   set sdl_build=build\win\Release
 set sdl_libs=..\libs\SDL\%sdl_build%\SDL3-static.lib ..\libs\SDL_image\%sdl_build%\SDL3_image-static.lib ..\libs\SDL_net\%sdl_build%\SDL3_net-static.lib
 
 :: --- Compile/Link Line Definitions per compiler -----------------------------
-set cl_common=     /nologo /FC /Z7 /W4 /wd4244 /wd4201 /std:clatest
+set cl_common=     /nologo /FC /Z7 /W4 /wd4244 /wd4201 /wd4324 /std:clatest
 set cl_debug=      call cl /Od /Ob1 /DBUILD_DEBUG=1 /MDd %cl_common% %compile_common%
 set cl_release=    call cl /O2 /DBUILD_DEBUG=0 /MD %cl_common% %compile_common%
 set cl_libs=       User32.lib Advapi32.lib Shell32.lib Gdi32.lib Version.lib OleAut32.lib Imm32.lib Ole32.lib Cfgmgr32.lib Setupapi.lib Winmm.lib Ws2_32.lib Iphlpapi.lib %sdl_libs%
