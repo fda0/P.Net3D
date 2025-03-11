@@ -1,6 +1,17 @@
 #define RD_MAX_RIGID_INSTANCES 16
 #define RD_MAX_SKINNED_INSTANCES 16
 
+
+typedef enum
+{
+  TEX_Leather011,
+  TEX_PavingStones067,
+  TEX_Tiles101,
+  TEX_TestPBR001,
+  TEX_COUNT
+} TEX_Kind;
+
+
 //
 // Enums @todo generate these or setup more dynamic key-like system
 //
@@ -76,6 +87,12 @@ typedef struct
   U32 instance_count;
 } RDR_Skinned;
 
+typedef struct
+{
+  RDR_WallVertex verts[1024 * 8];
+  U32 vert_count;
+} RDR_WallMeshBuffer;
+
 // State
 typedef struct
 {
@@ -87,6 +104,5 @@ typedef struct
   RDR_Rigid rigids[RdrRigid_COUNT];
   RDR_Skinned skinneds[RdrSkinned_COUNT];
 
-  RDR_WallVertex wall_verts[1024 * 8];
-  U32 wall_vert_count;
+  RDR_WallMeshBuffer wall_mesh_buffers[TEX_COUNT];
 } RDR_State;

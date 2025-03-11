@@ -44,3 +44,31 @@ static void RDR_AddSkinned(RDR_SkinnedType type, Mat4 transform, U32 color,
     memcpy(pose->mats, animation_pose.matrices, sizeof(Mat4)*animation_pose.matrices_count);
   }
 }
+
+static RDR_WallVertex *RDR_PushWallVertices(TEX_Kind tex, U32 push_vert_count)
+{
+  AssertBounds(tex, APP.rdr.wall_mesh_buffers);
+  RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + tex;
+  if (buf->vert_count + push_vert_count > ArrayCount(buf->verts))
+    return 0;
+
+  RDR_WallVertex *res = buf->verts + buf->vert_count;
+  buf->vert_count += push_vert_count;
+  return res;
+}
+
+static void RDR_PostFrameCleanup()
+{
+  ForArray(i, APP.gpu.rigids)
+    APP.rdr.rigids[i].instance_count = 0;
+
+  ForArray(i, APP.gpu.skinneds)
+    APP.rdr.skinneds[i].instance_count = 0;
+
+
+  ForArray(buffer_i, APP.rdr.wall_mesh_buffers)
+  {
+    RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + buffer_i;
+    buf->vert_count = 0;
+  }
+}

@@ -382,6 +382,8 @@ static SDL_GPUTexture *GPU_CreateAndLoadTexture2DArray(const char **paths, U64 p
   return result;
 }
 
+
+
 static void GPU_Init()
 {
   // preapre props
@@ -606,10 +608,15 @@ static void GPU_Init()
 
   // Wall pipeline
   {
-    // create wall vertex buffer
-    APP.gpu.wall_vert_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
-                                             sizeof(APP.rdr.wall_verts),
-                                             "Wall vertex buffer");
+    // create wall vertex buffers
+    ForArray(i, APP.gpu.wall_vert_buffers)
+    {
+      APP.gpu.wall_vert_buffers[i] =
+        GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+                         sizeof(APP.rdr.wall_mesh_buffers[i].verts),
+                         "Wall vertex buffer (one of many)");
+    }
+
     {
       RDR_RigidInstance inst = {};
       inst.transform = Mat4_Identity();
@@ -624,37 +631,46 @@ static void GPU_Init()
     {
       const char *paths[] =
       {
-        "../res/tex/1.jpg",
-        "../res/tex/2.jpg",
-      };
-      APP.gpu.wall_tex = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain tex");
-    }
-
-    {
-      const char *paths[] =
-      {
-#if 1
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Color.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_NormalGL.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Roughness.jpg",
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Displacement.jpg",
         //"../res/tex/PavingStones067/PavingStones067_1K-JPG_AmbientOcclusion.jpg",
-#endif
-#if 0
+      };
+      APP.gpu.textures[TEX_PavingStones067] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "PavingStones067");
+    }
+    {
+      const char *paths[] =
+      {
         "../res/tex/Leather011/Leather011_1K-JPG_Color.jpg",
         "../res/tex/Leather011/Leather011_1K-JPG_NormalGL.jpg",
         "../res/tex/Leather011/Leather011_1K-JPG_Roughness.jpg",
         "../res/tex/Leather011/Leather011_1K-JPG_Displacement.jpg",
-#endif
-#if 0
+        //"../res/tex/Leather011/Leather011_1K-JPG_AmbientOcclusion.jpg",
+      };
+      APP.gpu.textures[TEX_Leather011] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Leather011");
+    }
+    {
+      const char *paths[] =
+      {
+        "../res/tex/Tiles101/Tiles101_1K-JPG_Color.jpg",
+        "../res/tex/Tiles101/Tiles101_1K-JPG_NormalGL.jpg",
+        "../res/tex/Tiles101/Tiles101_1K-JPG_Roughness.jpg",
+        "../res/tex/Tiles101/Tiles101_1K-JPG_Displacement.jpg",
+        //"../res/tex/Tiles101/Tiles101_1K-JPG_AmbientOcclusion.jpg",
+      };
+      APP.gpu.textures[TEX_Tiles101] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Tiles101");
+    }
+    {
+      const char *paths[] =
+      {
         "../res/tex/TestPBR001/TestPBR001_Color.png",
         "../res/tex/TestPBR001/TestPBR001_NormalGL.png",
         "../res/tex/TestPBR001/TestPBR001_Roughness.jpg",
         "../res/tex/TestPBR001/TestPBR001_Displacement.jpg",
-        //"../res/tex/TestPBR001/TestPBR001_AmbientOcclusion.jpg",
-#endif
+        //"../res/tex/TestPBR001/TestPBR001_1K-JPG_AmbientOcclusion.jpg",
       };
-      APP.gpu.wall_pbr_tex = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Terrain PBR tex");
+      APP.gpu.textures[TEX_TestPBR001] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "TestPBR001");
     }
 
     // Texture sampler
@@ -786,11 +802,13 @@ static void GPU_Deinit()
     SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.skinned_pose_bufs[i]);
   }
 
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_vert_buf);
+  ForArray(i, APP.gpu.wall_vert_buffers)
+    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_vert_buffers[i]);
+
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_inst_buf);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.wall_sampler);
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.wall_tex);
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.wall_pbr_tex);
+  ForArray(i, APP.gpu.textures)
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.textures[i]);
 }
 
 static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
@@ -839,9 +857,15 @@ static void GPU_Iterate()
   GPU_ProcessWindowResize();
 
   // upload wall vertices
-  if (APP.rdr.wall_vert_count)
+  static_assert(ArrayCount(APP.gpu.wall_vert_buffers) == ArrayCount(APP.rdr.wall_mesh_buffers));
+  ForArray(i, APP.rdr.wall_mesh_buffers)
   {
-    GPU_TransferBuffer(APP.gpu.wall_vert_buf, APP.rdr.wall_verts, sizeof(APP.rdr.wall_verts));
+    RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + i;
+    if (buf->vert_count)
+    {
+      U32 transfor_size = buf->vert_count * sizeof(buf->verts[0]);
+      GPU_TransferBuffer(APP.gpu.wall_vert_buffers[i], buf->verts, transfor_size);
+    }
   }
 
   // upload model instance data
@@ -935,23 +959,34 @@ static void GPU_Iterate()
     // walls
     SDL_BindGPUGraphicsPipeline(pass, APP.gpu.wall_pipeline);
     {
-      // bind vertex buffer
-      SDL_GPUBufferBinding binding_vrt = { .buffer = APP.gpu.wall_vert_buf };
-      SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
-
       // bind instance storage buffer
       SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.wall_inst_buf, 1);
 
-      // bind fragment sampler
-      SDL_GPUTextureSamplerBinding binding_sampl =
+      ForArray(mesh_index, APP.rdr.wall_mesh_buffers)
       {
-        //.texture = APP.gpu.wall_tex,
-        .texture = APP.gpu.wall_pbr_tex,
-        .sampler = APP.gpu.wall_sampler,
-      };
-      SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
+        RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + mesh_index;
+        if (buf->vert_count)
+        {
+          // bind vertex buffer
+          AssertBounds(mesh_index, APP.gpu.wall_vert_buffers);
+          SDL_GPUBufferBinding binding_vrt = { .buffer = APP.gpu.wall_vert_buffers[mesh_index] };
+          SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
 
-      SDL_DrawGPUPrimitives(pass, APP.rdr.wall_vert_count, 1, 0, 0);
+          AssertBounds(mesh_index, APP.gpu.textures);
+          SDL_GPUTexture *texture = APP.gpu.textures[mesh_index];
+
+          // bind fragment sampler
+          SDL_GPUTextureSamplerBinding binding_sampl =
+          {
+            //.texture = APP.gpu.wall_tex,
+            .texture = texture,
+            .sampler = APP.gpu.wall_sampler,
+          };
+          SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
+
+          SDL_DrawGPUPrimitives(pass, buf->vert_count, 1, 0, 0);
+        }
+      }
     }
 
     // rigid

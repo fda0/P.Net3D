@@ -22,12 +22,12 @@
 #include "game_constants.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
+#include "game_render.h"
 #include "game_object.h"
 #include "game_tick.h"
 #include "game_network.h"
 #include "game_client.h"
 #include "game_server.h"
-#include "game_render.h"
 #include "game_animation.h"
 #include "game_gpu.h"
 #include "game_core.h"
@@ -80,23 +80,15 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   Game_Iterate();
   GPU_Iterate();
 
-  // frame arena cleanup
+  // Post frame cleanup
+  RDR_PostFrameCleanup();
+
+  // Input cleanup
+  APP.mouse_delta = (V2){};
+
+  // Frame arena cleanup
   Arena_Reset(APP.a_frame, 0);
   Assert(APP.tmp->used == 0);
-
-  // render cleanup
-  {
-    APP.rdr.wall_vert_count = 0;
-
-    ForArray(i, APP.gpu.rigids)
-      APP.rdr.rigids[i].instance_count = 0;
-
-    ForArray(i, APP.gpu.skinneds)
-      APP.rdr.skinneds[i].instance_count = 0;
-  }
-
-  // input cleanup
-  APP.mouse_delta = (V2){};
 
   return SDL_APP_CONTINUE;
 }

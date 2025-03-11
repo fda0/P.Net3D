@@ -27,11 +27,10 @@ typedef struct
   GPU_ModelBuffers skinneds[RdrSkinned_COUNT];
   SDL_GPUBuffer *skinned_pose_bufs[RdrSkinned_COUNT];
 
-  SDL_GPUBuffer *wall_vert_buf;
   SDL_GPUBuffer *wall_inst_buf;
   SDL_GPUSampler *wall_sampler;
-  SDL_GPUTexture *wall_tex;
-  SDL_GPUTexture *wall_pbr_tex;
+  SDL_GPUBuffer *wall_vert_buffers[TEX_COUNT];
+  SDL_GPUTexture *textures[TEX_COUNT];
 
   SDL_PropertiesID clear_depth_props;
   SDL_PropertiesID clear_color_props;

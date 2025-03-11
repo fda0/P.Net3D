@@ -88,11 +88,10 @@ static void Game_DrawObjects()
       U32 vertices_per_face = 3*2;
       U32 vert_count = face_count * vertices_per_face;
 
-      if (APP.rdr.wall_vert_count + vert_count <= ArrayCount(APP.rdr.wall_verts))
+      TEX_Kind tex_kind = Clamp(0, TEX_COUNT-1, obj->s.texture);
+      RDR_WallVertex *wall_verts = RDR_PushWallVertices(tex_kind, vert_count);
+      if (wall_verts)
       {
-        RDR_WallVertex *wall_verts = APP.rdr.wall_verts + APP.rdr.wall_vert_count;
-        APP.rdr.wall_vert_count += vert_count;
-
         ForU32(i, vert_count)
         {
           SDL_zerop(&wall_verts[i]);
@@ -168,7 +167,7 @@ static void Game_DrawObjects()
 
         float texels_per_cm = obj->s.texture_texels_per_cm;
         if (texels_per_cm <= 0.f)
-          texels_per_cm = 0.05f;
+          texels_per_cm = 0.015f;
 
         ForU32(face_i, face_count)
         {
@@ -452,7 +451,7 @@ static void Game_Init()
   APP.obj_serial_counter = 1;
   APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;
 
-  // add walls
+  // add walls, ground etc
   {
     float thickness = 20.f;
     float length = 400.f;
@@ -477,6 +476,17 @@ static void Game_Init()
       Object *ground = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
       ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
       Collision_RecalculateNormals(&ground->s.collision);
+      ground->s.texture = TEX_PavingStones067;
+    }
+
+    {
+      Object *flying_cube = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
+      flying_cube->s.p = (V3){70, 70, 70};
+      flying_cube->s.collision_height = 50;
+      flying_cube->s.texture = TEX_Tiles101;
+      flying_cube->s.texture_texels_per_cm = 0.05f;
+      flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){50, 50});
+      Collision_RecalculateNormals(&flying_cube->s.collision);
     }
   }
 

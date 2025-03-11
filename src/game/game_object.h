@@ -10,15 +10,6 @@ typedef struct
 
 typedef enum
 {
-  TEX_None,
-  TEX_Leather001,
-  TEX_PavingStones067,
-  TEX_TestPBR001,
-  TEX_COUNT
-} TEX_Kind;
-
-typedef enum
-{
   MODEL_None,
   MODEL_Teapot,
   MODEL_Flag,

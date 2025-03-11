@@ -131,6 +131,7 @@ static Object *OBJ_CreateWall(V2 p, V2 dim)
   obj->s.p = V3_From_XY_Z(p, 0);
   obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
   Collision_RecalculateNormals(&obj->s.collision);
+  obj->s.texture = TEX_Tiles101;
   obj->s.color = Color32_RGBf(1,1,1);
   obj->s.collision_height = 120.f;
   return obj;
