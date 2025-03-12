@@ -400,6 +400,17 @@ static void Game_Iterate()
     }
   }
 
+  // move sun
+  {
+    float sun_x = SinF(APP.at * 0.03f);
+    float sun_y = CosF(APP.at * 0.03f);
+    APP.towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 1.f});
+
+    V3 sun_dist = V3_Scale(APP.towards_sun_dir, 900.f);
+    V3 sun_obj_p = V3_Add(APP.camera_p, sun_dist);
+    OBJ_Get(APP.sun, ObjStorage_Local)->s.p = sun_obj_p;
+  }
+
   Game_AnimateObjects();
 
   Object *marker = OBJ_Get(APP.pathing_marker, ObjStorage_Local);
@@ -487,6 +498,15 @@ static void Game_Init()
       flying_cube->s.texture_texels_per_cm = 0.05f;
       flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){50, 50});
       Collision_RecalculateNormals(&flying_cube->s.collision);
+    }
+
+    {
+      Object *sun = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
+      sun->s.texture = TEX_Leather011;
+      sun->s.collision_height = 50;
+      sun->s.collision.verts = CollisionVertices_FromRectDim((V2){50, 50});
+      Collision_RecalculateNormals(&sun->s.collision);
+      APP.sun = sun->s.key;
     }
   }
 

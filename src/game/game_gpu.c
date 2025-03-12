@@ -905,11 +905,13 @@ static void GPU_Iterate()
       Mat4 CameraTransform;
       _Alignas(16) V3 CameraPosition;
       _Alignas(16) V3 BackgroundColor;
+      _Alignas(16) V3 TowardsSunDir;
     } uniform = {};
 
     uniform.CameraTransform = APP.camera_all_mat;
     uniform.CameraPosition = APP.camera_p;
     uniform.BackgroundColor = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B};
+    uniform.TowardsSunDir = APP.towards_sun_dir;
 
     SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
     SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));

@@ -71,7 +71,7 @@ static Object *OBJ_FromNetIndex(U32 net_index)
   return APP.net_objects + net_index;
 }
 
-static Object *OBJ_Create(OBJ_Category storage, U32 flags)
+static Object *OBJ_Create(OBJ_Storage storage, U32 flags)
 {
   bool matched_storage = false;
   Object *obj = 0;

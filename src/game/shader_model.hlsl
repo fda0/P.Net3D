@@ -36,6 +36,7 @@ struct UniformData
   Mat4 CameraTransform;
   V3 CameraPosition;
   V3 BackgroundColor;
+  V3 TowardsSunDir;
 };
 
 cbuffer VertexUniformBuf : register(b0, space1) { UniformData UniV; };
@@ -158,11 +159,6 @@ static float4 UnpackColor32(uint packed)
   res.b = ((packed >> 16) & 255) * inv;
   res.a = ((packed >> 24) & 255) * inv;
   return res;
-}
-
-static float3 TowardsSunDir()
-{
-  return normalize(float3(1.f, 0.f, 0.01f));
 }
 
 static Quat Quat_FromNormalizedPair(V3 a, V3 b)
@@ -304,7 +300,6 @@ SamplerState Sampler : register(s0, space2);
 
 float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
 {
-  V3 towards_light_dir = TowardsSunDir();
   V4 color = frag.color;
   float shininess = 16.f;
 
@@ -329,19 +324,19 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
   normal = normalize(normal);
 
   // apply shininess
-  shininess = 64.f - 64.f*tex_roughness.x;
+  shininess = 32.f - 32.f*tex_roughness.x;
 #else
   V3 normal = mul(frag.normal_rot, V3(0,0,1));
 #endif
 
   float ambient = 0.2f;
   float specular = 0.0f;
-  float diffuse = max(dot(towards_light_dir, normal), 0.f);
+  float diffuse = max(dot(UniP.TowardsSunDir, normal), 0.f);
   if (diffuse > 0.f)
   {
     V3 view_dir = normalize(UniP.CameraPosition - frag.world_p);
-    V3 reflect_dir = reflect(-towards_light_dir, normal);
-    V3 halfway_dir = normalize(view_dir + towards_light_dir);
+    V3 reflect_dir = reflect(-UniP.TowardsSunDir, normal);
+    V3 halfway_dir = normalize(view_dir + UniP.TowardsSunDir);
     float specular_angle = max(dot(normal, halfway_dir), 0.f);
     specular = pow(specular_angle, shininess);
   }

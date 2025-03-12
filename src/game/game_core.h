@@ -77,6 +77,10 @@ struct AppState
   // special objects
   OBJ_Key pathing_marker;
   bool pathing_marker_set;
+  OBJ_Key sun;
+
+  // sun
+  V3 towards_sun_dir; // normalized
 
   // camera
   V3 camera_p;

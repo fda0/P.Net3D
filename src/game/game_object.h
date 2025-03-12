@@ -35,7 +35,7 @@ typedef enum
   ObjStorage_Local = (1 << 0),
   ObjStorage_Net   = (1 << 1),
   ObjStorage_All = (ObjStorage_Local | ObjStorage_Net)
-} OBJ_Category;
+} OBJ_Storage;
 
 typedef struct
 {
