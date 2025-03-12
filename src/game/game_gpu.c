@@ -4,6 +4,7 @@
 #define GPU_CLEAR_COLOR_B 0.96f
 #define GPU_CLEAR_COLOR_A 1.0f
 #define GPU_JOINT_TRANSFORMS_MAX_SIZE (sizeof(Mat4)*62)
+#define GPU_SHADOW_MAP_DIM 1024
 
 static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, const char *name)
 {
@@ -637,7 +638,7 @@ static void GPU_Init()
         "../res/tex/PavingStones067/PavingStones067_1K-JPG_Displacement.jpg",
         //"../res/tex/PavingStones067/PavingStones067_1K-JPG_AmbientOcclusion.jpg",
       };
-      APP.gpu.textures[TEX_PavingStones067] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "PavingStones067");
+      APP.gpu.wall_texs[TEX_PavingStones067] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "PavingStones067");
     }
     {
       const char *paths[] =
@@ -648,7 +649,7 @@ static void GPU_Init()
         "../res/tex/Leather011/Leather011_1K-JPG_Displacement.jpg",
         //"../res/tex/Leather011/Leather011_1K-JPG_AmbientOcclusion.jpg",
       };
-      APP.gpu.textures[TEX_Leather011] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Leather011");
+      APP.gpu.wall_texs[TEX_Leather011] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Leather011");
     }
     {
       const char *paths[] =
@@ -659,7 +660,7 @@ static void GPU_Init()
         "../res/tex/Tiles101/Tiles101_1K-JPG_Displacement.jpg",
         //"../res/tex/Tiles101/Tiles101_1K-JPG_AmbientOcclusion.jpg",
       };
-      APP.gpu.textures[TEX_Tiles101] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Tiles101");
+      APP.gpu.wall_texs[TEX_Tiles101] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Tiles101");
     }
     {
       const char *paths[] =
@@ -670,7 +671,7 @@ static void GPU_Init()
         "../res/tex/TestPBR001/TestPBR001_Displacement.jpg",
         //"../res/tex/TestPBR001/TestPBR001_1K-JPG_AmbientOcclusion.jpg",
       };
-      APP.gpu.textures[TEX_TestPBR001] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "TestPBR001");
+      APP.gpu.wall_texs[TEX_TestPBR001] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "TestPBR001");
     }
 
     // Texture sampler
@@ -773,6 +774,7 @@ static void GPU_Init()
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
   }
 
+  APP.gpu.tex_shadow_map = GPU_CreateDepthTexture(GPU_SHADOW_MAP_DIM, GPU_SHADOW_MAP_DIM);
   GPU_ProcessWindowResize();
 }
 
@@ -782,6 +784,7 @@ static void GPU_Deinit()
   SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.skinned_pipeline);
   SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.wall_pipeline);
 
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_shadow_map);
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
   if (APP.gpu.tex_msaa)
     SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
@@ -807,8 +810,8 @@ static void GPU_Deinit()
 
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_inst_buf);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.wall_sampler);
-  ForArray(i, APP.gpu.textures)
-    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.textures[i]);
+  ForArray(i, APP.gpu.wall_texs)
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.wall_texs[i]);
 }
 
 static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
@@ -835,6 +838,62 @@ static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
   SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, storage_bufs_count);
 
   SDL_DrawGPUIndexedPrimitives(pass, model->ind_count, instance_count, 0, 0, 0);
+}
+
+static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass)
+{
+  // walls
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.wall_pipeline);
+  {
+    // bind instance storage buffer
+    SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.wall_inst_buf, 1);
+
+    ForArray(mesh_index, APP.rdr.wall_mesh_buffers)
+    {
+      RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + mesh_index;
+      if (buf->vert_count)
+      {
+        // bind vertex buffer
+        AssertBounds(mesh_index, APP.gpu.wall_vert_buffers);
+        SDL_GPUBufferBinding binding_vrt = { .buffer = APP.gpu.wall_vert_buffers[mesh_index] };
+        SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
+
+        AssertBounds(mesh_index, APP.gpu.wall_texs);
+        SDL_GPUTexture *texture = APP.gpu.wall_texs[mesh_index];
+
+        // bind fragment sampler
+        SDL_GPUTextureSamplerBinding binding_sampl =
+        {
+          //.texture = APP.gpu.wall_tex,
+          .texture = texture,
+          .sampler = APP.gpu.wall_sampler,
+        };
+        SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
+
+        SDL_DrawGPUPrimitives(pass, buf->vert_count, 1, 0, 0);
+      }
+    }
+  }
+
+  // rigid
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.rigid_pipeline);
+  ForArray(i, APP.gpu.rigids)
+  {
+    GPU_ModelBuffers *model = APP.gpu.rigids + i;
+    RDR_Rigid *rigid = APP.rdr.rigids + i;
+    GPU_DrawModelBuffers(pass, model, rigid->instance_count, 0);
+  }
+
+  // skinned
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.skinned_pipeline);
+  ForArray(i, APP.gpu.skinneds)
+  {
+    GPU_ModelBuffers *model = APP.gpu.skinneds + i;
+    RDR_Skinned *skinned = APP.rdr.skinneds + i;
+
+    SDL_GPUBuffer *pose_buf = APP.gpu.skinned_pose_bufs[i];
+    GPU_DrawModelBuffers(pass, model, skinned->instance_count, pose_buf);
+  }
 }
 
 static void GPU_Iterate()
@@ -900,116 +959,69 @@ static void GPU_Iterate()
 
   // transform uniforms
   {
-    struct
+    RDR_Uniform uniform =
     {
-      Mat4 CameraTransform;
-      _Alignas(16) V3 CameraPosition;
-      _Alignas(16) V3 BackgroundColor;
-      _Alignas(16) V3 TowardsSunDir;
-    } uniform = {};
-
-    uniform.CameraTransform = APP.camera_all_mat;
-    uniform.CameraPosition = APP.camera_p;
-    uniform.BackgroundColor = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B};
-    uniform.TowardsSunDir = APP.towards_sun_dir;
-
+      .CameraTransform = APP.camera_all_mat,
+      .CameraPosition = APP.camera_p,
+      .BackgroundColor = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B},
+      .TowardsSunDir = APP.towards_sun_dir,
+    };
     SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
     SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));
   }
 
-  SDL_GPUDepthStencilTargetInfo depth_target = {
+  SDL_GPUDepthStencilTargetInfo depth_target =
+  {
     .clear_depth = GPU_CLEAR_DEPTH_FLOAT,
     .load_op = SDL_GPU_LOADOP_CLEAR,
     .store_op = SDL_GPU_STOREOP_DONT_CARE,
     .stencil_load_op = SDL_GPU_LOADOP_DONT_CARE,
     .stencil_store_op = SDL_GPU_STOREOP_DONT_CARE,
-    .texture = APP.gpu.tex_depth,
     .cycle = true,
   };
 
-  SDL_GPUColorTargetInfo color_target =
+  // Sun shadow map render pass
+#if 1
   {
-    .clear_color =
-    {
-      .r = GPU_CLEAR_COLOR_R,
-      .g = GPU_CLEAR_COLOR_G,
-      .b = GPU_CLEAR_COLOR_B,
-      .a = GPU_CLEAR_COLOR_A,
-    },
-  };
-  if (APP.gpu.tex_msaa)
-  {
-    color_target.load_op = SDL_GPU_LOADOP_CLEAR;
-    color_target.store_op = SDL_GPU_STOREOP_RESOLVE;
-    color_target.texture = APP.gpu.tex_msaa;
-    color_target.resolve_texture = APP.gpu.tex_resolve;
-    color_target.cycle = true;
-    color_target.cycle_resolve_texture = true;
+    depth_target.texture = APP.gpu.tex_shadow_map;
+    SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, 0, 0, &depth_target);
+    GPU_RenderPassDrawCalls(pass);
+    SDL_EndGPURenderPass(pass);
   }
-  else
-  {
-    color_target.load_op = SDL_GPU_LOADOP_CLEAR;
-    color_target.store_op = SDL_GPU_STOREOP_STORE;
-    color_target.texture = swapchain_tex;
-  }
+#endif
 
-  // render pass
+  // Final render pass
   {
-    SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
+    depth_target.texture = APP.gpu.tex_depth;
 
-    // walls
-    SDL_BindGPUGraphicsPipeline(pass, APP.gpu.wall_pipeline);
+    SDL_GPUColorTargetInfo color_target =
     {
-      // bind instance storage buffer
-      SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.wall_inst_buf, 1);
-
-      ForArray(mesh_index, APP.rdr.wall_mesh_buffers)
+      .clear_color =
       {
-        RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + mesh_index;
-        if (buf->vert_count)
-        {
-          // bind vertex buffer
-          AssertBounds(mesh_index, APP.gpu.wall_vert_buffers);
-          SDL_GPUBufferBinding binding_vrt = { .buffer = APP.gpu.wall_vert_buffers[mesh_index] };
-          SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
-
-          AssertBounds(mesh_index, APP.gpu.textures);
-          SDL_GPUTexture *texture = APP.gpu.textures[mesh_index];
-
-          // bind fragment sampler
-          SDL_GPUTextureSamplerBinding binding_sampl =
-          {
-            //.texture = APP.gpu.wall_tex,
-            .texture = texture,
-            .sampler = APP.gpu.wall_sampler,
-          };
-          SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
-
-          SDL_DrawGPUPrimitives(pass, buf->vert_count, 1, 0, 0);
-        }
-      }
-    }
-
-    // rigid
-    SDL_BindGPUGraphicsPipeline(pass, APP.gpu.rigid_pipeline);
-    ForArray(i, APP.gpu.rigids)
+        .r = GPU_CLEAR_COLOR_R,
+        .g = GPU_CLEAR_COLOR_G,
+        .b = GPU_CLEAR_COLOR_B,
+        .a = GPU_CLEAR_COLOR_A,
+      },
+    };
+    if (APP.gpu.tex_msaa)
     {
-      GPU_ModelBuffers *model = APP.gpu.rigids + i;
-      RDR_Rigid *rigid = APP.rdr.rigids + i;
-      GPU_DrawModelBuffers(pass, model, rigid->instance_count, 0);
+      color_target.load_op = SDL_GPU_LOADOP_CLEAR;
+      color_target.store_op = SDL_GPU_STOREOP_RESOLVE;
+      color_target.texture = APP.gpu.tex_msaa;
+      color_target.resolve_texture = APP.gpu.tex_resolve;
+      color_target.cycle = true;
+      color_target.cycle_resolve_texture = true;
     }
-
-    // skinned
-    SDL_BindGPUGraphicsPipeline(pass, APP.gpu.skinned_pipeline);
-    ForArray(i, APP.gpu.skinneds)
+    else
     {
-      GPU_ModelBuffers *model = APP.gpu.skinneds + i;
-      RDR_Skinned *skinned = APP.rdr.skinneds + i;
-
-      SDL_GPUBuffer *pose_buf = APP.gpu.skinned_pose_bufs[i];
-      GPU_DrawModelBuffers(pass, model, skinned->instance_count, pose_buf);
+      color_target.load_op = SDL_GPU_LOADOP_CLEAR;
+      color_target.store_op = SDL_GPU_STOREOP_STORE;
+      color_target.texture = swapchain_tex;
     }
 
+    SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
+    GPU_RenderPassDrawCalls(pass);
     SDL_EndGPURenderPass(pass);
   }
 

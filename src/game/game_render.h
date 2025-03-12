@@ -28,6 +28,15 @@ typedef enum
   RdrSkinned_COUNT
 } RDR_SkinnedType;
 
+// Uniform
+typedef struct
+{
+  Mat4 CameraTransform;
+  _Alignas(16) V3 CameraPosition;
+  _Alignas(16) V3 BackgroundColor;
+  _Alignas(16) V3 TowardsSunDir;
+} RDR_Uniform;
+
 // Vertices
 typedef struct
 {

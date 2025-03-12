@@ -11,6 +11,7 @@ typedef struct
   SDL_GPUDevice *device;
 
   // window state
+  SDL_GPUTexture *tex_shadow_map;
   SDL_GPUTexture *tex_depth;
   SDL_GPUTexture *tex_msaa;
   SDL_GPUTexture *tex_resolve;
@@ -30,7 +31,7 @@ typedef struct
   SDL_GPUBuffer *wall_inst_buf;
   SDL_GPUSampler *wall_sampler;
   SDL_GPUBuffer *wall_vert_buffers[TEX_COUNT];
-  SDL_GPUTexture *textures[TEX_COUNT];
+  SDL_GPUTexture *wall_texs[TEX_COUNT];
 
   SDL_PropertiesID clear_depth_props;
   SDL_PropertiesID clear_color_props;
