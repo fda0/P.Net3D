@@ -33,10 +33,10 @@ typedef float3x3 Mat3;
 
 struct UniformData
 {
-  Mat4 CameraTransform;
-  V3 CameraPosition;
-  V3 BackgroundColor;
-  V3 TowardsSunDir;
+  Mat4 camera_transform;
+  V3 camera_position;
+  V3 background_color;
+  V3 towards_sun_dir;
 };
 
 cbuffer VertexUniformBuf : register(b0, space1) { UniformData UniV; };
@@ -270,7 +270,7 @@ VertexToFragment ShaderModelVS(VSInput input)
   float4 position = float4(input.position, 1.0f);
   position = mul(position_transform, position);
   float3 world_p = position.xyz;
-  position = mul(UniV.CameraTransform, position);
+  position = mul(UniV.camera_transform, position);
 
   // Color
   float4 color = input_color;
@@ -331,12 +331,12 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
 
   float ambient = 0.2f;
   float specular = 0.0f;
-  float diffuse = max(dot(UniP.TowardsSunDir, normal), 0.f);
+  float diffuse = max(dot(UniP.towards_sun_dir, normal), 0.f);
   if (diffuse > 0.f)
   {
-    V3 view_dir = normalize(UniP.CameraPosition - frag.world_p);
-    V3 reflect_dir = reflect(-UniP.TowardsSunDir, normal);
-    V3 halfway_dir = normalize(view_dir + UniP.TowardsSunDir);
+    V3 view_dir = normalize(UniP.camera_position - frag.world_p);
+    V3 reflect_dir = reflect(-UniP.towards_sun_dir, normal);
+    V3 halfway_dir = normalize(view_dir + UniP.towards_sun_dir);
     float specular_angle = max(dot(normal, halfway_dir), 0.f);
     specular = pow(specular_angle, shininess);
   }
@@ -344,12 +344,12 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
 
   // apply fog
   {
-    float pixel_distance = distance(frag.world_p, UniP.CameraPosition);
-    float fog_min = 800.f;
-    float fog_max = 1000.f;
+    float pixel_distance = distance(frag.world_p, UniP.camera_position);
+    float fog_min = 1000.f;
+    float fog_max = 2000.f;
 
     float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
-    color = lerp(color, V4(UniP.BackgroundColor, 1.f), fog_t);
+    color = lerp(color, V4(UniP.background_color, 1.f), fog_t);
   }
 
   return color;

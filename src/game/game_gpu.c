@@ -207,9 +207,7 @@ static SDL_GPUGraphicsPipelineCreateInfo GPU_DefaultPipeline(SDL_GPUColorTargetD
     {
       .enable_depth_test = true,
       .enable_depth_write = true,
-      //.compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
       .compare_op = SDL_GPU_COMPAREOP_LESS,
-      //.compare_op = SDL_GPU_COMPAREOP_GREATER_OR_EQUAL,
     },
     .multisample_state =
     {
@@ -963,10 +961,10 @@ static void GPU_Iterate()
   {
     RDR_Uniform uniform =
     {
-      .CameraTransform = APP.camera_all_mat,
-      .CameraPosition = APP.camera_p,
-      .BackgroundColor = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B},
-      .TowardsSunDir = APP.towards_sun_dir,
+      .camera_transform = APP.camera_transform,
+      .camera_position = APP.camera_p,
+      .background_color = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B},
+      .towards_sun_dir = APP.towards_sun_dir,
     };
     SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
     SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));

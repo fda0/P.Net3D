@@ -31,10 +31,10 @@ typedef enum
 // Uniform
 typedef struct
 {
-  Mat4 CameraTransform;
-  _Alignas(16) V3 CameraPosition;
-  _Alignas(16) V3 BackgroundColor;
-  _Alignas(16) V3 TowardsSunDir;
+  Mat4 camera_transform;
+  _Alignas(16) V3 camera_position;
+  _Alignas(16) V3 background_color;
+  _Alignas(16) V3 towards_sun_dir;
 } RDR_Uniform;
 
 // Vertices

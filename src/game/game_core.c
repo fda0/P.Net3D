@@ -150,7 +150,7 @@ static void Game_DrawObjects()
             test.z = wall_verts[0].p.z;
             test.w = 1.f;
 
-            V4 post_view = V4_MulM4(APP.camera_all_mat, test);
+            V4 post_view = V4_MulM4(APP.camera_transform, test);
 
             V4 div = post_view;
             div.x /= div.w;
@@ -347,27 +347,43 @@ static void Game_Iterate()
     }
   }
 
+  // move sun
+  {
+    float sun_x = SinF(APP.at * 0.03f);
+    float sun_y = CosF(APP.at * 0.03f);
+    APP.towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 1.f});
+
+    V3 sun_dist = V3_Scale(APP.towards_sun_dir, 900.f);
+    V3 sun_obj_p = V3_Add(APP.camera_p, sun_dist);
+    OBJ_Get(APP.sun, ObjStorage_Local)->s.p = sun_obj_p;
+  }
+
+  // camera to sun
+  {
+    APP.view_camera_p = V3_Lerp(APP.camera_p, OBJ_Get(APP.sun, ObjStorage_All)->s.p, 0.9f);
+    //APP.view_camera_p = APP.camera_p;
+  }
+
   // calculate camera transform matrices
   {
-    APP.camera_move_mat = Mat4_InvTranslation(Mat4_Translation(APP.camera_p));
+    Mat4 camera_transl = Mat4_InvTranslation(Mat4_Translation(APP.view_camera_p));
 
-    APP.camera_rot = Quat_FromAxisAngle_RH((V3){1,0,0}, APP.camera_angles.x);
-    APP.camera_rot = Quat_Mul(Quat_FromAxisAngle_RH((V3){0,0,1}, APP.camera_angles.z), APP.camera_rot);
-    APP.camera_rot = Quat_Mul(Quat_FromAxisAngle_RH((V3){0,1,0}, APP.camera_angles.y), APP.camera_rot);
+    Mat4 camera_rot = Mat4_Rotation_RH((V3){1,0,0}, APP.camera_angles.x);
+    camera_rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_angles.z), camera_rot);
+    camera_rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_angles.y), camera_rot);
 
-#if 0
-    APP.camera_perspective_mat =
-      Mat4_Perspective(APP.camera_fov_y, (float)APP.window_width/APP.window_height, 2.f, 4000.f);
+#if 1
+    Mat4 camera_projection =
+      Mat4_Perspective(APP.camera_fov_y, (float)APP.window_width/APP.window_height, 2.f, 2000.f);
 #else
     float scale = 0.4f;
     float w = APP.window_width * 0.5f * scale;
     float h = APP.window_height * 0.5f * scale;
-    APP.camera_perspective_mat =
-      Mat4_Orthographic(-w, w, -h, h, 2.f, 4000.f);
+    Mat4 camera_projection =
+      Mat4_Orthographic(-w, w, -h, h, 2.f, 2000.f);
 #endif
 
-    Mat4 rot_mat = Mat4_Rotation_Quat(APP.camera_rot);
-    APP.camera_all_mat = Mat4_Mul(APP.camera_perspective_mat, Mat4_Mul(rot_mat, APP.camera_move_mat));
+    APP.camera_transform = Mat4_Mul(camera_projection, Mat4_Mul(camera_rot, camera_transl));
   }
 
   // calculate mouse in screen space -> mouse in world space (at Z == 0)
@@ -390,9 +406,9 @@ static void Game_Iterate()
     float y = tan * view_mouse.y;
     V3 aim_dir =
     {
-      x * APP.camera_all_mat.elem[0][0] + y * APP.camera_all_mat.elem[0][1] + APP.camera_all_mat.elem[0][2],
-      x * APP.camera_all_mat.elem[1][0] + y * APP.camera_all_mat.elem[1][1] + APP.camera_all_mat.elem[1][2],
-      x * APP.camera_all_mat.elem[2][0] + y * APP.camera_all_mat.elem[2][1] + APP.camera_all_mat.elem[2][2],
+      x * APP.camera_transform.elem[0][0] + y * APP.camera_transform.elem[0][1] + APP.camera_transform.elem[0][2],
+      x * APP.camera_transform.elem[1][0] + y * APP.camera_transform.elem[1][1] + APP.camera_transform.elem[1][2],
+      x * APP.camera_transform.elem[2][0] + y * APP.camera_transform.elem[2][1] + APP.camera_transform.elem[2][2],
     };
 
     float t_numerator = V3_Inner(V3_Sub(plane_origin, APP.camera_p), plane_normal);
@@ -406,17 +422,6 @@ static void Game_Iterate()
       V3 world_mouse = V3_Add(APP.camera_p, world_off);
       APP.world_mouse = (V2){world_mouse.x, world_mouse.y};
     }
-  }
-
-  // move sun
-  {
-    float sun_x = SinF(APP.at * 0.03f);
-    float sun_y = CosF(APP.at * 0.03f);
-    APP.towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 1.f});
-
-    V3 sun_dist = V3_Scale(APP.towards_sun_dir, 900.f);
-    V3 sun_obj_p = V3_Add(APP.camera_p, sun_dist);
-    OBJ_Get(APP.sun, ObjStorage_Local)->s.p = sun_obj_p;
   }
 
   Game_AnimateObjects();
