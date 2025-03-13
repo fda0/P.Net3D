@@ -85,9 +85,9 @@ struct AppState
   // camera
   V3 camera_p;
   V3 camera_angles;
-  V3 view_camera_p; // should be equal to camera_p unless debugging
   float camera_fov_y;
   Mat4 camera_transform;
+  Mat4 sun_camera_transform;
 
   // time
   U64 frame_id;

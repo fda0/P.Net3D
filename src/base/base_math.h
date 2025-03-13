@@ -610,7 +610,7 @@ static Mat4 Mat4_Perspective(float fov_y, float aspect_ratio, float near, float 
   // Modified to work with +x fordward, -y right, +z up coordinate system (same as Source engine).
   float cotangent = 1.0f / TanF(fov_y * 0.5f);
   Mat4 res = {};
-  res.elem[0][2] = -far / (near - far); // -X -> Z
+  res.elem[0][2] = -far / (near - far); // X -> -Z
   res.elem[0][3] = 1.0f; // X -> W
   res.elem[1][0] = -cotangent / aspect_ratio; // -Y -> X
   res.elem[2][1] = cotangent; // Z -> Y
@@ -621,14 +621,14 @@ static Mat4 Mat4_Perspective(float fov_y, float aspect_ratio, float near, float 
 static Mat4 Mat4_Orthographic(float left, float right, float bottom, float top, float near, float far)
 {
   Mat4 res = {};
-  res.elem[0][2] = -1.0f / (near - far); // -X -> Z
+  res.elem[0][2] = -1.f / (near - far); // X -> -Z
   res.elem[1][0] = -2.0f / (right - left); // -Y -> X
   res.elem[2][1] = 2.0f / (top - bottom); // Z -> Y
   res.elem[3][3] = 1.0f; // W -> W
 
   res.elem[3][0] = (left + right) / (left - right); // W -> X
   res.elem[3][1] = (bottom + top) / (bottom - top); // W -> Y
-  res.elem[3][2] = near / (near - far); // -W -> Z
+  res.elem[3][2] = near / (near - far); // W -> Z
   return res;
 }
 

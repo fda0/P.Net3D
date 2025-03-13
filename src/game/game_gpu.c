@@ -196,12 +196,11 @@ static SDL_GPUGraphicsPipelineCreateInfo GPU_DefaultPipeline(SDL_GPUColorTargetD
 {
   SDL_GPUGraphicsPipelineCreateInfo pipeline =
   {
-    .target_info =
+    .vertex_shader = vertex,
+    .fragment_shader = fragment,
+    .multisample_state =
     {
-      .num_color_targets = 1,
-      .color_target_descriptions = color,
-      .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
-      .has_depth_stencil_target = true,
+      .sample_count = APP.gpu.sample_count,
     },
     .depth_stencil_state =
     {
@@ -209,13 +208,19 @@ static SDL_GPUGraphicsPipelineCreateInfo GPU_DefaultPipeline(SDL_GPUColorTargetD
       .enable_depth_write = true,
       .compare_op = SDL_GPU_COMPAREOP_LESS,
     },
-    .multisample_state =
-    {
-      .sample_count = APP.gpu.sample_count,
-    },
     .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
-    .vertex_shader = vertex,
-    .fragment_shader = fragment,
+    .rasterizer_state =
+    {
+      // @todo .cull_mode, .front_face
+      .enable_depth_clip = true,
+    },
+    .target_info =
+    {
+      .num_color_targets = 1,
+      .color_target_descriptions = color,
+      .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
+      .has_depth_stencil_target = true,
+    },
     .props = 0
   };
   return pipeline;
@@ -961,7 +966,7 @@ static void GPU_Iterate()
   {
     RDR_Uniform uniform =
     {
-      .camera_transform = APP.camera_transform,
+      .camera_transform = APP.sun_camera_transform,
       .camera_position = APP.camera_p,
       .background_color = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B},
       .towards_sun_dir = APP.towards_sun_dir,

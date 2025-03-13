@@ -360,30 +360,40 @@ static void Game_Iterate()
 
   // camera to sun
   {
-    APP.view_camera_p = V3_Lerp(APP.camera_p, OBJ_Get(APP.sun, ObjStorage_All)->s.p, 0.9f);
-    //APP.view_camera_p = APP.camera_p;
+    V3 sun_camera_p = V3_Lerp(APP.camera_p, OBJ_Get(APP.sun, ObjStorage_All)->s.p, 0.7f);
+    Mat4 transl = Mat4_InvTranslation(Mat4_Translation(sun_camera_p));
+
+    V3 sun_dir = V3_Scale(APP.towards_sun_dir, -1.f);
+    Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(sun_dir, Axis3_X()));
+
+    float scale = 0.4f;
+    float w = APP.window_width * 0.5f * scale;
+    float h = APP.window_height * 0.5f * scale;
+
+    //Mat4 projection = Mat4_Perspective(0.2f, w/h, 2.f, 2000.f);
+    Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 10.f, 2000.f);
+    APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
 
   // calculate camera transform matrices
   {
-    Mat4 camera_transl = Mat4_InvTranslation(Mat4_Translation(APP.view_camera_p));
-
-    Mat4 camera_rot = Mat4_Rotation_RH((V3){1,0,0}, APP.camera_angles.x);
-    camera_rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_angles.z), camera_rot);
-    camera_rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_angles.y), camera_rot);
+    Mat4 transl = Mat4_InvTranslation(Mat4_Translation(APP.camera_p));
+    Mat4 rot = Mat4_Rotation_RH((V3){1,0,0}, APP.camera_angles.x);
+    rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_angles.z), rot);
+    rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_angles.y), rot);
 
 #if 1
-    Mat4 camera_projection =
+    Mat4 projection =
       Mat4_Perspective(APP.camera_fov_y, (float)APP.window_width/APP.window_height, 2.f, 2000.f);
 #else
     float scale = 0.4f;
     float w = APP.window_width * 0.5f * scale;
     float h = APP.window_height * 0.5f * scale;
-    Mat4 camera_projection =
+    Mat4 projection =
       Mat4_Orthographic(-w, w, -h, h, 2.f, 2000.f);
 #endif
 
-    APP.camera_transform = Mat4_Mul(camera_projection, Mat4_Mul(camera_rot, camera_transl));
+    APP.camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
 
   // calculate mouse in screen space -> mouse in world space (at Z == 0)
