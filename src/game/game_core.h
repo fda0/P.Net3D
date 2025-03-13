@@ -84,10 +84,10 @@ struct AppState
 
   // camera
   V3 camera_p;
-  V3 camera_rot;
+  V3 camera_angles;
   float camera_fov_y;
   Mat4 camera_move_mat;
-  Mat4 camera_rot_mat;
+  Quat camera_rot;
   Mat4 camera_perspective_mat;
   Mat4 camera_all_mat;
 

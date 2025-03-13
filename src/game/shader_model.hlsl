@@ -101,13 +101,13 @@ static float4x4 Mat4_Identity()
                   0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-static float4x4 Mat4_RotationPart(float4x4 mat)
+static Mat4 Mat4_RotationPart(Mat4 mat)
 {
   // Extract the 3x3 submatrix columns
   // @todo is this extraction correct? - check with non-uniform scaling
-  float3 axis_x = normalize(float3(mat._m00, mat._m10, mat._m20));
-  float3 axis_y = normalize(float3(mat._m01, mat._m11, mat._m21));
-  float3 axis_z = normalize(float3(mat._m02, mat._m12, mat._m22));
+  V3 axis_x = normalize(V3(mat._m00, mat._m10, mat._m20));
+  V3 axis_y = normalize(V3(mat._m01, mat._m11, mat._m21));
+  V3 axis_z = normalize(V3(mat._m02, mat._m12, mat._m22));
 
   // Rebuild the matrix with normalized vectors and zero translation
   mat._m00 = axis_x.x; mat._m01 = axis_y.x; mat._m02 = axis_z.x; mat._m03 = 0.f;

@@ -207,7 +207,9 @@ static SDL_GPUGraphicsPipelineCreateInfo GPU_DefaultPipeline(SDL_GPUColorTargetD
     {
       .enable_depth_test = true,
       .enable_depth_write = true,
-      .compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
+      //.compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
+      .compare_op = SDL_GPU_COMPAREOP_LESS,
+      //.compare_op = SDL_GPU_COMPAREOP_GREATER_OR_EQUAL,
     },
     .multisample_state =
     {

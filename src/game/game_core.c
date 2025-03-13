@@ -317,10 +317,10 @@ static void Game_Iterate()
     if (KEY_Held(KEY_MouseLeft))
     {
       float rot_speed = 0.05f * APP.dt;
-      APP.camera_rot.z += rot_speed * APP.mouse_delta.x;
-      APP.camera_rot.y += rot_speed * APP.mouse_delta.y * (-2.f / 3.f);
-      APP.camera_rot.z = WrapF(-0.5f, 0.5f, APP.camera_rot.z);
-      APP.camera_rot.y = Clamp(-0.2f, 0.2f, APP.camera_rot.y);
+      APP.camera_angles.z += rot_speed * APP.mouse_delta.x;
+      APP.camera_angles.y += rot_speed * APP.mouse_delta.y * (-2.f / 3.f);
+      APP.camera_angles.z = WrapF(-0.5f, 0.5f, APP.camera_angles.z);
+      APP.camera_angles.y = Clamp(-0.2f, 0.2f, APP.camera_angles.y);
     }
 
     V3 move_dir = {0};
@@ -331,7 +331,7 @@ static void Game_Iterate()
     if (KEY_Held(SDL_SCANCODE_SPACE)) move_dir.z += 1;
     if (KEY_Held(SDL_SCANCODE_LSHIFT) || KEY_Held(SDL_SCANCODE_RSHIFT)) move_dir.z -= 1;
     move_dir = V3_Normalize(move_dir);
-    move_dir = V3_Rotate(move_dir, Quat_FromAxisAngle_RH((V3){0,0,-1} /* @todo figure out why -1 here fixes things */, APP.camera_rot.z));
+    move_dir = V3_Rotate(move_dir, Quat_FromAxisAngle_RH((V3){0,0,-1} /* @todo figure out why -1 here fixes things */, APP.camera_angles.z));
     move_dir = V3_Scale(move_dir, APP.dt * 200.f);
     APP.camera_p = V3_Add(APP.camera_p, move_dir);
   }
@@ -343,7 +343,7 @@ static void Game_Iterate()
       APP.camera_p = player->s.p;
       APP.camera_p.z += 130.f;
       APP.camera_p.x -= 60.f;
-      APP.camera_rot = (V3){0, -0.15f, 0};
+      APP.camera_angles = (V3){0, -0.15f, 0};
     }
   }
 
@@ -351,15 +351,23 @@ static void Game_Iterate()
   {
     APP.camera_move_mat = Mat4_InvTranslation(Mat4_Translation(APP.camera_p));
 
-    APP.camera_rot_mat = Mat4_Rotation_RH((V3){1,0,0}, APP.camera_rot.x);
-    APP.camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_rot.z), APP.camera_rot_mat);
-    APP.camera_rot_mat = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_rot.y), APP.camera_rot_mat);
+    APP.camera_rot = Quat_FromAxisAngle_RH((V3){1,0,0}, APP.camera_angles.x);
+    APP.camera_rot = Quat_Mul(Quat_FromAxisAngle_RH((V3){0,0,1}, APP.camera_angles.z), APP.camera_rot);
+    APP.camera_rot = Quat_Mul(Quat_FromAxisAngle_RH((V3){0,1,0}, APP.camera_angles.y), APP.camera_rot);
 
-    APP.camera_perspective_mat = Mat4_Perspective_RH_NO(APP.camera_fov_y,
-                                                        (float)APP.window_width/APP.window_height,
-                                                        2.f, 3000.f);
+#if 0
+    APP.camera_perspective_mat =
+      Mat4_Perspective(APP.camera_fov_y, (float)APP.window_width/APP.window_height, 2.f, 4000.f);
+#else
+    float scale = 0.4f;
+    float w = APP.window_width * 0.5f * scale;
+    float h = APP.window_height * 0.5f * scale;
+    APP.camera_perspective_mat =
+      Mat4_Orthographic(-w, w, -h, h, 2.f, 4000.f);
+#endif
 
-    APP.camera_all_mat = Mat4_Mul(APP.camera_perspective_mat, Mat4_Mul(APP.camera_rot_mat, APP.camera_move_mat));
+    Mat4 rot_mat = Mat4_Rotation_Quat(APP.camera_rot);
+    APP.camera_all_mat = Mat4_Mul(APP.camera_perspective_mat, Mat4_Mul(rot_mat, APP.camera_move_mat));
   }
 
   // calculate mouse in screen space -> mouse in world space (at Z == 0)
@@ -458,7 +466,7 @@ static void Game_Init()
   APP.frame_time = SDL_GetTicks();
   APP.camera_fov_y = 0.19f;
   APP.camera_p = (V3){-50.f, 0.f, 70.f};
-  APP.camera_rot = (V3){0, -0.05f, 0};
+  APP.camera_angles = (V3){0, -0.05f, 0};
   APP.obj_serial_counter = 1;
   APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;
 
