@@ -360,18 +360,19 @@ static void Game_Iterate()
 
   // camera to sun
   {
-    V3 sun_camera_p = V3_Lerp(APP.camera_p, OBJ_Get(APP.sun, ObjStorage_All)->s.p, 0.7f);
+    V3 sun_camera_p = V3_Lerp(APP.camera_p, OBJ_Get(APP.sun, ObjStorage_All)->s.p, 0.9f);
     Mat4 transl = Mat4_InvTranslation(Mat4_Translation(sun_camera_p));
 
     V3 sun_dir = V3_Scale(APP.towards_sun_dir, -1.f);
     Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(sun_dir, Axis3_X()));
 
-    float scale = 0.4f;
+    float scale = 0.8f;
     float w = APP.window_width * 0.5f * scale;
     float h = APP.window_height * 0.5f * scale;
+    w = h = 700.f * scale;
 
     //Mat4 projection = Mat4_Perspective(0.2f, w/h, 2.f, 2000.f);
-    Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 10.f, 2000.f);
+    Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 100.f, 2000.f);
     APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
 

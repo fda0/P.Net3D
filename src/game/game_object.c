@@ -42,6 +42,11 @@ static Object *OBJ_Get(OBJ_Key key, U32 storage_mask)
   return result;
 }
 
+static Object *OBJ_GetAny(OBJ_Key key)
+{
+  return OBJ_Get(key, ObjStorage_All);
+}
+
 static bool OBJ_SyncIsInit(OBJ_Sync *sync)
 {
   return sync->init;

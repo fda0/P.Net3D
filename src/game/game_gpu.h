@@ -10,12 +10,13 @@ typedef struct
 {
   SDL_GPUDevice *device;
 
-  // window state
-  SDL_GPUTexture *tex_shadow_map;
+  U32 draw_width, draw_height;
   SDL_GPUTexture *tex_depth;
   SDL_GPUTexture *tex_msaa;
   SDL_GPUTexture *tex_resolve;
-  U32 draw_width, draw_height;
+
+  SDL_GPUTexture *shadow_tex;
+  SDL_GPUSampler *shadow_sampler;
 
   // pipeline, sample settings
   SDL_GPUGraphicsPipeline *rigid_pipeline;

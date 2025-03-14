@@ -34,6 +34,7 @@ typedef float3x3 Mat3;
 struct UniformData
 {
   Mat4 camera_transform;
+  Mat4 shadow_transform;
   V3 camera_position;
   V3 background_color;
   V3 towards_sun_dir;
@@ -68,14 +69,15 @@ struct VSInput
 struct VertexToFragment
 {
   V4 color      : TEXCOORD0;
-  V3 world_p    : TEXCOORD1;
+  V4 shadow_p   : TEXCOORD1; // position in shadow space
+  V3 world_p    : TEXCOORD2;
 #if IS_TEXTURED
-  V2 uv         : TEXCOORD2;
-  Mat3 normal_rot : TEXCOORD3;
+  V2 uv           : TEXCOORD3;
+  Mat3 normal_rot : TEXCOORD4;
 #else
-  Mat3 normal_rot : TEXCOORD2;
+  Mat3 normal_rot : TEXCOORD3;
 #endif
-  V4 position   : SV_Position;
+  V4 clip_p : SV_Position;
 };
 
 struct VSModelInstanceData
@@ -267,10 +269,8 @@ VertexToFragment ShaderModelVS(VSInput input)
 #endif
   }
 
-  float4 position = float4(input.position, 1.0f);
-  position = mul(position_transform, position);
-  float3 world_p = position.xyz;
-  position = mul(UniV.camera_transform, position);
+  float4 world_p = mul(position_transform, float4(input.position, 1.0f));
+  float4 clip_p = mul(UniV.camera_transform, world_p);
 
   // Color
   float4 color = input_color;
@@ -283,33 +283,50 @@ VertexToFragment ShaderModelVS(VSInput input)
 
   // Return
   VertexToFragment frag;
-  frag.normal_rot = normal_rotation;
   frag.color = color;
-  frag.world_p = world_p;
+  frag.shadow_p = mul(UniV.shadow_transform, world_p);
+  frag.world_p = world_p.xyz;
 #if IS_TEXTURED
   frag.uv = input.uv;
 #endif
-  frag.position = position;
+  frag.normal_rot = normal_rotation;
+  frag.clip_p = clip_p;
   return frag;
 }
 
+Texture2DArray<half> ShadowTexture : register(t0, space2);
+SamplerState ShadowSampler : register(s0, space2);
 #if IS_TEXTURED
-Texture2DArray<float4> Texture : register(t0, space2);
-SamplerState Sampler : register(s0, space2);
+Texture2DArray<float4> ColorTexture : register(t1, space2);
+SamplerState ColorSampler : register(s1, space2);
 #endif
 
 float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
 {
+  float shadow = 0.f;
+  {
+    V3 shadow_proj = frag.shadow_p.xyz / frag.shadow_p.w; // this isn't needed for ortho projection
+    // [-1, 1] -> [0, 1]
+    shadow_proj.x = shadow_proj.x * 0.5f + 0.5f;
+    shadow_proj.y = shadow_proj.y * -0.5f + 0.5f; // [-1, 1] -> [0, 1]
+
+    float closest_depth = ShadowTexture.Sample(ShadowSampler, V3(shadow_proj.xy, 0.f));
+    float current_depth = shadow_proj.z;
+    float bias = 0.0005f;
+    shadow = current_depth - bias > closest_depth ? 1.f : 0.f;
+  }
+
   V4 color = frag.color;
   float shininess = 16.f;
 
+
 #if IS_TEXTURED
   // load tex data
-  V4 tex_color        = Texture.Sample(Sampler, V3(frag.uv, 0.f));
-  V4 tex_normal_og    = Texture.Sample(Sampler, V3(frag.uv, 1.f));
-  V4 tex_roughness    = Texture.Sample(Sampler, V3(frag.uv, 2.f));
-  //V4 tex_displacement = Texture.Sample(Sampler, V3(frag.uv, 3.f));
-  V4 tex_occlusion    = Texture.Sample(Sampler, V3(frag.uv, 4.f));
+  V4 tex_color        = ColorTexture.Sample(ColorSampler, V3(frag.uv, 0.f));
+  V4 tex_normal_og    = ColorTexture.Sample(ColorSampler, V3(frag.uv, 1.f));
+  V4 tex_roughness    = ColorTexture.Sample(ColorSampler, V3(frag.uv, 2.f));
+  //V4 tex_displacement = ColorTexture.Sample(ColorSampler, V3(frag.uv, 3.f));
+  V4 tex_occlusion    = ColorTexture.Sample(ColorSampler, V3(frag.uv, 4.f));
 
   // apply color
   color *= tex_color;
@@ -351,6 +368,8 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
     float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
     color = lerp(color, V4(UniP.background_color, 1.f), fog_t);
   }
+
+  color.rgb *= (1.f - shadow*0.5f);
 
   return color;
 }

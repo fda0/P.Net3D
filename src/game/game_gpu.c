@@ -15,9 +15,9 @@ static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, 
   return result;
 }
 
-static SDL_GPUTexture *GPU_CreateDepthTexture(U32 width, U32 height)
+static SDL_GPUTexture *GPU_CreateDepthTexture(U32 width, U32 height, bool used_in_sampler)
 {
-  SDL_GPUTextureCreateInfo createinfo = {
+  SDL_GPUTextureCreateInfo info = {
     .type = SDL_GPU_TEXTURETYPE_2D,
     .format = SDL_GPU_TEXTUREFORMAT_D16_UNORM,
     .width = width,
@@ -29,8 +29,13 @@ static SDL_GPUTexture *GPU_CreateDepthTexture(U32 width, U32 height)
     .props = APP.gpu.clear_depth_props,
   };
 
-  SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &createinfo);
+  if (used_in_sampler)
+  {
+    info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    info.usage |= SDL_GPU_TEXTUREUSAGE_SAMPLER;
+  }
 
+  SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &info);
   Assert(result); // @todo report err
   return result;
 }
@@ -94,7 +99,7 @@ static void GPU_ProcessWindowResize()
     if (APP.gpu.tex_resolve)
       SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
 
-    APP.gpu.tex_depth = GPU_CreateDepthTexture(draw_width, draw_height);
+    APP.gpu.tex_depth = GPU_CreateDepthTexture(draw_width, draw_height, false);
     APP.gpu.tex_msaa = GPU_CreateMSAATexture(draw_width, draw_height);
     APP.gpu.tex_resolve = GPU_CreateResolveTexture(draw_width, draw_height);
   }
@@ -460,7 +465,7 @@ static void GPU_Init()
       SDL_GPUShaderCreateInfo create_info =
       {
         .stage = SDL_GPU_SHADERSTAGE_FRAGMENT,
-        .num_samplers = 0,
+        .num_samplers = 1,
         .num_storage_buffers = 0,
         .num_storage_textures = 0,
         .num_uniform_buffers = 1,
@@ -546,7 +551,7 @@ static void GPU_Init()
       SDL_GPUShaderCreateInfo create_info =
       {
         .stage = SDL_GPU_SHADERSTAGE_FRAGMENT,
-        .num_samplers = 0,
+        .num_samplers = 1,
         .num_storage_buffers = 0,
         .num_storage_textures = 0,
         .num_uniform_buffers = 1,
@@ -718,7 +723,7 @@ static void GPU_Init()
       SDL_GPUShaderCreateInfo create_info =
       {
         .stage = SDL_GPU_SHADERSTAGE_FRAGMENT,
-        .num_samplers = 1,
+        .num_samplers = 2,
         .num_storage_buffers = 0,
         .num_storage_textures = 0,
         .num_uniform_buffers = 1,
@@ -779,7 +784,24 @@ static void GPU_Init()
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
   }
 
-  APP.gpu.tex_shadow_map = GPU_CreateDepthTexture(GPU_SHADOW_MAP_DIM, GPU_SHADOW_MAP_DIM);
+  // shadow map
+  {
+    APP.gpu.shadow_tex = GPU_CreateDepthTexture(GPU_SHADOW_MAP_DIM, GPU_SHADOW_MAP_DIM, true);
+
+    SDL_GPUSamplerCreateInfo sampler_info =
+    {
+      .min_filter = SDL_GPU_FILTER_LINEAR,
+      .mag_filter = SDL_GPU_FILTER_LINEAR,
+      .mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
+      .address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+      .address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+      .address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+      .min_lod = 0.f,
+      .max_lod = 100.f,
+    };
+    APP.gpu.shadow_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
+  }
+
   GPU_ProcessWindowResize();
 }
 
@@ -789,12 +811,14 @@ static void GPU_Deinit()
   SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.skinned_pipeline);
   SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.wall_pipeline);
 
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_shadow_map);
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
   if (APP.gpu.tex_msaa)
     SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
   if (APP.gpu.tex_resolve)
     SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
+
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
+  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
   ForArray(i, APP.gpu.rigids)
   {
@@ -847,6 +871,18 @@ static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
 
 static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass)
 {
+  // bind fragment shadow texture sampler
+  {
+#if 0
+    SDL_GPUTextureSamplerBinding binding_sampl =
+    {
+      .texture = APP.gpu.shadow_tex,
+      .sampler = APP.gpu.shadow_sampler,
+    };
+    SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
+#endif
+  }
+
   // walls
   SDL_BindGPUGraphicsPipeline(pass, APP.gpu.wall_pipeline);
   {
@@ -866,14 +902,19 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass)
         AssertBounds(mesh_index, APP.gpu.wall_texs);
         SDL_GPUTexture *texture = APP.gpu.wall_texs[mesh_index];
 
-        // bind fragment sampler
-        SDL_GPUTextureSamplerBinding binding_sampl =
+        // bind fragment color texture sampler
+        SDL_GPUTextureSamplerBinding binding_sampl[2] =
         {
-          //.texture = APP.gpu.wall_tex,
-          .texture = texture,
-          .sampler = APP.gpu.wall_sampler,
+          {
+            .texture = APP.gpu.shadow_tex,
+            .sampler = APP.gpu.shadow_sampler,
+          },
+          {
+            .texture = texture,
+            .sampler = APP.gpu.wall_sampler,
+          }
         };
-        SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
+        SDL_BindGPUFragmentSamplers(pass, 0, binding_sampl, 2);
 
         SDL_DrawGPUPrimitives(pass, buf->vert_count, 1, 0, 0);
       }
@@ -962,19 +1003,6 @@ static void GPU_Iterate()
     }
   }
 
-  // transform uniforms
-  {
-    RDR_Uniform uniform =
-    {
-      .camera_transform = APP.sun_camera_transform,
-      .camera_position = APP.camera_p,
-      .background_color = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B},
-      .towards_sun_dir = APP.towards_sun_dir,
-    };
-    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
-    SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));
-  }
-
   SDL_GPUDepthStencilTargetInfo depth_target =
   {
     .clear_depth = GPU_CLEAR_DEPTH_FLOAT,
@@ -985,18 +1013,37 @@ static void GPU_Iterate()
     .cycle = true,
   };
 
-  // Sun shadow map render pass
-#if 1
+  RDR_Uniform uniform =
   {
-    depth_target.texture = APP.gpu.tex_shadow_map;
+    .camera_transform = APP.sun_camera_transform,
+    .shadow_transform = APP.sun_camera_transform,
+    .camera_position = APP.camera_p,
+    .background_color = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B},
+    .towards_sun_dir = APP.towards_sun_dir,
+  };
+
+  // Sun shadow map render pass
+  {
+    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
+    SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));
+
+    depth_target.texture = APP.gpu.shadow_tex;
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, 0, 0, &depth_target);
     GPU_RenderPassDrawCalls(pass);
     SDL_EndGPURenderPass(pass);
   }
-#endif
 
   // Final render pass
   {
+    uniform.camera_transform = APP.camera_transform;
+    if (0)
+    {
+      uniform.camera_transform = APP.sun_camera_transform;
+      uniform.camera_position = OBJ_GetAny(APP.sun)->s.p;
+    }
+    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
+    SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));
+
     depth_target.texture = APP.gpu.tex_depth;
 
     SDL_GPUColorTargetInfo color_target =
