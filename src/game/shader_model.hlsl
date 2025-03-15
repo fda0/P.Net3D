@@ -310,10 +310,30 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
     shadow_proj.x = shadow_proj.x * 0.5f + 0.5f;
     shadow_proj.y = shadow_proj.y * -0.5f + 0.5f; // [-1, 1] -> [0, 1]
 
-    float closest_depth = ShadowTexture.Sample(ShadowSampler, V3(shadow_proj.xy, 0.f));
-    float current_depth = shadow_proj.z;
-    float bias = 0.0005f;
-    shadow = current_depth - bias > closest_depth ? 1.f : 0.f;
+    V3 shadow_dim = 0.f;
+    ShadowTexture.GetDimensions(shadow_dim.x, shadow_dim.y, shadow_dim.z);
+    V2 texel_size = 1.f / shadow_dim.xy;
+
+    for (int x = -1; x <= 1; x++)
+    {
+      for (int y = -1; y <= 1; y++)
+      {
+        V2 shadow_coord = shadow_proj.xy + V2(x,y) * texel_size;
+        float closest_depth = ShadowTexture.Sample(ShadowSampler, V3(shadow_coord, 0.f));
+
+        // This hack is done because SDL_GPU doesn't support BORDER_COLOR for SDL_GPUSamplerAddressMode
+        if (shadow_proj.x < 0.f || shadow_proj.x > 1.f || shadow_proj.y < 0.f || shadow_proj.y > 1.f)
+          closest_depth = 1.f;
+
+        float current_depth = shadow_proj.z;
+        if (current_depth <= 1.f)
+        {
+          float bias = 0.001f;
+          shadow += current_depth - bias > closest_depth ? 1.f : 0.f;
+        }
+      }
+    }
+    shadow /= 9.f;
   }
 
   V4 color = frag.color;
@@ -357,7 +377,7 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
     float specular_angle = max(dot(normal, halfway_dir), 0.f);
     specular = pow(specular_angle, shininess);
   }
-  color.xyz *= ambient + diffuse + specular;
+  color.xyz *= ambient + (diffuse + specular) * (1.f - shadow);
 
   // apply fog
   {
@@ -368,8 +388,6 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
     float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
     color = lerp(color, V4(UniP.background_color, 1.f), fog_t);
   }
-
-  color.rgb *= (1.f - shadow*0.5f);
 
   return color;
 }

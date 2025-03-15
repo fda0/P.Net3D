@@ -77,17 +77,18 @@ struct AppState
   // special objects
   OBJ_Key pathing_marker;
   bool pathing_marker_set;
-  OBJ_Key sun;
 
   // sun
+  OBJ_Key sun;
   V3 towards_sun_dir; // normalized
+  V3 sun_camera_p;
+  Mat4 sun_camera_transform;
 
   // camera
   V3 camera_p;
   V3 camera_angles;
   float camera_fov_y;
   Mat4 camera_transform;
-  Mat4 sun_camera_transform;
 
   // time
   U64 frame_id;
@@ -143,6 +144,7 @@ struct AppState
     bool unpause_one_tick;
 
     bool noclip_camera;
+    bool sun_camera;
 
     bool draw_collision_box;
     float collision_sprite_animation_t;

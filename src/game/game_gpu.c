@@ -4,7 +4,7 @@
 #define GPU_CLEAR_COLOR_B 0.96f
 #define GPU_CLEAR_COLOR_A 1.0f
 #define GPU_JOINT_TRANSFORMS_MAX_SIZE (sizeof(Mat4)*62)
-#define GPU_SHADOW_MAP_DIM 1024
+#define GPU_SHADOW_MAP_DIM 2048
 
 static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, const char *name)
 {
@@ -1036,10 +1036,10 @@ static void GPU_Iterate()
   // Final render pass
   {
     uniform.camera_transform = APP.camera_transform;
-    if (0)
+    if (APP.debug.sun_camera)
     {
       uniform.camera_transform = APP.sun_camera_transform;
-      uniform.camera_position = OBJ_GetAny(APP.sun)->s.p;
+      uniform.camera_position = APP.sun_camera_p;
     }
     SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
     SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));

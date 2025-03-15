@@ -311,6 +311,9 @@ static void Game_Iterate()
   if (KEY_Pressed(SDL_SCANCODE_RETURN))
     APP.debug.noclip_camera = !APP.debug.noclip_camera;
 
+  if (KEY_Pressed(SDL_SCANCODE_BACKSPACE))
+    APP.debug.sun_camera = !APP.debug.sun_camera;
+
   // move camera; calculate camera scale
   if (APP.debug.noclip_camera)
   {
@@ -360,8 +363,9 @@ static void Game_Iterate()
 
   // camera to sun
   {
-    V3 sun_camera_p = V3_Lerp(APP.camera_p, OBJ_Get(APP.sun, ObjStorage_All)->s.p, 0.9f);
-    Mat4 transl = Mat4_InvTranslation(Mat4_Translation(sun_camera_p));
+    //APP.sun_camera_p = V3_Lerp(APP.camera_p, OBJ_Get(APP.sun, ObjStorage_All)->s.p, 0.9f);
+    APP.sun_camera_p = OBJ_Get(APP.sun, ObjStorage_All)->s.p;
+    Mat4 transl = Mat4_InvTranslation(Mat4_Translation(APP.sun_camera_p));
 
     V3 sun_dir = V3_Scale(APP.towards_sun_dir, -1.f);
     Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(sun_dir, Axis3_X()));
@@ -369,10 +373,10 @@ static void Game_Iterate()
     float scale = 0.8f;
     float w = APP.window_width * 0.5f * scale;
     float h = APP.window_height * 0.5f * scale;
-    w = h = 700.f * scale;
+    w = h = 900.f * scale;
 
     //Mat4 projection = Mat4_Perspective(0.2f, w/h, 2.f, 2000.f);
-    Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 100.f, 2000.f);
+    Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 600.f, 3000.f);
     APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
 
@@ -382,17 +386,8 @@ static void Game_Iterate()
     Mat4 rot = Mat4_Rotation_RH((V3){1,0,0}, APP.camera_angles.x);
     rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_angles.z), rot);
     rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_angles.y), rot);
-
-#if 1
     Mat4 projection =
       Mat4_Perspective(APP.camera_fov_y, (float)APP.window_width/APP.window_height, 2.f, 2000.f);
-#else
-    float scale = 0.4f;
-    float w = APP.window_width * 0.5f * scale;
-    float h = APP.window_height * 0.5f * scale;
-    Mat4 projection =
-      Mat4_Orthographic(-w, w, -h, h, 2.f, 2000.f);
-#endif
 
     APP.camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
