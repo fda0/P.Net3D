@@ -456,7 +456,28 @@ static void Game_Iterate()
     }
   }
 
-  Game_DrawObjects();
+  if (!APP.headless)
+  {
+    Game_DrawObjects();
+    GPU_Iterate();
+    RDR_PostFrameCleanup();
+  }
+
+  // Input cleanup
+  APP.mouse_delta = (V2){};
+
+  // Frame arena cleanup
+  Arena_Reset(APP.a_frame, 0);
+  Assert(APP.tmp->used == 0);
+
+  if (APP.headless)
+  {
+    // Since we don't wait for v-sync in headless mode
+    // we will wait here to avoid using 100% of the CPU.
+    // This should be solved in a better way once
+    // scheduling and multithreading is further along.
+    SDL_Delay(16);
+  }
 }
 
 static void Game_Init()

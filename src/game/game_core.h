@@ -55,7 +55,8 @@ struct AppState
 {
   // SDL, window stuff
   SDL_Window* window;
-  //SDL_Renderer* renderer;
+
+  bool headless; // no window mode
   GPU_State gpu;
   RDR_State rdr;
 

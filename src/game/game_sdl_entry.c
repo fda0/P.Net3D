@@ -51,44 +51,32 @@ static AppState APP;
 #include "game_tick.c"
 #include "game_animation.c"
 #include "game_render.c"
-#include "game_core.c"
 #include "game_gpu.c"
+#include "game_core.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
   (void)appstate;
 
-  // input
+  // Poll input
   {
+    // Mouse
     SDL_MouseButtonFlags mouse_keys = SDL_GetMouseState(&APP.mouse.x, &APP.mouse.y);
     APP.mouse.y = APP.window_height - APP.mouse.y;
 
     KEY_Update(KEY_MouseLeft, mouse_keys & SDL_BUTTON_LMASK);
     KEY_Update(KEY_MouseRight, mouse_keys & SDL_BUTTON_RMASK);
 
-    // keyboard state
+    // Keyboard
+    I32 num_keys = 0;
+    const bool *key_states = SDL_GetKeyboardState(&num_keys);
+    ForI32(i, num_keys)
     {
-      I32 num_keys = 0;
-      const bool *key_states = SDL_GetKeyboardState(&num_keys);
-      ForI32(i, num_keys)
-      {
-        KEY_Update(i, key_states[i]);
-      }
+      KEY_Update(i, key_states[i]);
     }
   }
 
   Game_Iterate();
-  GPU_Iterate();
-
-  // Post frame cleanup
-  RDR_PostFrameCleanup();
-
-  // Input cleanup
-  APP.mouse_delta = (V2){};
-
-  // Frame arena cleanup
-  Arena_Reset(APP.a_frame, 0);
-  Assert(APP.tmp->used == 0);
 
   return SDL_APP_CONTINUE;
 }
@@ -140,7 +128,11 @@ static void Game_ParseCmd(int argc, char **argv)
   for (int i = 1; i < argc; i += 1)
   {
     S8 arg = S8_ScanCstr(argv[i]);
-    if (S8_Match(arg, S8Lit("-server"), 0))
+    if (S8_Match(arg, S8Lit("-headless"), 0))
+    {
+      APP.headless = true;
+    }
+    else if (S8_Match(arg, S8Lit("-server"), 0))
     {
       APP.net.is_server = true;
     }
@@ -219,50 +211,53 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
     return SDL_APP_FAILURE;
   }
 
-  SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
-  window_flags |= (APP.window_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
-  window_flags |= (APP.window_borderless ? SDL_WINDOW_BORDERLESS : 0);
-
-  APP.window_width = APP.init_window_width;
-  APP.window_height = APP.init_window_height;
-
-  APP.gpu.device =
-    SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL,
-                        /* debug mode */ true,
-                        /* const char * name*/ 0);
-
-  if (!APP.gpu.device)
+  if (!APP.headless)
   {
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUCreateDevice failed", SDL_GetError(), 0);
-    return SDL_APP_FAILURE;
+    SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
+    window_flags |= (APP.window_on_top ? SDL_WINDOW_ALWAYS_ON_TOP : 0);
+    window_flags |= (APP.window_borderless ? SDL_WINDOW_BORDERLESS : 0);
+
+    APP.window_width = APP.init_window_width;
+    APP.window_height = APP.init_window_height;
+
+    APP.gpu.device =
+      SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL,
+                          /* debug mode */ true,
+                          /* const char * name*/ 0);
+
+    if (!APP.gpu.device)
+    {
+      SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUCreateDevice failed", SDL_GetError(), 0);
+      return SDL_APP_FAILURE;
+    }
+
+    APP.window = SDL_CreateWindow("P. Game", APP.window_width, APP.window_height, window_flags);
+    if (!APP.window)
+    {
+      SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "CreateWindow failed", SDL_GetError(), 0);
+      return SDL_APP_FAILURE;
+    }
+
+    if (!SDL_ClaimWindowForGPUDevice(APP.gpu.device, APP.window))
+    {
+      SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUClaimWindow failed", SDL_GetError(), 0);
+      return SDL_APP_FAILURE;
+    }
+
+    if (APP.init_window_px || APP.init_window_py)
+    {
+      int x = (APP.init_window_px ? APP.init_window_px : SDL_WINDOWPOS_UNDEFINED);
+      int y = (APP.init_window_py ? APP.init_window_py : SDL_WINDOWPOS_UNDEFINED);
+      SDL_SetWindowPosition(APP.window, x, y);
+    }
+
+    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(APP.window));
+    SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
+
+    GPU_Init();
+
+    SDL_ShowWindow(APP.window);
   }
-
-  APP.window = SDL_CreateWindow("P. Game", APP.window_width, APP.window_height, window_flags);
-  if (!APP.window)
-  {
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "CreateWindow failed", SDL_GetError(), 0);
-    return SDL_APP_FAILURE;
-  }
-
-  if (!SDL_ClaimWindowForGPUDevice(APP.gpu.device, APP.window))
-  {
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "GPUClaimWindow failed", SDL_GetError(), 0);
-    return SDL_APP_FAILURE;
-  }
-
-  if (APP.init_window_px || APP.init_window_py)
-  {
-    int x = (APP.init_window_px ? APP.init_window_px : SDL_WINDOWPOS_UNDEFINED);
-    int y = (APP.init_window_py ? APP.init_window_py : SDL_WINDOWPOS_UNDEFINED);
-    SDL_SetWindowPosition(APP.window, x, y);
-  }
-
-  const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(APP.window));
-  SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
-
-  GPU_Init();
-
-  SDL_ShowWindow(APP.window);
 
   Game_Init();
 
