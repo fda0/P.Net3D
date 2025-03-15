@@ -4,6 +4,12 @@
 
 typedef enum
 {
+  TEX_Bricks071,
+  TEX_Bricks097,
+  TEX_Grass004,
+  TEX_Ground037,
+  TEX_Ground068,
+  TEX_Ground078,
   TEX_Leather011,
   TEX_PavingStones067,
   TEX_Tiles101,

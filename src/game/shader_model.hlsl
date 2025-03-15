@@ -303,45 +303,12 @@ SamplerState ColorSampler : register(s1, space2);
 
 float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
 {
-  float shadow = 0.f;
-  {
-    V3 shadow_proj = frag.shadow_p.xyz / frag.shadow_p.w; // this isn't needed for ortho projection
-    // [-1, 1] -> [0, 1]
-    shadow_proj.x = shadow_proj.x * 0.5f + 0.5f;
-    shadow_proj.y = shadow_proj.y * -0.5f + 0.5f; // [-1, 1] -> [0, 1]
-
-    V3 shadow_dim = 0.f;
-    ShadowTexture.GetDimensions(shadow_dim.x, shadow_dim.y, shadow_dim.z);
-    V2 texel_size = 1.f / shadow_dim.xy;
-
-    for (int x = -1; x <= 1; x++)
-    {
-      for (int y = -1; y <= 1; y++)
-      {
-        V2 shadow_coord = shadow_proj.xy + V2(x,y) * texel_size;
-        float closest_depth = ShadowTexture.Sample(ShadowSampler, V3(shadow_coord, 0.f));
-
-        // This hack is done because SDL_GPU doesn't support BORDER_COLOR for SDL_GPUSamplerAddressMode
-        if (shadow_proj.x < 0.f || shadow_proj.x > 1.f || shadow_proj.y < 0.f || shadow_proj.y > 1.f)
-          closest_depth = 1.f;
-
-        float current_depth = shadow_proj.z;
-        if (current_depth <= 1.f)
-        {
-          float bias = 0.001f;
-          shadow += current_depth - bias > closest_depth ? 1.f : 0.f;
-        }
-      }
-    }
-    shadow /= 9.f;
-  }
-
   V4 color = frag.color;
   float shininess = 16.f;
+  V3 face_normal = mul(frag.normal_rot, V3(0,0,1));
 
-
+  // Load texture data
 #if IS_TEXTURED
-  // load tex data
   V4 tex_color        = ColorTexture.Sample(ColorSampler, V3(frag.uv, 0.f));
   V4 tex_normal_og    = ColorTexture.Sample(ColorSampler, V3(frag.uv, 1.f));
   V4 tex_roughness    = ColorTexture.Sample(ColorSampler, V3(frag.uv, 2.f));
@@ -354,32 +321,68 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
   // swizzle normal components into engine format - ideally this would be done by asset preprocessor
   V3 tex_normal = tex_normal_og.yxz;
   tex_normal.y = 1.f - tex_normal.y;
-
-  // transform normal
   tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
-  V3 normal = mul(frag.normal_rot, tex_normal);
-  normal = normalize(normal);
 
-  // apply shininess
+  V3 pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
+
+  // Apply shininess
   shininess = 32.f - 32.f*tex_roughness.x;
 #else
-  V3 normal = mul(frag.normal_rot, V3(0,0,1));
+  V3 pixel_normal = face_normal;
 #endif
 
+  // Shadow mapping
+  float shadow = 0.f;
+  {
+    V3 shadow_proj = frag.shadow_p.xyz / frag.shadow_p.w; // this isn't needed for orthographic projection
+    // [-1, 1] -> [0, 1]
+    shadow_proj.x = shadow_proj.x * 0.5f + 0.5f;
+    shadow_proj.y = shadow_proj.y * -0.5f + 0.5f;
+
+    V3 shadow_dim = 0.f;
+    ShadowTexture.GetDimensions(shadow_dim.x, shadow_dim.y, shadow_dim.z);
+    V2 texel_size = 1.f / shadow_dim.xy;
+
+    int sample_radius = 1;
+    for (int x = -sample_radius; x <= sample_radius; x++)
+    {
+      for (int y = -sample_radius; y <= sample_radius; y++)
+      {
+        V2 shadow_coord = shadow_proj.xy + V2(x,y) * texel_size;
+        float closest_depth = ShadowTexture.Sample(ShadowSampler, V3(shadow_coord, 0.f));
+
+        // This hack is done because SDL_GPU doesn't support BORDER_COLOR for SDL_GPUSamplerAddressMode
+        if (shadow_proj.x < 0.f || shadow_proj.x > 1.f || shadow_proj.y < 0.f || shadow_proj.y > 1.f)
+          closest_depth = 1.f;
+
+        float current_depth = shadow_proj.z;
+        if (current_depth <= 1.f)
+        {
+          float bias = max(0.05f * (1.f - dot(UniP.towards_sun_dir, face_normal)), 0.005f);
+          shadow += current_depth - bias > closest_depth ? 1.f : 0.f;
+        }
+      }
+    }
+
+    float sample_count = (sample_radius*2 + 1) * (sample_radius*2 + 1);
+    shadow /= sample_count;
+  }
+
+  // Light
   float ambient = 0.2f;
   float specular = 0.0f;
-  float diffuse = max(dot(UniP.towards_sun_dir, normal), 0.f);
+  float diffuse = max(dot(UniP.towards_sun_dir, pixel_normal), 0.f);
   if (diffuse > 0.f)
   {
     V3 view_dir = normalize(UniP.camera_position - frag.world_p);
-    V3 reflect_dir = reflect(-UniP.towards_sun_dir, normal);
+    V3 reflect_dir = reflect(-UniP.towards_sun_dir, pixel_normal);
     V3 halfway_dir = normalize(view_dir + UniP.towards_sun_dir);
-    float specular_angle = max(dot(normal, halfway_dir), 0.f);
+    float specular_angle = max(dot(pixel_normal, halfway_dir), 0.f);
     specular = pow(specular_angle, shininess);
   }
   color.xyz *= ambient + (diffuse + specular) * (1.f - shadow);
 
-  // apply fog
+  // Apply fog
   {
     float pixel_distance = distance(frag.world_p, UniP.camera_position);
     float fog_min = 1000.f;
@@ -388,6 +391,5 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
     float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
     color = lerp(color, V4(UniP.background_color, 1.f), fog_t);
   }
-
   return color;
 }

@@ -393,7 +393,40 @@ static SDL_GPUTexture *GPU_CreateAndLoadTexture2DArray(const char **paths, U64 p
   return result;
 }
 
+static void GPU_LoadTextureFiles()
+{
+#define LoadTexturesFromAmbientCgCom(Name) do{ \
+const char *paths[] = \
+{ \
+"../res/tex/" #Name "/" #Name "_1K-JPG_Color.jpg", \
+"../res/tex/" #Name "/" #Name "_1K-JPG_NormalGL.jpg", \
+"../res/tex/" #Name "/" #Name "_1K-JPG_Roughness.jpg", \
+"../res/tex/" #Name "/" #Name "_1K-JPG_Displacement.jpg", \
+}; \
+APP.gpu.wall_texs[TEX_##Name] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), #Name); \
+}while(0)
 
+  LoadTexturesFromAmbientCgCom(Bricks071);
+  LoadTexturesFromAmbientCgCom(Bricks097);
+  LoadTexturesFromAmbientCgCom(Grass004);
+  LoadTexturesFromAmbientCgCom(Ground037);
+  LoadTexturesFromAmbientCgCom(Ground068);
+  LoadTexturesFromAmbientCgCom(Ground078);
+  LoadTexturesFromAmbientCgCom(Leather011);
+  LoadTexturesFromAmbientCgCom(PavingStones067);
+  LoadTexturesFromAmbientCgCom(Tiles101);
+
+  {
+    const char *paths[] =
+    {
+      "../res/tex/TestPBR001/TestPBR001_Color.png",
+      "../res/tex/TestPBR001/TestPBR001_NormalGL.png",
+      "../res/tex/TestPBR001/TestPBR001_Roughness.jpg",
+      "../res/tex/TestPBR001/TestPBR001_Displacement.jpg",
+    };
+    APP.gpu.wall_texs[TEX_TestPBR001] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "TestPBR001");
+  }
+}
 
 static void GPU_Init()
 {
@@ -617,6 +650,8 @@ static void GPU_Init()
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
   }
 
+  GPU_LoadTextureFiles();
+
   // Wall pipeline
   {
     // create wall vertex buffers
@@ -636,52 +671,6 @@ static void GPU_Init()
                                                sizeof(inst),
                                                "Wall instance buffer");
       GPU_TransferBuffer(APP.gpu.wall_inst_buf, &inst, sizeof(inst));
-    }
-
-    // Load textures
-    {
-      const char *paths[] =
-      {
-        "../res/tex/PavingStones067/PavingStones067_1K-JPG_Color.jpg",
-        "../res/tex/PavingStones067/PavingStones067_1K-JPG_NormalGL.jpg",
-        "../res/tex/PavingStones067/PavingStones067_1K-JPG_Roughness.jpg",
-        "../res/tex/PavingStones067/PavingStones067_1K-JPG_Displacement.jpg",
-        //"../res/tex/PavingStones067/PavingStones067_1K-JPG_AmbientOcclusion.jpg",
-      };
-      APP.gpu.wall_texs[TEX_PavingStones067] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "PavingStones067");
-    }
-    {
-      const char *paths[] =
-      {
-        "../res/tex/Leather011/Leather011_1K-JPG_Color.jpg",
-        "../res/tex/Leather011/Leather011_1K-JPG_NormalGL.jpg",
-        "../res/tex/Leather011/Leather011_1K-JPG_Roughness.jpg",
-        "../res/tex/Leather011/Leather011_1K-JPG_Displacement.jpg",
-        //"../res/tex/Leather011/Leather011_1K-JPG_AmbientOcclusion.jpg",
-      };
-      APP.gpu.wall_texs[TEX_Leather011] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Leather011");
-    }
-    {
-      const char *paths[] =
-      {
-        "../res/tex/Tiles101/Tiles101_1K-JPG_Color.jpg",
-        "../res/tex/Tiles101/Tiles101_1K-JPG_NormalGL.jpg",
-        "../res/tex/Tiles101/Tiles101_1K-JPG_Roughness.jpg",
-        "../res/tex/Tiles101/Tiles101_1K-JPG_Displacement.jpg",
-        //"../res/tex/Tiles101/Tiles101_1K-JPG_AmbientOcclusion.jpg",
-      };
-      APP.gpu.wall_texs[TEX_Tiles101] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "Tiles101");
-    }
-    {
-      const char *paths[] =
-      {
-        "../res/tex/TestPBR001/TestPBR001_Color.png",
-        "../res/tex/TestPBR001/TestPBR001_NormalGL.png",
-        "../res/tex/TestPBR001/TestPBR001_Roughness.jpg",
-        "../res/tex/TestPBR001/TestPBR001_Displacement.jpg",
-        //"../res/tex/TestPBR001/TestPBR001_1K-JPG_AmbientOcclusion.jpg",
-      };
-      APP.gpu.wall_texs[TEX_TestPBR001] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "TestPBR001");
     }
 
     // Texture sampler

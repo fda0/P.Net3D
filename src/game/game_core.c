@@ -15,7 +15,7 @@ static void Game_AnimateObjects()
       Quat q0 = obj->l.animated_rot;
       Quat q1 = obj->s.rotation;
 
-      float w1 = APP.dt * 10.f;
+      float w1 = Min(1.f, APP.dt * 16.f);
       float w0 = 1.f - w1;
 
       if (Quat_Inner(q0, q1) < 0.f)
@@ -344,17 +344,17 @@ static void Game_Iterate()
     if (!OBJ_IsNil(player))
     {
       APP.camera_p = player->s.p;
-      APP.camera_p.z += 130.f;
-      APP.camera_p.x -= 60.f;
-      APP.camera_angles = (V3){0, -0.15f, 0};
+      APP.camera_p.z += 250.f;
+      APP.camera_p.x -= 140.f;
+      APP.camera_angles = (V3){0, -0.155f, 0};
     }
   }
 
   // move sun
   {
-    float sun_x = SinF(APP.at * 0.03f);
-    float sun_y = CosF(APP.at * 0.03f);
-    APP.towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 1.f});
+    float sun_x = SinF(0.5f + APP.at * 0.03f);
+    float sun_y = CosF(0.5f + APP.at * 0.03f);
+    APP.towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 2.f});
 
     V3 sun_dist = V3_Scale(APP.towards_sun_dir, 900.f);
     V3 sun_obj_p = V3_Add(APP.camera_p, sun_dist);
@@ -376,7 +376,7 @@ static void Game_Iterate()
     w = h = 900.f * scale;
 
     //Mat4 projection = Mat4_Perspective(0.2f, w/h, 2.f, 2000.f);
-    Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 600.f, 3000.f);
+    Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 700.f, 2000.f);
     APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
 
@@ -440,7 +440,7 @@ static void Game_Iterate()
         KEY_Held(SDL_SCANCODE_A) ||
         KEY_Held(SDL_SCANCODE_D))
     {
-      marker->s.p.z = 400.f;
+      marker->s.p.z = -60.f;
     }
 
     if (KEY_Held(KEY_MouseRight) && APP.world_mouse_valid)
@@ -475,9 +475,9 @@ static void Game_Init()
   NET_Init();
 
   APP.frame_time = SDL_GetTicks();
-  APP.camera_fov_y = 0.19f;
-  APP.camera_p = (V3){-50.f, 0.f, 70.f};
-  APP.camera_angles = (V3){0, -0.05f, 0};
+  APP.camera_fov_y = 0.15f;
+  APP.camera_p = (V3){-180.f, 0.f, 70.f};
+  APP.camera_angles = (V3){0, 0, 0};
   APP.obj_serial_counter = 1;
   APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;
 
@@ -486,14 +486,14 @@ static void Game_Init()
     float thickness = 20.f;
     float length = 400.f;
     float off = length*0.5f - thickness*0.5f;
-    OBJ_CreateWall((V2){off, 0}, (V2){thickness, length});
-    OBJ_CreateWall((V2){-off, 0}, (V2){thickness, length});
-    OBJ_CreateWall((V2){0, off}, (V2){length, thickness});
-    OBJ_CreateWall((V2){0,-off}, (V2){length*0.5f, thickness});
+    OBJ_CreateWall((V2){ off, 0}, (V2){thickness, length}, 70.f);
+    OBJ_CreateWall((V2){-off, 0}, (V2){thickness, length}, 50.f);
+    OBJ_CreateWall((V2){0,  off}, (V2){length, thickness}, 60.f);
+    OBJ_CreateWall((V2){0, -off}, (V2){length*0.5f, thickness}, 40.f);
 
     {
       Object *rotated_wall = OBJ_CreateWall((V2){0.75f*off, -0.5f*off},
-                                            (V2){thickness, 5.f*thickness});
+                                            (V2){thickness, 5.f*thickness}, 100.f);
 
       Vertices_Rotate(rotated_wall->s.collision.verts.arr,
                       ArrayCount(rotated_wall->s.collision.verts.arr),
@@ -506,16 +506,16 @@ static void Game_Init()
       Object *ground = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
       ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
       Collision_RecalculateNormals(&ground->s.collision);
-      ground->s.texture = TEX_PavingStones067;
+      ground->s.texture = TEX_Grass004;
     }
 
     {
       Object *flying_cube = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
-      flying_cube->s.p = (V3){70, 70, 70};
-      flying_cube->s.collision_height = 50;
+      flying_cube->s.p = (V3){40, 40, 80};
+      flying_cube->s.collision_height = 40;
       flying_cube->s.texture = TEX_Tiles101;
-      flying_cube->s.texture_texels_per_cm = 0.05f;
-      flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){50, 50});
+      //flying_cube->s.texture_texels_per_cm = 0.05f;
+      flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){40, 40});
       Collision_RecalculateNormals(&flying_cube->s.collision);
     }
 

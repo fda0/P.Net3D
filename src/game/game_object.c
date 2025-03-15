@@ -129,16 +129,16 @@ static Object *OBJ_Create(OBJ_Storage storage, U32 flags)
   return obj;
 }
 
-static Object *OBJ_CreateWall(V2 p, V2 dim)
+static Object *OBJ_CreateWall(V2 p, V2 dim, float height)
 {
   Object *obj = OBJ_Create(ObjStorage_Local,
                            ObjFlag_DrawCollision | ObjFlag_Collide);
   obj->s.p = V3_From_XY_Z(p, 0);
   obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
   Collision_RecalculateNormals(&obj->s.collision);
-  obj->s.texture = TEX_Tiles101;
+  obj->s.texture = TEX_Bricks071;
   obj->s.color = Color32_RGBf(1,1,1);
-  obj->s.collision_height = 120.f;
+  obj->s.collision_height = height;
   return obj;
 }
 
