@@ -106,10 +106,16 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
         return SDL_APP_SUCCESS; // useful in development
       }
 
-      if (event->type == SDL_EVENT_KEY_DOWN &&
-          event->key.key == SDLK_P)
+      if (event->type == SDL_EVENT_KEY_DOWN)
       {
-        APP.debug.unpause_one_tick = true;
+        if (event->key.key == SDLK_P)
+          APP.debug.unpause_one_tick = true;
+
+        if (event->key.key == SDLK_F11 && !APP.headless)
+        {
+          APP.fullscreen = !APP.fullscreen;
+          SDL_SetWindowFullscreen(APP.window, APP.fullscreen);
+        }
       }
     } break;
 
@@ -257,6 +263,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
     GPU_Init();
 
     SDL_ShowWindow(APP.window);
+  }
+
+  if (APP.headless)
+  {
+    SDL_Log("Starting in headless mode");
   }
 
   Game_Init();
