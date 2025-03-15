@@ -216,7 +216,8 @@ static SDL_GPUGraphicsPipelineCreateInfo GPU_DefaultPipeline(SDL_GPUColorTargetD
     .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
     .rasterizer_state =
     {
-      // @todo .cull_mode, .front_face
+      .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
+      .cull_mode = SDL_GPU_CULLMODE_BACK,
       .enable_depth_clip = true,
     },
     .target_info =
@@ -428,6 +429,12 @@ APP.gpu.wall_texs[TEX_##Name] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCoun
   }
 }
 
+static void GPU_ModifyPipelineForShadowMapping(SDL_GPUGraphicsPipelineCreateInfo *pipeline)
+{
+  pipeline->multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
+  pipeline->rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
+}
+
 static void GPU_Init()
 {
   // preapre props
@@ -547,8 +554,13 @@ static void GPU_Init()
       },
     };
 
-    APP.gpu.rigid_pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-    Assert(APP.gpu.rigid_pipeline); // @todo report user to error and exit program on fail
+
+    APP.gpu.pipelines[0].rigid = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.pipelines[0].rigid);
+
+    GPU_ModifyPipelineForShadowMapping(&pipeline);
+    APP.gpu.pipelines[1].rigid = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.pipelines[1].rigid);
 
     SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
@@ -643,8 +655,13 @@ static void GPU_Init()
       },
     };
 
-    APP.gpu.skinned_pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-    Assert(APP.gpu.skinned_pipeline); // @todo report user to error and exit program on fail
+
+    APP.gpu.pipelines[0].skinned = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.pipelines[0].skinned);
+
+    GPU_ModifyPipelineForShadowMapping(&pipeline);
+    APP.gpu.pipelines[1].skinned = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.pipelines[1].skinned);
 
     SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
@@ -766,8 +783,13 @@ static void GPU_Init()
       },
     };
 
-    APP.gpu.wall_pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-    Assert(APP.gpu.wall_pipeline); // @todo report error to user and exit program on fail
+
+    APP.gpu.pipelines[0].wall = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.pipelines[0].wall);
+
+    GPU_ModifyPipelineForShadowMapping(&pipeline);
+    APP.gpu.pipelines[1].wall = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.pipelines[1].wall);
 
     SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
@@ -796,9 +818,12 @@ static void GPU_Init()
 
 static void GPU_Deinit()
 {
-  SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.rigid_pipeline);
-  SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.skinned_pipeline);
-  SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.wall_pipeline);
+  ForArray(i, APP.gpu.pipelines)
+  {
+    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.pipelines[i].rigid);
+    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.pipelines[i].skinned);
+    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.pipelines[i].wall);
+  }
 
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
   if (APP.gpu.tex_msaa)
@@ -858,22 +883,22 @@ static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
   SDL_DrawGPUIndexedPrimitives(pass, model->ind_count, instance_count, 0, 0, 0);
 }
 
-static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass)
+static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
 {
+  AssertBounds(pipeline_index, APP.gpu.pipelines);
+
   // bind fragment shadow texture sampler
   {
-#if 0
     SDL_GPUTextureSamplerBinding binding_sampl =
     {
       .texture = APP.gpu.shadow_tex,
       .sampler = APP.gpu.shadow_sampler,
     };
     SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
-#endif
   }
 
   // walls
-  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.wall_pipeline);
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipelines[pipeline_index].wall);
   {
     // bind instance storage buffer
     SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.wall_inst_buf, 1);
@@ -892,18 +917,12 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass)
         SDL_GPUTexture *texture = APP.gpu.wall_texs[mesh_index];
 
         // bind fragment color texture sampler
-        SDL_GPUTextureSamplerBinding binding_sampl[2] =
+        SDL_GPUTextureSamplerBinding binding_sampl =
         {
-          {
-            .texture = APP.gpu.shadow_tex,
-            .sampler = APP.gpu.shadow_sampler,
-          },
-          {
-            .texture = texture,
-            .sampler = APP.gpu.wall_sampler,
-          }
+          .texture = texture,
+          .sampler = APP.gpu.wall_sampler,
         };
-        SDL_BindGPUFragmentSamplers(pass, 0, binding_sampl, 2);
+        SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
 
         SDL_DrawGPUPrimitives(pass, buf->vert_count, 1, 0, 0);
       }
@@ -911,7 +930,7 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass)
   }
 
   // rigid
-  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.rigid_pipeline);
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipelines[pipeline_index].rigid);
   ForArray(i, APP.gpu.rigids)
   {
     GPU_ModelBuffers *model = APP.gpu.rigids + i;
@@ -920,7 +939,7 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass)
   }
 
   // skinned
-  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.skinned_pipeline);
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipelines[pipeline_index].skinned);
   ForArray(i, APP.gpu.skinneds)
   {
     GPU_ModelBuffers *model = APP.gpu.skinneds + i;
@@ -1018,7 +1037,7 @@ static void GPU_Iterate()
 
     depth_target.texture = APP.gpu.shadow_tex;
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, 0, 0, &depth_target);
-    GPU_RenderPassDrawCalls(pass);
+    GPU_RenderPassDrawCalls(pass, 1);
     SDL_EndGPURenderPass(pass);
   }
 
@@ -1062,7 +1081,7 @@ static void GPU_Iterate()
     }
 
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
-    GPU_RenderPassDrawCalls(pass);
+    GPU_RenderPassDrawCalls(pass, 0);
     SDL_EndGPURenderPass(pass);
   }
 

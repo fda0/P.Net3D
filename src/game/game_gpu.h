@@ -8,6 +8,13 @@ typedef struct
 
 typedef struct
 {
+  SDL_GPUGraphicsPipeline *rigid;
+  SDL_GPUGraphicsPipeline *skinned;
+  SDL_GPUGraphicsPipeline *wall;
+} GPU_Pipelines;
+
+typedef struct
+{
   SDL_GPUDevice *device;
 
   U32 draw_width, draw_height;
@@ -19,9 +26,7 @@ typedef struct
   SDL_GPUSampler *shadow_sampler;
 
   // pipeline, sample settings
-  SDL_GPUGraphicsPipeline *rigid_pipeline;
-  SDL_GPUGraphicsPipeline *skinned_pipeline;
-  SDL_GPUGraphicsPipeline *wall_pipeline;
+  GPU_Pipelines pipelines[2]; // 0: 4xMSAA; 1: no AA (for shadow mapping)
   SDL_GPUSampleCount sample_count;
 
   // resources

@@ -111,12 +111,12 @@ static void Game_DrawObjects()
         {
           U32 cube_index_map[] =
           {
-            4,5,0,5,1,0, // E
-            6,7,2,7,3,2, // W
-            5,6,1,6,2,1, // N
-            7,4,3,4,0,3, // S
-            5,4,6,4,7,6, // Top
-            2,3,1,3,0,1, // Bottom
+            0,5,4,0,1,5, // E
+            2,7,6,2,3,7, // W
+            1,6,5,1,2,6, // N
+            3,4,7,3,0,4, // S
+            6,4,5,6,7,4, // Top
+            1,3,2,1,0,3, // Bottom
           };
           Assert(ArrayCount(cube_index_map) == vert_count);
 
@@ -186,12 +186,12 @@ static void Game_DrawObjects()
           face_dim = V2_Scale(face_dim, texels_per_cm);
           V2 face_uvs[6] =
           {
+            (V2){0, face_dim.y},
+            (V2){face_dim.x, 0},
             (V2){0, 0},
-            (V2){face_dim.x, 0},
             (V2){0, face_dim.y},
-            (V2){face_dim.x, 0},
             (V2){face_dim.x, face_dim.y},
-            (V2){0, face_dim.y},
+            (V2){face_dim.x, 0},
           };
 
           // face normals @todo CLEAN THIS UP
@@ -363,8 +363,7 @@ static void Game_Iterate()
 
   // camera to sun
   {
-    //APP.sun_camera_p = V3_Lerp(APP.camera_p, OBJ_Get(APP.sun, ObjStorage_All)->s.p, 0.9f);
-    APP.sun_camera_p = OBJ_Get(APP.sun, ObjStorage_All)->s.p;
+    APP.sun_camera_p = OBJ_GetAny(APP.sun)->s.p;
     Mat4 transl = Mat4_InvTranslation(Mat4_Translation(APP.sun_camera_p));
 
     V3 sun_dir = V3_Scale(APP.towards_sun_dir, -1.f);
@@ -373,7 +372,7 @@ static void Game_Iterate()
     float scale = 0.8f;
     float w = APP.window_width * 0.5f * scale;
     float h = APP.window_height * 0.5f * scale;
-    w = h = 900.f * scale;
+    w = h = 700.f * scale;
 
     //Mat4 projection = Mat4_Perspective(0.2f, w/h, 2.f, 2000.f);
     Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 700.f, 2000.f);
