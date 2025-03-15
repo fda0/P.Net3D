@@ -374,7 +374,6 @@ static void Game_Iterate()
     float h = APP.window_height * 0.5f * scale;
     w = h = 700.f * scale;
 
-    //Mat4 projection = Mat4_Perspective(0.2f, w/h, 2.f, 2000.f);
     Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 700.f, 2000.f);
     APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
@@ -386,7 +385,7 @@ static void Game_Iterate()
     rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_angles.z), rot);
     rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_angles.y), rot);
     Mat4 projection =
-      Mat4_Perspective(APP.camera_fov_y, (float)APP.window_width/APP.window_height, 2.f, 2000.f);
+      Mat4_Perspective(APP.camera_fov_y, (float)APP.window_width/APP.window_height, 80.f, 2000.f);
 
     APP.camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
@@ -511,9 +510,9 @@ static void Game_Init()
     {
       Object *flying_cube = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
       flying_cube->s.p = (V3){40, 40, 80};
-      flying_cube->s.collision_height = 40;
       flying_cube->s.texture = TEX_Tiles101;
-      //flying_cube->s.texture_texels_per_cm = 0.05f;
+      flying_cube->s.texture_texels_per_cm = 0.018f;
+      flying_cube->s.collision_height = 40;
       flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){40, 40});
       Collision_RecalculateNormals(&flying_cube->s.collision);
     }

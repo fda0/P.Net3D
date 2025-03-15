@@ -391,7 +391,5 @@ float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
     float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
     color = lerp(color, V4(UniP.background_color, 1.f), fog_t);
   }
-
-  //color.xyz = pixel_normal;
   return color;
 }
