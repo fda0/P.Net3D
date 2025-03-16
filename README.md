@@ -1,7 +1,7 @@
 3D game/engine with networking. Written in C. Uses SDL3.  
-[Video - Mar 15, 2025](https://www.youtube.com/watch?v=tm6N5Fy2Jxs)
-[Video - Feb 27, 2025](https://www.youtube.com/watch?v=567seD6WJco)
-[Video - Feb 11, 2025](https://www.youtube.com/watch?v=v2UXzL0xuF4)
+[Video - Mar 15, 2025](https://www.youtube.com/watch?v=tm6N5Fy2Jxs)  
+[Video - Feb 27, 2025](https://www.youtube.com/watch?v=567seD6WJco)  
+[Video - Feb 11, 2025](https://www.youtube.com/watch?v=v2UXzL0xuF4)  
 
 
 # Cloning the project
