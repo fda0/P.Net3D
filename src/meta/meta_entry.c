@@ -54,7 +54,8 @@ int main()
 
     Printer pr_out = Pr_Alloc(M.tmp, Megabyte(4));
     Printer pr_anim = Pr_Alloc(M.tmp, Megabyte(4));
-    M_GLTF_Load("../res/models/Worker.gltf", &pr_out, &pr_anim);
+    //M_GLTF_Load("../res/models/Worker.gltf", &pr_out, &pr_anim);
+    M_GLTF_Load("../res/models/Formal.gltf", &pr_out, &pr_anim);
     M_SaveFile("../gen/gen_models_gltf.h", Pr_AsS8(&pr_out));
     M_SaveFile("../gen/gen_animations.h", Pr_AsS8(&pr_anim));
 

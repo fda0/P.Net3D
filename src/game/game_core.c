@@ -352,8 +352,8 @@ static void Game_Iterate()
 
   // move sun
   {
-    float sun_x = SinF(0.5f + APP.at * 0.03f);
-    float sun_y = CosF(0.5f + APP.at * 0.03f);
+    float sun_x = SinF(0.5f + APP.at * 0.13f);
+    float sun_y = CosF(0.5f + APP.at * 0.13f);
     APP.towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 2.f});
 
     V3 sun_dist = V3_Scale(APP.towards_sun_dir, 900.f);
