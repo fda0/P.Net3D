@@ -18,12 +18,12 @@ if "%asan%"=="1" set compile_common=%compile_common% -fsanitize=address && echo 
 
 :: --- Compile/Link Line Definitions ------------------------------------------
 set include_paths=-I..\src\base\ -I..\src\game\ -I..\src\meta\ -I..\gen\ -I..\libs\
-set include_paths=%include_paths% -I..\libs\SDL\include\ -I..\libs\SDL_image\include\ -I..\libs\SDL_net\include\
+set include_paths=%include_paths% -I..\libs\SDL\include\ -I..\libs\SDL_ttf\include\ -I..\libs\SDL_net\include\ -I..\libs\SDL_image\include\
 set compile_common=%compile_common% %include_paths%
 
 if "%debug%"=="1"     set sdl_build=build\win\Debug
 if "%release%"=="1"   set sdl_build=build\win\Release
-set sdl_libs=..\libs\SDL\%sdl_build%\SDL3-static.lib ..\libs\SDL_image\%sdl_build%\SDL3_image-static.lib ..\libs\SDL_net\%sdl_build%\SDL3_net-static.lib
+set sdl_libs=..\libs\SDL\%sdl_build%\SDL3-static.lib ..\libs\SDL_image\%sdl_build%\SDL3_image-static.lib ..\libs\SDL_net\%sdl_build%\SDL3_net-static.lib ..\libs\SDL_ttf\%sdl_build%\SDL3_ttf-static.lib
 
 :: --- Compile/Link Line Definitions per compiler -----------------------------
 set cl_common=     /nologo /FC /Z7 /W4 /wd4244 /wd4201 /wd4324 /std:clatest
@@ -93,12 +93,12 @@ if "%sdl%"=="1" (
         %cmake_stage2% || exit /b 1
         popd
 
-        pushd libs\SDL_net
+        pushd libs\SDL_ttf
         %cmake_stage1_libs% || exit /b 1
         %cmake_stage2% || exit /b 1
         popd
 
-        pushd libs\SDL_ttf
+        pushd libs\SDL_net
         %cmake_stage1_libs% || exit /b 1
         %cmake_stage2% || exit /b 1
         popd

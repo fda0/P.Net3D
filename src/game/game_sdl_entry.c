@@ -9,8 +9,9 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_main.h>
-#include <SDL3_image/SDL_image.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <SDL3_net/SDL_net.h>
+#include <SDL3_image/SDL_image.h>
 
 #define WINDOW_HEIGHT 640
 #define WINDOW_WIDTH 854
@@ -213,10 +214,16 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
   if (!SDLNet_Init())
   {
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to initialize SDL3 Net.", SDL_GetError(), NULL);
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to initialize SDL Net.", SDL_GetError(), NULL);
     return SDL_APP_FAILURE;
   }
 
+  if (!TTF_Init())
+  {
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to initialize SDL TTF.", SDL_GetError(), NULL);
+    return SDL_APP_FAILURE;
+  }
+  
   if (!APP.headless)
   {
     SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
@@ -266,9 +273,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   }
 
   if (APP.headless)
-  {
     SDL_Log("Starting in headless mode");
-  }
 
   Game_Init();
 
