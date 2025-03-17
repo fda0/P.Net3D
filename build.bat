@@ -98,6 +98,11 @@ if "%sdl%"=="1" (
         %cmake_stage2% || exit /b 1
         popd
 
+        pushd libs\SDL_ttf
+        %cmake_stage1_libs% || exit /b 1
+        %cmake_stage2% || exit /b 1
+        popd
+
         pushd libs\SDL_image
         %cmake_stage1_libs% -DSDLIMAGE_VENDORED=OFF || exit /b 1
         %cmake_stage2% || exit /b 1
