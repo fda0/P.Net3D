@@ -223,7 +223,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Failed to initialize SDL TTF.", SDL_GetError(), NULL);
     return SDL_APP_FAILURE;
   }
-  
+
   if (!APP.headless)
   {
     SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
