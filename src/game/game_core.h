@@ -55,11 +55,13 @@ struct AppState
 {
   // SDL, window stuff
   SDL_Window* window;
+  float dpi_scaling;
 
   bool fullscreen;
   bool headless; // no window mode
   GPU_State gpu;
   RDR_State rdr;
+  FA_State atlas;
 
   Arena *tmp;
   Arena *a_frame;
@@ -68,6 +70,7 @@ struct AppState
   I32 init_window_px, init_window_py; // 0 if wasn't set
   I32 init_window_width, init_window_height;
   I32 window_width, window_height;
+  bool window_resized;
   bool window_on_top;
   bool window_borderless;
 

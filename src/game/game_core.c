@@ -284,6 +284,9 @@ static void Game_Iterate()
     APP.at = WrapF(0.f, 1000.f, APP.at + APP.dt);
   }
 
+  FA_ProcessWindowResize();
+  GPU_ProcessWindowResize();
+
   NET_IterateReceive();
 
   if (APP.debug.single_tick_stepping)
@@ -492,6 +495,8 @@ static void Game_Init()
   }
 
   NET_Init();
+  FA_Init();
+  GPU_Init();
 
   APP.frame_time = SDL_GetTicks();
   APP.camera_fov_y = 0.15f;
@@ -551,24 +556,5 @@ static void Game_Init()
   // pathing marker
   {
     APP.pathing_marker = OBJ_Create(ObjStorage_Local, ObjFlag_AnimatePosition)->s.key;
-  }
-
-
-  // temporary font stuff
-  {
-    TTF_Font *emoji_font = TTF_OpenFont("../res/fonts/NotoColorEmoji-Regular.ttf", 48.f);
-    TTF_Font *font = TTF_OpenFont("../res/fonts/Jacquard24-Regular.ttf", 48.f);
-    if (font && emoji_font)
-    {
-      TTF_AddFallbackFont(font, emoji_font);
-
-      SDL_Color color = {255,255,255,255};
-      S8 text = S8Lit("hello łabędź! 🦢");
-      int width = 0;
-      bool res = TTF_MeasureString(font, (char *)text.str, text.size, 0, &width, 0);
-      SDL_Surface *surf = TTF_RenderText_Blended(font, (char *)text.str, text.size, color);
-      int a = 1;
-      a += 1;
-    }
   }
 }

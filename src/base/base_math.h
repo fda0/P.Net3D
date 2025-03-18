@@ -50,6 +50,19 @@ static I32 MostSignificantBitU32(U32 value)
   return SDL_MostSignificantBitIndex32(value);
 }
 
+static U32 U32_CeilPow2(U32 v)
+{
+  if (!v) return 0;
+  v--;
+  v |= v >> 1;
+  v |= v >> 2;
+  v |= v >> 4;
+  v |= v >> 8;
+  v |= v >> 16;
+  v++;
+  return v;
+}
+
 static float SqrtF(float a)
 {
   return SDL_sqrtf(a);

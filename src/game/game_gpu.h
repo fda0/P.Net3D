@@ -17,7 +17,6 @@ typedef struct
 {
   SDL_GPUDevice *device;
 
-  U32 draw_width, draw_height;
   SDL_GPUTexture *tex_depth;
   SDL_GPUTexture *tex_msaa;
   SDL_GPUTexture *tex_resolve;

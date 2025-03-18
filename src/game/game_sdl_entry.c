@@ -82,6 +82,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
   Game_Iterate();
 
+  APP.window_resized = false;
   return SDL_APP_CONTINUE;
 }
 
@@ -100,6 +101,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
     {
       APP.window_width = event->window.data1;
       APP.window_height = event->window.data2;
+      APP.window_resized = true;
     } break;
 
     case SDL_EVENT_KEY_UP:
@@ -206,6 +208,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   APP.log_filter = ~(U32)LogFlags_NetAll;
   APP.init_window_width = WINDOW_WIDTH;
   APP.init_window_height = WINDOW_HEIGHT;
+  APP.dpi_scaling = 1.f;
+  APP.window_resized = true;
 
   Game_ParseCmd(argc, argv);
 
@@ -269,16 +273,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
     const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(APP.window));
     SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
-
-    GPU_Init();
-
-    SDL_ShowWindow(APP.window);
   }
 
   if (APP.headless)
     SDL_Log("Starting in headless mode");
 
   Game_Init();
+
+  if (!APP.headless)
+    SDL_ShowWindow(APP.window);
 
   return SDL_APP_CONTINUE;
 }

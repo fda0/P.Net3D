@@ -1,4 +1,3 @@
-#define FONT_ATLAS_DIM 512
 #define FONT_ATLAS_LAYERS 4
 #define FONT_ATLAS_LAYER_MAX_LINES 32
 #define FONT_ATLAS_LAYER_MAX_ELEM 1024
@@ -20,9 +19,17 @@ typedef struct
   U32 collision_count;
 } FA_Layer;
 
+typedef enum
+{
+  FA_Regular,
+  FA_Font_COUNT,
+} FA_Font;
+
 typedef struct
 {
-  TTF_Font *font;
+  TTF_Font *fonts[FA_Font_COUNT];
+  U32 texture_dim;
+
   FA_Layer layers[FONT_ATLAS_LAYERS];
   U32 active_layer;
 } FA_State;

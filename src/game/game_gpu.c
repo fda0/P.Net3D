@@ -94,11 +94,7 @@ static SDL_GPUTexture *GPU_CreateResolveTexture(U32 width, U32 height)
 
 static void GPU_ProcessWindowResize()
 {
-  U32 draw_width, draw_height;
-  SDL_GetWindowSizeInPixels(APP.window, (int *)&draw_width, (int *)&draw_height);
-
-  if (APP.gpu.draw_width != draw_width ||
-      APP.gpu.draw_height != draw_height)
+  if (APP.window_resized)
   {
     if (APP.gpu.tex_depth)
       SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
@@ -107,13 +103,10 @@ static void GPU_ProcessWindowResize()
     if (APP.gpu.tex_resolve)
       SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
 
-    APP.gpu.tex_depth = GPU_CreateDepthTexture(draw_width, draw_height, false);
-    APP.gpu.tex_msaa = GPU_CreateMSAATexture(draw_width, draw_height);
-    APP.gpu.tex_resolve = GPU_CreateResolveTexture(draw_width, draw_height);
+    APP.gpu.tex_depth = GPU_CreateDepthTexture(APP.window_width, APP.window_height, false);
+    APP.gpu.tex_msaa = GPU_CreateMSAATexture(APP.window_width, APP.window_height);
+    APP.gpu.tex_resolve = GPU_CreateResolveTexture(APP.window_width, APP.window_height);
   }
-
-  APP.gpu.draw_width = draw_width;
-  APP.gpu.draw_height = draw_height;
 }
 
 static void GPU_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U32 data_size)
@@ -820,24 +813,6 @@ static void GPU_Init()
     };
     APP.gpu.shadow_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
   }
-
-  // font atlas
-  {
-    SDL_GPUTextureCreateInfo tex_info =
-    {
-      .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-      .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-      .width = FONT_ATLAS_DIM,
-      .height = FONT_ATLAS_DIM,
-      .layer_count_or_depth = FONT_ATLAS_LAYERS,
-      .num_levels = GPU_MipMapCount(FONT_ATLAS_DIM, FONT_ATLAS_DIM),
-      .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
-    };
-    APP.gpu.font_atlas_tex = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
-    SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.font_atlas_tex, "Font Atlas Texture");
-  }
-
-  GPU_ProcessWindowResize();
 }
 
 static void GPU_Deinit()
@@ -993,8 +968,6 @@ static void GPU_Iterate()
     return;
   }
 
-  GPU_ProcessWindowResize();
-
   // upload wall vertices
   static_assert(ArrayCount(APP.gpu.wall_vert_buffers) == ArrayCount(APP.rdr.wall_mesh_buffers));
   ForArray(i, APP.rdr.wall_mesh_buffers)
@@ -1118,14 +1091,14 @@ static void GPU_Iterate()
       .source =
       {
         .texture = APP.gpu.tex_resolve,
-        .w = APP.gpu.draw_width,
-        .h = APP.gpu.draw_height,
+        .w = APP.window_width,
+        .h = APP.window_height,
       },
       .destination =
       {
         .texture = swapchain_tex,
-        .w = APP.gpu.draw_width,
-        .h = APP.gpu.draw_height,
+        .w = draw_width,
+        .h = draw_height,
       },
       .load_op = SDL_GPU_LOADOP_DONT_CARE,
       .filter = SDL_GPU_FILTER_LINEAR,
