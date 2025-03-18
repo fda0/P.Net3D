@@ -25,6 +25,8 @@ typedef struct
   SDL_GPUTexture *shadow_tex;
   SDL_GPUSampler *shadow_sampler;
 
+  SDL_GPUTexture *font_atlas_tex;
+
   // pipeline, sample settings
   GPU_Pipelines pipelines[2]; // 0: 4xMSAA; 1: no AA (for shadow mapping)
   SDL_GPUSampleCount sample_count;

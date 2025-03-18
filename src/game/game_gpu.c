@@ -6,6 +6,14 @@
 #define GPU_JOINT_TRANSFORMS_MAX_SIZE (sizeof(Mat4)*62)
 #define GPU_SHADOW_MAP_DIM 2048
 
+static U32 GPU_MipMapCount(U32 width, U32 height)
+{
+  U32 max_dim = Max(width, height);
+  I32 msb = MostSignificantBitU32(max_dim);
+  if (msb < 0) return 0;
+  return msb;
+}
+
 static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, const char *name)
 {
   SDL_GPUBufferCreateInfo desc = {.usage = usage, .size = size};
@@ -343,7 +351,7 @@ static SDL_GPUTexture *GPU_CreateAndLoadTexture2DArray(const char **paths, U64 p
     .width = imgs[0]->w,
     .height = imgs[0]->h,
     .layer_count_or_depth = path_count,
-    .num_levels = 9,
+    .num_levels = GPU_MipMapCount(imgs[0]->w, imgs[0]->h),
     .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
   };
   SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
@@ -813,6 +821,22 @@ static void GPU_Init()
     APP.gpu.shadow_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
   }
 
+  // font atlas
+  {
+    SDL_GPUTextureCreateInfo tex_info =
+    {
+      .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
+      .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+      .width = FONT_ATLAS_DIM,
+      .height = FONT_ATLAS_DIM,
+      .layer_count_or_depth = FONT_ATLAS_LAYERS,
+      .num_levels = GPU_MipMapCount(FONT_ATLAS_DIM, FONT_ATLAS_DIM),
+      .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
+    };
+    APP.gpu.font_atlas_tex = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
+    SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.font_atlas_tex, "Font Atlas Texture");
+  }
+
   GPU_ProcessWindowResize();
 }
 
@@ -833,6 +857,8 @@ static void GPU_Deinit()
 
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
+
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.font_atlas_tex);
 
   ForArray(i, APP.gpu.rigids)
   {

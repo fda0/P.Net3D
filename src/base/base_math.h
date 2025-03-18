@@ -45,6 +45,11 @@ typedef V4 Quat;
 #define TURNS_TO_RAD (2.f*SDL_PI_F)
 #define RAD_TO_TURNS (1.f/(2.f*SDL_PI_F))
 
+static I32 MostSignificantBitU32(U32 value)
+{
+  return SDL_MostSignificantBitIndex32(value);
+}
+
 static float SqrtF(float a)
 {
   return SDL_sqrtf(a);

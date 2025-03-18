@@ -20,6 +20,7 @@
 #include "base_math.h"
 #include "base_string.h"
 #include "base_arena.h"
+#include "base_hash.h"
 #include "game_constants.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
@@ -31,6 +32,7 @@
 #include "game_server.h"
 #include "game_animation.h"
 #include "game_gpu.h"
+#include "game_font_atlas.h"
 #include "game_core.h"
 
 #include "gen_shader_rigid.vert.h"
@@ -53,6 +55,7 @@ static AppState APP;
 #include "game_animation.c"
 #include "game_render.c"
 #include "game_gpu.c"
+#include "game_font_atlas.c"
 #include "game_core.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)

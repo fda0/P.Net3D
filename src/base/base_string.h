@@ -280,24 +280,3 @@ static S8 S8_ConsumeUntilBack(S8 *haystack, S8 needle, S8_MatchFlags flags)
   }
   return (S8){0};
 }
-
-//
-// Misc
-//
-static U64 HashU64(U64 seed, void *data, U64 size)
-{
-  // Idk where I even got this from;
-  // most probably there are better cheap hash functions out there
-  U8 *d = (U8 *)data;
-  U64 res = seed;
-  ForU64(i, size)
-  {
-    res = ((res << 5) + res) + d[i];
-  }
-  return res;
-}
-
-static U64 S8_Hash(U64 seed, S8 string)
-{
-  return HashU64(seed, string.str, string.size);
-}
