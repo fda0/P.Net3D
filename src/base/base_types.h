@@ -73,6 +73,11 @@ typedef int16_t I16;
 typedef int32_t I32;
 typedef int64_t I64;
 
+#define U8_MAX SDL_MAX_UINT8
+#define U16_MAX SDL_MAX_UINT16
+#define U32_MAX SDL_MAX_UINT32
+#define U64_MAX SDL_MAX_UINT64
+
 // ---
 // Macros
 // ---
