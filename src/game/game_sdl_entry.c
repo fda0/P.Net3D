@@ -209,7 +209,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   APP.init_window_width = WINDOW_WIDTH;
   APP.init_window_height = WINDOW_HEIGHT;
   APP.dpi_scaling = 1.f;
-  APP.window_resized = true;
 
   Game_ParseCmd(argc, argv);
 

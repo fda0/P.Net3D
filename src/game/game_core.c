@@ -284,8 +284,8 @@ static void Game_Iterate()
     APP.at = WrapF(0.f, 1000.f, APP.at + APP.dt);
   }
 
-  FA_ProcessWindowResize();
-  GPU_ProcessWindowResize();
+  FA_ProcessWindowResize(false);
+  GPU_ProcessWindowResize(false);
 
   NET_IterateReceive();
 
@@ -557,4 +557,7 @@ static void Game_Init()
   {
     APP.pathing_marker = OBJ_Create(ObjStorage_Local, ObjFlag_AnimatePosition)->s.key;
   }
+
+  FA_GlyphRun g0 = FA_GetGlyphRun(FA_Regular, S8Lit("hello world 🌍"));
+  g0 = FA_GetGlyphRun(FA_Regular, S8Lit("hello sailor ⛵"));
 }

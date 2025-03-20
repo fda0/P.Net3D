@@ -92,9 +92,9 @@ static SDL_GPUTexture *GPU_CreateResolveTexture(U32 width, U32 height)
   return result;
 }
 
-static void GPU_ProcessWindowResize()
+static void GPU_ProcessWindowResize(bool init)
 {
-  if (APP.window_resized)
+  if (APP.window_resized || init)
   {
     if (APP.gpu.tex_depth)
       SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
@@ -813,6 +813,8 @@ static void GPU_Init()
     };
     APP.gpu.shadow_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
   }
+
+  GPU_ProcessWindowResize(true);
 }
 
 static void GPU_Deinit()

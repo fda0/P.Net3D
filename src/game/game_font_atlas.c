@@ -51,23 +51,23 @@ static FA_GlyphRun *FA_FindGlyphRunInLayer(U32 layer_index, U64 hash, bool creat
   return slot;
 }
 
-static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, float orig_width, float orig_height)
+static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, I16 orig_width, I16 orig_height)
 {
   AssertBounds(layer_index, APP.atlas.layers);
   FA_Layer *layer = APP.atlas.layers + layer_index;
 
-  float width = orig_width + 2 * APP.atlas.margin;
-  float height = orig_height + 2 * APP.atlas.margin;
-  float max_dim = APP.atlas.texture_dim;
-  float all_lines_height = 0.f;
+  I16 width = orig_width + 2 * APP.atlas.margin;
+  I16 height = orig_height + 2 * APP.atlas.margin;
+  I16 max_dim = APP.atlas.texture_dim;
+  I16 all_lines_height = 0;
 
   // find best line
   U32 best_line_index = U32_MAX;
   ForU32(line_index, layer->line_count)
   {
-    float line_height = layer->line_heights[line_index];
-    float line_advance = layer->line_advances[line_index];
-    float horizontal_left_in_line = max_dim - line_advance;
+    I16 line_height = layer->line_heights[line_index];
+    I16 line_advance = layer->line_advances[line_index];
+    I16 horizontal_left_in_line = max_dim - line_advance;
 
     all_lines_height += line_height;
 
@@ -88,11 +88,11 @@ static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, float or
   if (best_line_index < FONT_ATLAS_LAYER_MAX_LINES && height_left >= height)
   {
     // heuristics for: should we start a new line if using "best line" wastes a lot of height space
-    float best_line_height = layer->line_heights[best_line_index];
-    float waste = best_line_height - height;
-    float waste_share = waste / best_line_height;
+    I16 best_line_height = layer->line_heights[best_line_index];
+    I16 waste = best_line_height - height;
+    float waste_share = (float)waste / (float)best_line_height;
 
-    if (waste > 4.f && waste_share > 0.2f)
+    if (waste > 4 && waste_share > 0.2f)
       best_line_height = FONT_ATLAS_LAYER_MAX_LINES;
   }
 
@@ -114,15 +114,15 @@ static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, float or
     FA_GlyphRun *slot = FA_FindGlyphRunInLayer(layer_index, hash, true);
     if (!slot->hash)
     {
-      float line_y_offset = 0.f;
+      I16 line_y_offset = 0;
       ForU32(line_index, best_line_index)
         line_y_offset += layer->line_heights[line_index];
 
       slot->hash = hash;
-      slot->p.x = layer->line_advances[best_line_index] + APP.atlas.margin;
-      slot->p.y = line_y_offset + APP.atlas.margin;
-      slot->dim.x = orig_width;
-      slot->dim.y = orig_height;
+      slot->x = layer->line_advances[best_line_index] + APP.atlas.margin;
+      slot->y = line_y_offset + APP.atlas.margin;
+      slot->w = orig_width;
+      slot->h = orig_height;
       slot->layer = layer_index;
 
       layer->line_advances[best_line_index] += width;
@@ -136,10 +136,13 @@ static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, float or
 
 static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
 {
+  FA_GlyphRun result = {};
+
+  AssertBounds(font, APP.atlas.fonts);
   U64 hash = FA_TextHash(font, text);
 
   // Find already existing glyph run
-  U32 layer_count_minus_one = ArrayCount(APP.atlas.layers);
+  U32 layer_count_minus_one = ArrayCount(APP.atlas.layers) - 1;
   ForU32(layer_offset, layer_count_minus_one)
   {
     U32 layer_index = (APP.atlas.active_layer + layer_offset) % ArrayCount(APP.atlas.layers);
@@ -149,55 +152,160 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
   }
 
   // Create surface, now we have width x height
-  // @todo
-  // @todo reject something that doesnt fit in texture dim
+  SDL_Color color = {255,128,0,255};
+  TTF_Font *ttf_font = APP.atlas.fonts[font];
+  SDL_Surface *surf = TTF_RenderText_Blended(ttf_font, (char *)text.str, text.size, color);
+  if (!surf)
+    return result;
 
-  // Find slot for new glyph run
-  // @todo
-  // 1. try 3 layers in order
-  // 2. try to fit glyph in the best slot
-  // 3. if we can't find any slot then advance active_layer and use that
+  // Reject surfaces that are too big
+  if (surf->w + APP.atlas.margin*2 > APP.atlas.texture_dim ||
+      surf->h + APP.atlas.margin*2 > APP.atlas.texture_dim)
+  {
+    SDL_DestroySurface(surf);
+    return result;
+  }
+
+  FA_GlyphRun *slot = 0;
+  ForU32(layer_offset, layer_count_minus_one)
+  {
+    U32 layer_index = (APP.atlas.active_layer + layer_offset) % ArrayCount(APP.atlas.layers);
+    slot = FA_CreateGlyphRunInLayer(layer_index, hash, surf->w, surf->h);
+    if (slot)
+      break;
+  }
+
+  if (!slot) // couldn't find space in any layer
+  {
+    // advance active_layer index (backwards) and clear active layer
+    APP.atlas.active_layer += ArrayCount(APP.atlas.layers) - 1;
+    APP.atlas.active_layer %= ArrayCount(APP.atlas.layers);
+    SDL_zerop(APP.atlas.layers + APP.atlas.active_layer);
+
+    slot = FA_CreateGlyphRunInLayer(APP.atlas.active_layer, hash, surf->w, surf->h);
+  }
+
+  // Upload surface to GPU (if free slot was found)
+  if (slot)
+  {
+    I32 margin = APP.atlas.margin;
+    I32 margin2 = margin * 2;
+    I32 comp_size = 4; // @todo query format size or assert on format
+    I32 surf_size = surf->h * surf->w * comp_size;
+    I32 total_size = surf_size + (surf->w * comp_size * margin2) + (surf->h * comp_size * margin2);
+
+    SDL_GPUTransferBufferCreateInfo trans_cpu =
+    {
+      .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+      .size = total_size
+    };
+    SDL_GPUTransferBuffer *trans_cpu_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_cpu);
+
+    // CPU memory -> GPU memory
+    {
+      void *mapped_memory = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_cpu_buf, false);
+      memset(mapped_memory, 0, total_size);
+
+      ForI32(y, surf->h)
+      {
+        U8 *dst = (U8 *)mapped_memory + (y * (surf->w + margin2) * comp_size);
+        U8 *src = (U8 *)surf->pixels  + (y * surf->pitch);
+        memcpy(dst, src, surf->w*comp_size);
+      }
+
+      SDL_UnmapGPUTransferBuffer(APP.gpu.device, trans_cpu_buf);
+    }
+
+    // GPU memory -> GPU texture
+    {
+      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+      SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+      SDL_GPUTextureTransferInfo trans_gpu = {
+        .transfer_buffer = trans_cpu_buf,
+        .offset = 0,
+      };
+
+      Assert(slot->x >= margin);
+      Assert(slot->y >= margin);
+      SDL_GPUTextureRegion dst_region = {
+        .texture = APP.gpu.font_atlas_tex,
+        .layer = slot->layer,
+        .x = slot->x - margin,
+        .y = slot->y - margin,
+        .w = slot->w + 2*margin,
+        .h = slot->h + 2*margin,
+        .d = 1,
+      };
+      SDL_UploadToGPUTexture(copy_pass, &trans_gpu, &dst_region, false);
+
+      SDL_EndGPUCopyPass(copy_pass);
+      SDL_SubmitGPUCommandBuffer(cmd);
+    }
+
+    result = *slot;
+  }
+
+  SDL_DestroySurface(surf);
+  return result;
 }
 
-static void FA_ProcessWindowResize()
+static void FA_ProcessWindowResize(bool init)
 {
-  float scale = APP.window_height / 16.f;
-  TTF_SetFontSize(APP.atlas.fonts[FA_Regular], scale);
-
-  U32 new_texture_dim = U32_CeilPow2(APP.window_height);
-  new_texture_dim = Min(256, new_texture_dim);
-
-  bool resize_texture = false;
-  resize_texture |= new_texture_dim > APP.atlas.texture_dim; // texture grew
-  resize_texture |= new_texture_dim*2 < APP.atlas.texture_dim; // texure shrank by at least 4x
-
-  if (resize_texture)
+  if (APP.window_resized || init)
   {
-    APP.atlas.texture_dim = new_texture_dim;
-    SDL_zeroa(APP.atlas.layers);
+    //float scale = APP.window_height / 16.f;
+    //TTF_SetFontSize(APP.atlas.fonts[FA_Regular], scale);
 
-    if (APP.gpu.font_atlas_tex)
-      SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.font_atlas_tex);
+    I32 new_texture_dim = U32_CeilPow2(APP.window_height); // @todo consider window area instead of height
+    new_texture_dim = Max(256, new_texture_dim);
 
-    SDL_GPUTextureCreateInfo tex_info =
+    bool resize_texture = false;
+    resize_texture |= new_texture_dim > APP.atlas.texture_dim; // texture grew
+    resize_texture |= new_texture_dim*2 < APP.atlas.texture_dim; // texure shrank by at least 4x
+
+    if (resize_texture || init)
     {
-      .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-      .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-      .width = APP.atlas.texture_dim,
-      .height = APP.atlas.texture_dim,
-      .layer_count_or_depth = FONT_ATLAS_LAYERS,
-      .num_levels = GPU_MipMapCount(APP.atlas.texture_dim, APP.atlas.texture_dim),
-      .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
-    };
-    APP.gpu.font_atlas_tex = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
-    SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.font_atlas_tex, "Font Atlas Texture");
+      APP.atlas.texture_dim = new_texture_dim;
+
+      // Initialize atlas layers bookkeeping structs
+      {
+        SDL_zeroa(APP.atlas.layers); // clear layers
+
+        // Pre-seed layers to be full.
+        // This isn't necessary but will result in more optimal fill order.
+        ForArray(i, APP.atlas.layers)
+        {
+          FA_Layer *layer = APP.atlas.layers + i;
+          layer->line_count = 1;
+          layer->line_heights[0] = APP.atlas.texture_dim;
+          layer->line_advances[0] = APP.atlas.texture_dim;
+        }
+      }
+
+      if (APP.gpu.font_atlas_tex)
+        SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.font_atlas_tex);
+
+      SDL_GPUTextureCreateInfo tex_info =
+      {
+        .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
+        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+        .width = APP.atlas.texture_dim,
+        .height = APP.atlas.texture_dim,
+        .layer_count_or_depth = FONT_ATLAS_LAYERS,
+        .num_levels = GPU_MipMapCount(APP.atlas.texture_dim, APP.atlas.texture_dim),
+        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
+      };
+      APP.gpu.font_atlas_tex = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
+      SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.font_atlas_tex, "Font Atlas Texture");
+    }
   }
 }
 
 static void FA_Init()
 {
   APP.atlas.margin = 1;
-  float default_size = 16.f;
+  float default_size = 120.f;
 
   // load font
   {
@@ -205,15 +313,7 @@ static void FA_Init()
     TTF_Font *font = TTF_OpenFont("../res/fonts/Jacquard24-Regular.ttf", default_size);
     TTF_AddFallbackFont(font, emoji_font);
     APP.atlas.fonts[FA_Regular] = font;
-
-#if 0
-    SDL_Color color = {255,255,255,255};
-    S8 text = S8Lit("hello łabędź! 🦢");
-    int width = 0;
-    bool res = TTF_MeasureString(font, (char *)text.str, text.size, 0, &width, 0);
-    SDL_Surface *surf = TTF_RenderText_Blended(font, (char *)text.str, text.size, color);
-    int a = 1;
-    a += 1;
-#endif
   }
+
+  FA_ProcessWindowResize(true);
 }

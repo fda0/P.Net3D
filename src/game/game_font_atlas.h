@@ -5,15 +5,16 @@
 typedef struct
 {
   U64 hash;
-  V2 p, dim;
+  I16 x, y;
+  I16 w, h;
   U32 layer : 2;
   U32 next_plus_one : 30; // index+1 into the collision table
 } FA_GlyphRun;
 
 typedef struct
 {
-  float line_heights[FONT_ATLAS_LAYER_MAX_LINES];
-  float line_advances[FONT_ATLAS_LAYER_MAX_LINES];
+  I16 line_heights[FONT_ATLAS_LAYER_MAX_LINES];
+  I16 line_advances[FONT_ATLAS_LAYER_MAX_LINES];
   U32 line_count;
 
   FA_GlyphRun hash_table[FONT_ATLAS_LAYER_MAX_ELEM];
@@ -30,8 +31,8 @@ typedef enum
 typedef struct
 {
   TTF_Font *fonts[FA_Font_COUNT];
-  U32 texture_dim;
-  float margin;
+  I16 texture_dim;
+  I16 margin;
 
   FA_Layer layers[FONT_ATLAS_LAYERS];
   U32 active_layer;
