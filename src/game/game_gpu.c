@@ -906,11 +906,12 @@ static void GPU_Deinit()
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
+  SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.ui_pipeline);
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui_atlas_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.ui_atlas_sampler);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_index_buf);
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_shape_buf);
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_clip_buf);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_index_buf);
 
   ForArray(i, APP.gpu.rigids)
   {
@@ -1207,18 +1208,11 @@ static void GPU_Iterate()
     // Start pass
     SDL_GPUColorTargetInfo color_target =
     {
-      .clear_color =
-      {
-        .r = GPU_CLEAR_COLOR_R,
-        .g = GPU_CLEAR_COLOR_G,
-        .b = GPU_CLEAR_COLOR_B,
-        .a = GPU_CLEAR_COLOR_A,
-      },
       .load_op = SDL_GPU_LOADOP_LOAD,
       .store_op = SDL_GPU_STOREOP_STORE,
       .texture = swapchain_tex,
     };
-    SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
+    SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, 0);
 
     // Bind texture & sampler
     SDL_GPUTextureSamplerBinding sampler_binding =

@@ -52,6 +52,12 @@ UI_VertexToFragment UI_DxShaderVS(UI_VertexInput input)
 
   UI_VertexToFragment frag;
   frag.clip_space_p = V4(1,1,1,1);
+  if (input.vertex_index == 0) frag.clip_space_p = V4(0,0,0,1);
+  if (input.vertex_index == 1) frag.clip_space_p = V4(0,1,0,1);
+  if (input.vertex_index == 2) frag.clip_space_p = V4(1,1,0,1);
+  if (input.vertex_index == 3) frag.clip_space_p = V4(0,0,0,1);
+  if (input.vertex_index == 4) frag.clip_space_p = V4(0,-1,0,1);
+  if (input.vertex_index == 5) frag.clip_space_p = V4(-1,-1,0,1);
   return frag;
 }
 
