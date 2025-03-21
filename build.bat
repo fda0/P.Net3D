@@ -134,6 +134,8 @@ if "%game%"=="1" (
     dxc ..\src\game\shader_model.hlsl /E ShaderSkinnedPS /T ps_6_0 /D IS_SKINNED=1  /Fh ..\gen\gen_shader_skinned.frag.h || exit /b 1
     dxc ..\src\game\shader_model.hlsl /E ShaderWallVS    /T vs_6_0 /D IS_TEXTURED=1 /Fh ..\gen\gen_shader_wall.vert.h || exit /b 1
     dxc ..\src\game\shader_model.hlsl /E ShaderWallPS    /T ps_6_0 /D IS_TEXTURED=1 /Fh ..\gen\gen_shader_wall.frag.h || exit /b 1
+    dxc ..\src\game\shader_ui.hlsl    /E UI_DxShaderVS   /T vs_6_0                  /Fh ..\gen\gen_shader_ui.vert.h || exit /b 1
+    dxc ..\src\game\shader_ui.hlsl    /E UI_DxShaderPS   /T ps_6_0                  /Fh ..\gen\gen_shader_ui.frag.h || exit /b 1
 
     :: --- Compile game -------------------------------------------------------
     %compile% ..\src\game\game_sdl_entry.c %compile_link_game% %link_icon% %out%p.exe || exit /b 1

@@ -229,7 +229,7 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
       Assert(slot->x >= margin);
       Assert(slot->y >= margin);
       SDL_GPUTextureRegion dst_region = {
-        .texture = APP.gpu.font_atlas_tex,
+        .texture = APP.gpu.ui_atlas_tex,
         .layer = slot->layer,
         .x = slot->x - margin,
         .y = slot->y - margin,
@@ -283,8 +283,8 @@ static void FA_ProcessWindowResize(bool init)
         }
       }
 
-      if (APP.gpu.font_atlas_tex)
-        SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.font_atlas_tex);
+      if (APP.gpu.ui_atlas_tex)
+        SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui_atlas_tex);
 
       SDL_GPUTextureCreateInfo tex_info =
       {
@@ -296,8 +296,8 @@ static void FA_ProcessWindowResize(bool init)
         .num_levels = GPU_MipMapCount(APP.atlas.texture_dim, APP.atlas.texture_dim),
         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
       };
-      APP.gpu.font_atlas_tex = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
-      SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.font_atlas_tex, "Font Atlas Texture");
+      APP.gpu.ui_atlas_tex = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
+      SDL_SetGPUTextureName(APP.gpu.device, APP.gpu.ui_atlas_tex, "UI Atlas Texture");
     }
   }
 }

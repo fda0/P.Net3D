@@ -109,6 +109,23 @@ typedef struct
   U32 vert_count;
 } RDR_WallMeshBuffer;
 
+typedef struct
+{
+  V2 p_min;
+  V2 p_max;
+  V2 tex_min;
+  V2 tex_max;
+  U32 color;
+  U32 border_color;
+  float border_radius[4];
+} UI_GpuShape;
+
+typedef struct
+{
+  V2 p_min;
+  V2 p_max;
+} UI_GpuClip;
+
 // State
 typedef struct
 {
@@ -121,4 +138,16 @@ typedef struct
   RDR_Skinned skinneds[RdrSkinned_COUNT];
 
   RDR_WallMeshBuffer wall_mesh_buffers[TEX_COUNT];
+
+  struct
+  {
+    I32 indices[1024 * 8];
+    U32 indices_count;
+
+    UI_GpuShape shapes[1024 * 2];
+    U32 shapes_count;
+
+    UI_GpuClip clips[1024];
+    U32 clips_count;
+  } ui;
 } RDR_State;

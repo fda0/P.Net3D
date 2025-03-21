@@ -556,12 +556,12 @@ static void GPU_Init()
     };
 
 
-    APP.gpu.pipelines[0].rigid = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-    Assert(APP.gpu.pipelines[0].rigid);
+    APP.gpu.world_pipelines[0].rigid = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.world_pipelines[0].rigid);
 
     GPU_ModifyPipelineForShadowMapping(&pipeline);
-    APP.gpu.pipelines[1].rigid = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-    Assert(APP.gpu.pipelines[1].rigid);
+    APP.gpu.world_pipelines[1].rigid = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.world_pipelines[1].rigid);
 
     SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
@@ -657,12 +657,12 @@ static void GPU_Init()
     };
 
 
-    APP.gpu.pipelines[0].skinned = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-    Assert(APP.gpu.pipelines[0].skinned);
+    APP.gpu.world_pipelines[0].skinned = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.world_pipelines[0].skinned);
 
     GPU_ModifyPipelineForShadowMapping(&pipeline);
-    APP.gpu.pipelines[1].skinned = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-    Assert(APP.gpu.pipelines[1].skinned);
+    APP.gpu.world_pipelines[1].skinned = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.world_pipelines[1].skinned);
 
     SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
@@ -785,12 +785,12 @@ static void GPU_Init()
     };
 
 
-    APP.gpu.pipelines[0].wall = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-    Assert(APP.gpu.pipelines[0].wall);
+    APP.gpu.world_pipelines[0].wall = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.world_pipelines[0].wall);
 
     GPU_ModifyPipelineForShadowMapping(&pipeline);
-    APP.gpu.pipelines[1].wall = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
-    Assert(APP.gpu.pipelines[1].wall);
+    APP.gpu.world_pipelines[1].wall = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+    Assert(APP.gpu.world_pipelines[1].wall);
 
     SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
@@ -814,16 +814,87 @@ static void GPU_Init()
     APP.gpu.shadow_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
   }
 
+  // UI sampler
+  {
+    SDL_GPUSamplerCreateInfo sampler_info =
+    {
+      .min_filter = SDL_GPU_FILTER_LINEAR,
+      .mag_filter = SDL_GPU_FILTER_LINEAR,
+    };
+    APP.gpu.ui_atlas_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
+  }
+
+  // UI buffers
+  {
+    APP.gpu.ui_index_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, sizeof(APP.rdr.ui.indices), "UI Index Buffer");
+    APP.gpu.ui_shape_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+                                            sizeof(APP.rdr.ui.shapes), "UI Shapes Storage Buffer");
+    APP.gpu.ui_clip_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+                                           sizeof(APP.rdr.ui.clips), "UI Clips Storage Buffer");
+  }
+
+  // UI pipeline
+  {
+    SDL_GPUShader *vertex_shader = 0;
+    {
+      SDL_GPUShaderCreateInfo create_info =
+      {
+        .stage = SDL_GPU_SHADERSTAGE_VERTEX,
+        .num_samplers = 0,
+        .num_storage_buffers = 2,
+        .num_storage_textures = 0,
+        .num_uniform_buffers = 0,
+
+        .format = SDL_GPU_SHADERFORMAT_DXIL,
+        .code = g_UI_DxShaderVS,
+        .code_size = sizeof(g_UI_DxShaderVS),
+        .entrypoint = "UI_DxShaderVS",
+      };
+      vertex_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
+    }
+
+    SDL_GPUShader *fragment_shader = 0;
+    {
+      SDL_GPUShaderCreateInfo create_info =
+      {
+        .stage = SDL_GPU_SHADERSTAGE_FRAGMENT,
+        .num_samplers = 1,
+        .num_storage_buffers = 0,
+        .num_storage_textures = 0,
+        .num_uniform_buffers = 0,
+
+        .format = SDL_GPU_SHADERFORMAT_DXIL,
+        .code = g_UI_DxShaderPS,
+        .code_size = sizeof(g_UI_DxShaderPS),
+        .entrypoint = "UI_DxShaderPS",
+      };
+      fragment_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
+    }
+
+    SDL_GPUGraphicsPipelineCreateInfo pipeline =
+    {
+      .vertex_shader = vertex_shader,
+      .fragment_shader = fragment_shader,
+      .primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+      .target_info =
+      {
+        .num_color_targets = 1,
+        .color_target_descriptions = &color_desc,
+      },
+    };
+    APP.gpu.ui_pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+  }
+
   GPU_ProcessWindowResize(true);
 }
 
 static void GPU_Deinit()
 {
-  ForArray(i, APP.gpu.pipelines)
+  ForArray(i, APP.gpu.world_pipelines)
   {
-    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.pipelines[i].rigid);
-    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.pipelines[i].skinned);
-    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.pipelines[i].wall);
+    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.world_pipelines[i].rigid);
+    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.world_pipelines[i].skinned);
+    SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.world_pipelines[i].wall);
   }
 
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
@@ -835,7 +906,11 @@ static void GPU_Deinit()
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.font_atlas_tex);
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui_atlas_tex);
+  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.ui_atlas_sampler);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_shape_buf);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_clip_buf);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_index_buf);
 
   ForArray(i, APP.gpu.rigids)
   {
@@ -876,7 +951,8 @@ static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
   SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
 
   // bind instance storage buffer
-  SDL_GPUBuffer *storage_bufs[2] = {
+  SDL_GPUBuffer *storage_bufs[2] =
+  {
     model->inst_buf,
     additional_storage_buf
   };
@@ -888,7 +964,7 @@ static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
 
 static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
 {
-  AssertBounds(pipeline_index, APP.gpu.pipelines);
+  AssertBounds(pipeline_index, APP.gpu.world_pipelines);
 
   // bind fragment shadow texture sampler
   {
@@ -901,7 +977,7 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
   }
 
   // walls
-  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipelines[pipeline_index].wall);
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].wall);
   {
     // bind instance storage buffer
     SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.wall_inst_buf, 1);
@@ -933,7 +1009,7 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
   }
 
   // rigid
-  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipelines[pipeline_index].rigid);
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].rigid);
   ForArray(i, APP.gpu.rigids)
   {
     GPU_ModelBuffers *model = APP.gpu.rigids + i;
@@ -942,7 +1018,7 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
   }
 
   // skinned
-  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.pipelines[pipeline_index].skinned);
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].skinned);
   ForArray(i, APP.gpu.skinneds)
   {
     GPU_ModelBuffers *model = APP.gpu.skinneds + i;
@@ -977,8 +1053,8 @@ static void GPU_Iterate()
     RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + i;
     if (buf->vert_count)
     {
-      U32 transfor_size = buf->vert_count * sizeof(buf->verts[0]);
-      GPU_TransferBuffer(APP.gpu.wall_vert_buffers[i], buf->verts, transfor_size);
+      U32 transfer_size = buf->vert_count * sizeof(buf->verts[0]);
+      GPU_TransferBuffer(APP.gpu.wall_vert_buffers[i], buf->verts, transfer_size);
     }
   }
 
@@ -1042,7 +1118,7 @@ static void GPU_Iterate()
     SDL_EndGPURenderPass(pass);
   }
 
-  // Final render pass
+  // World render pass
   {
     uniform.camera_transform = APP.camera_transform;
     if (APP.debug.sun_camera)
@@ -1064,10 +1140,11 @@ static void GPU_Iterate()
         .b = GPU_CLEAR_COLOR_B,
         .a = GPU_CLEAR_COLOR_A,
       },
+      .load_op = SDL_GPU_LOADOP_CLEAR,
     };
+
     if (APP.gpu.tex_msaa)
     {
-      color_target.load_op = SDL_GPU_LOADOP_CLEAR;
       color_target.store_op = SDL_GPU_STOREOP_RESOLVE;
       color_target.texture = APP.gpu.tex_msaa;
       color_target.resolve_texture = APP.gpu.tex_resolve;
@@ -1106,6 +1183,71 @@ static void GPU_Iterate()
       .filter = SDL_GPU_FILTER_LINEAR,
     };
     SDL_BlitGPUTexture(cmd, &blit);
+  }
+
+  // UI render pass
+  if (APP.rdr.ui.indices_count)
+  {
+    // Upload buffers to GPU
+    {
+      U32 transfer_size = sizeof(APP.rdr.ui.indices[0]) * APP.rdr.ui.indices_count;
+      GPU_TransferBuffer(APP.gpu.ui_index_buf, APP.rdr.ui.indices, transfer_size);
+    }
+    if (APP.rdr.ui.shapes_count)
+    {
+      U32 transfer_size = sizeof(APP.rdr.ui.shapes[0]) * APP.rdr.ui.shapes_count;
+      GPU_TransferBuffer(APP.gpu.ui_shape_buf, APP.rdr.ui.shapes, transfer_size);
+    }
+    if (APP.rdr.ui.clips_count)
+    {
+      U32 transfer_size = sizeof(APP.rdr.ui.clips[0]) * APP.rdr.ui.clips_count;
+      GPU_TransferBuffer(APP.gpu.ui_clip_buf, APP.rdr.ui.clips, transfer_size);
+    }
+
+    // Start pass
+    SDL_GPUColorTargetInfo color_target =
+    {
+      .clear_color =
+      {
+        .r = GPU_CLEAR_COLOR_R,
+        .g = GPU_CLEAR_COLOR_G,
+        .b = GPU_CLEAR_COLOR_B,
+        .a = GPU_CLEAR_COLOR_A,
+      },
+      .load_op = SDL_GPU_LOADOP_LOAD,
+      .store_op = SDL_GPU_STOREOP_STORE,
+      .texture = swapchain_tex,
+    };
+    SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
+
+    // Bind texture & sampler
+    SDL_GPUTextureSamplerBinding sampler_binding =
+    {
+      .texture = APP.gpu.ui_atlas_tex,
+      .sampler = APP.gpu.ui_atlas_sampler,
+    };
+    SDL_BindGPUFragmentSamplers(pass, 0, &sampler_binding, 1);
+
+    // Bind pipeline
+    SDL_BindGPUGraphicsPipeline(pass, APP.gpu.ui_pipeline);
+
+    // Bind storage buffers
+    SDL_GPUBuffer *storage_bufs[2] =
+    {
+      APP.gpu.ui_shape_buf,
+      APP.gpu.ui_clip_buf,
+    };
+    SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
+
+    // Bind index buffer
+    SDL_GPUBufferBinding binding_ind = { .buffer = APP.gpu.ui_index_buf };
+    SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+    // Draw
+    SDL_DrawGPUIndexedPrimitives(pass, APP.rdr.ui.indices_count, 1, 0, 0, 0);
+
+    // End pass
+    SDL_EndGPURenderPass(pass);
   }
 
   SDL_SubmitGPUCommandBuffer(cmd);

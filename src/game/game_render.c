@@ -65,10 +65,13 @@ static void RDR_PostFrameCleanup()
   ForArray(i, APP.gpu.skinneds)
     APP.rdr.skinneds[i].instance_count = 0;
 
-
   ForArray(buffer_i, APP.rdr.wall_mesh_buffers)
   {
     RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + buffer_i;
     buf->vert_count = 0;
   }
+
+  APP.rdr.ui.indices_count = 0;
+  APP.rdr.ui.shapes_count = 0;
+  APP.rdr.ui.clips_count = 0;
 }

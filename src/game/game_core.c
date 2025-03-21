@@ -245,6 +245,23 @@ static void Game_DrawObjects()
       }
     }
   }
+
+  // UI wip experiment
+  {
+    APP.rdr.ui.indices_count = 6;
+    APP.rdr.ui.indices[0] = 0;
+    APP.rdr.ui.indices[1] = 1;
+    APP.rdr.ui.indices[2] = 2;
+    APP.rdr.ui.indices[3] = 3;
+    APP.rdr.ui.indices[4] = 4;
+    APP.rdr.ui.indices[5] = 5;
+
+    APP.rdr.ui.shapes_count = 1;
+    APP.rdr.ui.shapes[0] = (UI_GpuShape){};
+
+    APP.rdr.ui.clips_count = 1;
+    APP.rdr.ui.clips[0] = (UI_GpuClip){};
+  }
 }
 
 static void Game_SetWindowPosSize(I32 px, I32 py, I32 w, I32 h)

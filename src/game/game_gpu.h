@@ -11,7 +11,7 @@ typedef struct
   SDL_GPUGraphicsPipeline *rigid;
   SDL_GPUGraphicsPipeline *skinned;
   SDL_GPUGraphicsPipeline *wall;
-} GPU_Pipelines;
+} GPU_WorldPipelines;
 
 typedef struct
 {
@@ -24,10 +24,8 @@ typedef struct
   SDL_GPUTexture *shadow_tex;
   SDL_GPUSampler *shadow_sampler;
 
-  SDL_GPUTexture *font_atlas_tex;
-
   // pipeline, sample settings
-  GPU_Pipelines pipelines[2]; // 0: 4xMSAA; 1: no AA (for shadow mapping)
+  GPU_WorldPipelines world_pipelines[2]; // 0: 4xMSAA; 1: no AA (for shadow mapping)
   SDL_GPUSampleCount sample_count;
 
   // resources
@@ -39,6 +37,13 @@ typedef struct
   SDL_GPUSampler *wall_sampler;
   SDL_GPUBuffer *wall_vert_buffers[TEX_COUNT];
   SDL_GPUTexture *wall_texs[TEX_COUNT];
+
+  SDL_GPUGraphicsPipeline *ui_pipeline;
+  SDL_GPUTexture *ui_atlas_tex;
+  SDL_GPUSampler *ui_atlas_sampler;
+  SDL_GPUBuffer *ui_index_buf;
+  SDL_GPUBuffer *ui_shape_buf;
+  SDL_GPUBuffer *ui_clip_buf;
 
   SDL_PropertiesID clear_depth_props;
   SDL_PropertiesID clear_color_props;
