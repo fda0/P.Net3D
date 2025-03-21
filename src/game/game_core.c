@@ -301,8 +301,8 @@ static void Game_Iterate()
     APP.at = WrapF(0.f, 1000.f, APP.at + APP.dt);
   }
 
-  FA_ProcessWindowResize(false);
   GPU_ProcessWindowResize(false);
+  FA_ProcessWindowResize(false);
 
   NET_IterateReceive();
 
@@ -512,8 +512,8 @@ static void Game_Init()
   }
 
   NET_Init();
-  FA_Init();
   GPU_Init();
+  FA_Init();
 
   APP.frame_time = SDL_GetTicks();
   APP.camera_fov_y = 0.15f;

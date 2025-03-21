@@ -186,7 +186,7 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
   }
 
   // Upload surface to GPU (if free slot was found)
-  if (slot)
+  if (slot && 0)
   {
     I32 margin = APP.atlas.margin;
     I32 margin2 = margin * 2;

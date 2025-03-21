@@ -467,12 +467,11 @@ static void GPU_Init()
     SDL_GPUTextureFormat tex_format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window);
     bool supports_msaa = SDL_GPUTextureSupportsSampleCount(APP.gpu.device, tex_format, SDL_GPU_SAMPLECOUNT_4);
     if (supports_msaa)
-    {
       APP.gpu.sample_count = SDL_GPU_SAMPLECOUNT_4;
-    }
   }
 
-  SDL_GPUColorTargetDescription color_desc = {
+  SDL_GPUColorTargetDescription color_desc =
+  {
     .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
   };
 
@@ -883,6 +882,9 @@ static void GPU_Init()
       },
     };
     APP.gpu.ui_pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
+
+    SDL_ReleaseGPUShader(APP.gpu.device, vertex_shader);
+    SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
   }
 
   GPU_ProcessWindowResize(true);
@@ -906,13 +908,6 @@ static void GPU_Deinit()
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
-  SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.ui_pipeline);
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui_atlas_tex);
-  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.ui_atlas_sampler);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_index_buf);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_shape_buf);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_clip_buf);
-
   ForArray(i, APP.gpu.rigids)
   {
     SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.rigids[i].vert_buf);
@@ -934,6 +929,14 @@ static void GPU_Deinit()
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.wall_sampler);
   ForArray(i, APP.gpu.wall_texs)
     SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.wall_texs[i]);
+
+
+  SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.ui_pipeline);
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui_atlas_tex);
+  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.ui_atlas_sampler);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_index_buf);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_shape_buf);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_clip_buf);
 }
 
 static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
