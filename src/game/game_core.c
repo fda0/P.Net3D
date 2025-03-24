@@ -248,16 +248,26 @@ static void Game_DrawObjects()
 
   // UI wip experiment
   {
+    U32 shape_index = 0;
+    U32 shape_encoded = (shape_index << 2);
+    U32 encoded = shape_encoded;
+
     APP.rdr.ui.indices_count = 6;
-    APP.rdr.ui.indices[0] = 0;
-    APP.rdr.ui.indices[1] = 1;
-    APP.rdr.ui.indices[2] = 2;
-    APP.rdr.ui.indices[3] = 3;
-    APP.rdr.ui.indices[4] = 4;
-    APP.rdr.ui.indices[5] = 5;
+    APP.rdr.ui.indices[0] = 0 | encoded;
+    APP.rdr.ui.indices[1] = 1 | encoded;
+    APP.rdr.ui.indices[2] = 2 | encoded;
+
+    APP.rdr.ui.indices[3] = 2 | encoded;
+    APP.rdr.ui.indices[4] = 1 | encoded;
+    APP.rdr.ui.indices[5] = 3 | encoded;
 
     APP.rdr.ui.shapes_count = 1;
-    APP.rdr.ui.shapes[0] = (UI_GpuShape){};
+    APP.rdr.ui.shapes[0] = (UI_GpuShape)
+    {
+      .p_min = (V2){-0.5f, -0.5f},
+      .p_max = (V2){0.5f, 0.5f},
+      .color = Color32_RGBf(0.7f, 0.9f, 0.6f),
+    };
 
     APP.rdr.ui.clips_count = 1;
     APP.rdr.ui.clips[0] = (UI_GpuClip){};
@@ -372,8 +382,8 @@ static void Game_Iterate()
 
   // move sun
   {
-    float sun_x = SinF(0.5f + APP.at * 0.13f);
-    float sun_y = CosF(0.5f + APP.at * 0.13f);
+    float sun_x = SinF(0.5f + APP.at * 0.03f);
+    float sun_y = CosF(0.5f + APP.at * 0.03f);
     APP.towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 2.f});
 
     V3 sun_dist = V3_Scale(APP.towards_sun_dir, 900.f);
@@ -512,8 +522,12 @@ static void Game_Init()
   }
 
   NET_Init();
-  GPU_Init();
-  FA_Init();
+
+  if (!APP.headless)
+  {
+    GPU_Init();
+    FA_Init();
+  }
 
   APP.frame_time = SDL_GetTicks();
   APP.camera_fov_y = 0.15f;

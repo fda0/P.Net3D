@@ -24,12 +24,7 @@
 #define ShaderModelPS ShaderWallPS
 #endif
 
-typedef float4 Quat;
-typedef float4 V4;
-typedef float3 V3;
-typedef float2 V2;
-typedef float4x4 Mat4;
-typedef float3x3 Mat3;
+#include "shader_util.hlsl"
 
 struct UniformData
 {
@@ -149,17 +144,6 @@ static float3x3 Mat3_FromMat4(float4x4 mat)
   res._m20 = mat._m20;
   res._m21 = mat._m21;
   res._m22 = mat._m22;
-  return res;
-}
-
-static float4 UnpackColor32(uint packed)
-{
-  float inv = 1.f / 255.f;
-  float4 res;
-  res.r = (packed & 255) * inv;
-  res.g = ((packed >> 8) & 255) * inv;
-  res.b = ((packed >> 16) & 255) * inv;
-  res.a = ((packed >> 24) & 255) * inv;
   return res;
 }
 

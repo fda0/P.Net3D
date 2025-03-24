@@ -1,9 +1,4 @@
-typedef float4 Quat;
-typedef float4 V4;
-typedef float3 V3;
-typedef float2 V2;
-typedef float4x4 Mat4;
-typedef float3x3 Mat3;
+#include "shader_util.hlsl"
 
 struct UI_VertexInput
 {
@@ -50,19 +45,21 @@ UI_VertexToFragment UI_DxShaderVS(UI_VertexInput input)
   uint clip_index = (input.vertex_index >> 18u) & 0x3FFFu; // 14 bits; [18:31]
   //
 
+  UI_DxShape shape = ShapeBuf[shape_index];
+
+  //
+  V2 pos = shape.p_min;
+  if (corner_index & 1) pos.x = shape.p_max.x;
+  if (corner_index & 2) pos.y = shape.p_max.y;
+
+  //
   UI_VertexToFragment frag;
-  frag.clip_space_p = V4(1,1,1,1);
-  if (input.vertex_index == 0) frag.clip_space_p = V4(0,0,0,1);
-  if (input.vertex_index == 1) frag.clip_space_p = V4(0,1,0,1);
-  if (input.vertex_index == 2) frag.clip_space_p = V4(1,1,0,1);
-  if (input.vertex_index == 3) frag.clip_space_p = V4(0,0,0,1);
-  if (input.vertex_index == 4) frag.clip_space_p = V4(0,-1,0,1);
-  if (input.vertex_index == 5) frag.clip_space_p = V4(-1,-1,0,1);
+  frag.color = UnpackColor32(shape.color);
+  frag.clip_space_p = V4(pos, 1, 1);
   return frag;
 }
 
 float4 UI_DxShaderPS(UI_VertexToFragment frag) : SV_Target0
 {
-  V4 color = V4(1,1,1,1);
-  return color;
+  return frag.color;
 }
