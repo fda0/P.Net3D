@@ -264,8 +264,8 @@ static void Game_DrawObjects()
     APP.rdr.ui.shapes_count = 1;
     APP.rdr.ui.shapes[0] = (UI_GpuShape)
     {
-      .p_min = (V2){-0.5f, -0.5f},
-      .p_max = (V2){0.5f, 0.5f},
+      .p_min = (V2){100.f, 50.f},
+      .p_max = (V2){150.f, 300.f},
       .color = Color32_RGBf(0.7f, 0.9f, 0.6f),
     };
 

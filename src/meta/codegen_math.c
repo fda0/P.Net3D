@@ -23,6 +23,7 @@ int main()
     {
       {S8Lit("float")},
       {S8Lit("I32"), S8Lit("I32")},
+      {S8Lit("I16"), S8Lit("I16")},
     };
 
     U64 vectors_total_size = 0;

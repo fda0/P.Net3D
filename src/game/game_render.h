@@ -109,12 +109,19 @@ typedef struct
   U32 vert_count;
 } RDR_WallMeshBuffer;
 
+
+typedef struct
+{
+  V2 window_dim;
+} UI_GpuUniform;
+
 typedef struct
 {
   V2 p_min;
   V2 p_max;
   V2 tex_min;
   V2 tex_max;
+  float tex_layer;
   U32 color;
   U32 border_color;
   float border_radius[4];

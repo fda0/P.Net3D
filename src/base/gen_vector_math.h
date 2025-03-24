@@ -99,3 +99,51 @@ static I32 V4I32_Dot(V4I32 a, V4I32 b) { return a.x*b.x + a.y*b.y + a.z*b.z + a.
 static bool V2I32_HasLength(V2I32 a) { return a.x || a.y; }
 static bool V3I32_HasLength(V3I32 a) { return a.x || a.y || a.z; }
 static bool V4I32_HasLength(V4I32 a) { return a.x || a.y || a.z || a.w; }
+// --- --- --- --- --- --- ---
+// --- Vector math for I16 ---
+// --- --- --- --- --- --- ---
+typedef union
+{
+  struct { I16 x, y; };
+  I16 E[2];
+} V2I16;
+
+typedef union
+{
+  struct { I16 x, y, z; };
+  I16 E[3];
+} V3I16;
+
+typedef union
+{
+  struct { I16 x, y, z, w; };
+  I16 E[4];
+} V4I16;
+
+static V2I16 V2I16_Scale(V2I16 a, I16 scale) { return (V2I16){a.x*scale, a.y*scale}; }
+static V3I16 V3I16_Scale(V3I16 a, I16 scale) { return (V3I16){a.x*scale, a.y*scale, a.z*scale}; }
+static V4I16 V4I16_Scale(V4I16 a, I16 scale) { return (V4I16){a.x*scale, a.y*scale, a.z*scale, a.w*scale}; }
+
+static V2I16 V2I16_Add(V2I16 a, V2I16 b) { return (V2I16){a.x + b.x, a.y + b.y}; }
+static V3I16 V3I16_Add(V3I16 a, V3I16 b) { return (V3I16){a.x + b.x, a.y + b.y, a.z + b.z}; }
+static V4I16 V4I16_Add(V4I16 a, V4I16 b) { return (V4I16){a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w}; }
+
+static V2I16 V2I16_Sub(V2I16 a, V2I16 b) { return (V2I16){a.x - b.x, a.y - b.y}; }
+static V3I16 V3I16_Sub(V3I16 a, V3I16 b) { return (V3I16){a.x - b.x, a.y - b.y, a.z - b.z}; }
+static V4I16 V4I16_Sub(V4I16 a, V4I16 b) { return (V4I16){a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w}; }
+
+static V2I16 V2I16_Mul(V2I16 a, V2I16 b) { return (V2I16){a.x * b.x, a.y * b.y}; }
+static V3I16 V3I16_Mul(V3I16 a, V3I16 b) { return (V3I16){a.x * b.x, a.y * b.y, a.z * b.z}; }
+static V4I16 V4I16_Mul(V4I16 a, V4I16 b) { return (V4I16){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w}; }
+
+static V2I16 V2I16_Reverse(V2I16 a) { return (V2I16){-a.x, -a.y}; }
+static V3I16 V3I16_Reverse(V3I16 a) { return (V3I16){-a.x, -a.y, -a.z}; }
+static V4I16 V4I16_Reverse(V4I16 a) { return (V4I16){-a.x, -a.y, -a.z, -a.w}; }
+
+static I16 V2I16_Dot(V2I16 a, V2I16 b) { return a.x*b.x + a.y*b.y; }
+static I16 V3I16_Dot(V3I16 a, V3I16 b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+static I16 V4I16_Dot(V4I16 a, V4I16 b) { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
+
+static bool V2I16_HasLength(V2I16 a) { return a.x || a.y; }
+static bool V3I16_HasLength(V3I16 a) { return a.x || a.y || a.z; }
+static bool V4I16_HasLength(V4I16 a) { return a.x || a.y || a.z || a.w; }

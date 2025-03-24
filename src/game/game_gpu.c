@@ -842,7 +842,7 @@ static void GPU_Init()
         .num_samplers = 0,
         .num_storage_buffers = 2,
         .num_storage_textures = 0,
-        .num_uniform_buffers = 0,
+        .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
         .code = g_UI_DxShaderVS,
@@ -1102,7 +1102,7 @@ static void GPU_Iterate()
     .cycle = true,
   };
 
-  RDR_Uniform uniform =
+  RDR_Uniform world_uniform =
   {
     .camera_transform = APP.sun_camera_transform,
     .shadow_transform = APP.sun_camera_transform,
@@ -1113,8 +1113,8 @@ static void GPU_Iterate()
 
   // Sun shadow map render pass
   {
-    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
-    SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));
+    SDL_PushGPUVertexUniformData(cmd, 0, &world_uniform, sizeof(world_uniform));
+    SDL_PushGPUFragmentUniformData(cmd, 0, &world_uniform, sizeof(world_uniform));
 
     depth_target.texture = APP.gpu.shadow_tex;
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, 0, 0, &depth_target);
@@ -1124,14 +1124,14 @@ static void GPU_Iterate()
 
   // World render pass
   {
-    uniform.camera_transform = APP.camera_transform;
+    world_uniform.camera_transform = APP.camera_transform;
     if (APP.debug.sun_camera)
     {
-      uniform.camera_transform = APP.sun_camera_transform;
-      uniform.camera_position = APP.sun_camera_p;
+      world_uniform.camera_transform = APP.sun_camera_transform;
+      world_uniform.camera_position = APP.sun_camera_p;
     }
-    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
-    SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));
+    SDL_PushGPUVertexUniformData(cmd, 0, &world_uniform, sizeof(world_uniform));
+    SDL_PushGPUFragmentUniformData(cmd, 0, &world_uniform, sizeof(world_uniform));
 
     depth_target.texture = APP.gpu.tex_depth;
 
@@ -1192,6 +1192,13 @@ static void GPU_Iterate()
   // UI render pass
   if (APP.rdr.ui.indices_count)
   {
+    // Upload uniform
+    UI_GpuUniform uniform =
+    {
+      .window_dim = (V2){APP.window_width, APP.window_height},
+    };
+    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
+
     // Upload buffers to GPU
     {
       U32 transfer_size = sizeof(APP.rdr.ui.indices[0]) * APP.rdr.ui.indices_count;
