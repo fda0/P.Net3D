@@ -119,10 +119,10 @@ static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, I16 orig
         line_y_offset += layer->line_heights[line_index];
 
       slot->hash = hash;
-      slot->x = layer->line_advances[best_line_index] + APP.atlas.margin;
-      slot->y = line_y_offset + APP.atlas.margin;
-      slot->w = orig_width;
-      slot->h = orig_height;
+      slot->p.x = layer->line_advances[best_line_index] + APP.atlas.margin;
+      slot->p.y = line_y_offset + APP.atlas.margin;
+      slot->dim.x = orig_width;
+      slot->dim.y = orig_height;
       slot->layer = layer_index;
 
       layer->line_advances[best_line_index] += width;
@@ -137,6 +137,8 @@ static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, I16 orig
 static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
 {
   FA_GlyphRun result = {};
+  if (APP.headless)
+    return result;
 
   AssertBounds(font, APP.atlas.fonts);
   U64 hash = FA_TextHash(font, text);
@@ -152,7 +154,7 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
   }
 
   // Create surface, now we have width x height
-  SDL_Color color = {255,128,0,255};
+  SDL_Color color = {255,255,255,255};
   TTF_Font *ttf_font = APP.atlas.fonts[font];
   SDL_Surface *surf = TTF_RenderText_Blended(ttf_font, (char *)text.str, text.size, color);
   if (!surf)
@@ -186,7 +188,7 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
   }
 
   // Upload surface to GPU (if free slot was found)
-  if (slot && 0)
+  if (slot)
   {
     I32 margin = APP.atlas.margin;
     I32 margin2 = margin * 2;
@@ -226,15 +228,15 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
         .offset = 0,
       };
 
-      Assert(slot->x >= margin);
-      Assert(slot->y >= margin);
+      Assert(slot->p.x >= margin);
+      Assert(slot->p.y >= margin);
       SDL_GPUTextureRegion dst_region = {
         .texture = APP.gpu.ui_atlas_tex,
         .layer = slot->layer,
-        .x = slot->x - margin,
-        .y = slot->y - margin,
-        .w = slot->w + 2*margin,
-        .h = slot->h + 2*margin,
+        .x = slot->p.x - margin,
+        .y = slot->p.y - margin,
+        .w = slot->dim.x + 2*margin,
+        .h = slot->dim.y + 2*margin,
         .d = 1,
       };
       SDL_UploadToGPUTexture(copy_pass, &trans_gpu, &dst_region, false);
@@ -254,8 +256,8 @@ static void FA_ProcessWindowResize(bool init)
 {
   if (APP.window_resized || init)
   {
-    //float scale = APP.window_height / 16.f;
-    //TTF_SetFontSize(APP.atlas.fonts[FA_Regular], scale);
+    float scale = APP.window_height / 16.f;
+    TTF_SetFontSize(APP.atlas.fonts[FA_Regular], scale);
 
     I32 new_texture_dim = U32_CeilPow2(APP.window_height); // @todo consider window area instead of height
     new_texture_dim = Max(256, new_texture_dim);
@@ -289,7 +291,7 @@ static void FA_ProcessWindowResize(bool init)
       SDL_GPUTextureCreateInfo tex_info =
       {
         .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-        .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+        .format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM,
         .width = APP.atlas.texture_dim,
         .height = APP.atlas.texture_dim,
         .layer_count_or_depth = FONT_ATLAS_LAYERS,

@@ -870,6 +870,21 @@ static void GPU_Init()
       fragment_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
     }
 
+    SDL_GPUColorTargetDescription ui_color_desc =
+    {
+      .format = color_desc.format,
+      .blend_state = (SDL_GPUColorTargetBlendState)
+      {
+        .src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+        .dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+        .color_blend_op = SDL_GPU_BLENDOP_ADD,
+        .src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+        .dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+        .alpha_blend_op = SDL_GPU_BLENDOP_ADD,
+        .enable_blend = true,
+      },
+    };
+
     SDL_GPUGraphicsPipelineCreateInfo pipeline =
     {
       .vertex_shader = vertex_shader,
@@ -878,7 +893,7 @@ static void GPU_Init()
       .target_info =
       {
         .num_color_targets = 1,
-        .color_target_descriptions = &color_desc,
+        .color_target_descriptions = &ui_color_desc,
       },
     };
     APP.gpu.ui_pipeline = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);

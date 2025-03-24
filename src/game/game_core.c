@@ -55,6 +55,8 @@ static void Game_AnimateObjects()
   }
 }
 
+static float tex_layer_counter = 0.f;
+
 static void Game_DrawObjects()
 {
   ForArray(obj_index, APP.all_objects)
@@ -264,10 +266,15 @@ static void Game_DrawObjects()
     APP.rdr.ui.shapes_count = 1;
     APP.rdr.ui.shapes[0] = (UI_GpuShape)
     {
-      .p_min = (V2){100.f, 50.f},
-      .p_max = (V2){150.f, 300.f},
-      .color = Color32_RGBf(0.7f, 0.9f, 0.6f),
+      .p_min = (V2){50.f, 50.f},
+      .p_max = (V2){APP.window_width - 100.f, APP.window_height - 100.f},
+      .color = Color32_RGBf(1.f, 1.f, 1.f),
+      .tex_min = (V2){0.f, 0.f},
+      .tex_max = (V2){1.f, 1.f},
+      .tex_layer = tex_layer_counter,
     };
+    tex_layer_counter += APP.dt;
+    if (tex_layer_counter >= 4.f) tex_layer_counter -= 4.f;
 
     APP.rdr.ui.clips_count = 1;
     APP.rdr.ui.clips[0] = (UI_GpuClip){};
@@ -313,6 +320,12 @@ static void Game_Iterate()
 
   GPU_ProcessWindowResize(false);
   FA_ProcessWindowResize(false);
+
+  // font experiments
+  {
+    FA_GlyphRun g0 = FA_GetGlyphRun(FA_Regular, S8Lit("hello world 🌍"));
+    g0 = FA_GetGlyphRun(FA_Regular, S8Lit("hello sailor ⛵"));
+  }
 
   NET_IterateReceive();
 
@@ -588,7 +601,4 @@ static void Game_Init()
   {
     APP.pathing_marker = OBJ_Create(ObjStorage_Local, ObjFlag_AnimatePosition)->s.key;
   }
-
-  FA_GlyphRun g0 = FA_GetGlyphRun(FA_Regular, S8Lit("hello world 🌍"));
-  g0 = FA_GetGlyphRun(FA_Regular, S8Lit("hello sailor ⛵"));
 }

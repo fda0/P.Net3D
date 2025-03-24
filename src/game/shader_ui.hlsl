@@ -14,7 +14,7 @@ struct UI_VertexToFragment
 {
   V4 color : TEXCOORD0;
   V4 border_color : TEXCOORD1;
-  V2 tex_uv : TEXCOORD2;
+  V3 tex_uv : TEXCOORD2;
   V2 screen_p : TEXCOORD3;
   V2 box_center : TEXCOORD4;
   V2 box_dim : TEXCOORD5;
@@ -41,10 +41,16 @@ struct UI_DxClip
   V2 p_max;
 };
 
+// Dx resources
 cbuffer VertexUniformBuf : register(b0, space1) { UI_DxUniform UniV; };
+
 StructuredBuffer<UI_DxShape> ShapeBuf : register(t0);
 StructuredBuffer<UI_DxClip>  ClipBuf  : register(t1);
 
+Texture2DArray<float4> AtlasTexture : register(t0, space2);
+SamplerState AtlasSampler : register(s0, space2);
+
+// Shaders
 UI_VertexToFragment UI_DxShaderVS(UI_VertexInput input)
 {
   uint corner_index = input.vertex_index & 3u; // 2 bits; [0:1]
@@ -58,15 +64,22 @@ UI_VertexToFragment UI_DxShaderVS(UI_VertexInput input)
   if (corner_index & 1) pos.x = shape.p_max.x;
   if (corner_index & 2) pos.y = shape.p_max.y;
 
+  V2 tex_uv = V2(shape.tex_min.x, shape.tex_max.y); // @todo not sure why Y is flipped
+  if (corner_index & 1) tex_uv.x = shape.tex_max.x;
+  if (corner_index & 2) tex_uv.y = shape.tex_min.y;
+
   //
   UI_VertexToFragment frag;
   frag.color = UnpackColor32(shape.color);
-  frag.clip_space_p = V4(2.f*pos / UniV.window_dim - 1.f, 1, 1);
+  frag.tex_uv = V3(tex_uv, shape.tex_layer);
   frag.clip_space_p = V4(2.f*pos / UniV.window_dim - 1.f, 1, 1);
   return frag;
 }
 
 float4 UI_DxShaderPS(UI_VertexToFragment frag) : SV_Target0
 {
-  return frag.color;
+  float4 tex_color = AtlasTexture.Sample(AtlasSampler, frag.tex_uv);
+  float4 color = frag.color;
+  color *= tex_color;
+  return color;
 }

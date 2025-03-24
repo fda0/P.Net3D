@@ -5,8 +5,8 @@
 typedef struct
 {
   U64 hash;
-  I16 x, y;
-  I16 w, h;
+  V2I16 p;
+  V2I16 dim;
   U32 layer : 2;
   U32 next_plus_one : 30; // index+1 into the collision table
 } FA_GlyphRun;
