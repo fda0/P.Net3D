@@ -1,7 +1,7 @@
 static U64 FA_TextHash(FA_Font font, S8 text)
 {
   AssertBounds(font, APP.atlas.fonts);
-  float point_size = TTF_GetFontSize(APP.atlas.fonts[font]);
+  float point_size = TTF_GetFontSize(APP.atlas.fonts[font][0]);
   U64 hash = U64_Hash(font, &point_size, sizeof(point_size));
   hash = S8_Hash(hash, text);
   return hash;
@@ -56,8 +56,11 @@ static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, I16 orig
   AssertBounds(layer_index, APP.atlas.layers);
   FA_Layer *layer = APP.atlas.layers + layer_index;
 
-  I16 width = orig_width + 2 * APP.atlas.margin;
-  I16 height = orig_height + 2 * APP.atlas.margin;
+  I32 margin = APP.atlas.margin;
+  I32 margin2 = margin * 2;
+
+  I16 width = orig_width + margin2;
+  I16 height = orig_height + margin2;
   I16 max_dim = APP.atlas.texture_dim;
   I16 all_lines_height = 0;
 
@@ -140,6 +143,9 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
   if (APP.headless)
     return result;
 
+  I32 margin = APP.atlas.margin;
+  I32 margin2 = margin * 2;
+
   AssertBounds(font, APP.atlas.fonts);
   U64 hash = FA_TextHash(font, text);
 
@@ -155,14 +161,14 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
 
   // Create surface, now we have width x height
   SDL_Color color = {255,255,255,255};
-  TTF_Font *ttf_font = APP.atlas.fonts[font];
+  TTF_Font *ttf_font = APP.atlas.fonts[font][0];
   SDL_Surface *surf = TTF_RenderText_Blended(ttf_font, (char *)text.str, text.size, color);
   if (!surf)
     return result;
 
   // Reject surfaces that are too big
-  if (surf->w + APP.atlas.margin*2 > APP.atlas.texture_dim ||
-      surf->h + APP.atlas.margin*2 > APP.atlas.texture_dim)
+  if (surf->w + margin2 > APP.atlas.texture_dim ||
+      surf->h + margin2 > APP.atlas.texture_dim)
   {
     SDL_DestroySurface(surf);
     return result;
@@ -190,23 +196,20 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
   // Upload surface to GPU (if free slot was found)
   if (slot)
   {
-    I32 margin = APP.atlas.margin;
-    I32 margin2 = margin * 2;
     I32 comp_size = 4; // @todo query format size or assert on format
-    I32 surf_size = surf->h * surf->w * comp_size;
-    I32 total_size = surf_size + (surf->w * comp_size * margin2) + (surf->h * comp_size * margin2);
+    I32 surf_with_margin_size = (surf->h + margin2) * (surf->w + margin2) * comp_size;
 
     SDL_GPUTransferBufferCreateInfo trans_cpu =
     {
       .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-      .size = total_size
+      .size = surf_with_margin_size
     };
     SDL_GPUTransferBuffer *trans_cpu_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_cpu);
 
     // CPU memory -> GPU memory
     {
       void *mapped_memory = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_cpu_buf, false);
-      memset(mapped_memory, 0, total_size);
+      memset(mapped_memory, 0, surf_with_margin_size);
 
       ForI32(y, surf->h)
       {
@@ -223,20 +226,24 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
       SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
       SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
 
-      SDL_GPUTextureTransferInfo trans_gpu = {
+      SDL_GPUTextureTransferInfo trans_gpu =
+      {
         .transfer_buffer = trans_cpu_buf,
         .offset = 0,
       };
 
       Assert(slot->p.x >= margin);
       Assert(slot->p.y >= margin);
-      SDL_GPUTextureRegion dst_region = {
+      Assert(slot->p.x + slot->dim.x + margin <= APP.atlas.texture_dim);
+      Assert(slot->p.y + slot->dim.y + margin <= APP.atlas.texture_dim);
+      SDL_GPUTextureRegion dst_region =
+      {
         .texture = APP.gpu.ui_atlas_tex,
         .layer = slot->layer,
         .x = slot->p.x - margin,
         .y = slot->p.y - margin,
-        .w = slot->dim.x + 2*margin,
-        .h = slot->dim.y + 2*margin,
+        .w = slot->dim.x + margin2,
+        .h = slot->dim.y + margin2,
         .d = 1,
       };
       SDL_UploadToGPUTexture(copy_pass, &trans_gpu, &dst_region, false);
@@ -257,7 +264,8 @@ static void FA_ProcessWindowResize(bool init)
   if (APP.window_resized || init)
   {
     float scale = APP.window_height / 16.f;
-    TTF_SetFontSize(APP.atlas.fonts[FA_Regular], scale);
+    TTF_SetFontSize(APP.atlas.fonts[FA_Regular][0], scale);
+    TTF_SetFontSize(APP.atlas.fonts[FA_Regular][1], scale);
 
     I32 new_texture_dim = U32_CeilPow2(APP.window_height); // @todo consider window area instead of height
     new_texture_dim = Max(256, new_texture_dim);
@@ -268,6 +276,8 @@ static void FA_ProcessWindowResize(bool init)
 
     if (resize_texture || init)
     {
+      LOG(LogFlags_GPU, "Font Atlas resize from %d to %d", (I32)APP.atlas.texture_dim, new_texture_dim);
+
       APP.atlas.texture_dim = new_texture_dim;
 
       // Initialize atlas layers bookkeeping structs
@@ -314,7 +324,8 @@ static void FA_Init()
     TTF_Font *emoji_font = TTF_OpenFont("../res/fonts/NotoColorEmoji-Regular.ttf", default_size);
     TTF_Font *font = TTF_OpenFont("../res/fonts/Jacquard24-Regular.ttf", default_size);
     TTF_AddFallbackFont(font, emoji_font);
-    APP.atlas.fonts[FA_Regular] = font;
+    APP.atlas.fonts[FA_Regular][0] = font;
+    APP.atlas.fonts[FA_Regular][1] = emoji_font;
   }
 
   FA_ProcessWindowResize(true);

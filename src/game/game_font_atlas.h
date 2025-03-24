@@ -30,7 +30,7 @@ typedef enum
 
 typedef struct
 {
-  TTF_Font *fonts[FA_Font_COUNT];
+  TTF_Font *fonts[FA_Font_COUNT][2];
   I16 texture_dim;
   I16 margin;
 

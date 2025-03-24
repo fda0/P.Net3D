@@ -270,7 +270,7 @@ static void Game_DrawObjects()
       .p_max = (V2){APP.window_width - 100.f, APP.window_height - 100.f},
       .color = Color32_RGBf(1.f, 1.f, 1.f),
       .tex_min = (V2){0.f, 0.f},
-      .tex_max = (V2){1.f, 1.f},
+      .tex_max = (V2){APP.atlas.texture_dim, APP.atlas.texture_dim},
       .tex_layer = tex_layer_counter,
     };
     tex_layer_counter += APP.dt;

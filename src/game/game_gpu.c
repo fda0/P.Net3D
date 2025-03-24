@@ -1211,6 +1211,7 @@ static void GPU_Iterate()
     UI_GpuUniform uniform =
     {
       .window_dim = (V2){APP.window_width, APP.window_height},
+      .texture_dim = (V2){APP.atlas.texture_dim, APP.atlas.texture_dim},
     };
     SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
 

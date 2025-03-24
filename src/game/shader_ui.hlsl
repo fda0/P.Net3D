@@ -8,6 +8,7 @@ struct UI_VertexInput
 struct UI_DxUniform
 {
   V2 window_dim;
+  V2 texture_dim;
 };
 
 struct UI_VertexToFragment
@@ -56,17 +57,18 @@ UI_VertexToFragment UI_DxShaderVS(UI_VertexInput input)
   uint corner_index = input.vertex_index & 3u; // 2 bits; [0:1]
   uint shape_index = (input.vertex_index >> 2u) & 0xFFFFu; // 16 bits; [2:17]
   uint clip_index = (input.vertex_index >> 18u) & 0x3FFFu; // 14 bits; [18:31]
-
-  //
   UI_DxShape shape = ShapeBuf[shape_index];
 
+  // position
   V2 pos = shape.p_min;
   if (corner_index & 1) pos.x = shape.p_max.x;
   if (corner_index & 2) pos.y = shape.p_max.y;
 
+  // texture uv
   V2 tex_uv = V2(shape.tex_min.x, shape.tex_max.y); // @todo not sure why Y is flipped
   if (corner_index & 1) tex_uv.x = shape.tex_max.x;
   if (corner_index & 2) tex_uv.y = shape.tex_min.y;
+  tex_uv /= UniV.texture_dim;
 
   //
   UI_VertexToFragment frag;

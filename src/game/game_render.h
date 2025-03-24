@@ -113,6 +113,7 @@ typedef struct
 typedef struct
 {
   V2 window_dim;
+  V2 texture_dim;
 } UI_GpuUniform;
 
 typedef struct

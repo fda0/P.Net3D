@@ -12,6 +12,7 @@ typedef enum
   LogFlags_NetAll      = (0xff << 1),
 
   LogFlags_Debug = (1 << 9),
+  LogFlags_GPU = (1 << 10),
 } Log_Flags;
 
 // @note disable logging
