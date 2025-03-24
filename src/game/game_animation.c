@@ -33,7 +33,7 @@ static float AN_WrapAnimationTime(AN_Skeleton *skeleton, U32 animation_index, fl
   }
 
   AN_Animation *anim = skeleton->animations + animation_index;
-  time = WrapF(anim->t_min, anim->t_max, time);
+  time = FWrap(anim->t_min, anim->t_max, time);
   return time;
 }
 

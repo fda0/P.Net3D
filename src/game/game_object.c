@@ -183,7 +183,7 @@ static CollisionProjection Collision_CalculateProjection(CollisionNormals normal
     ForArray(vert_index, verts.arr)
     {
       V2 vert = verts.arr[vert_index];
-      float inner = V2_Inner(normal, vert);
+      float inner = V2_Dot(normal, vert);
       projection->min = Min(inner, projection->min);
       projection->max = Max(inner, projection->max);
     }

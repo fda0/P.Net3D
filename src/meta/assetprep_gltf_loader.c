@@ -27,7 +27,7 @@ static U64 M_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
 
 static void M_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
 {
-  M_AssertAlways(data->skins_count == 1);
+  M_Check(data->skins_count == 1);
   cgltf_skin *skin = data->skins;
 
   Pr_S8(p, S8Lit("static AN_Skeleton Worker_Skeleton = {\n"));
@@ -58,8 +58,8 @@ static void M_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
       {
         cgltf_animation_channel *channel = animation->channels + channel_index;
         cgltf_animation_sampler *sampler = channel->sampler;
-        M_AssertAlways(sampler->interpolation == cgltf_interpolation_type_linear);
-        M_AssertAlways(sampler->input->count == sampler->output->count);
+        M_Check(sampler->interpolation == cgltf_interpolation_type_linear);
+        M_Check(sampler->input->count == sampler->output->count);
         U64 sample_count = sampler->input->count;
 
         Pr_S8(p, S8Lit("// channel: "));
@@ -92,7 +92,7 @@ static void M_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
 
           float *numbers = Alloc(M.tmp, float, number_count);
           U64 unpacked = cgltf_accessor_unpack_floats(sampler->input, numbers, number_count);
-          M_AssertAlways(unpacked == number_count);
+          M_Check(unpacked == number_count);
           Pr_FloatArray(p, numbers, unpacked);
 
           // update t_min, t_max
@@ -115,7 +115,7 @@ static void M_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
 
           float *numbers = Alloc(M.tmp, float, number_count);
           U64 unpacked = cgltf_accessor_unpack_floats(sampler->output, numbers, number_count);
-          M_AssertAlways(unpacked == number_count);
+          M_Check(unpacked == number_count);
           Pr_FloatArray(p, numbers, unpacked);
 
           Pr_S8(p, S8Lit("\n},\n"));
@@ -167,17 +167,17 @@ static void M_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
       Pr_S8(p, S8Lit(".inverse_bind_matrices = (Mat4[]){\n"));
 
       cgltf_accessor *inv_bind = skin->inverse_bind_matrices;
-      M_AssertAlways(inv_bind);
-      M_AssertAlways(inv_bind->count == skin->joints_count);
-      M_AssertAlways(inv_bind->component_type == cgltf_component_type_r_32f);
-      M_AssertAlways(inv_bind->type == cgltf_type_mat4);
+      M_Check(inv_bind);
+      M_Check(inv_bind->count == skin->joints_count);
+      M_Check(inv_bind->component_type == cgltf_component_type_r_32f);
+      M_Check(inv_bind->type == cgltf_type_mat4);
 
       U64 comp_count = cgltf_num_components(inv_bind->type);
       U64 number_count = comp_count * inv_bind->count;
 
       float *numbers = Alloc(M.tmp, float, number_count);
       U64 unpacked = cgltf_accessor_unpack_floats(inv_bind, numbers, number_count);
-      M_AssertAlways(unpacked == number_count);
+      M_Check(unpacked == number_count);
       Pr_FloatArray(p, numbers, number_count);
 
       Pr_S8(p, S8Lit("\n},\n"));
@@ -201,7 +201,7 @@ static void M_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
           if (child_index == 0)
             ranges[joint_index].min = indices_count;
 
-          M_AssertAlways(indices_count < skin->joints_count);
+          M_Check(indices_count < skin->joints_count);
           indices[indices_count] = child_joint_index;
           indices_count += 1;
 
@@ -348,17 +348,17 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
         continue;
       }
 
-      M_AssertAlways(primitive->indices);
+      M_Check(primitive->indices);
       {
         U64 index_start_offset = positions.used/3;
 
         cgltf_accessor *accessor = primitive->indices;
-        M_AssertAlways(accessor->component_type == cgltf_component_type_r_16u);
-        M_AssertAlways(accessor->type == cgltf_type_scalar);
+        M_Check(accessor->component_type == cgltf_component_type_r_16u);
+        M_Check(accessor->type == cgltf_type_scalar);
 
         U16 *numbers = M_BufferPushU16(&indices, accessor->count);
         U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, indices.elem_size, accessor->count);
-        M_AssertAlways(unpacked == accessor->count);
+        M_Check(unpacked == accessor->count);
 
         if (index_start_offset)
         {
@@ -380,36 +380,36 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
           case cgltf_attribute_type_position:
           {
             save_buf = &positions;
-            M_AssertAlways(comp_count == 3);
-            M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+            M_Check(comp_count == 3);
+            M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_normal:
           {
             save_buf = &normals;
-            M_AssertAlways(comp_count == 3);
-            M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+            M_Check(comp_count == 3);
+            M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_texcoord:
           {
             save_buf = &texcoords;
-            M_AssertAlways(comp_count == 2);
-            M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+            M_Check(comp_count == 2);
+            M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_joints:
           {
             save_buf = &joint_indices;
-            M_AssertAlways(comp_count == 4);
-            M_AssertAlways(accessor->component_type == cgltf_component_type_r_8u);
+            M_Check(comp_count == 4);
+            M_Check(accessor->component_type == cgltf_component_type_r_8u);
           } break;
 
           case cgltf_attribute_type_weights:
           {
             save_buf = &weights;
-            M_AssertAlways(comp_count == 4);
-            M_AssertAlways(accessor->component_type == cgltf_component_type_r_32f);
+            M_Check(comp_count == 4);
+            M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           default:
@@ -427,20 +427,20 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
         {
           float *numbers = M_BufferPushFloat(save_buf, total_count);
           unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
-          M_AssertAlways(unpacked == total_count);
+          M_Check(unpacked == total_count);
         }
         else if (save_buf->elem_size == 2)
         {
           U16 *numbers = M_BufferPushU16(save_buf, total_count);
           unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
-          M_AssertAlways(unpacked == total_count);
+          M_Check(unpacked == total_count);
         }
         else if (save_buf->elem_size == 1)
         {
           U8 *numbers = M_BufferPushU8(save_buf, total_count);
           unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
         }
-        M_AssertAlways(unpacked == total_count);
+        M_Check(unpacked == total_count);
 
         // @todo this is a temporary hack that saves a color per position
         if (attribute->type == cgltf_attribute_type_position)
@@ -465,15 +465,15 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
   // Output collected data
   //
   U64 vert_count = positions.used / 3;
-  M_AssertAlways(positions.used % 3 == 0);
-  M_AssertAlways(normals.used % 3 == 0);
-  M_AssertAlways(vert_count == normals.used / 3);
-  M_AssertAlways(joint_indices.used % 4 == 0);
-  M_AssertAlways(vert_count == joint_indices.used / 4);
-  M_AssertAlways(weights.used % 4 == 0);
-  M_AssertAlways(vert_count == weights.used / 4);
+  M_Check(positions.used % 3 == 0);
+  M_Check(normals.used % 3 == 0);
+  M_Check(vert_count == normals.used / 3);
+  M_Check(joint_indices.used % 4 == 0);
+  M_Check(vert_count == joint_indices.used / 4);
+  M_Check(weights.used % 4 == 0);
+  M_Check(vert_count == weights.used / 4);
 
-  M_AssertAlways(data->skins_count == 1);
+  M_Check(data->skins_count == 1);
   U64 joints_count = data->skins[0].joints_count;
 
   Pr_S8(out, S8Lit("static RDR_SkinnedVertex Model_Worker_vrt[] =\n{\n"));
@@ -494,7 +494,7 @@ static void M_GLTF_Load(const char *path, Printer *out, Printer *out_a)
     else if (normal_lensq < 0.9f || normal_lensq > 1.1f)
     {
       M_LOG(M_LogGltfWarning, "[GLTF LOADER] Normal wasn't normalized");
-      normal = V3_Scale(normal, InvSqrtF(normal_lensq));
+      normal = V3_Scale(normal, FInvSqrt(normal_lensq));
     }
     Quat normal_rot = Quat_FromZupCrossV3(normal);
     Pr_S8(out, S8Lit("/*nrm*/"));

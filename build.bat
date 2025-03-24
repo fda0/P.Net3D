@@ -114,7 +114,15 @@ if "%sdl%"=="1" (
     )
 )
 
+:: --- Enter build directory --------------------------------------------------
 pushd build
+
+if "%math%"=="1" (
+    %compile% ..\src\meta\codegen_math.c %compile_link% %out%codegen_math.exe || exit /b 1
+    codegen_math.exe || exit /b 1
+    set didbuild=1
+)
+
 if "%game%"=="1" (
     :: --- Clean gen directory ------------------------------------------------
     if exist ..\gen\ rmdir /q /s ..\gen\

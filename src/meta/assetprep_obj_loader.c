@@ -183,7 +183,7 @@ static U16 M_FindOrInsertRdrRigidVertex(RDR_RigidVertex rdr_vertex)
     }
   }
 
-  M_AssertAlways(false);
+  M_Check(false);
   return 0;
 }
 
@@ -303,8 +303,8 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
       if (is_vert || is_normal)
       {
-        M_AssertAlways(obj_vert_count + 3 <= max_elems);
-        M_AssertAlways(obj_normal_count + 3 <= max_elems);
+        M_Check(obj_vert_count + 3 <= max_elems);
+        M_Check(obj_normal_count + 3 <= max_elems);
         V4 vec =
         {
           (float)M_ParseDouble(num0.text),
@@ -370,7 +370,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
       U32 triangle_count = face_part_count - 2;
       ForU32(triangle_i, triangle_count)
       {
-        M_AssertAlways(obj_part_count + 3 <= max_elems);
+        M_Check(obj_part_count + 3 <= max_elems);
         obj_parts[obj_part_count + 0] = face_parts[0];
         obj_parts[obj_part_count + 1] = face_parts[triangle_i + 1];
         obj_parts[obj_part_count + 2] = face_parts[triangle_i + 2];
@@ -393,9 +393,9 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
       U32 pos0_base = (obj_parts[part_index + 0].pos - 1) * 3;
       U32 pos1_base = (obj_parts[part_index + 1].pos - 1) * 3;
       U32 pos2_base = (obj_parts[part_index + 2].pos - 1) * 3;
-      M_AssertAlways(pos0_base + 3 <= obj_vert_count);
-      M_AssertAlways(pos1_base + 3 <= obj_vert_count);
-      M_AssertAlways(pos2_base + 3 <= obj_vert_count);
+      M_Check(pos0_base + 3 <= obj_vert_count);
+      M_Check(pos1_base + 3 <= obj_vert_count);
+      M_Check(pos2_base + 3 <= obj_vert_count);
 
       V3 vert0 = {obj_verts[pos0_base], obj_verts[pos0_base + 1], obj_verts[pos0_base + 2]};
       V3 vert1 = {obj_verts[pos1_base], obj_verts[pos1_base + 1], obj_verts[pos1_base + 2]};
@@ -510,7 +510,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
       }
 
       U16 ind = M_FindOrInsertRdrRigidVertex(rdr_vertex);
-      M_AssertAlways(out_ind_count + 3 <= max_elems);
+      M_Check(out_ind_count + 3 <= max_elems);
       out_inds[out_ind_count] = ind;
       out_ind_count += 1;
     }

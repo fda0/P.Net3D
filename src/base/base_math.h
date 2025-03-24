@@ -1,6 +1,6 @@
-// ---
+//
 // Axis
-// ---
+//
 typedef enum {
   Axis2_X,
   Axis2_Y,
@@ -12,32 +12,9 @@ static Axis2 Axis2_Other(Axis2 axis)
   return (axis == Axis2_X ? Axis2_Y : Axis2_X);
 }
 
-// ---
-// Vector
-// ---
-typedef union
-{
-  struct { float x, y; };
-  float E[2];
-} V2;
-
-typedef union
-{
-  struct { float x, y, z; };
-  float E[3];
-} V3;
-
-typedef union
-{
-  struct { float x, y, z, w; };
-  float E[4];
-} V4;
-
-typedef V4 Quat;
-
-// ---
+//
 // Scalar math
-// ---
+//
 #define Min(a, b) ((a) < (b) ? (a) : (b))
 #define Max(a, b) ((a) > (b) ? (a) : (b))
 #define Clamp(min, max, val) (((val)<(min)) ? (min) : ((val)>(max))?(max):(val))
@@ -45,10 +22,33 @@ typedef V4 Quat;
 #define TURNS_TO_RAD (2.f*SDL_PI_F)
 #define RAD_TO_TURNS (1.f/(2.f*SDL_PI_F))
 
-static I32 MostSignificantBitU32(U32 value)
+static float FSqrt(float a) { return SDL_sqrtf(a); }
+static float FInvSqrt(float a) { return 1.f / FSqrt(a); } // @todo use SSE intrinsic?
+static float FAbs(float a) { return (a < 0.f ? -a : a); }
+static float FSign(float a) { return (a < 0.f ? -1.f : 1.f); }
+// @todo custom sincos that with turn input
+static float FSin(float turns) { return SDL_sinf(turns*TURNS_TO_RAD); }
+static float FCos(float turns) { return SDL_cosf(turns*TURNS_TO_RAD); }
+static float FTan(float turns) { return SDL_tanf(turns*TURNS_TO_RAD); }
+static float FAsin(float value) { return SDL_asinf(value)*RAD_TO_TURNS; }
+static float FAcos(float value) { return SDL_acosf(value)*RAD_TO_TURNS; }
+
+static float FCeil(float a) { return SDL_ceilf(a); }
+static float FFloor(float a) { return SDL_floorf(a); }
+static float FTruncate(float a) { return SDL_truncf(a); }
+static float FRound(float a) { return SDL_roundf(a); } // there is also SDL_lroundf variant that rounds to nearest long
+
+static float FLerp(float a, float b, float t) { return a + (b - a) * t; }
+static float FModulo(float a, float mod) { return a - FTruncate(a / mod) * mod; }
+static float FWrap(float min, float max, float a)
 {
-  return SDL_MostSignificantBitIndex32(value);
+  float range = max - min;
+  float offset = a - min;
+  return (offset - (FFloor(offset / range) * range) + min);
 }
+
+// Integer scalar math
+static I32 MostSignificantBitU32(U32 value) { return SDL_MostSignificantBitIndex32(value); }
 
 static U32 U32_CeilPow2(U32 v)
 {
@@ -63,49 +63,11 @@ static U32 U32_CeilPow2(U32 v)
   return v;
 }
 
-static float SqrtF(float a)
-{
-  return SDL_sqrtf(a);
-}
-static float InvSqrtF(float a)
-{
-  // @todo use SSE intrinsic?
-  return 1.f / SqrtF(a);
-}
-static float AbsF(float a)
-{
-  return (a < 0.f ? -a : a);
-}
-static float SignF(float a)
-{
-  return (a < 0.f ? -1.f : 1.f);
-}
-static float SinF(float turns)
-{
-  // @todo custom sincos that with turn input
-  return SDL_sinf(turns*TURNS_TO_RAD);
-}
-static float CosF(float turns)
-{
-  // @todo custom sincos that with turn input
-  return SDL_cosf(turns*TURNS_TO_RAD);
-}
-static float TanF(float turns)
-{
-  // @todo custom tan that with turn input
-  return SDL_tanf(turns*TURNS_TO_RAD);
-}
-static float AsinF(float value)
-{
-  return SDL_asinf(value)*RAD_TO_TURNS;
-}
-static float AcosF(float value)
-{
-  return SDL_acosf(value)*RAD_TO_TURNS;
-}
-static float Atan2F(V2 vec)
-{
-  return SDL_atan2f(vec.x, vec.y)*RAD_TO_TURNS;
+static void *AlignPointerUp(void *ptr, U64 alignment) {
+  U64 pointer = (U64)ptr;
+  pointer += (alignment - 1);
+  pointer = pointer & (~((alignment - 1)));
+  return (void *)pointer;
 }
 
 typedef struct
@@ -117,144 +79,62 @@ static SinCosResult SinCosF(float turns)
   // @note most common sin/cos algorithms can provide both sin and cos
   //       "almost for free" - we just need to copypaste some good one here
   // @todo custom sincos that works with turn input
-  return (SinCosResult){SinF(turns), CosF(turns)};
+  return (SinCosResult){FSin(turns), FCos(turns)};
 }
 
-static float CeilF(float a)
+//
+// Vectors
+//
+#include "gen_vector_math.h"
+
+//
+// Float vectors - additional functions
+//
+static V2 V2_Lerp(V2 a, V2 b, float t) { return (V2){FLerp(a.x, b.x, t), FLerp(a.y, b.y, t)}; }
+static V3 V3_Lerp(V3 a, V3 b, float t) { return (V3){FLerp(a.x, b.x, t), FLerp(a.y, b.y, t), FLerp(a.z, b.z, t)}; }
+static V4 V4_Lerp(V4 a, V4 b, float t) { return (V4){FLerp(a.x, b.x, t), FLerp(a.y, b.y, t), FLerp(a.z, b.z, t), FLerp(a.w, b.w, t)}; }
+
+static float V2_LengthSq(V2 a) { return V2_Dot(a, a); }
+static float V3_LengthSq(V3 a) { return V3_Dot(a, a); }
+static float V4_LengthSq(V4 a) { return V4_Dot(a, a); }
+
+static float V2_Length(V2 a) { return FSqrt(V2_LengthSq(a)); }
+static float V3_Length(V3 a) { return FSqrt(V3_LengthSq(a)); }
+static float V4_Length(V4 a) { return FSqrt(V4_LengthSq(a)); }
+
+static V2 V2_Normalize(V2 a)
 {
-  return SDL_ceilf(a);
+  float len_sq = V2_LengthSq(a);
+  if (len_sq) {
+    float len_inv = FInvSqrt(len_sq);
+    a = V2_Scale(a, len_inv);
+  }
+  return a;
 }
-static float FloorF(float a)
+static V3 V3_Normalize(V3 a)
 {
-  return SDL_floorf(a);
+  float len_sq = V3_LengthSq(a);
+  if (len_sq) {
+    float len_inv = FInvSqrt(len_sq);
+    a = V3_Scale(a, len_inv);
+  }
+  return a;
 }
-static float TruncateF(float a)
+static V4 V4_Normalize(V4 a)
 {
-  return SDL_truncf(a);
-}
-static float RoundF(float a)
-{
-  // there is also SDL_lroundf variant that rounds to nearest long
-  return SDL_roundf(a);
+  float len_sq = V4_LengthSq(a);
+  if (len_sq) {
+    float len_inv = FInvSqrt(len_sq);
+    a = V4_Scale(a, len_inv);
+  }
+  return a;
 }
 
-static float LerpF(float a, float b, float t)
-{
-  return a + (b - a) * t;
-}
-static float ModuloF(float a, float mod)
-{
-  return a - TruncateF(a / mod) * mod;
-}
-static float WrapF(float min, float max, float a)
-{
-  float range = max - min;
-  float offset = a - min;
-  return (offset - (FloorF(offset / range) * range) + min);
-}
-
-static void *AlignPointerUp(void *ptr, U64 alignment) {
-  U64 pointer = (U64)ptr;
-  pointer += (alignment - 1);
-  pointer = pointer & (~((alignment - 1)));
-  return (void *)pointer;
-}
-
-// ---
-// Vector math
-// ---
-static V2 V2_Scale(V2 a, float scale)
-{
-  return (V2){a.x*scale, a.y*scale};
-}
-static V2 V2_Add(V2 a, V2 b)
-{
-  return (V2){a.x + b.x, a.y + b.y};
-}
-static V2 V2_Sub(V2 a, V2 b)
-{
-  return (V2){a.x - b.x, a.y - b.y};
-}
-static V2 V2_Mul(V2 a, V2 b)
-{
-  return (V2){a.x * b.x, a.y * b.y};
-}
-static V2 V2_Reverse(V2 a)
-{
-  return (V2){-a.x, -a.y};
-}
-static float V2_Inner(V2 a, V2 b)
-{
-  return a.x*b.x + a.y*b.y;
-}
 static V2 V2_NanToZero(V2 a)
 {
   if (a.x != a.x) a.x = 0.f;
   if (a.y != a.y) a.y = 0.f;
   return a;
-}
-static V2 V2_Lerp(V2 a, V2 b, float t)
-{
-  return (V2){LerpF(a.x, b.x, t), LerpF(a.y, b.y, t)};
-}
-static float V2_LengthSq(V2 a)
-{
-  return V2_Inner(a, a);
-}
-static float V2_Length(V2 a)
-{
-  return SqrtF(V2_LengthSq(a));
-}
-static V2 V2_Normalize(V2 a)
-{
-  float len_sq = V2_LengthSq(a);
-  if (len_sq) {
-    float len_inv = InvSqrtF(len_sq);
-    a = V2_Scale(a, len_inv);
-  }
-  return a;
-}
-
-//
-// V3
-//
-static V3 Axis3_X() { return (V3){1,0,0}; }
-static V3 Axis3_Y() { return (V3){0,1,0}; }
-static V3 Axis3_Z() { return (V3){0,0,1}; }
-
-static V3 V3_Scale(V3 a, float scale)
-{
-  return (V3){a.x*scale, a.y*scale, a.z*scale};
-}
-static V3 V3_Add(V3 a, V3 b)
-{
-  return (V3){a.x + b.x, a.y + b.y, a.z + b.z};
-}
-static V3 V3_Sub(V3 a, V3 b)
-{
-  return (V3){a.x - b.x, a.y - b.y, a.z - b.z};
-}
-static V3 V3_Mul(V3 a, V3 b)
-{
-  return (V3){a.x * b.x, a.y * b.y, a.z * b.z};
-}
-static V3 V3_Reverse(V3 a)
-{
-  return (V3){-a.x, -a.y, -a.z};
-}
-static float V3_Inner(V3 a, V3 b)
-{
-  return a.x*b.x + a.y*b.y + a.z*b.z;
-}
-static V3 V3_Cross(V3 a, V3 b)
-{
-  V3 res =
-  {
-    (a.y * b.z) - (a.z * b.y),
-    (a.z * b.x) - (a.x * b.z),
-    (a.x * b.y) - (a.y * b.x),
-  };
-  return res;
 }
 static V3 V3_NanToZero(V3 a)
 {
@@ -262,60 +142,6 @@ static V3 V3_NanToZero(V3 a)
   if (a.y != a.y) a.y = 0.f;
   if (a.z != a.z) a.z = 0.f;
   return a;
-}
-static V3 V3_Lerp(V3 a, V3 b, float t)
-{
-  return (V3){LerpF(a.x, b.x, t), LerpF(a.y, b.y, t), LerpF(a.z, b.z, t)};
-}
-static float V3_LengthSq(V3 a)
-{
-  return V3_Inner(a, a);
-}
-static float V3_Length(V3 a)
-{
-  return SqrtF(V3_LengthSq(a));
-}
-static V3 V3_Normalize(V3 a)
-{
-  float len_sq = V3_LengthSq(a);
-  if (len_sq) {
-    float len_inv = InvSqrtF(len_sq);
-    a = V3_Scale(a, len_inv);
-  }
-  return a;
-}
-
-static bool V3_HasLength(V3 a)
-{
-  return a.x || a.y || a.z;
-}
-
-//
-// V4
-//
-static V4 V4_Scale(V4 a, float scale)
-{
-  return (V4){a.x*scale, a.y*scale, a.z*scale, a.w*scale};
-}
-static V4 V4_Add(V4 a, V4 b)
-{
-  return (V4){a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w};
-}
-static V4 V4_Sub(V4 a, V4 b)
-{
-  return (V4){a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
-}
-static V4 V4_Mul(V4 a, V4 b)
-{
-  return (V4){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w};
-}
-static V4 V4_Reverse(V4 a)
-{
-  return (V4){-a.x, -a.y, -a.z, -a.w};
-}
-static float V4_Inner(V4 a, V4 b)
-{
-  return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
 }
 static V4 V4_NanToZero(V4 a)
 {
@@ -325,32 +151,33 @@ static V4 V4_NanToZero(V4 a)
   if (a.w != a.w) a.w = 0.f;
   return a;
 }
-static V4 V4_Lerp(V4 a, V4 b, float t)
-{
-  V4 res = {};
-  ForArray(i, res.E)
-    res.E[i] = LerpF(a.E[i], b.E[i], t);
-  return res;
-}
-static float V4_LengthSq(V4 a)
-{
-  return V4_Inner(a, a);
-}
-static float V4_Length(V4 a)
-{
-  return SqrtF(V4_LengthSq(a));
-}
-static V4 V4_Normalize(V4 a)
-{
-  float len_sq = V4_LengthSq(a);
-  if (len_sq) {
-    float len_inv = InvSqrtF(len_sq);
-    a = V4_Scale(a, len_inv);
-  }
-  return a;
-}
 
-// Additional V2 math
+// Axis
+static V2 AxisV2_X() { return (V2){1,0}; }
+static V2 AxisV2_Y() { return (V2){0,1}; }
+//
+static V3 AxisV3_X() { return (V3){1,0,0}; }
+static V3 AxisV3_Y() { return (V3){0,1,0}; }
+static V3 AxisV3_Z() { return (V3){0,0,1}; }
+//
+static V4 AxisV4_X() { return (V4){1,0,0,0}; }
+static V4 AxisV4_Y() { return (V4){0,1,0,0}; }
+static V4 AxisV4_Z() { return (V4){0,0,1,0}; }
+static V4 AxisV4_W() { return (V4){0,0,0,1}; }
+
+// Ctors V2
+static V2 V2_FromV3_XY(V3 vec) { return (V2){vec.x, vec.y}; }
+
+// Ctors V3
+static V3 V3_From_XY_Z(V2 xy, float z) { return (V3){xy.x, xy.y, z}; }
+static V3 V3_From_XZ_Y(V2 xz, float y) { return (V3){xz.x, y, xz.y}; }
+static V3 V3_From_YX_Z(V2 xy, float z) { return (V3){xy.y, xy.x, z}; }
+static V3 V3_From_ZY_X(V2 zy, float x) { return (V3){zy.x, zy.y, x}; }
+static V3 V3_FromV4_XYZ(V4 vec) { return (V3){vec.x, vec.y, vec.z}; }
+
+// Float vectors - one-off functions
+static float FAtan2(V2 vec) { return SDL_atan2f(vec.x, vec.y)*RAD_TO_TURNS; }
+
 static V2 V2_RotateClockwise90(V2 a)
 {
   // rotation matrix
@@ -359,8 +186,8 @@ static V2 V2_RotateClockwise90(V2 a)
   float cos = 0;  // cos(-0.5pi)
   float sin = -1; // sin(-0.5pi)
 
-  float x_prim = V2_Inner((V2){cos, -sin}, a);
-  float y_prim = V2_Inner((V2){sin,  cos}, a);
+  float x_prim = V2_Dot((V2){cos, -sin}, a);
+  float y_prim = V2_Dot((V2){sin,  cos}, a);
 
   return (V2){x_prim, y_prim};
 }
@@ -372,16 +199,16 @@ static V2 V2_RotateCounterclockwise90(V2 a)
   float cos = 0; // cos(0.5pi)
   float sin = 1; // sin(0.5pi)
 
-  float x_prim = V2_Inner((V2){cos, -sin}, a);
-  float y_prim = V2_Inner((V2){sin,  cos}, a);
+  float x_prim = V2_Dot((V2){cos, -sin}, a);
+  float y_prim = V2_Dot((V2){sin,  cos}, a);
 
   return (V2){x_prim, y_prim};
 }
 
 static V2 V2_RotateSinCos(V2 a, SinCosResult sincos)
 {
-  float x_prim = V2_Inner((V2){sincos.cos, -sincos.sin}, a);
-  float y_prim = V2_Inner((V2){sincos.sin, sincos.cos}, a);
+  float x_prim = V2_Dot((V2){sincos.cos, -sincos.sin}, a);
+  float y_prim = V2_Dot((V2){sincos.sin, sincos.cos}, a);
   return (V2){x_prim, y_prim};
 }
 static V2 V2_Rotate(V2 a, float rot)
@@ -398,67 +225,24 @@ static V2 V2_CalculateNormal(V2 a, V2 b)
   return V2_RotateClockwise90(dir);
 }
 
-// ---
-// Vector constructors, swizzles
-// ---
-
-// V2
-static V2 V2_FromV3_XY(V3 vec) { return (V2){vec.x, vec.y}; }
-
-// V3
-static V3 V3_From_XY_Z(V2 xy, float z) { return (V3){xy.x, xy.y, z}; }
-static V3 V3_From_XZ_Y(V2 xz, float y) { return (V3){xz.x, y, xz.y}; }
-static V3 V3_From_YX_Z(V2 xy, float z) { return (V3){xy.y, xy.x, z}; }
-static V3 V3_From_ZY_X(V2 zy, float x) { return (V3){zy.x, zy.y, x}; }
-static V3 V3_FromV4_XYZ(V4 vec) { return (V3){vec.x, vec.y, vec.z}; }
-
-
-
-// ---
-// Ranges
-// ---
-typedef union
+static V3 V3_Cross(V3 a, V3 b)
 {
-  struct { U32 min, max; };
-  U32 E[2];
-} RngU32;
-
-typedef union
-{
-  struct { U64 min, max; };
-  U64 E[2];
-} RngU64;
-
-typedef union
-{
-  struct { float min, max; };
-  float E[2];
-} RngF; // Range float
-
-
-static bool RngU32_InRange(RngU32 rng, U32 value)
-{
-  return rng.min >= value && rng.max < value;
+  V3 res =
+  {
+    (a.y * b.z) - (a.z * b.y),
+    (a.z * b.x) - (a.x * b.z),
+    (a.x * b.y) - (a.y * b.x),
+  };
+  return res;
 }
 
-static U64 RngU64_Count(RngU64 rng)
-{
-  if (rng.max < rng.min)
-    return 0;
-  return rng.max - rng.min;
-}
+// Quaternion definition
+typedef V4 Quat;
 
-static float RngF_MaxDistance(RngF a, RngF b)
-{
-  float d0 = b.min - a.max;
-  float d1 = a.min - b.max;
-  return Max(d0, d1);
-}
-
-// ---
+//
 // Matrix
 // Heavy duty matrix math funcs were ported from HandmadeMath.h
-// ---
+//
 typedef union
 {
   // col-major
@@ -626,7 +410,7 @@ static Mat4 Mat4_InvTranslation(Mat4 translation_mat)
 static Mat4 Mat4_Perspective(float fov_y, float aspect_ratio, float near, float far)
 {
   // Modified to work with +x fordward, -y right, +z up coordinate system (same as Source engine).
-  float cotangent = 1.0f / TanF(fov_y * 0.5f);
+  float cotangent = 1.0f / FTan(fov_y * 0.5f);
   Mat4 res = {};
   res.elem[0][2] = -far / (near - far); // X -> -Z
   res.elem[0][3] = 1.0f; // X -> W
@@ -650,9 +434,10 @@ static Mat4 Mat4_Orthographic(float left, float right, float bottom, float top, 
   return res;
 }
 
-// ---
-// Quaternion
-// ---
+
+//
+// Quaternions
+//
 static Quat Quat_Add(Quat a, Quat b)
 {
   return V4_Add(a, b);
@@ -694,9 +479,9 @@ static Quat Quat_Scale(Quat q, float scale)
   return V4_Scale(q, scale);
 }
 
-static float Quat_Inner(Quat a, Quat b)
+static float Quat_Dot(Quat a, Quat b)
 {
-  return V4_Inner(a, b);
+  return V4_Dot(a, b);
 }
 
 static Quat Quat_Identity()
@@ -706,7 +491,7 @@ static Quat Quat_Identity()
 
 static Quat Quat_Inv(Quat q)
 {
-  float lensq = Quat_Inner(q, q);
+  float lensq = Quat_Dot(q, q);
   float inv_lensq = 1.f / lensq;
   Quat res =
   {
@@ -748,7 +533,7 @@ static Quat Quat_Lerp(Quat a, Quat b, float t)
 
 static Quat Quat_SLerp(Quat a, Quat b, float t)
 {
-  float cos_theta = Quat_Inner(a, b);
+  float cos_theta = Quat_Dot(a, b);
   if (cos_theta < 0.f)
   {
     cos_theta = -cos_theta;
@@ -761,9 +546,9 @@ static Quat Quat_SLerp(Quat a, Quat b, float t)
     return Quat_NLerp(a, b, t);
   }
 
-  float angle = AcosF(cos_theta);
-  float ta = SinF((1.f - t) * angle);
-  float tb = SinF(t * angle);
+  float angle = FAcos(cos_theta);
+  float ta = FSin((1.f - t) * angle);
+  float tb = FSin(t * angle);
 
   Quat res = Quat_Mix(a, b, ta, tb);
   return Quat_Normalize(res);
@@ -861,7 +646,7 @@ static Quat Quat_FromM4_RH(Mat4 mat)
     }
   }
 
-  q = Quat_Scale(q, 0.5f / SqrtF(t));
+  q = Quat_Scale(q, 0.5f / FSqrt(t));
   return q;
 }
 
@@ -888,7 +673,7 @@ static Quat Quat_FromNormalizedPair(V3 a, V3 b)
     cross.x,
     cross.y,
     cross.z,
-    1.f + V3_Inner(a, b),
+    1.f + V3_Dot(a, b),
   };
   return res;
 }
@@ -908,6 +693,47 @@ static V3 V3_Rotate(V3 v, Quat q)
   V3 q3 = {q.x, q.y, q.z};
   V3 t = V3_Scale(V3_Cross(q3, v), 2);
   return V3_Add(v, V3_Add(V3_Scale(t, q.w), V3_Cross(q3, t)));
+}
+
+//
+// Ranges - @todo generate these
+//
+typedef union
+{
+  struct { U32 min, max; };
+  U32 E[2];
+} RngU32;
+
+typedef union
+{
+  struct { U64 min, max; };
+  U64 E[2];
+} RngU64;
+
+typedef union
+{
+  struct { float min, max; };
+  float E[2];
+} RngF; // Range float
+
+
+static bool RngU32_InRange(RngU32 rng, U32 value)
+{
+  return rng.min >= value && rng.max < value;
+}
+
+static U64 RngU64_Count(RngU64 rng)
+{
+  if (rng.max < rng.min)
+    return 0;
+  return rng.max - rng.min;
+}
+
+static float RngF_MaxDistance(RngF a, RngF b)
+{
+  float d0 = b.min - a.max;
+  float d1 = a.min - b.max;
+  return Max(d0, d1);
 }
 
 //

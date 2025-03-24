@@ -16,16 +16,16 @@ static M_Buffer M_BufferAlloc(Arena *a, U64 count, U32 elem_size)
 }
 
 #define M_BufferPushImpl(TYPE) \
-M_AssertAlways(buf->elem_size == sizeof(TYPE)); \
-M_AssertAlways(buf->cap >= buf->used); \
-M_AssertAlways(count <= (buf->cap - buf->used)); \
+M_Check(buf->elem_size == sizeof(TYPE)); \
+M_Check(buf->cap >= buf->used); \
+M_Check(count <= (buf->cap - buf->used)); \
 TYPE *res = (TYPE *)buf->vals + buf->used; \
 buf->used += count; \
 return res;
 
 #define M_BufferAtImpl(TYPE) \
-M_AssertAlways(buf->elem_size == sizeof(TYPE)); \
-M_AssertAlways(buf->used > index); \
+M_Check(buf->elem_size == sizeof(TYPE)); \
+M_Check(buf->used > index); \
 return (TYPE *)buf->vals + index;
 
 static U32   *M_BufferPushU32(M_Buffer *buf, U64 count) { M_BufferPushImpl(U32); }

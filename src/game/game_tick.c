@@ -37,7 +37,7 @@ static void TICK_AdvanceSimulation()
       float len_sq = V2_LengthSq(dir);
       if (len_sq > 1.f)
       {
-        float len_inv = InvSqrtF(len_sq);
+        float len_inv = FInvSqrt(len_sq);
         dir = V2_Scale(dir, len_inv);
         player_dir = dir;
       }
@@ -101,7 +101,7 @@ static void TICK_AdvanceSimulation()
             V2 normal = normals.arr[i];
 
             V2 obstacle_dir = V2_Sub(obstacle_pos, obj_pos);
-            if (V2_Inner(normal, obstacle_dir) < 0)
+            if (V2_Dot(normal, obstacle_dir) < 0)
             {
               continue;
             }
@@ -175,8 +175,8 @@ static void TICK_AdvanceSimulation()
       if (V3_HasLength(obj->s.moved_dp))
       {
         V2 dir = V2_Normalize(V2_FromV3_XY(obj->s.moved_dp));
-        float rot = -Atan2F(dir) + 0.25f;
-        rot = WrapF(-0.5f, 0.5f, rot);
+        float rot = -FAtan2(dir) + 0.25f;
+        rot = FWrap(-0.5f, 0.5f, rot);
         obj->s.rotation = Quat_FromAxisAngle_RH((V3){0,0,1}, rot);
       }
     }

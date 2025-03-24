@@ -18,7 +18,7 @@ static void Game_AnimateObjects()
       float w1 = Min(1.f, APP.dt * 16.f);
       float w0 = 1.f - w1;
 
-      if (Quat_Inner(q0, q1) < 0.f)
+      if (Quat_Dot(q0, q1) < 0.f)
         w1 = -w1;
 
       obj->l.animated_rot = Quat_Normalize(Quat_Mix(q0, q1, w0, w1));
@@ -33,7 +33,7 @@ static void Game_AnimateObjects()
       obj->l.animated_p = V3_Add(obj->l.animated_p, delta);
       ForArray(i, obj->l.animated_p.E)
       {
-        if (AbsF(delta.E[i]) < 0.1f)
+        if (FAbs(delta.E[i]) < 0.1f)
           obj->l.animated_p.E[i] = obj->s.p.E[i];
       }
     }
@@ -201,15 +201,15 @@ static void Game_DrawObjects()
             case WorldDir_E:
             case WorldDir_W:
             case WorldDir_N:
-            case WorldDir_S: normal_rot = Quat_FromAxisAngle_RH(Axis3_Y(), -0.25f); break;
-            case WorldDir_B: normal_rot = Quat_FromAxisAngle_RH(Axis3_Y(), 0.5f); break;
+            case WorldDir_S: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), -0.25f); break;
+            case WorldDir_B: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), 0.5f); break;
           }
 
           switch (face_i)
           {
-            case WorldDir_E: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(Axis3_X(), 0.5f)); break;
-            case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(Axis3_X(), -0.25f)); break;
-            case WorldDir_S: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(Axis3_X(), 0.25f)); break;
+            case WorldDir_E: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.5f)); break;
+            case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), -0.25f)); break;
+            case WorldDir_S: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.25f)); break;
           }
 
           V3 ideal_E = (V3){1,0,0};
@@ -308,7 +308,7 @@ static void Game_Iterate()
       APP.dt = APP.debug.fixed_dt;
     }
 
-    APP.at = WrapF(0.f, 1000.f, APP.at + APP.dt);
+    APP.at = FWrap(0.f, 1000.f, APP.at + APP.dt);
   }
 
   GPU_ProcessWindowResize(false);
@@ -352,7 +352,7 @@ static void Game_Iterate()
       float rot_speed = 0.05f * APP.dt;
       APP.camera_angles.z += rot_speed * APP.mouse_delta.x;
       APP.camera_angles.y += rot_speed * APP.mouse_delta.y * (-2.f / 3.f);
-      APP.camera_angles.z = WrapF(-0.5f, 0.5f, APP.camera_angles.z);
+      APP.camera_angles.z = FWrap(-0.5f, 0.5f, APP.camera_angles.z);
       APP.camera_angles.y = Clamp(-0.2f, 0.2f, APP.camera_angles.y);
     }
 
@@ -382,8 +382,8 @@ static void Game_Iterate()
 
   // move sun
   {
-    float sun_x = SinF(0.5f + APP.at * 0.03f);
-    float sun_y = CosF(0.5f + APP.at * 0.03f);
+    float sun_x = FSin(0.5f + APP.at * 0.03f);
+    float sun_y = FCos(0.5f + APP.at * 0.03f);
     APP.towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 2.f});
 
     V3 sun_dist = V3_Scale(APP.towards_sun_dir, 900.f);
@@ -397,7 +397,7 @@ static void Game_Iterate()
     Mat4 transl = Mat4_InvTranslation(Mat4_Translation(APP.sun_camera_p));
 
     V3 sun_dir = V3_Scale(APP.towards_sun_dir, -1.f);
-    Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(sun_dir, Axis3_X()));
+    Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(sun_dir, AxisV3_X()));
 
     float scale = 0.8f;
     float w = APP.window_width * 0.5f * scale;
@@ -432,7 +432,7 @@ static void Game_Iterate()
     V3 plane_normal = {0,0,1};
 
     float aspect = (float)APP.window_width / APP.window_height;
-    float tan = TanF(APP.camera_fov_y * 0.5f);
+    float tan = FTan(APP.camera_fov_y * 0.5f);
     aspect *= aspect;
     tan    *= tan;
 
@@ -445,8 +445,8 @@ static void Game_Iterate()
       x * APP.camera_transform.elem[2][0] + y * APP.camera_transform.elem[2][1] + APP.camera_transform.elem[2][2],
     };
 
-    float t_numerator = V3_Inner(V3_Sub(plane_origin, APP.camera_p), plane_normal);
-    float t_denominator = V3_Inner(aim_dir, plane_normal);
+    float t_numerator = V3_Dot(V3_Sub(plane_origin, APP.camera_p), plane_normal);
+    float t_denominator = V3_Dot(aim_dir, plane_normal);
 
     APP.world_mouse_valid = t_denominator < 0.f;
     if (APP.world_mouse_valid)
