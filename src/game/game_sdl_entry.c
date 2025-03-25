@@ -48,6 +48,7 @@
 #include "gen_animations.h"
 
 static AppState APP;
+#include "game_util.c"
 #include "game_key.c"
 #include "game_object.c"
 #include "game_client.c"
