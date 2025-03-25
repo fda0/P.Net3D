@@ -347,35 +347,46 @@ static SDL_GPUTexture *GPU_CreateAndLoadTexture2DArray(const char **paths, U64 p
     .num_levels = GPU_MipMapCount(imgs[0]->w, imgs[0]->h),
     .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
   };
+
   SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
   SDL_SetGPUTextureName(APP.gpu.device, result, texture_name);
 
-  U32 img_size = imgs[0]->w * imgs[0]->h * 4;
+  U32 buffer_size = imgs[0]->w * imgs[0]->h * 4;
   ForU64(i, path_count)
   {
     ArenaScope scope1 = Arena_PushScope(a);
 
     // temporary: convert rgb -> rgba
-    U8 *buffer = Alloc(a, U8, img_size);
-    U8 *pixels = (U8 *)imgs[i]->pixels;
+    U8 *buffer = Alloc(a, U8, buffer_size);
 
-    ForI32(y, imgs[i]->h)
+    I32 width = imgs[i]->w;
+    I32 height = imgs[i]->h;
+    I32 pitch = imgs[i]->pitch;
+
+    U8 *buffer_row = buffer;
+    U8 *img_row = (U8 *)imgs[i]->pixels;
+
+    ForI32(y, height)
     {
-      U8 *buffer_row = buffer + y*imgs[i]->w*4;
-      U8 *px_row = pixels + y*imgs[i]->pitch;
-      ForI32(x, imgs[i]->w)
+      U8 *buffer_pixel = buffer_row;
+      U8 *img_pixel = img_row;
+      ForI32(x, width)
       {
-        buffer_row[x*4 + 0] = px_row[x*3 + 0];
-        buffer_row[x*4 + 1] = px_row[x*3 + 1];
-        buffer_row[x*4 + 2] = px_row[x*3 + 2];
-        buffer_row[x*4 + 3] = 255;
+        buffer_pixel[0] = img_pixel[0];
+        buffer_pixel[1] = img_pixel[1];
+        buffer_pixel[2] = img_pixel[2];
+        buffer_pixel[3] = 255;
+        buffer_pixel += 4;
+        img_pixel += 3;
       }
+      buffer_row += width*4;
+      img_row += pitch;
     }
 
     // @todo these transfer could be optimized
     GPU_TransferTexture(result,
                         i, imgs[i]->w, imgs[i]->h,
-                        buffer, img_size);
+                        buffer, buffer_size);
 
     Arena_PopScope(scope1);
   }
