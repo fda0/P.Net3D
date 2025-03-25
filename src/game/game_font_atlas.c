@@ -200,57 +200,61 @@ static FA_GlyphRun FA_GetGlyphRun(FA_Font font, S8 text)
     I32 comp_size = 4; // @todo query format size or assert on format
     I32 surf_with_margin_size = (surf->h + margin2) * (surf->w + margin2) * comp_size;
 
-    SDL_GPUTransferBufferCreateInfo trans_cpu =
     {
-      .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-      .size = surf_with_margin_size
-    };
-    SDL_GPUTransferBuffer *trans_cpu_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_cpu);
-
-    // CPU memory -> GPU memory
-    {
-      void *mapped_memory = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_cpu_buf, false);
-      memset(mapped_memory, 0, surf_with_margin_size);
-
-      ForI32(y, surf->h)
+      SDL_GPUTransferBufferCreateInfo trans_cpu =
       {
-        U8 *dst = (U8 *)mapped_memory + (y * (surf->w + margin2) * comp_size);
-        U8 *src = (U8 *)surf->pixels  + (y * surf->pitch);
-        memcpy(dst, src, surf->w*comp_size);
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        .size = surf_with_margin_size
+      };
+      SDL_GPUTransferBuffer *buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_cpu);
+
+      // CPU memory -> GPU memory
+      {
+        void *mapped_memory = SDL_MapGPUTransferBuffer(APP.gpu.device, buf_transfer, false);
+        memset(mapped_memory, 0, surf_with_margin_size);
+
+        ForI32(y, surf->h)
+        {
+          U8 *dst = (U8 *)mapped_memory + (y * (surf->w + margin2) * comp_size);
+          U8 *src = (U8 *)surf->pixels  + (y * surf->pitch);
+          memcpy(dst, src, surf->w*comp_size);
+        }
+
+        SDL_UnmapGPUTransferBuffer(APP.gpu.device, buf_transfer);
       }
 
-      SDL_UnmapGPUTransferBuffer(APP.gpu.device, trans_cpu_buf);
-    }
-
-    // GPU memory -> GPU texture
-    {
-      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-      SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
-
-      SDL_GPUTextureTransferInfo trans_gpu =
+      // GPU memory -> GPU texture
       {
-        .transfer_buffer = trans_cpu_buf,
-        .offset = 0,
-      };
+        SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+        SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
 
-      Assert(slot->p.x >= margin);
-      Assert(slot->p.y >= margin);
-      Assert(slot->p.x + slot->dim.x + margin <= APP.atlas.texture_dim);
-      Assert(slot->p.y + slot->dim.y + margin <= APP.atlas.texture_dim);
-      SDL_GPUTextureRegion dst_region =
-      {
-        .texture = APP.gpu.ui_atlas_tex,
-        .layer = slot->layer,
-        .x = slot->p.x - margin,
-        .y = slot->p.y - margin,
-        .w = slot->dim.x + margin2,
-        .h = slot->dim.y + margin2,
-        .d = 1,
-      };
-      SDL_UploadToGPUTexture(copy_pass, &trans_gpu, &dst_region, false);
+        SDL_GPUTextureTransferInfo trans_gpu =
+        {
+          .transfer_buffer = buf_transfer,
+          .offset = 0,
+        };
 
-      SDL_EndGPUCopyPass(copy_pass);
-      SDL_SubmitGPUCommandBuffer(cmd);
+        Assert(slot->p.x >= margin);
+        Assert(slot->p.y >= margin);
+        Assert(slot->p.x + slot->dim.x + margin <= APP.atlas.texture_dim);
+        Assert(slot->p.y + slot->dim.y + margin <= APP.atlas.texture_dim);
+        SDL_GPUTextureRegion dst_region =
+        {
+          .texture = APP.gpu.ui_atlas_tex,
+          .layer = slot->layer,
+          .x = slot->p.x - margin,
+          .y = slot->p.y - margin,
+          .w = slot->dim.x + margin2,
+          .h = slot->dim.y + margin2,
+          .d = 1,
+        };
+        SDL_UploadToGPUTexture(copy_pass, &trans_gpu, &dst_region, false);
+
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(cmd);
+      }
+
+      SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
     }
 
     result = *slot;
