@@ -57,7 +57,7 @@ static void NET_SendS8(NET_User *destination, S8 msg)
 
   if (!send_res)
   {
-    LOG(LogFlags_NetSend,
+    LOG(Log_NetSend,
         "%s: Sending buffer of size %lluB to %s:%d; %s",
         NET_Label(), msg.size,
         SDLNet_GetAddressString(destination->address),
@@ -417,7 +417,7 @@ static void NET_ProcessReceivedPayload(U16 player_id, S8 full_message)
 
       if (update.net_index >= OBJ_MAX_NETWORK_OBJECTS)
       {
-        LOG(LogFlags_NetPayload,
+        LOG(Log_NetPayload,
             "%s: Rejecting payload(%d) - net index overflow: %u",
             NET_Label(), head.kind, update.net_index);
         continue;
@@ -425,7 +425,7 @@ static void NET_ProcessReceivedPayload(U16 player_id, S8 full_message)
 
       if (APP.client.next_playback_tick > head.tick_id)
       {
-        LOG(LogFlags_NetPayload,
+        LOG(Log_NetPayload,
             "%s: Rejecting payload(%d) - head tick at: %llu < next playback tick: %llu",
             NET_Label(), head.kind, head.tick_id, APP.client.next_playback_tick);
         continue;
@@ -468,7 +468,7 @@ static void NET_ProcessReceivedPayload(U16 player_id, S8 full_message)
     }
     else
     {
-      LOG(LogFlags_NetPayload,
+      LOG(Log_NetPayload,
           "%s: Unsupported payload head kind: %d",
           NET_Label(), (int)head.kind);
       return;
@@ -483,7 +483,7 @@ static void NET_ReceivePacket(U16 player_id, S8 packet)
 
   if (packet.size < sizeof(NET_PacketHeader))
   {
-    LOG(LogFlags_NetPacket,
+    LOG(Log_NetPacket,
         "%s: packet rejected - it's too small, size: %llu",
         NET_Label(), packet.size);
     return;
@@ -494,7 +494,7 @@ static void NET_ReceivePacket(U16 player_id, S8 packet)
 
   if (!packet.size)
   {
-    LOG(LogFlags_NetPacket,
+    LOG(Log_NetPacket,
         "%s: packet rejected - empty payload",
         NET_Label());
     return;
@@ -502,7 +502,7 @@ static void NET_ReceivePacket(U16 player_id, S8 packet)
 
   if (header.magic_value != NET_MAGIC_VALUE)
   {
-    LOG(LogFlags_NetPacket,
+    LOG(Log_NetPacket,
         "%s: packet rejected - invalid magic value: %u; expected: %u",
         NET_Label(), (U32)header.magic_value, NET_MAGIC_VALUE);
     return;
@@ -513,7 +513,7 @@ static void NET_ReceivePacket(U16 player_id, S8 packet)
   U16 hash16 = (U16)hash64;
   if (hash16 != header.payload_hash)
   {
-    LOG(LogFlags_NetPacket,
+    LOG(Log_NetPacket,
         "%s: packet rejected - invalid hash: %u; calculated: %u",
         NET_Label(), header.payload_hash, hash16);
     return;
@@ -543,7 +543,7 @@ static void NET_IterateReceive()
     if (!receive) break;
     if (!dgram) break;
 
-    LOG(LogFlags_NetDatagram,
+    LOG(Log_NetDatagram,
         "%s: got %d-byte datagram from %s:%d",
         NET_Label(),
         (int)dgram->buflen,
@@ -554,7 +554,7 @@ static void NET_IterateReceive()
     {
       if (!NET_UserMatchAddrPort(&APP.net.server_user, dgram->addr, dgram->port))
       {
-        LOG(LogFlags_NetDatagram,
+        LOG(Log_NetDatagram,
             "%s: dgram rejected - received from non-server address %s:%d",
             NET_Label(),
             SDLNet_GetAddressString(dgram->addr), (int)dgram->port);
@@ -571,7 +571,7 @@ static void NET_IterateReceive()
       NET_User *user = NET_FindUser(dgram->addr, dgram->port);
       if (!user)
       {
-        LOG(LogFlags_NetInfo,
+        LOG(Log_NetInfo,
             "%s: saving user with port: %d",
             NET_Label(), (int)dgram->port);
         user = NET_AddUser(dgram->addr, dgram->port);
@@ -606,7 +606,7 @@ static void NET_IterateTimeoutUsers()
 
       if (user->last_msg_timestamp + NET_TIMEOUT_DISCONNECT_MS < APP.timestamp)
       {
-        LOG(LogFlags_NetInfo,
+        LOG(Log_NetInfo,
             "%s: Timeout. Removing user #%llu",
             NET_Label(), user_index);
 
@@ -621,13 +621,13 @@ static void NET_Init()
   bool is_server = APP.net.is_server;
   bool is_client = !APP.net.is_server;
 
-  LOG(LogFlags_NetInfo,
+  LOG(Log_NetInfo,
       is_server ? "Launching as server" : "Launching as client");
 
   if (is_client)
   {
     const char *hostname = "localhost";
-    LOG(LogFlags_NetInfo,
+    LOG(Log_NetInfo,
         "%s: Resolving server hostname '%s' ...",
         NET_Label(), hostname);
     APP.net.server_user.address = SDLNet_ResolveHostname(hostname);
@@ -644,7 +644,7 @@ static void NET_Init()
     if (!APP.net.server_user.address)
     {
       APP.net.err = true;
-      LOG(LogFlags_NetInfo,
+      LOG(Log_NetInfo,
           "%s: Failed to resolve server hostname '%s'",
           NET_Label(), hostname);
     }
@@ -655,19 +655,19 @@ static void NET_Init()
   if (!APP.net.socket)
   {
     APP.net.err = true;
-    LOG(LogFlags_NetInfo,
+    LOG(Log_NetInfo,
         "%s: Failed to create socket",
         NET_Label());
   }
   else
   {
-    LOG(LogFlags_NetInfo,
+    LOG(Log_NetInfo,
         "%s: Created socket",
         NET_Label());
 
 #if NET_SIMULATE_PACKETLOSS
     SDLNet_SimulateDatagramPacketLoss(APP.net.socket, NET_SIMULATE_PACKETLOSS);
-    LOG(LogFlags_NetInfo,
+    LOG(Log_NetInfo,
         "%s: Simulating packetloss: %d",
         NET_Label(), NET_SIMULATE_PACKETLOSS);
 #endif

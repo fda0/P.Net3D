@@ -41,7 +41,7 @@ static void SERVER_InsertPlayerInput(SERVER_PlayerInputs *pi, NET_SendInputs *ne
     TickDeltas_UpdateCatchup(&pi->receive_deltas, Checked_U64toU16(pre_insert_playback_range));
     if (pi->receive_deltas.tick_catchup)
     {
-      LOG(LogFlags_NetCatchup,
+      LOG(Log_NetCatchup,
           "%s: Client (?) current input delay: %llu"
           " Setting input playback catchup to %d",
           NET_Label(),
@@ -77,7 +77,7 @@ static TICK_Input SERVER_GetPlayerInput(U32 player_index)
   }
   else
   {
-    LOG(LogFlags_NetTick,
+    LOG(Log_NetTick,
         "%s: Ran out of input playback (player %u) -> extrapolating; "
         "playback catchup %d",
         NET_Label(),

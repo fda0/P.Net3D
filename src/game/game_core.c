@@ -528,7 +528,7 @@ static void Game_Init()
     //APP.debug.single_tick_stepping = true;
     //APP.debug.noclip_camera = true;
     APP.debug.draw_collision_box = true;
-    APP.log_filter &= ~(LogFlags_NetDatagram);
+    APP.log_filter &= ~(Log_NetDatagram);
   }
 
   NET_Init();

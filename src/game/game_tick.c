@@ -213,7 +213,7 @@ static void TICK_Playback()
 
   if (biggest_oldest_server_tick > APP.client.next_playback_tick)
   {
-    LOG(LogFlags_NetTick,
+    LOG(Log_NetTick,
         "%s: Server is too ahead from the client; "
         "biggest_oldest_server_tick: %llu, "
         "smallest_latest_server_tick: %llu, "
@@ -233,7 +233,7 @@ static void TICK_Playback()
 
   if (smallest_latest_server_tick < APP.client.next_playback_tick)
   {
-    LOG(LogFlags_NetTick,
+    LOG(Log_NetTick,
         "%s: Ran out of tick playback state; "
         "next_playback_tick: %llu, "
         "smallest_latest_server_tick: %llu, "
@@ -258,7 +258,7 @@ static void TICK_Playback()
     TickDeltas_UpdateCatchup(&APP.client.playable_tick_deltas, APP.client.current_playback_delay);
     if (APP.client.playable_tick_deltas.tick_catchup)
     {
-      LOG(LogFlags_NetCatchup,
+      LOG(Log_NetCatchup,
           "%s: Current playback delay: %d, "
           " Setting playback catchup to %d",
           NET_Label(),

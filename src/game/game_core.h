@@ -1,18 +1,19 @@
 typedef enum
 {
-  LogFlags_Idk         = (1 << 0),
-  LogFlags_NetInfo     = (1 << 1),
-  LogFlags_NetDatagram = (1 << 2),
-  LogFlags_NetSend     = (1 << 3),
-  LogFlags_NetPacket   = (1 << 4),
-  LogFlags_NetPayload  = (1 << 5),
-  LogFlags_NetClient   = (1 << 6),
-  LogFlags_NetTick     = (1 << 7),
-  LogFlags_NetCatchup  = (1 << 8),
-  LogFlags_NetAll      = (0xff << 1),
+  Log_Idk         = (1 << 0),
+  Log_NetInfo     = (1 << 1),
+  Log_NetDatagram = (1 << 2),
+  Log_NetSend     = (1 << 3),
+  Log_NetPacket   = (1 << 4),
+  Log_NetPayload  = (1 << 5),
+  Log_NetClient   = (1 << 6),
+  Log_NetTick     = (1 << 7),
+  Log_NetCatchup  = (1 << 8),
+  Log_NetAll      = (0xff << 1),
 
-  LogFlags_Debug = (1 << 9),
-  LogFlags_GPU = (1 << 10),
+  Log_Debug = (1 << 9),
+  Log_GPU = (1 << 10),
+  Log_Perf = (1 << 11),
 } Log_Flags;
 
 // @note disable logging
@@ -97,13 +98,17 @@ struct AppState
   Mat4 camera_transform;
 
   // time
-  U64 frame_id;
   U64 timestamp;
+  U64 tick_timestamp_accumulator;
   float dt;
   float at;
+  U64 frame_id;
   U64 tick_id;
   U32 obj_serial_counter;
-  U64 tick_timestamp_accumulator;
+
+  // time stats
+  U64 timestamp_app_launch;
+  U64 timestamp_post_first_frame;
 
   // user input
   V2 mouse;

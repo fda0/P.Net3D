@@ -281,7 +281,7 @@ static void FA_ProcessWindowResize(bool init)
 
     if (resize_texture || init)
     {
-      LOG(LogFlags_GPU, "Font Atlas resize from %d to %d", (I32)APP.atlas.texture_dim, new_texture_dim);
+      LOG(Log_GPU, "Font Atlas resize from %d to %d", (I32)APP.atlas.texture_dim, new_texture_dim);
 
       APP.atlas.texture_dim = new_texture_dim;
 

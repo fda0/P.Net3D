@@ -84,7 +84,18 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
   Game_Iterate();
 
+  //
+  // Post frame
+  //
+  if (!APP.timestamp_post_first_frame)
+  {
+    APP.timestamp_post_first_frame = SDL_GetTicks();
+    U64 startup_delta = APP.timestamp_post_first_frame - APP.timestamp_app_launch;
+    LOG(Log_Perf, "Launch to first frame took: %llums", startup_delta);
+  }
+
   APP.window_resized = false;
+
   return SDL_APP_CONTINUE;
 }
 
@@ -182,7 +193,7 @@ static void Game_ParseCmd(int argc, char **argv)
 
       if (!found_number)
       {
-        LOG(LogFlags_Idk, "%.*s needs to be followed by positive number", S8Print(arg));
+        LOG(Log_Idk, "%.*s needs to be followed by positive number", S8Print(arg));
       }
     }
     else if (S8_Match(arg, S8Lit("-autolayout"), 0))
@@ -191,7 +202,7 @@ static void Game_ParseCmd(int argc, char **argv)
     }
     else
     {
-      LOG(LogFlags_Idk, "Unhandled argument: %.*s", S8Print(arg));
+      LOG(Log_Idk, "Unhandled argument: %.*s", S8Print(arg));
     }
   }
 }
@@ -204,10 +215,11 @@ static Arena *Arena_Malloc(U64 size)
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
   (void)appstate;
+  APP.timestamp_app_launch = SDL_GetTicks();
 
   APP.tmp = Arena_Malloc(Megabyte(16));
   APP.a_frame = Arena_Malloc(Megabyte(1));
-  APP.log_filter = ~(U32)LogFlags_NetAll;
+  APP.log_filter = ~(U32)Log_NetAll;
   APP.init_window_width = WINDOW_WIDTH;
   APP.init_window_height = WINDOW_HEIGHT;
   APP.dpi_scaling = 1.f;
