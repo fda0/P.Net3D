@@ -82,8 +82,8 @@ static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, I16 orig
     {
       if (best_line_index >= FONT_ATLAS_LAYER_MAX_LINES) // first acceptable line found
         best_line_index = line_index;
-      else if (layer->line_heights[best_line_index] < line_height) // check if this line is better
-        best_line_index = line_height;
+      else if (layer->line_heights[best_line_index] < line_height) // check if this line is better than current best line
+        best_line_index = line_index;
     }
   }
 
@@ -127,6 +127,7 @@ static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, I16 orig
       slot->dim.x = orig_width;
       slot->dim.y = orig_height;
       slot->layer = layer_index;
+      slot->debug_line_index = best_line_index;
 
       layer->line_advances[best_line_index] += width;
       return slot;

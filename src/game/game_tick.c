@@ -47,7 +47,7 @@ static void TICK_AdvanceSimulation()
       }
     }
 
-    float player_speed = 60.f * TIME_STEP;
+    float player_speed = 60.f * TICK_FLOAT_STEP;
     player->s.desired_dp = V3_From_XY_Z(V2_Scale(player_dir, player_speed), 0);
   }
 

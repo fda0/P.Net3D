@@ -55,8 +55,6 @@ static void Game_AnimateObjects()
   }
 }
 
-static float tex_layer_counter = 0.f;
-
 static void Game_DrawObjects()
 {
   ForArray(obj_index, APP.all_objects)
@@ -271,10 +269,8 @@ static void Game_DrawObjects()
       .color = Color32_RGBf(1.f, 1.f, 1.f),
       .tex_min = (V2){0.f, 0.f},
       .tex_max = (V2){APP.atlas.texture_dim, APP.atlas.texture_dim},
-      .tex_layer = tex_layer_counter,
+      .tex_layer = APP.atlas.active_layer,
     };
-    tex_layer_counter += APP.dt;
-    if (tex_layer_counter >= 4.f) tex_layer_counter -= 4.f;
 
     APP.rdr.ui.clips_count = 1;
     APP.rdr.ui.clips[0] = (UI_GpuClip){};
@@ -303,17 +299,16 @@ static void Game_Iterate()
   {
     APP.frame_id += 1;
 
-    U64 new_frame_time = SDL_GetTicks();
-    U64 delta_time = new_frame_time - APP.frame_time;
-    APP.frame_time = new_frame_time;
-    APP.dt = delta_time * (0.001f);
-    APP.dt = Min(APP.dt, 1.f / 16.f); // clamp dt to 16 fps
-    APP.tick_dt_accumulator += APP.dt;
+    U64 new_frame_timestamp = SDL_GetTicks();
+    U64 delta_timestamp = new_frame_timestamp - APP.timestamp;
+    delta_timestamp = Min(delta_timestamp, 100); // clamp dt to 100ms / 10 fps
+
+    APP.timestamp = new_frame_timestamp;
+    APP.tick_timestamp_accumulator += delta_timestamp;
+    APP.dt = delta_timestamp * (0.001f);
 
     if (APP.debug.fixed_dt)
-    {
       APP.dt = APP.debug.fixed_dt;
-    }
 
     APP.at = FWrap(0.f, 1000.f, APP.at + APP.dt);
   }
@@ -340,10 +335,12 @@ static void Game_Iterate()
   }
   else
   {
-    while (APP.tick_dt_accumulator > TIME_STEP)
+    static_assert((1000 % TICK_TIMESTAMP_STEP) == 0);
+    static_assert((1000 / TICK_TIMESTAMP_STEP) == TICK_RATE);
+    while (APP.tick_timestamp_accumulator > TICK_TIMESTAMP_STEP)
     {
       APP.tick_id += 1;
-      APP.tick_dt_accumulator -= TIME_STEP;
+      APP.tick_timestamp_accumulator -= TICK_TIMESTAMP_STEP;
       TICK_Iterate();
     }
   }
@@ -542,7 +539,7 @@ static void Game_Init()
     FA_Init();
   }
 
-  APP.frame_time = SDL_GetTicks();
+  APP.timestamp = SDL_GetTicks();
   APP.camera_fov_y = 0.15f;
   APP.camera_p = (V3){-180.f, 0.f, 70.f};
   APP.camera_angles = (V3){0, 0, 0};

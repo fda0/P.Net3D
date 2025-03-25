@@ -15,7 +15,7 @@ static const char *NET_Label()
 
 static bool NET_UserIsInactive(NET_User *user)
 {
-  return (user->last_msg_frame_time + NET_INACTIVE_MS < APP.frame_time);
+  return (user->last_msg_timestamp + NET_INACTIVE_MS < APP.timestamp);
 }
 
 static U8 *NET_PayloadAlloc(U32 size)
@@ -191,9 +191,9 @@ static void NET_IterateSend()
   {
     // hacky temporary network activity rate-limitting
     static U64 last_timestamp = 0;
-    if (APP.frame_time < last_timestamp + 16)
+    if (APP.timestamp < last_timestamp + 16)
       return;
-    last_timestamp = APP.frame_time;
+    last_timestamp = APP.timestamp;
   }
 
   if (is_server)
@@ -531,9 +531,9 @@ static void NET_IterateReceive()
   {
     // hacky temporary network activity rate-limitting
     static U64 last_timestamp = 0;
-    if (APP.frame_time < last_timestamp + 8)
+    if (APP.timestamp < last_timestamp + 8)
       return;
-    last_timestamp = APP.frame_time;
+    last_timestamp = APP.timestamp;
   }
 
   for (;;)
@@ -579,7 +579,7 @@ static void NET_IterateReceive()
 
       if (user)
       {
-        user->last_msg_frame_time = APP.frame_time;
+        user->last_msg_timestamp = APP.timestamp;
 
         U64 user_id = ((U64)user - (U64)APP.server.users) / sizeof(NET_User);
         player_id = Checked_U64toU16(user_id);
@@ -604,7 +604,7 @@ static void NET_IterateTimeoutUsers()
       if (!user->address)
         continue;
 
-      if (user->last_msg_frame_time + NET_TIMEOUT_DISCONNECT_MS < APP.frame_time)
+      if (user->last_msg_timestamp + NET_TIMEOUT_DISCONNECT_MS < APP.timestamp)
       {
         LOG(LogFlags_NetInfo,
             "%s: Timeout. Removing user #%llu",

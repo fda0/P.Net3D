@@ -17,7 +17,7 @@ typedef struct
 {
   SDLNet_Address *address;
   U16 port;
-  U64 last_msg_frame_time;
+  U64 last_msg_timestamp;
 } NET_User;
 
 typedef enum

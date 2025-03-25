@@ -98,12 +98,12 @@ struct AppState
 
   // time
   U64 frame_id;
-  U64 frame_time;
+  U64 timestamp;
   float dt;
   float at;
   U64 tick_id;
   U32 obj_serial_counter;
-  float tick_dt_accumulator;
+  U64 tick_timestamp_accumulator;
 
   // user input
   V2 mouse;
