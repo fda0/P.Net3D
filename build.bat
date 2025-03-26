@@ -136,14 +136,14 @@ if "%game%"=="1" (
     %call_rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1
 
     :: --- Precompile shaders -------------------------------------------------
-    dxc ..\src\game\shader_world.hlsl /E ShaderRigidVS   /T vs_6_0 /D IS_RIGID=1    /Fh ..\gen\gen_shader_rigid.vert.h || exit /b 1
-    dxc ..\src\game\shader_world.hlsl /E ShaderRigidPS   /T ps_6_0 /D IS_RIGID=1    /Fh ..\gen\gen_shader_rigid.frag.h || exit /b 1
-    dxc ..\src\game\shader_world.hlsl /E ShaderSkinnedVS /T vs_6_0 /D IS_SKINNED=1  /Fh ..\gen\gen_shader_skinned.vert.h || exit /b 1
-    dxc ..\src\game\shader_world.hlsl /E ShaderSkinnedPS /T ps_6_0 /D IS_SKINNED=1  /Fh ..\gen\gen_shader_skinned.frag.h || exit /b 1
-    dxc ..\src\game\shader_world.hlsl /E ShaderWallVS    /T vs_6_0 /D IS_TEXTURED=1 /Fh ..\gen\gen_shader_wall.vert.h || exit /b 1
-    dxc ..\src\game\shader_world.hlsl /E ShaderWallPS    /T ps_6_0 /D IS_TEXTURED=1 /Fh ..\gen\gen_shader_wall.frag.h || exit /b 1
-    dxc ..\src\game\shader_ui.hlsl    /E UI_DxShaderVS   /T vs_6_0                  /Fh ..\gen\gen_shader_ui.vert.h || exit /b 1
-    dxc ..\src\game\shader_ui.hlsl    /E UI_DxShaderPS   /T ps_6_0                  /Fh ..\gen\gen_shader_ui.frag.h || exit /b 1
+    dxc ..\src\game\shader_world.hlsl /E World_DxShaderRigidVS   /T vs_6_0 /D IS_RIGID=1    /Fh ..\gen\gen_shader_rigid.vert.h || exit /b 1
+    dxc ..\src\game\shader_world.hlsl /E World_DxShaderRigidPS   /T ps_6_0 /D IS_RIGID=1    /Fh ..\gen\gen_shader_rigid.frag.h || exit /b 1
+    dxc ..\src\game\shader_world.hlsl /E World_DxShaderSkinnedVS /T vs_6_0 /D IS_SKINNED=1  /Fh ..\gen\gen_shader_skinned.vert.h || exit /b 1
+    dxc ..\src\game\shader_world.hlsl /E World_DxShaderSkinnedPS /T ps_6_0 /D IS_SKINNED=1  /Fh ..\gen\gen_shader_skinned.frag.h || exit /b 1
+    dxc ..\src\game\shader_world.hlsl /E World_DxShaderMeshVS    /T vs_6_0 /D IS_TEXTURED=1 /Fh ..\gen\gen_shader_mesh.vert.h || exit /b 1
+    dxc ..\src\game\shader_world.hlsl /E World_DxShaderMeshPS    /T ps_6_0 /D IS_TEXTURED=1 /Fh ..\gen\gen_shader_mesh.frag.h || exit /b 1
+    dxc ..\src\game\shader_ui.hlsl    /E UI_DxShaderVS           /T vs_6_0                  /Fh ..\gen\gen_shader_ui.vert.h || exit /b 1
+    dxc ..\src\game\shader_ui.hlsl    /E UI_DxShaderPS           /T ps_6_0                  /Fh ..\gen\gen_shader_ui.frag.h || exit /b 1
 
     :: --- Compile game -------------------------------------------------------
     %compile% ..\src\game\game_sdl_entry.c %compile_link_game% %link_icon% %out%p.exe || exit /b 1

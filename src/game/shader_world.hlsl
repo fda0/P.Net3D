@@ -12,16 +12,16 @@
 #endif
 
 #if IS_RIGID
-#define ShaderModelVS ShaderRigidVS
-#define ShaderModelPS ShaderRigidPS
+#define World_DxShaderVS World_DxShaderRigidVS
+#define World_DxShaderPS World_DxShaderRigidPS
 #endif
 #if IS_SKINNED
-#define ShaderModelVS ShaderSkinnedVS
-#define ShaderModelPS ShaderSkinnedPS
+#define World_DxShaderVS World_DxShaderSkinnedVS
+#define World_DxShaderPS World_DxShaderSkinnedPS
 #endif
 #if IS_TEXTURED
-#define ShaderModelVS ShaderWallVS
-#define ShaderModelPS ShaderWallPS
+#define World_DxShaderVS World_DxShaderMeshVS
+#define World_DxShaderPS World_DxShaderMeshPS
 #endif
 
 #define USES_INSTANCE_BUFFER (IS_RIGID || IS_SKINNED)
@@ -92,7 +92,7 @@ StructuredBuffer<Mat4> PoseBuf : register(t1);
 #endif
 
 
-World_VertexToFragment ShaderModelVS(World_VertexInput input)
+World_VertexToFragment World_DxShaderVS(World_VertexInput input)
 {
   V4 input_color = UnpackColor32(input.color);
   V4 color = input_color;
@@ -165,7 +165,7 @@ Texture2DArray<float4> ColorTexture : register(t1, space2);
 SamplerState ColorSampler : register(s1, space2);
 #endif
 
-V4 ShaderModelPS(World_VertexToFragment frag) : SV_Target0
+V4 World_DxShaderPS(World_VertexToFragment frag) : SV_Target0
 {
   V4 color = frag.color;
   float shininess = 16.f;

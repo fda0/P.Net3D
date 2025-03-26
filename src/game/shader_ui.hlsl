@@ -2,7 +2,7 @@
 
 struct UI_VertexInput
 {
-  uint vertex_index : SV_VertexID;
+  U32 vertex_index : SV_VertexID;
 };
 
 struct UI_DxUniform
@@ -48,15 +48,15 @@ cbuffer VertexUniformBuf : register(b0, space1) { UI_DxUniform UniV; };
 StructuredBuffer<UI_DxShape> ShapeBuf : register(t0);
 StructuredBuffer<UI_DxClip>  ClipBuf  : register(t1);
 
-Texture2DArray<float4> AtlasTexture : register(t0, space2);
+Texture2DArray<V4> AtlasTexture : register(t0, space2);
 SamplerState AtlasSampler : register(s0, space2);
 
 // Shaders
 UI_VertexToFragment UI_DxShaderVS(UI_VertexInput input)
 {
-  uint corner_index = input.vertex_index & 3u; // 2 bits; [0:1]
-  uint shape_index = (input.vertex_index >> 2u) & 0xFFFFu; // 16 bits; [2:17]
-  uint clip_index = (input.vertex_index >> 18u) & 0x3FFFu; // 14 bits; [18:31]
+  U32 corner_index = input.vertex_index & 3u; // 2 bits; [0:1]
+  U32 shape_index = (input.vertex_index >> 2u) & 0xFFFFu; // 16 bits; [2:17]
+  U32 clip_index = (input.vertex_index >> 18u) & 0x3FFFu; // 14 bits; [18:31]
   UI_DxShape shape = ShapeBuf[shape_index];
 
   // position
@@ -78,10 +78,10 @@ UI_VertexToFragment UI_DxShaderVS(UI_VertexInput input)
   return frag;
 }
 
-float4 UI_DxShaderPS(UI_VertexToFragment frag) : SV_Target0
+V4 UI_DxShaderPS(UI_VertexToFragment frag) : SV_Target0
 {
-  float4 tex_color = AtlasTexture.Sample(AtlasSampler, frag.tex_uv);
-  float4 color = frag.color;
+  V4 tex_color = AtlasTexture.Sample(AtlasSampler, frag.tex_uv);
+  V4 color = frag.color;
   color *= tex_color;
   return color;
 }

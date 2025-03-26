@@ -477,9 +477,9 @@ static void GPU_Init()
         .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
-        .code = g_ShaderRigidVS,
-        .code_size = sizeof(g_ShaderRigidVS),
-        .entrypoint = "ShaderRigidVS",
+        .code = g_World_DxShaderRigidVS,
+        .code_size = sizeof(g_World_DxShaderRigidVS),
+        .entrypoint = "World_DxShaderRigidVS",
       };
       vertex_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
     }
@@ -495,9 +495,9 @@ static void GPU_Init()
         .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
-        .code = g_ShaderRigidPS,
-        .code_size = sizeof(g_ShaderRigidPS),
-        .entrypoint = "ShaderRigidPS",
+        .code = g_World_DxShaderRigidPS,
+        .code_size = sizeof(g_World_DxShaderRigidPS),
+        .entrypoint = "World_DxShaderRigidPS",
       };
       fragment_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
     }
@@ -563,9 +563,9 @@ static void GPU_Init()
         .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
-        .code = g_ShaderSkinnedVS,
-        .code_size = sizeof(g_ShaderSkinnedVS),
-        .entrypoint = "ShaderSkinnedVS",
+        .code = g_World_DxShaderSkinnedVS,
+        .code_size = sizeof(g_World_DxShaderSkinnedVS),
+        .entrypoint = "World_DxShaderSkinnedVS",
       };
       vertex_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
     }
@@ -581,9 +581,9 @@ static void GPU_Init()
         .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
-        .code = g_ShaderSkinnedPS,
-        .code_size = sizeof(g_ShaderSkinnedPS),
-        .entrypoint = "ShaderSkinnedPS",
+        .code = g_World_DxShaderSkinnedPS,
+        .code_size = sizeof(g_World_DxShaderSkinnedPS),
+        .entrypoint = "World_DxShaderSkinnedPS",
       };
       fragment_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
     }
@@ -648,15 +648,14 @@ static void GPU_Init()
 
   GPU_LoadTextureFiles();
 
-  // Wall pipeline
+  // Mesh pipeline
   {
-    // create wall vertex buffers
+    // create mesh vertex buffers
     ForArray(i, APP.gpu.mesh.batches)
     {
       MSH_Batch *batch = APP.gpu.mesh.batches + i;
-      batch->gpu.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
-                                             sizeof(batch->verts),
-                                             "Mesh vertex buffer (one of many)");
+      batch->gpu.vertices =
+        GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, sizeof(batch->verts), "Mesh vertex buffer (one of many)");
     }
 
     // Texture sampler
@@ -686,9 +685,9 @@ static void GPU_Init()
         .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
-        .code = g_ShaderWallVS,
-        .code_size = sizeof(g_ShaderWallVS),
-        .entrypoint = "ShaderWallVS",
+        .code = g_World_DxShaderMeshVS,
+        .code_size = sizeof(g_World_DxShaderMeshVS),
+        .entrypoint = "World_DxShaderMeshVS",
       };
       vertex_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
     }
@@ -704,9 +703,9 @@ static void GPU_Init()
         .num_uniform_buffers = 1,
 
         .format = SDL_GPU_SHADERFORMAT_DXIL,
-        .code = g_ShaderWallPS,
-        .code_size = sizeof(g_ShaderWallPS),
-        .entrypoint = "ShaderWallPS",
+        .code = g_World_DxShaderMeshPS,
+        .code_size = sizeof(g_World_DxShaderMeshPS),
+        .entrypoint = "World_DxShaderMeshPS",
       };
       fragment_shader = SDL_CreateGPUShader(APP.gpu.device, &create_info);
     }
