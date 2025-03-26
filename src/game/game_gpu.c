@@ -151,20 +151,20 @@ static void GPU_TransferTexture(SDL_GPUTexture *gpu_tex,
                                 U32 layer, U32 w, U32 h,
                                 void *data, U32 data_size)
 {
-  // create transfer buffer
+  // Create transfer buffer
   SDL_GPUTransferBufferCreateInfo trans_desc =
   {
     .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
     .size = data_size
   };
-  SDL_GPUTransferBuffer *buf_transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
-  Assert(buf_transfer); // @todo report err
+  SDL_GPUTransferBuffer *trans_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
+  Assert(trans_buf); // @todo report err
 
   // CPU memory -> GPU memory
   {
-    void *map = SDL_MapGPUTransferBuffer(APP.gpu.device, buf_transfer, false);
+    void *map = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_buf, false);
     memcpy(map, data, data_size);
-    SDL_UnmapGPUTransferBuffer(APP.gpu.device, buf_transfer);
+    SDL_UnmapGPUTransferBuffer(APP.gpu.device, trans_buf);
   }
 
   // GPU memory -> GPU buffers
@@ -172,11 +172,13 @@ static void GPU_TransferTexture(SDL_GPUTexture *gpu_tex,
     SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
     SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
 
-    SDL_GPUTextureTransferInfo trans_info = {
-      .transfer_buffer = buf_transfer,
+    SDL_GPUTextureTransferInfo trans_info =
+    {
+      .transfer_buffer = trans_buf,
       .offset = 0,
     };
-    SDL_GPUTextureRegion dst_region = {
+    SDL_GPUTextureRegion dst_region =
+    {
       .texture = gpu_tex,
       .layer = layer,
       .w = w,
@@ -189,7 +191,7 @@ static void GPU_TransferTexture(SDL_GPUTexture *gpu_tex,
     SDL_SubmitGPUCommandBuffer(cmd);
   }
 
-  SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
+  SDL_ReleaseGPUTransferBuffer(APP.gpu.device, trans_buf);
 }
 
 
@@ -454,14 +456,87 @@ static void GPU_Init()
     .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
   };
 
-  // init model buffers (rigid + skinned)
+  // Init fallback texture
+  {
+    I32 dim = 512;
+    I32 tex_size = dim*dim*sizeof(U32);
+    U32 and_mask = (1 << 6);
+
+    SDL_GPUTextureCreateInfo tex_info =
+    {
+      .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
+      .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+      .width = dim,
+      .height = dim,
+      .layer_count_or_depth = 1,
+      .num_levels = GPU_MipMapCount(dim, dim),
+      .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
+    };
+    SDL_GPUTexture *texture = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
+    SDL_SetGPUTextureName(APP.gpu.device, texture, "Fallback texture");
+    APP.gpu.fallback_texture = texture;
+
+    // Fill texture
+    {
+      SDL_GPUTransferBufferCreateInfo trans_desc =
+      {
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        .size = tex_size
+      };
+      SDL_GPUTransferBuffer *trans_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
+      Assert(trans_buf);
+
+      // Fill GPU memory
+      {
+        U32 *map = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_buf, false);
+        U32 *pixel = map;
+        ForI32(y, dim)
+        {
+          ForI32(x, dim)
+          {
+            pixel[0] = (x & y & and_mask) ? 0xff000000 : 0xffFF00FF;
+            pixel += 1;
+          }
+        }
+        SDL_UnmapGPUTransferBuffer(APP.gpu.device, trans_buf);
+      }
+
+      // GPU memory -> GPU buffers
+      {
+        SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+        SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+        SDL_GPUTextureTransferInfo trans_info = { .transfer_buffer = trans_buf };
+        SDL_GPUTextureRegion dst_region =
+        {
+          .texture = texture,
+          .w = dim,
+          .h = dim,
+          .d = 1,
+        };
+        SDL_UploadToGPUTexture(copy_pass, &trans_info, &dst_region, false);
+
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(cmd);
+      }
+      SDL_ReleaseGPUTransferBuffer(APP.gpu.device, trans_buf);
+    }
+
+    // Generate texture mipmap
+    {
+      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+      SDL_GenerateMipmapsForGPUTexture(cmd, texture);
+      SDL_SubmitGPUCommandBuffer(cmd);
+    }
+  }
+
+  // Init model buffers (rigid + skinned)
   {
     ForU32(model_index, MDL_COUNT)
       GPU_InitModelBuffers(model_index);
 
     APP.gpu.model.gpu_pose_buffer = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
                                                      sizeof(APP.gpu.model.poses), "Poses buffer");
-
   }
 
   // Rigid pipeline
@@ -650,7 +725,7 @@ static void GPU_Init()
 
   // Mesh pipeline
   {
-    // create mesh vertex buffers
+    // Create mesh vertex buffers
     ForArray(i, APP.gpu.mesh.batches)
     {
       MSH_Batch *batch = APP.gpu.mesh.batches + i;
@@ -763,7 +838,7 @@ static void GPU_Init()
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
   }
 
-  // shadow map
+  // Shadow map
   {
     APP.gpu.shadow_tex = GPU_CreateDepthTexture(GPU_SHADOW_MAP_DIM, GPU_SHADOW_MAP_DIM, true);
 
@@ -884,6 +959,8 @@ static void GPU_Deinit()
   }
   SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.ui_pipeline);
 
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.fallback_texture);
+
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
@@ -891,7 +968,7 @@ static void GPU_Deinit()
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
-  // model
+  // Model
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.model.gpu_pose_buffer);
   ForArray(i, APP.gpu.model.batches)
   {
@@ -901,7 +978,7 @@ static void GPU_Deinit()
     SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.instances);
   }
 
-  // mesh
+  // Mesh
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.mesh.gpu_sampler);
   ForArray(i, APP.gpu.mesh.batches)
   {
@@ -910,6 +987,7 @@ static void GPU_Deinit()
     SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.vertices);
   }
 
+  // UI
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui.gpu.atlas_texture);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.ui.gpu.atlas_sampler);
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui.gpu.indices);
@@ -949,7 +1027,7 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
 {
   AssertBounds(pipeline_index, APP.gpu.world_pipelines);
 
-  // bind fragment shadow texture sampler
+  // Bind shadow texture sampler to fragment shader
   {
     SDL_GPUTextureSamplerBinding binding_sampl =
     {
@@ -959,7 +1037,7 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
     SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
   }
 
-  // walls
+  // Meshes (walls)
   SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].wall);
   {
     ForArray(i, APP.gpu.mesh.batches)
@@ -974,7 +1052,8 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
         // bind fragment color texture sampler
         SDL_GPUTextureSamplerBinding binding_sampl =
         {
-          .texture = batch->gpu.texture,
+          //.texture = batch->gpu.texture,
+          .texture = TEX_GetGPUTexture(i),
           .sampler = APP.gpu.mesh.gpu_sampler,
         };
         SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
@@ -1017,12 +1096,12 @@ static void GPU_Iterate()
 
   if (!swapchain_tex)
   {
-    /* Swapchain is unavailable, cancel work */
+    // Swapchain is unavailable, cancel work
     SDL_CancelGPUCommandBuffer(cmd);
     return;
   }
 
-  // upload wall vertices
+  // Upload mesh vertices
   ForArray(i, APP.gpu.mesh.batches)
   {
     MSH_Batch *batch = APP.gpu.mesh.batches + i;
@@ -1033,14 +1112,14 @@ static void GPU_Iterate()
     }
   }
 
-  // upload poses
+  // Upload poses
   if (APP.gpu.model.poses_count)
   {
     U32 transfer_size = APP.gpu.model.poses_count * sizeof(APP.gpu.model.poses[0]);
     GPU_TransferBuffer(APP.gpu.model.gpu_pose_buffer, APP.gpu.model.poses, transfer_size);
   }
 
-  // upload model instance data
+  // Upload model instance data
   ForArray(i, APP.gpu.model.batches)
   {
     MDL_Batch *batch = APP.gpu.model.batches + i;

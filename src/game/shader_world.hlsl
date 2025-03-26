@@ -52,11 +52,11 @@ struct World_VertexInput
 #if IS_SKINNED
   U32 color          : TEXCOORD2;
   U32 joints_packed4 : TEXCOORD3;
-  V4   weights        : TEXCOORD4;
+  V4  weights        : TEXCOORD4;
 #endif
 
 #if IS_TEXTURED
-  V2 uv      : TEXCOORD2;
+  V2  uv    : TEXCOORD2;
   U32 color : TEXCOORD3;
 #endif
 

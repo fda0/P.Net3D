@@ -5,18 +5,18 @@
 #include "game_render.h"
 #include "game_animation.h"
 
-#include "assetprep_obj_loader.h"
-#include "assetprep_entry.h"
-#include "assetprep_print_parse.c"
-#include "assetprep_obj_loader.c"
+#include "baker_obj_loader.h"
+#include "baker_entry.h"
+#include "baker_print_parse.c"
+#include "baker_obj_loader.c"
 
 #define CGLTF_IMPLEMENTATION
 #pragma warning(push, 2)
 #include "cgltf.h"
 #pragma warning(pop)
 
-#include "assetprep_number_buffer.h"
-#include "assetprep_gltf_loader.c"
+#include "baker_number_buffer.h"
+#include "baker_gltf_loader.c"
 
 static U8 tmp_arena_memory[Megabyte(64)];
 static U8 cgltf_arena_memory[Megabyte(64)];

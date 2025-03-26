@@ -129,8 +129,8 @@ if "%game%"=="1" (
     mkdir ..\gen\
 
     :: --- Metaprogram --------------------------------------------------------
-    %compile% ..\src\meta\assetprep_entry.c %compile_link% %out%assetprep.exe || exit /b 1
-    assetprep.exe || exit /b 1
+    %compile% ..\src\meta\baker_entry.c %compile_link% %out%baker.exe || exit /b 1
+    baker.exe || exit /b 1
 
     :: --- Produce Logo Icon File ---------------------------------------------
     %call_rc% /nologo /fo icon.res ..\res\ico\icon.rc || exit /b 1

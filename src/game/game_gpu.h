@@ -21,6 +21,8 @@ typedef struct
   GPU_WorldPipelines world_pipelines[2]; // 0: 4xMSAA; 1: no AA (for shadow mapping)
   SDL_GPUGraphicsPipeline *ui_pipeline;
 
+  SDL_GPUTexture *fallback_texture;
+
   // model, mesh, ui resources
   struct
   {
