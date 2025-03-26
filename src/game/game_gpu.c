@@ -96,12 +96,9 @@ static void GPU_ProcessWindowResize(bool init)
 {
   if (APP.window_resized || init)
   {
-    if (APP.gpu.tex_depth)
-      SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
-    if (APP.gpu.tex_msaa)
-      SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
-    if (APP.gpu.tex_resolve)
-      SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
 
     APP.gpu.tex_depth = GPU_CreateDepthTexture(APP.window_width, APP.window_height, false);
     APP.gpu.tex_msaa = GPU_CreateMSAATexture(APP.window_width, APP.window_height);
@@ -233,8 +230,10 @@ static SDL_GPUGraphicsPipelineCreateInfo GPU_DefaultPipeline(SDL_GPUColorTargetD
   return pipeline;
 }
 
-static void GPU_InitModelBuffers(bool is_skinned, U32 model_index)
+static void GPU_InitModelBuffers(U32 model_index)
 {
+  Assert(model_index < MDL_COUNT);
+
   void *vertices = 0;
   U32 vertices_size = 0;
   U16 *indices = 0;
@@ -242,81 +241,60 @@ static void GPU_InitModelBuffers(bool is_skinned, U32 model_index)
   const char *vrt_buf_name = "";
   const char *ind_buf_name = "";
   const char *inst_buf_name = "";
-  U32 instances_size = (is_skinned ?
-                        RD_MAX_SKINNED_INSTANCES * sizeof(RDR_SkinnedInstance) :
-                        RD_MAX_RIGID_INSTANCES * sizeof(RDR_RigidInstance));
 
-  if (is_skinned)
+  switch (model_index)
   {
-    switch (model_index)
+    default: Assert(0); break;
+    case MDL_Teapot:
     {
-      default: Assert(0); break;
-      case RdrSkinned_Worker:
-      {
-        vertices = Model_Worker_vrt;
-        vertices_size = sizeof(Model_Worker_vrt);
-        indices = Model_Worker_ind;
-        indices_size = sizeof(Model_Worker_ind);
-        vrt_buf_name = "Worker skinned vrt buf";
-        ind_buf_name = "Worker skinned ind buf";
-        inst_buf_name = "Worker skinned inst buf";
-      } break;
-    }
-  }
-  else
-  {
-    switch (model_index)
+      vertices = Model_teapot_vrt;
+      vertices_size = sizeof(Model_teapot_vrt);
+      indices = Model_teapot_ind;
+      indices_size = sizeof(Model_teapot_ind);
+      vrt_buf_name = "Teapot rigid vrt buf";
+      ind_buf_name = "Teapot rigid ind buf";
+      inst_buf_name = "Teapot rigid inst buf";
+    } break;
+    case MDL_Flag:
     {
-      default: Assert(0); break;
-      case RdrRigid_Teapot:
-      {
-        vertices = Model_teapot_vrt;
-        vertices_size = sizeof(Model_teapot_vrt);
-        indices = Model_teapot_ind;
-        indices_size = sizeof(Model_teapot_ind);
-        vrt_buf_name = "Teapot rigid vrt buf";
-        ind_buf_name = "Teapot rigid ind buf";
-        inst_buf_name = "Teapot rigid inst buf";
-      } break;
-      case RdrRigid_Flag:
-      {
-        vertices = Model_flag_vrt;
-        vertices_size = sizeof(Model_flag_vrt);
-        indices = Model_flag_ind;
-        indices_size = sizeof(Model_flag_ind);
-        vrt_buf_name = "Flag rigid vrt buf";
-        ind_buf_name = "Flag rigid ind buf";
-        inst_buf_name = "Flag rigid inst buf";
-      } break;
-    }
+      vertices = Model_flag_vrt;
+      vertices_size = sizeof(Model_flag_vrt);
+      indices = Model_flag_ind;
+      indices_size = sizeof(Model_flag_ind);
+      vrt_buf_name = "Flag rigid vrt buf";
+      ind_buf_name = "Flag rigid ind buf";
+      inst_buf_name = "Flag rigid inst buf";
+    } break;
+    case MDL_Worker:
+    {
+      vertices = Model_Worker_vrt;
+      vertices_size = sizeof(Model_Worker_vrt);
+      indices = Model_Worker_ind;
+      indices_size = sizeof(Model_Worker_ind);
+      vrt_buf_name = "Worker skinned vrt buf";
+      ind_buf_name = "Worker skinned ind buf";
+      inst_buf_name = "Worker skinned inst buf";
+    } break;
   }
 
-  GPU_ModelBuffers *models_base = (is_skinned ? APP.gpu.skinneds : APP.gpu.rigids);
-  GPU_ModelBuffers *model = models_base + model_index;
-  model->ind_count = indices_size / sizeof(U16);
+  MDL_Batch *batch = APP.gpu.model.batches + model_index;
+  batch->gpu.indices_count = indices_size / sizeof(U16);
 
   // create model vertex buffer
-  model->vert_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, vertices_size, vrt_buf_name);
-  Assert(model->vert_buf); // @todo report err
+  batch->gpu.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, vertices_size, vrt_buf_name);
+  Assert(batch->gpu.vertices); // @todo report err
 
   // create model index buffer
-  model->ind_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, indices_size, ind_buf_name);
-  Assert(model->ind_buf); // @todo report err
+  batch->gpu.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, indices_size, ind_buf_name);
+  Assert(batch->gpu.indices); // @todo report err
 
   // create model per instance storage buffer
-  model->inst_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, instances_size, inst_buf_name);
-  Assert(model->inst_buf); // @todo report err
+  U32 instances_size = sizeof(MDL_GpuInstance)*MDL_MAX_INSTANCES;
+  batch->gpu.instances = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, instances_size, inst_buf_name);
+  Assert(batch->gpu.instances); // @todo report err
 
-  if (is_skinned)
-  {
-    APP.gpu.skinned_pose_bufs[model_index] =
-      GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                       RD_MAX_SKINNED_INSTANCES * sizeof(RDR_SkinnedPose),
-                       "skinned_pose_buf (todo: add model name)");
-  }
-
-  GPU_TransferBuffer(model->vert_buf, vertices, vertices_size);
-  GPU_TransferBuffer(model->ind_buf, indices, indices_size);
+  GPU_TransferBuffer(batch->gpu.vertices, vertices, vertices_size);
+  GPU_TransferBuffer(batch->gpu.indices, indices, indices_size);
 }
 
 static SDL_GPUTexture *GPU_CreateAndLoadTexture2DArray(const char **paths, U64 path_count,
@@ -416,7 +394,7 @@ const char *paths[] = \
 "../res/tex/" #Name "/" #Name "_1K-JPG_Roughness.jpg", \
 "../res/tex/" #Name "/" #Name "_1K-JPG_Displacement.jpg", \
 }; \
-APP.gpu.wall_texs[TEX_##Name] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), #Name); \
+APP.gpu.mesh.batches[TEX_##Name].gpu.texture = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), #Name); \
 }while(0)
 
   LoadTexturesFromAmbientCgCom(Bricks071);
@@ -428,17 +406,7 @@ APP.gpu.wall_texs[TEX_##Name] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCoun
   LoadTexturesFromAmbientCgCom(Leather011);
   LoadTexturesFromAmbientCgCom(PavingStones067);
   LoadTexturesFromAmbientCgCom(Tiles101);
-
-  {
-    const char *paths[] =
-    {
-      "../res/tex/TestPBR001/TestPBR001_Color.png",
-      "../res/tex/TestPBR001/TestPBR001_NormalGL.png",
-      "../res/tex/TestPBR001/TestPBR001_Roughness.jpg",
-      "../res/tex/TestPBR001/TestPBR001_Displacement.jpg",
-    };
-    APP.gpu.wall_texs[TEX_TestPBR001] = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), "TestPBR001");
-  }
+  LoadTexturesFromAmbientCgCom(TestPBR001);
 }
 
 static void GPU_ModifyPipelineForShadowMapping(SDL_GPUGraphicsPipelineCreateInfo *pipeline)
@@ -486,13 +454,18 @@ static void GPU_Init()
     .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
   };
 
+  // init model buffers (rigid + skinned)
+  {
+    ForU32(model_index, MDL_COUNT)
+      GPU_InitModelBuffers(model_index);
+
+    APP.gpu.model.gpu_pose_buffer = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+                                                     sizeof(APP.gpu.model.poses), "Poses buffer");
+
+  }
+
   // Rigid pipeline
   {
-    ForU32(model_index, RdrRigid_COUNT)
-    {
-      GPU_InitModelBuffers(false, model_index);
-    }
-
     SDL_GPUShader *vertex_shader = 0;
     {
       SDL_GPUShaderCreateInfo create_info =
@@ -539,7 +512,7 @@ static void GPU_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(RDR_RigidVertex),
+          .pitch = sizeof(MDL_GpuRigidVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -579,11 +552,6 @@ static void GPU_Init()
 
   // Skinned pipeline
   {
-    ForU32(model_index, RdrSkinned_COUNT)
-    {
-      GPU_InitModelBuffers(true, model_index);
-    }
-
     SDL_GPUShader *vertex_shader = 0;
     {
       SDL_GPUShaderCreateInfo create_info =
@@ -630,7 +598,7 @@ static void GPU_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(RDR_SkinnedVertex),
+          .pitch = sizeof(MDL_GpuSkinnedVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -683,22 +651,12 @@ static void GPU_Init()
   // Wall pipeline
   {
     // create wall vertex buffers
-    ForArray(i, APP.gpu.wall_vert_buffers)
+    ForArray(i, APP.gpu.mesh.batches)
     {
-      APP.gpu.wall_vert_buffers[i] =
-        GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
-                         sizeof(APP.rdr.wall_mesh_buffers[i].verts),
-                         "Wall vertex buffer (one of many)");
-    }
-
-    {
-      RDR_RigidInstance inst = {};
-      inst.transform = Mat4_Identity();
-      inst.color = Color32_RGBf(1,1,1);
-      APP.gpu.wall_inst_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                                               sizeof(inst),
-                                               "Wall instance buffer");
-      GPU_TransferBuffer(APP.gpu.wall_inst_buf, &inst, sizeof(inst));
+      MSH_Batch *batch = APP.gpu.mesh.batches + i;
+      batch->gpu.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+                                             sizeof(batch->verts),
+                                             "Mesh vertex buffer (one of many)");
     }
 
     // Texture sampler
@@ -714,7 +672,7 @@ static void GPU_Init()
         .min_lod = 0.f,
         .max_lod = 100.f,
       };
-      APP.gpu.wall_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
+      APP.gpu.mesh.gpu_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
     }
 
     SDL_GPUShader *vertex_shader = 0;
@@ -723,7 +681,7 @@ static void GPU_Init()
       {
         .stage = SDL_GPU_SHADERSTAGE_VERTEX,
         .num_samplers = 0,
-        .num_storage_buffers = 1,
+        .num_storage_buffers = 0,
         .num_storage_textures = 0,
         .num_uniform_buffers = 1,
 
@@ -763,7 +721,7 @@ static void GPU_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(RDR_WallVertex),
+          .pitch = sizeof(MSH_GpuVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -831,16 +789,17 @@ static void GPU_Init()
       .min_filter = SDL_GPU_FILTER_LINEAR,
       .mag_filter = SDL_GPU_FILTER_LINEAR,
     };
-    APP.gpu.ui_atlas_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
+    APP.gpu.ui.gpu.atlas_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
   }
 
   // UI buffers
   {
-    APP.gpu.ui_index_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, sizeof(APP.rdr.ui.indices), "UI Index Buffer");
-    APP.gpu.ui_shape_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                                            sizeof(APP.rdr.ui.shapes), "UI Shapes Storage Buffer");
-    APP.gpu.ui_clip_buf = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                                           sizeof(APP.rdr.ui.clips), "UI Clips Storage Buffer");
+    APP.gpu.ui.gpu.indices =
+      GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, sizeof(APP.gpu.ui.indices), "UI Index Buffer");
+    APP.gpu.ui.gpu.shape_buffer =
+      GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, sizeof(APP.gpu.ui.shapes), "UI Shapes Storage Buffer");
+    APP.gpu.ui.gpu.clip_buffer =
+      GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, sizeof(APP.gpu.ui.clips), "UI Clips Storage Buffer");
   }
 
   // UI pipeline
@@ -924,72 +883,67 @@ static void GPU_Deinit()
     SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.world_pipelines[i].skinned);
     SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.world_pipelines[i].wall);
   }
+  SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.ui_pipeline);
 
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
-  if (APP.gpu.tex_msaa)
-    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
-  if (APP.gpu.tex_resolve)
-    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
 
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
-  ForArray(i, APP.gpu.rigids)
+  // model
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.model.gpu_pose_buffer);
+  ForArray(i, APP.gpu.model.batches)
   {
-    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.rigids[i].vert_buf);
-    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.rigids[i].ind_buf);
-    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.rigids[i].inst_buf);
-  }
-  ForArray(i, APP.gpu.skinneds)
-  {
-    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.skinneds[i].vert_buf);
-    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.skinneds[i].ind_buf);
-    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.skinneds[i].inst_buf);
-    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.skinned_pose_bufs[i]);
+    MDL_Batch *batch = APP.gpu.model.batches + i;
+    SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.vertices);
+    SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.indices);
+    SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.instances);
   }
 
-  ForArray(i, APP.gpu.wall_vert_buffers)
-    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_vert_buffers[i]);
+  // mesh
+  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.mesh.gpu_sampler);
+  ForArray(i, APP.gpu.mesh.batches)
+  {
+    MSH_Batch *batch = APP.gpu.mesh.batches + i;
+    SDL_ReleaseGPUTexture(APP.gpu.device, batch->gpu.texture);
+    SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.vertices);
+  }
 
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.wall_inst_buf);
-  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.wall_sampler);
-  ForArray(i, APP.gpu.wall_texs)
-    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.wall_texs[i]);
-
-
-  SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.ui_pipeline);
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui_atlas_tex);
-  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.ui_atlas_sampler);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_index_buf);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_shape_buf);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui_clip_buf);
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui.gpu.atlas_texture);
+  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.ui.gpu.atlas_sampler);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui.gpu.indices);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui.gpu.shape_buffer);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui.gpu.clip_buffer);
 }
 
-static void GPU_DrawModelBuffers(SDL_GPURenderPass *pass,
-                                 GPU_ModelBuffers *model, U32 instance_count,
-                                 SDL_GPUBuffer *additional_storage_buf)
+static void GPU_DrawModel(SDL_GPURenderPass *pass, U32 model_index)
 {
-  if (!instance_count)
+  Assert(model_index < MDL_COUNT);
+  MDL_Batch *batch = APP.gpu.model.batches + model_index;
+
+  if (!batch->instances_count)
     return;
 
   // bind vertex buffer
-  SDL_GPUBufferBinding binding_vrt = { .buffer = model->vert_buf };
+  SDL_GPUBufferBinding binding_vrt = { .buffer = batch->gpu.vertices };
   SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
 
   // bind index buffer
-  SDL_GPUBufferBinding binding_ind = { .buffer = model->ind_buf };
+  SDL_GPUBufferBinding binding_ind = { .buffer = batch->gpu.indices };
   SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
 
   // bind instance storage buffer
   SDL_GPUBuffer *storage_bufs[2] =
   {
-    model->inst_buf,
-    additional_storage_buf
+    batch->gpu.instances,
+    APP.gpu.model.gpu_pose_buffer
   };
-  U32 storage_bufs_count = (additional_storage_buf ? 2 : 1);
+  U32 storage_bufs_count = (MDL_IsSkinned(model_index) ? 2 : 1);
   SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, storage_bufs_count);
 
-  SDL_DrawGPUIndexedPrimitives(pass, model->ind_count, instance_count, 0, 0, 0);
+  SDL_DrawGPUIndexedPrimitives(pass, batch->gpu.indices_count, batch->instances_count, 0, 0, 0);
 }
 
 static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
@@ -1009,53 +963,46 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
   // walls
   SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].wall);
   {
-    // bind instance storage buffer
-    SDL_BindGPUVertexStorageBuffers(pass, 0, &APP.gpu.wall_inst_buf, 1);
-
-    ForArray(mesh_index, APP.rdr.wall_mesh_buffers)
+    ForArray(i, APP.gpu.mesh.batches)
     {
-      RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + mesh_index;
-      if (buf->vert_count)
+      MSH_Batch *batch = APP.gpu.mesh.batches + i;
+      if (batch->vert_count)
       {
         // bind vertex buffer
-        AssertBounds(mesh_index, APP.gpu.wall_vert_buffers);
-        SDL_GPUBufferBinding binding_vrt = { .buffer = APP.gpu.wall_vert_buffers[mesh_index] };
+        SDL_GPUBufferBinding binding_vrt = { .buffer = batch->gpu.vertices };
         SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
-
-        AssertBounds(mesh_index, APP.gpu.wall_texs);
-        SDL_GPUTexture *texture = APP.gpu.wall_texs[mesh_index];
 
         // bind fragment color texture sampler
         SDL_GPUTextureSamplerBinding binding_sampl =
         {
-          .texture = texture,
-          .sampler = APP.gpu.wall_sampler,
+          .texture = batch->gpu.texture,
+          .sampler = APP.gpu.mesh.gpu_sampler,
         };
         SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
 
-        SDL_DrawGPUPrimitives(pass, buf->vert_count, 1, 0, 0);
+        SDL_DrawGPUPrimitives(pass, batch->vert_count, 1, 0, 0);
       }
     }
   }
 
-  // rigid
+  bool skinned_pipeline_bound = false;
   SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].rigid);
-  ForArray(i, APP.gpu.rigids)
-  {
-    GPU_ModelBuffers *model = APP.gpu.rigids + i;
-    RDR_Rigid *rigid = APP.rdr.rigids + i;
-    GPU_DrawModelBuffers(pass, model, rigid->instance_count, 0);
-  }
 
-  // skinned
-  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].skinned);
-  ForArray(i, APP.gpu.skinneds)
+  ForU32(model_index, MDL_COUNT)
   {
-    GPU_ModelBuffers *model = APP.gpu.skinneds + i;
-    RDR_Skinned *skinned = APP.rdr.skinneds + i;
+    if (MDL_IsSkinned(model_index) != skinned_pipeline_bound)
+    {
+      Assert(!skinned_pipeline_bound); // assert that models are sorted from rigid to skinned
 
-    SDL_GPUBuffer *pose_buf = APP.gpu.skinned_pose_bufs[i];
-    GPU_DrawModelBuffers(pass, model, skinned->instance_count, pose_buf);
+      if (MDL_IsSkinned(model_index))
+        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].skinned);
+      else
+        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].rigid);
+
+      skinned_pipeline_bound = MDL_IsSkinned(model_index);
+    }
+
+    GPU_DrawModel(pass, model_index);
   }
 }
 
@@ -1077,44 +1024,32 @@ static void GPU_Iterate()
   }
 
   // upload wall vertices
-  static_assert(ArrayCount(APP.gpu.wall_vert_buffers) == ArrayCount(APP.rdr.wall_mesh_buffers));
-  ForArray(i, APP.rdr.wall_mesh_buffers)
+  ForArray(i, APP.gpu.mesh.batches)
   {
-    RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + i;
-    if (buf->vert_count)
+    MSH_Batch *batch = APP.gpu.mesh.batches + i;
+    if (batch->vert_count)
     {
-      U32 transfer_size = buf->vert_count * sizeof(buf->verts[0]);
-      GPU_TransferBuffer(APP.gpu.wall_vert_buffers[i], buf->verts, transfer_size);
+      U32 transfer_size = batch->vert_count * sizeof(batch->verts[0]);
+      GPU_TransferBuffer(batch->gpu.vertices, batch->verts, transfer_size);
     }
+  }
+
+  // upload poses
+  if (APP.gpu.model.poses_count)
+  {
+    U32 transfer_size = APP.gpu.model.poses_count * sizeof(APP.gpu.model.poses[0]);
+    GPU_TransferBuffer(APP.gpu.model.gpu_pose_buffer, APP.gpu.model.poses, transfer_size);
   }
 
   // upload model instance data
-  ForArray(i, APP.gpu.rigids)
+  ForArray(i, APP.gpu.model.batches)
   {
-    GPU_ModelBuffers *gpu_model = APP.gpu.rigids + i;
-    RDR_Rigid *rigid = APP.rdr.rigids + i;
-    if (rigid->instance_count)
+    MDL_Batch *batch = APP.gpu.model.batches + i;
+    if (batch->instances_count)
     {
-      GPU_TransferBuffer(gpu_model->inst_buf,
-                         rigid->instances,
-                         rigid->instance_count * sizeof(rigid->instances[0]));
-    }
-  }
-  ForArray(i, APP.gpu.skinneds)
-  {
-    GPU_ModelBuffers *gpu_model = APP.gpu.skinneds + i;
-    RDR_Skinned *skinned = APP.rdr.skinneds + i;
-    SDL_GPUBuffer *pose_buf = APP.gpu.skinned_pose_bufs[i];
-
-    if (skinned->instance_count)
-    {
-      GPU_TransferBuffer(gpu_model->inst_buf,
-                         skinned->instances,
-                         skinned->instance_count * sizeof(skinned->instances[0]));
-
-      GPU_TransferBuffer(pose_buf,
-                         skinned->poses,
-                         skinned->instance_count * sizeof(skinned->poses[0]));
+      GPU_TransferBuffer(batch->gpu.instances,
+                         batch->instances,
+                         batch->instances_count * sizeof(batch->instances[0]));
     }
   }
 
@@ -1128,7 +1063,7 @@ static void GPU_Iterate()
     .cycle = true,
   };
 
-  RDR_Uniform world_uniform =
+  World_GpuUniform world_uniform =
   {
     .camera_transform = APP.sun_camera_transform,
     .shadow_transform = APP.sun_camera_transform,
@@ -1216,7 +1151,7 @@ static void GPU_Iterate()
   }
 
   // UI render pass
-  if (APP.rdr.ui.indices_count)
+  if (APP.gpu.ui.indices_count)
   {
     // Upload uniform
     UI_GpuUniform uniform =
@@ -1228,18 +1163,18 @@ static void GPU_Iterate()
 
     // Upload buffers to GPU
     {
-      U32 transfer_size = sizeof(APP.rdr.ui.indices[0]) * APP.rdr.ui.indices_count;
-      GPU_TransferBuffer(APP.gpu.ui_index_buf, APP.rdr.ui.indices, transfer_size);
+      U32 transfer_size = sizeof(APP.gpu.ui.indices[0]) * APP.gpu.ui.indices_count;
+      GPU_TransferBuffer(APP.gpu.ui.gpu.indices, APP.gpu.ui.indices, transfer_size);
     }
-    if (APP.rdr.ui.shapes_count)
+    if (APP.gpu.ui.shapes_count)
     {
-      U32 transfer_size = sizeof(APP.rdr.ui.shapes[0]) * APP.rdr.ui.shapes_count;
-      GPU_TransferBuffer(APP.gpu.ui_shape_buf, APP.rdr.ui.shapes, transfer_size);
+      U32 transfer_size = sizeof(APP.gpu.ui.shapes[0]) * APP.gpu.ui.shapes_count;
+      GPU_TransferBuffer(APP.gpu.ui.gpu.shape_buffer, APP.gpu.ui.shapes, transfer_size);
     }
-    if (APP.rdr.ui.clips_count)
+    if (APP.gpu.ui.clips_count)
     {
-      U32 transfer_size = sizeof(APP.rdr.ui.clips[0]) * APP.rdr.ui.clips_count;
-      GPU_TransferBuffer(APP.gpu.ui_clip_buf, APP.rdr.ui.clips, transfer_size);
+      U32 transfer_size = sizeof(APP.gpu.ui.clips[0]) * APP.gpu.ui.clips_count;
+      GPU_TransferBuffer(APP.gpu.ui.gpu.clip_buffer, APP.gpu.ui.clips, transfer_size);
     }
 
     // Start pass
@@ -1254,8 +1189,8 @@ static void GPU_Iterate()
     // Bind texture & sampler
     SDL_GPUTextureSamplerBinding sampler_binding =
     {
-      .texture = APP.gpu.ui_atlas_tex,
-      .sampler = APP.gpu.ui_atlas_sampler,
+      .texture = APP.gpu.ui.gpu.atlas_texture,
+      .sampler = APP.gpu.ui.gpu.atlas_sampler,
     };
     SDL_BindGPUFragmentSamplers(pass, 0, &sampler_binding, 1);
 
@@ -1265,17 +1200,17 @@ static void GPU_Iterate()
     // Bind storage buffers
     SDL_GPUBuffer *storage_bufs[2] =
     {
-      APP.gpu.ui_shape_buf,
-      APP.gpu.ui_clip_buf,
+      APP.gpu.ui.gpu.shape_buffer,
+      APP.gpu.ui.gpu.clip_buffer,
     };
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
     // Bind index buffer
-    SDL_GPUBufferBinding binding_ind = { .buffer = APP.gpu.ui_index_buf };
+    SDL_GPUBufferBinding binding_ind = { .buffer = APP.gpu.ui.gpu.indices };
     SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_32BIT);
 
     // Draw
-    SDL_DrawGPUIndexedPrimitives(pass, APP.rdr.ui.indices_count, 1, 0, 0, 0);
+    SDL_DrawGPUIndexedPrimitives(pass, APP.gpu.ui.indices_count, 1, 0, 0, 0);
 
     // End pass
     SDL_EndGPURenderPass(pass);

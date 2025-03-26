@@ -24,6 +24,8 @@
 #define ShaderModelPS ShaderWallPS
 #endif
 
+#define USES_INSTANCE_BUFFER (IS_RIGID || IS_SKINNED)
+
 #include "shader_util.hlsl"
 
 struct UniformData
@@ -75,27 +77,26 @@ struct VertexToFragment
   V4 clip_p : SV_Position;
 };
 
+#if USES_INSTANCE_BUFFER
 struct VSModelInstanceData
 {
   float4x4 transform;
   uint color;
-
-#if IS_SKINNED
   uint pose_offset;
-#endif
 };
-
 StructuredBuffer<VSModelInstanceData> InstanceBuf : register(t0);
+#endif
+
 #if IS_SKINNED
 StructuredBuffer<float4x4> PoseBuf : register(t1);
 #endif
 
-static float4x4 Mat4_Identity()
+static Mat4 Mat4_Identity()
 {
-  return float4x4(1.0f, 0.0f, 0.0f, 0.0f,
-                  0.0f, 1.0f, 0.0f, 0.0f,
-                  0.0f, 0.0f, 1.0f, 0.0f,
-                  0.0f, 0.0f, 0.0f, 1.0f);
+  return Mat4(1.0f, 0.0f, 0.0f, 0.0f,
+              0.0f, 1.0f, 0.0f, 0.0f,
+              0.0f, 0.0f, 1.0f, 0.0f,
+              0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 static Mat4 Mat4_RotationPart(Mat4 mat)
@@ -219,14 +220,28 @@ static Quat Quat_Mul(Quat a, Quat b)
 
 VertexToFragment ShaderModelVS(VSInput input)
 {
-  VSModelInstanceData instance = InstanceBuf[input.InstanceIndex];
   float4 input_color = UnpackColor32(input.color);
+  float4 color = input_color;
+
+#if USES_INSTANCE_BUFFER
+  VSModelInstanceData instance = InstanceBuf[input.InstanceIndex];
   float4 instance_color = UnpackColor32(instance.color);
 
+  if (input.color == 0xff014b74) // @todo obviously temporary
+    color = instance_color;
+#endif
+
+
+
   // Position
-  float4x4 position_transform;
-  {
+#if USES_INSTANCE_BUFFER
+  Mat4 position_transform = instance.transform;
+#else
+  Mat4 position_transform = Mat4_Identity();
+#endif
+
 #if IS_SKINNED
+  {
     uint joint0 = (input.joints_packed4      ) & 0xff;
     uint joint1 = (input.joints_packed4 >>  8) & 0xff;
     uint joint2 = (input.joints_packed4 >> 16) & 0xff;
@@ -247,19 +262,12 @@ VertexToFragment ShaderModelVS(VSInput input)
       pose_transform2 * input.weights.z +
       pose_transform3 * input.weights.w;
 
-    position_transform = mul(instance.transform, pose_transform);
-#else
-    position_transform = instance.transform;
-#endif
+    position_transform = mul(position_transform, pose_transform);
   }
+#endif
 
   float4 world_p = mul(position_transform, float4(input.position, 1.0f));
   float4 clip_p = mul(UniV.camera_transform, world_p);
-
-  // Color
-  float4 color = input_color;
-  if (input.color == 0xff014b74) // @todo obviously temporary solution
-    color = instance_color;
 
   Mat3 input_normal_mat = Mat3_Rotation_Quat(input.normal_rot);
   Mat3 position_rotation = Mat3_FromMat4(Mat4_RotationPart(position_transform));

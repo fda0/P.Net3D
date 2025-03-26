@@ -24,6 +24,7 @@
 #include "game_constants.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
+#include "game_assets.h"
 #include "game_render.h"
 #include "game_object.h"
 #include "game_tick.h"

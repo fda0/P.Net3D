@@ -10,15 +10,6 @@ typedef struct
 
 typedef enum
 {
-  MODEL_None,
-  MODEL_Teapot,
-  MODEL_Flag,
-  MODEL_FemaleWorker,
-  MODEL_COUNT
-} MODEL_Kind;
-
-typedef enum
-{
   ObjFlag_Move            = (1 << 0),
   ObjFlag_Collide         = (1 << 1),
 
@@ -57,7 +48,7 @@ typedef struct
   U32 color;
   Quat rotation;
   U32 animation_index; // used by DrawModel
-  MODEL_Kind model; // used by DrawModel
+  MDL_Kind model; // used by DrawModel
   float collision_height; // used by DrawCollision
   TEX_Kind texture; // used by DrawCollision
   float texture_texels_per_cm; // used by DrawCollision

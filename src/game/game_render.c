@@ -1,77 +1,64 @@
-static void RDR_AddRigid(RDR_RigidType type, Mat4 transform, U32 color)
+static void MDL_Add(MDL_Kind model_kind, Mat4 transform, U32 color,
+                    U32 animation_index, float animation_t)
 {
-  Assert(type < RdrRigid_COUNT);
+  Assert(model_kind < MDL_COUNT);
 
-  RDR_Rigid *model = APP.rdr.rigids + type;
-  if (model->instance_count < ArrayCount(model->instances))
+  MDL_Batch *batch = APP.gpu.model.batches + model_kind;
+  if (batch->instances_count < ArrayCount(batch->instances))
   {
-    RDR_RigidInstance *inst = model->instances + model->instance_count;
-    model->instance_count += 1;
-    *inst = (RDR_RigidInstance)
+    U32 instance_index = batch->instances_count;
+    batch->instances_count += 1;
+
+    MDL_GpuInstance *instance = batch->instances + instance_index;
+    *instance = (MDL_GpuInstance)
     {
       .transform = transform,
       .color = color,
     };
-  }
-}
-static void RDR_AddSkinned(RDR_SkinnedType type, Mat4 transform, U32 color,
-                           U32 animation_index, float animation_t)
-{
-  Assert(type < RdrSkinned_COUNT);
 
-  RDR_Skinned *model = APP.rdr.skinneds + type;
-  if (model->instance_count < ArrayCount(model->instances))
-  {
-    U32 inst_index = model->instance_count;
-    model->instance_count += 1;
-
-    RDR_SkinnedInstance *inst = model->instances + inst_index;
-    RDR_SkinnedPose *pose = model->poses + inst_index;
-
-    *inst = (RDR_SkinnedInstance)
+    if (MDL_IsSkinned(model_kind))
     {
-      .transform = transform,
-      .color = color,
-      .pose_offset = inst_index*62,
-    };
+      AN_Pose animation_pose = AN_PoseFromAnimation(&Worker_Skeleton, animation_index, animation_t);
+      U32 poses_left = ArrayCount(APP.gpu.model.poses) - APP.gpu.model.poses_count;
 
-    AN_Pose animation_pose = AN_PoseFromAnimation(&Worker_Skeleton, animation_index, animation_t);
-    if (animation_pose.matrices_count > ArrayCount(pose->mats))
-    {
-      Assert(false);
-      animation_pose.matrices_count = ArrayCount(pose->mats);
+      if (animation_pose.matrices_count <= poses_left)
+      {
+        instance->pose_offset = APP.gpu.model.poses_count;
+        APP.gpu.model.poses_count += animation_pose.matrices_count;
+
+        Mat4 *poses = APP.gpu.model.poses + instance->pose_offset;
+        memcpy(poses, animation_pose.matrices, sizeof(Mat4)*animation_pose.matrices_count);
+      }
     }
-    memcpy(pose->mats, animation_pose.matrices, sizeof(Mat4)*animation_pose.matrices_count);
   }
 }
 
-static RDR_WallVertex *RDR_PushWallVertices(TEX_Kind tex, U32 push_vert_count)
+static MSH_GpuVertex *MSH_PushVertices(TEX_Kind tex, U32 push_vert_count)
 {
-  AssertBounds(tex, APP.rdr.wall_mesh_buffers);
-  RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + tex;
-  if (buf->vert_count + push_vert_count > ArrayCount(buf->verts))
+  AssertBounds(tex, APP.gpu.mesh.batches);
+  MSH_Batch *batch = APP.gpu.mesh.batches + tex;
+
+  if (batch->vert_count + push_vert_count > ArrayCount(batch->verts))
     return 0;
 
-  RDR_WallVertex *res = buf->verts + buf->vert_count;
-  buf->vert_count += push_vert_count;
+  MSH_GpuVertex *res = batch->verts + batch->vert_count;
+  batch->vert_count += push_vert_count;
   return res;
 }
 
-static void RDR_PostFrameCleanup()
+static void GPU_PostFrameCleanup()
 {
-  ForArray(i, APP.gpu.rigids)
-    APP.rdr.rigids[i].instance_count = 0;
+  // model
+  APP.gpu.model.poses_count = 0;
+  ForArray(i, APP.gpu.model.batches)
+    APP.gpu.model.batches[i].instances_count = 0;
 
-  ForArray(i, APP.gpu.skinneds)
-    APP.rdr.skinneds[i].instance_count = 0;
+  // mesh
+  ForArray(i, APP.gpu.mesh.batches)
+    APP.gpu.mesh.batches[i].vert_count = 0;
 
-  ForArray(buffer_i, APP.rdr.wall_mesh_buffers)
-  {
-    RDR_WallMeshBuffer *buf = APP.rdr.wall_mesh_buffers + buffer_i;
-    buf->vert_count = 0;
-  }
-
-  APP.rdr.ui.indices_count = 0;
-  APP.rdr.ui.shapes_count = 0;
-  APP.rdr.ui.clips_count = 0;
+  // ui
+  APP.gpu.ui.indices_count = 0;
+  APP.gpu.ui.shapes_count = 0;
+  APP.gpu.ui.clips_count = 0;
 }

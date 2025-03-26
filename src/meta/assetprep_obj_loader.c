@@ -163,7 +163,7 @@ static M_ObjFacePart M_ParseObjFaceTokens(M_ObjParser *p)
   return res;
 }
 
-static U16 M_FindOrInsertRdrRigidVertex(RDR_RigidVertex rdr_vertex)
+static U16 M_FindOrInsertRdrRigidVertex(MDL_GpuRigidVertex rdr_vertex)
 {
   //U64 hash = HashU64(0, &rdr_vertex, sizeof(rdr_vertex));
   // @todo this is n^2, use hash table instead
@@ -467,7 +467,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 
     ForArray(part_i, parts)
     {
-      RDR_RigidVertex rdr_vertex = {};
+      MDL_GpuRigidVertex rdr_vertex = {};
 
       U32 pos_offset = (parts[part_i].pos - 1) * 3;
       rdr_vertex.p = (V3)
@@ -520,13 +520,13 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
   // Output - generating C header
   //
   Pr_Cstr(out, "// Model: "); Pr_S8(out, model_name); Pr_Cstr(out, "\n");
-  Pr_Cstr(out, "static RDR_RigidVertex Model_"); Pr_S8(out, model_name); Pr_Cstr(out, "_vrt[] =\n{\n");
+  Pr_Cstr(out, "static MDL_GpuRigidVertex Model_"); Pr_S8(out, model_name); Pr_Cstr(out, "_vrt[] =\n{\n");
   ForArray(i, M.vertex_table)
   {
     if (!M.vertex_table[i].filled)
       break;
 
-    RDR_RigidVertex rdr = M.vertex_table[i].rdr;
+    MDL_GpuRigidVertex rdr = M.vertex_table[i].rdr;
 
     Pr_Cstr(out, "  ");
 

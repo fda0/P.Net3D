@@ -74,12 +74,7 @@ static void Game_DrawObjects()
         transform = Mat4_Mul(transform, rot_mat); // rotate first, translate second
       }
 
-      if      (obj->s.model == MODEL_Teapot)
-        RDR_AddRigid(RdrRigid_Teapot, transform, obj->s.color);
-      else if (obj->s.model == MODEL_Flag)
-        RDR_AddRigid(RdrRigid_Flag, transform, obj->s.color);
-      else if (obj->s.model == MODEL_FemaleWorker)
-        RDR_AddSkinned(RdrSkinned_Worker, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
+      MDL_Add(obj->s.model, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
     if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollision))
@@ -89,7 +84,7 @@ static void Game_DrawObjects()
       U32 vert_count = face_count * vertices_per_face;
 
       TEX_Kind tex_kind = Clamp(0, TEX_COUNT-1, obj->s.texture);
-      RDR_WallVertex *wall_verts = RDR_PushWallVertices(tex_kind, vert_count);
+      MSH_GpuVertex *wall_verts = MSH_PushVertices(tex_kind, vert_count);
       if (wall_verts)
       {
         ForU32(i, vert_count)
@@ -252,17 +247,17 @@ static void Game_DrawObjects()
     U32 shape_encoded = (shape_index << 2);
     U32 encoded = shape_encoded;
 
-    APP.rdr.ui.indices_count = 6;
-    APP.rdr.ui.indices[0] = 0 | encoded;
-    APP.rdr.ui.indices[1] = 1 | encoded;
-    APP.rdr.ui.indices[2] = 2 | encoded;
+    APP.gpu.ui.indices_count = 6;
+    APP.gpu.ui.indices[0] = 0 | encoded;
+    APP.gpu.ui.indices[1] = 1 | encoded;
+    APP.gpu.ui.indices[2] = 2 | encoded;
 
-    APP.rdr.ui.indices[3] = 2 | encoded;
-    APP.rdr.ui.indices[4] = 1 | encoded;
-    APP.rdr.ui.indices[5] = 3 | encoded;
+    APP.gpu.ui.indices[3] = 2 | encoded;
+    APP.gpu.ui.indices[4] = 1 | encoded;
+    APP.gpu.ui.indices[5] = 3 | encoded;
 
-    APP.rdr.ui.shapes_count = 1;
-    APP.rdr.ui.shapes[0] = (UI_GpuShape)
+    APP.gpu.ui.shapes_count = 1;
+    APP.gpu.ui.shapes[0] = (UI_GpuShape)
     {
       .p_min = (V2){50.f, 50.f},
       .p_max = (V2){APP.window_width - 100.f, APP.window_height - 100.f},
@@ -272,8 +267,8 @@ static void Game_DrawObjects()
       .tex_layer = APP.atlas.active_layer,
     };
 
-    APP.rdr.ui.clips_count = 1;
-    APP.rdr.ui.clips[0] = (UI_GpuClip){};
+    APP.gpu.ui.clips_count = 1;
+    APP.gpu.ui.clips[0] = (UI_GpuClip){};
   }
 }
 
@@ -484,7 +479,7 @@ static void Game_Iterate()
     if (KEY_Held(KEY_MouseRight) && APP.world_mouse_valid)
     {
       marker->s.flags |= ObjFlag_DrawModel;
-      marker->s.model = MODEL_Flag;
+      marker->s.model = MDL_Flag;
       marker->s.p = V3_From_XY_Z(APP.world_mouse, 0);
 
       marker->l.animated_p.x = marker->s.p.x;
@@ -500,7 +495,7 @@ static void Game_Iterate()
   {
     Game_DrawObjects();
     GPU_Iterate();
-    RDR_PostFrameCleanup();
+    GPU_PostFrameCleanup();
   }
 
   // Input cleanup

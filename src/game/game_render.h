@@ -1,40 +1,6 @@
-#define RD_MAX_RIGID_INSTANCES 16
-#define RD_MAX_SKINNED_INSTANCES 16
+#define MDL_MAX_INSTANCES 16
 
-
-typedef enum
-{
-  TEX_Bricks071,
-  TEX_Bricks097,
-  TEX_Grass004,
-  TEX_Ground037,
-  TEX_Ground068,
-  TEX_Ground078,
-  TEX_Leather011,
-  TEX_PavingStones067,
-  TEX_Tiles101,
-  TEX_TestPBR001,
-  TEX_COUNT
-} TEX_Kind;
-
-
-//
-// Enums @todo generate these or setup more dynamic key-like system
-//
-typedef enum
-{
-  RdrRigid_Teapot,
-  RdrRigid_Flag,
-  RdrRigid_COUNT
-} RDR_RigidType;
-
-typedef enum
-{
-  RdrSkinned_Worker,
-  RdrSkinned_COUNT
-} RDR_SkinnedType;
-
-// Uniform
+// Uniform for shader_world
 typedef struct
 {
   Mat4 camera_transform;
@@ -42,7 +8,7 @@ typedef struct
   _Alignas(16) V3 camera_position;
   _Alignas(16) V3 background_color;
   _Alignas(16) V3 towards_sun_dir;
-} RDR_Uniform;
+} World_GpuUniform;
 
 // Vertices
 typedef struct
@@ -50,7 +16,7 @@ typedef struct
   Quat normal_rot;
   V3 p;
   U32 color;
-} RDR_RigidVertex;
+} MDL_GpuRigidVertex;
 
 typedef struct
 {
@@ -59,57 +25,51 @@ typedef struct
   U32 color;
   U32 joints_packed4;
   V4 weights;
-} RDR_SkinnedVertex;
+} MDL_GpuSkinnedVertex;
 
+typedef struct
+{
+  Mat4 transform;
+  U32 color;
+  U32 pose_offset; // unused for rigid
+} MDL_GpuInstance;
+
+typedef struct
+{
+  MDL_GpuInstance instances[MDL_MAX_INSTANCES];
+  U32 instances_count;
+
+  struct
+  {
+    SDL_GPUBuffer *vertices;
+    SDL_GPUBuffer *indices;
+    SDL_GPUBuffer *instances;
+    U32 indices_count;
+  } gpu;
+} MDL_Batch;
+
+// MSH - Mesh
 typedef struct
 {
   Quat normal_rot;
   V3 p;
   V2 uv;
   U32 color;
-} RDR_WallVertex;
-
-// Instance buffers
-typedef struct
-{
-  Mat4 transform;
-  U32 color;
-} RDR_RigidInstance;
+} MSH_GpuVertex;
 
 typedef struct
 {
-  Mat4 transform;
-  U32 color;
-  U32 pose_offset;
-} RDR_SkinnedInstance;
-
-// Pose buffer
-typedef struct
-{
-  Mat4 mats[62];
-} RDR_SkinnedPose;
-
-// Structs that hold things
-typedef struct
-{
-  RDR_RigidInstance instances[RD_MAX_RIGID_INSTANCES];
-  U32 instance_count;
-} RDR_Rigid;
-
-typedef struct
-{
-  RDR_SkinnedInstance instances[RD_MAX_SKINNED_INSTANCES];
-  RDR_SkinnedPose poses[RD_MAX_SKINNED_INSTANCES];
-  U32 instance_count;
-} RDR_Skinned;
-
-typedef struct
-{
-  RDR_WallVertex verts[1024 * 8];
+  MSH_GpuVertex verts[1024 * 8];
   U32 vert_count;
-} RDR_WallMeshBuffer;
 
+  struct
+  {
+    SDL_GPUTexture *texture;
+    SDL_GPUBuffer *vertices;
+  } gpu;
+} MSH_Batch;
 
+// UI - User Interface
 typedef struct
 {
   V2 window_dim;
@@ -133,29 +93,3 @@ typedef struct
   V2 p_min;
   V2 p_max;
 } UI_GpuClip;
-
-// State
-typedef struct
-{
-  RDR_RigidInstance rigid_instances[RD_MAX_RIGID_INSTANCES];
-  U32 rigid_instances_count;
-  RDR_SkinnedInstance skinned_instances[RD_MAX_RIGID_INSTANCES];
-  U32 skinned_instances_count;
-
-  RDR_Rigid rigids[RdrRigid_COUNT];
-  RDR_Skinned skinneds[RdrSkinned_COUNT];
-
-  RDR_WallMeshBuffer wall_mesh_buffers[TEX_COUNT];
-
-  struct
-  {
-    I32 indices[1024 * 8];
-    U32 indices_count;
-
-    UI_GpuShape shapes[1024 * 2];
-    U32 shapes_count;
-
-    UI_GpuClip clips[1024];
-    U32 clips_count;
-  } ui;
-} RDR_State;

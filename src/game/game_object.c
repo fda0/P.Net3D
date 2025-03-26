@@ -154,7 +154,7 @@ static Object *OBJ_CreatePlayer()
   player->s.collision.verts = CollisionVertices_FromRectDim((V2){20, 20});
   Collision_RecalculateNormals(&player->s.collision);
 
-  player->s.model = MODEL_FemaleWorker;
+  player->s.model = MDL_Worker;
 
   player->s.color = Color32_RGBf(1,1,1);
   player->s.animation_index = 23;
