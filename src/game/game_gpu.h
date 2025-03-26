@@ -1,13 +1,3 @@
-#if 0
-typedef struct
-{
-  SDL_GPUBuffer *vert_buf;
-  SDL_GPUBuffer *ind_buf;
-  SDL_GPUBuffer *inst_buf;
-  U32 ind_count;
-} GPU_ModelBuffers;
-#endif
-
 typedef struct
 {
   SDL_GPUGraphicsPipeline *rigid;

@@ -28,7 +28,7 @@
 
 #include "shader_util.hlsl"
 
-struct UniformData
+struct World_DxUniform
 {
   Mat4 camera_transform;
   Mat4 shadow_transform;
@@ -37,33 +37,33 @@ struct UniformData
   V3 towards_sun_dir;
 };
 
-cbuffer VertexUniformBuf : register(b0, space1) { UniformData UniV; };
-cbuffer PixelUniformBuf  : register(b0, space3) { UniformData UniP; };
+cbuffer VertexUniformBuf : register(b0, space1) { World_DxUniform UniV; };
+cbuffer PixelUniformBuf  : register(b0, space3) { World_DxUniform UniP; };
 
-struct VSInput
+struct World_VertexInput
 {
   Quat normal_rot : TEXCOORD0;
   V3   position   : TEXCOORD1;
 
 #if IS_RIGID
-  uint color : TEXCOORD2;
+  U32 color : TEXCOORD2;
 #endif
 
 #if IS_SKINNED
-  uint color          : TEXCOORD2;
-  uint joints_packed4 : TEXCOORD3;
+  U32 color          : TEXCOORD2;
+  U32 joints_packed4 : TEXCOORD3;
   V4   weights        : TEXCOORD4;
 #endif
 
 #if IS_TEXTURED
   V2 uv      : TEXCOORD2;
-  uint color : TEXCOORD3;
+  U32 color : TEXCOORD3;
 #endif
 
-  uint InstanceIndex : SV_InstanceID;
+  U32 instance_index : SV_InstanceID;
 };
 
-struct VertexToFragment
+struct World_VertexToFragment
 {
   V4 color      : TEXCOORD0;
   V4 shadow_p   : TEXCOORD1; // position in shadow space
@@ -78,160 +78,32 @@ struct VertexToFragment
 };
 
 #if USES_INSTANCE_BUFFER
-struct VSModelInstanceData
+struct MDL_DxInstance
 {
-  float4x4 transform;
-  uint color;
-  uint pose_offset;
+  Mat4 transform;
+  U32 color;
+  U32 pose_offset;
 };
-StructuredBuffer<VSModelInstanceData> InstanceBuf : register(t0);
+StructuredBuffer<MDL_DxInstance> InstanceBuf : register(t0);
 #endif
 
 #if IS_SKINNED
-StructuredBuffer<float4x4> PoseBuf : register(t1);
+StructuredBuffer<Mat4> PoseBuf : register(t1);
 #endif
 
-static Mat4 Mat4_Identity()
+
+World_VertexToFragment ShaderModelVS(World_VertexInput input)
 {
-  return Mat4(1.0f, 0.0f, 0.0f, 0.0f,
-              0.0f, 1.0f, 0.0f, 0.0f,
-              0.0f, 0.0f, 1.0f, 0.0f,
-              0.0f, 0.0f, 0.0f, 1.0f);
-}
-
-static Mat4 Mat4_RotationPart(Mat4 mat)
-{
-  // Extract the 3x3 submatrix columns
-  // @todo is this extraction correct? - check with non-uniform scaling
-  V3 axis_x = normalize(V3(mat._m00, mat._m10, mat._m20));
-  V3 axis_y = normalize(V3(mat._m01, mat._m11, mat._m21));
-  V3 axis_z = normalize(V3(mat._m02, mat._m12, mat._m22));
-
-  // Rebuild the matrix with normalized vectors and zero translation
-  mat._m00 = axis_x.x; mat._m01 = axis_y.x; mat._m02 = axis_z.x; mat._m03 = 0.f;
-  mat._m10 = axis_x.y; mat._m11 = axis_y.y; mat._m12 = axis_z.y; mat._m13 = 0.f;
-  mat._m20 = axis_x.z; mat._m21 = axis_y.z; mat._m22 = axis_z.z; mat._m23 = 0.f;
-  mat._m30 = 0.f;      mat._m31 = 0.f;      mat._m32 = 0.f;      mat._m33 = 1.f;
-  return mat;
-}
-
-static float4x4 Mat4_TranslationPart(float4x4 mat)
-{
-  float4x4 res = Mat4_Identity();
-  res._m03 = mat._m03;
-  res._m13 = mat._m13;
-  res._m23 = mat._m23;
-  return res;
-}
-
-static float4x4 Mat4_Scale(float scale)
-{
-  float4x4 res = Mat4_Identity();
-  res._11 = scale;
-  res._22 = scale;
-  res._33 = scale;
-  return res;
-}
-
-static float3x3 Mat3_FromMat4(float4x4 mat)
-{
-  float3x3 res;
-  res._m00 = mat._m00;
-  res._m01 = mat._m01;
-  res._m02 = mat._m02;
-  res._m10 = mat._m10;
-  res._m11 = mat._m11;
-  res._m12 = mat._m12;
-  res._m20 = mat._m20;
-  res._m21 = mat._m21;
-  res._m22 = mat._m22;
-  return res;
-}
-
-static Quat Quat_FromNormalizedPair(V3 a, V3 b)
-{
-  V3 cross_product = cross(a, b);
-  Quat res =
-  {
-    cross_product.x,
-    cross_product.y,
-    cross_product.z,
-    1.f + dot(a, b),
-  };
-  return res;
-}
-static Quat Quat_FromPair(V3 a, V3 b)
-{
-  return Quat_FromNormalizedPair(normalize(a), normalize(b));
-}
-static Mat3 Mat3_Rotation_Quat(Quat q)
-{
-  Quat norm = normalize(q);
-  float xx = norm.x * norm.x;
-  float yy = norm.y * norm.y;
-  float zz = norm.z * norm.z;
-  float xy = norm.x * norm.y;
-  float xz = norm.x * norm.z;
-  float yz = norm.y * norm.z;
-  float wx = norm.w * norm.x;
-  float wy = norm.w * norm.y;
-  float wz = norm.w * norm.z;
-
-  Mat3 res;
-  res._m00 = 1.0f - 2.0f * (yy + zz);
-  res._m10 = 2.0f * (xy + wz);
-  res._m20 = 2.0f * (xz - wy);
-
-  res._m01 = 2.0f * (xy - wz);
-  res._m11 = 1.0f - 2.0f * (xx + zz);
-  res._m21 = 2.0f * (yz + wx);
-
-  res._m02 = 2.0f * (xz + wy);
-  res._m12 = 2.0f * (yz - wx);
-  res._m22 = 1.0f - 2.0f * (xx + yy);
-  return res;
-}
-static Quat Quat_Mul(Quat a, Quat b)
-{
-  Quat res;
-  res.x = b.w * +a.x;
-  res.y = b.z * -a.x;
-  res.z = b.y * +a.x;
-  res.w = b.x * -a.x;
-
-  res.x += b.z * +a.y;
-  res.y += b.w * +a.y;
-  res.z += b.x * -a.y;
-  res.w += b.y * -a.y;
-
-  res.x += b.y * -a.z;
-  res.y += b.x * +a.z;
-  res.z += b.w * +a.z;
-  res.w += b.z * -a.z;
-
-  res.x += b.x * +a.w;
-  res.y += b.y * +a.w;
-  res.z += b.z * +a.w;
-  res.w += b.w * +a.w;
-  return res;
-}
-
-
-
-VertexToFragment ShaderModelVS(VSInput input)
-{
-  float4 input_color = UnpackColor32(input.color);
-  float4 color = input_color;
+  V4 input_color = UnpackColor32(input.color);
+  V4 color = input_color;
 
 #if USES_INSTANCE_BUFFER
-  VSModelInstanceData instance = InstanceBuf[input.InstanceIndex];
-  float4 instance_color = UnpackColor32(instance.color);
+  MDL_DxInstance instance = InstanceBuf[input.instance_index];
+  V4 instance_color = UnpackColor32(instance.color);
 
   if (input.color == 0xff014b74) // @todo obviously temporary
     color = instance_color;
 #endif
-
-
 
   // Position
 #if USES_INSTANCE_BUFFER
@@ -242,10 +114,10 @@ VertexToFragment ShaderModelVS(VSInput input)
 
 #if IS_SKINNED
   {
-    uint joint0 = (input.joints_packed4      ) & 0xff;
-    uint joint1 = (input.joints_packed4 >>  8) & 0xff;
-    uint joint2 = (input.joints_packed4 >> 16) & 0xff;
-    uint joint3 = (input.joints_packed4 >> 24) & 0xff;
+    U32 joint0 = (input.joints_packed4      ) & 0xff;
+    U32 joint1 = (input.joints_packed4 >>  8) & 0xff;
+    U32 joint2 = (input.joints_packed4 >> 16) & 0xff;
+    U32 joint3 = (input.joints_packed4 >> 24) & 0xff;
     joint0 += instance.pose_offset;
     joint1 += instance.pose_offset;
     joint2 += instance.pose_offset;
@@ -266,15 +138,15 @@ VertexToFragment ShaderModelVS(VSInput input)
   }
 #endif
 
-  float4 world_p = mul(position_transform, float4(input.position, 1.0f));
-  float4 clip_p = mul(UniV.camera_transform, world_p);
+  V4 world_p = mul(position_transform, float4(input.position, 1.0f));
+  V4 clip_p = mul(UniV.camera_transform, world_p);
 
   Mat3 input_normal_mat = Mat3_Rotation_Quat(input.normal_rot);
   Mat3 position_rotation = Mat3_FromMat4(Mat4_RotationPart(position_transform));
   Mat3 normal_rotation = mul(position_rotation, input_normal_mat);
 
   // Return
-  VertexToFragment frag;
+  World_VertexToFragment frag;
   frag.color = color;
   frag.shadow_p = mul(UniV.shadow_transform, world_p);
   frag.world_p = world_p.xyz;
@@ -293,7 +165,7 @@ Texture2DArray<float4> ColorTexture : register(t1, space2);
 SamplerState ColorSampler : register(s1, space2);
 #endif
 
-float4 ShaderModelPS(VertexToFragment frag) : SV_Target0
+V4 ShaderModelPS(World_VertexToFragment frag) : SV_Target0
 {
   V4 color = frag.color;
   float shininess = 16.f;
