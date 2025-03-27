@@ -33,16 +33,16 @@ static void MDL_Add(MDL_Kind model_kind, Mat4 transform, U32 color,
   }
 }
 
-static MSH_GpuVertex *MSH_PushVertices(TEX_Kind tex, U32 push_vert_count)
+static MSH_GpuVertex *MSH_PushVertices(TEX_Kind tex, U32 push_vertices_count)
 {
   AssertBounds(tex, APP.gpu.mesh.batches);
   MSH_Batch *batch = APP.gpu.mesh.batches + tex;
 
-  if (batch->vert_count + push_vert_count > ArrayCount(batch->verts))
+  if (batch->vertices_count + push_vertices_count > ArrayCount(batch->vertices))
     return 0;
 
-  MSH_GpuVertex *res = batch->verts + batch->vert_count;
-  batch->vert_count += push_vert_count;
+  MSH_GpuVertex *res = batch->vertices + batch->vertices_count;
+  batch->vertices_count += push_vertices_count;
   return res;
 }
 
@@ -55,7 +55,7 @@ static void GPU_PostFrameCleanup()
 
   // mesh
   ForArray(i, APP.gpu.mesh.batches)
-    APP.gpu.mesh.batches[i].vert_count = 0;
+    APP.gpu.mesh.batches[i].vertices_count = 0;
 
   // ui
   APP.gpu.ui.indices_count = 0;

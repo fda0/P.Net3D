@@ -158,3 +158,14 @@ static void TI_LogPerfArray(const char *label, U64 *arr, U64 count)
     LOG(Log_Perf, "Perf counters - only %llu measurement for %s", count, label);
   }
 }
+
+//
+//
+//
+static U32 CalculateMipMapCount(U32 width, U32 height)
+{
+  U32 max_dim = Max(width, height);
+  I32 msb = MostSignificantBitU32(max_dim);
+  if (msb < 0) return 0;
+  return msb;
+}

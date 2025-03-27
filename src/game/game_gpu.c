@@ -6,14 +6,6 @@
 #define GPU_JOINT_TRANSFORMS_MAX_SIZE (sizeof(Mat4)*62)
 #define GPU_SHADOW_MAP_DIM 2048
 
-static U32 GPU_MipMapCount(U32 width, U32 height)
-{
-  U32 max_dim = Max(width, height);
-  I32 msb = MostSignificantBitU32(max_dim);
-  if (msb < 0) return 0;
-  return msb;
-}
-
 static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, const char *name)
 {
   SDL_GPUBufferCreateInfo desc = {.usage = usage, .size = size};
@@ -299,118 +291,6 @@ static void GPU_InitModelBuffers(U32 model_index)
   GPU_TransferBuffer(batch->gpu.indices, indices, indices_size);
 }
 
-static SDL_GPUTexture *GPU_CreateAndLoadTexture2DArray(const char **paths, U64 path_count,
-                                                       const char *texture_name)
-{
-  Arena *a = APP.tmp;
-  ArenaScope scope0 = Arena_PushScope(a);
-
-  SDL_Surface **imgs = Alloc(a, SDL_Surface *, path_count);
-  ForU64(i, path_count)
-    imgs[i] = IMG_Load(paths[i]);
-
-  ForU64(i, path_count)
-  {
-    Assert(imgs[i]); // @todo report err & use fallback textures
-    Assert(imgs[0]->w == imgs[i]->w);
-    Assert(imgs[0]->h == imgs[i]->h);
-    Assert(imgs[0]->format == SDL_PIXELFORMAT_RGB24);
-  }
-
-  SDL_GPUTextureCreateInfo tex_info =
-  {
-    .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-    .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-    .width = imgs[0]->w,
-    .height = imgs[0]->h,
-    .layer_count_or_depth = path_count,
-    .num_levels = GPU_MipMapCount(imgs[0]->w, imgs[0]->h),
-    .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
-  };
-
-  SDL_GPUTexture *result = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
-  SDL_SetGPUTextureName(APP.gpu.device, result, texture_name);
-
-  U32 buffer_size = imgs[0]->w * imgs[0]->h * 4;
-  ForU64(i, path_count)
-  {
-    ArenaScope scope1 = Arena_PushScope(a);
-
-    // temporary: convert rgb -> rgba
-    U8 *buffer = Alloc(a, U8, buffer_size);
-
-    I32 width = imgs[i]->w;
-    I32 height = imgs[i]->h;
-    I32 pitch = imgs[i]->pitch;
-
-    U8 *buffer_row = buffer;
-    U8 *img_row = (U8 *)imgs[i]->pixels;
-
-    ForI32(y, height)
-    {
-      U8 *buffer_pixel = buffer_row;
-      U8 *img_pixel = img_row;
-      ForI32(x, width)
-      {
-        buffer_pixel[0] = img_pixel[0];
-        buffer_pixel[1] = img_pixel[1];
-        buffer_pixel[2] = img_pixel[2];
-        buffer_pixel[3] = 255;
-        buffer_pixel += 4;
-        img_pixel += 3;
-      }
-      buffer_row += width*4;
-      img_row += pitch;
-    }
-
-    // @todo these transfer could be optimized
-    GPU_TransferTexture(result,
-                        i, imgs[i]->w, imgs[i]->h,
-                        buffer, buffer_size);
-
-    Arena_PopScope(scope1);
-  }
-
-  ForU64(i, path_count)
-    SDL_DestroySurface(imgs[i]);
-
-  Arena_PopScope(scope0);
-
-  // Generate texture mipmap
-  {
-    SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-    SDL_GenerateMipmapsForGPUTexture(cmd, result);
-    SDL_SubmitGPUCommandBuffer(cmd);
-  }
-
-  return result;
-}
-
-static void GPU_LoadTextureFiles()
-{
-#define LoadTexturesFromAmbientCgCom(Name) do{ \
-const char *paths[] = \
-{ \
-"../res/tex/" #Name "/" #Name "_1K-JPG_Color.jpg", \
-"../res/tex/" #Name "/" #Name "_1K-JPG_NormalGL.jpg", \
-"../res/tex/" #Name "/" #Name "_1K-JPG_Roughness.jpg", \
-"../res/tex/" #Name "/" #Name "_1K-JPG_Displacement.jpg", \
-}; \
-APP.gpu.mesh.batches[TEX_##Name].gpu.texture = GPU_CreateAndLoadTexture2DArray(paths, ArrayCount(paths), #Name); \
-}while(0)
-
-  LoadTexturesFromAmbientCgCom(Bricks071);
-  LoadTexturesFromAmbientCgCom(Bricks097);
-  LoadTexturesFromAmbientCgCom(Grass004);
-  LoadTexturesFromAmbientCgCom(Ground037);
-  LoadTexturesFromAmbientCgCom(Ground068);
-  LoadTexturesFromAmbientCgCom(Ground078);
-  LoadTexturesFromAmbientCgCom(Leather011);
-  LoadTexturesFromAmbientCgCom(PavingStones067);
-  LoadTexturesFromAmbientCgCom(Tiles101);
-  LoadTexturesFromAmbientCgCom(TestPBR001);
-}
-
 static void GPU_ModifyPipelineForShadowMapping(SDL_GPUGraphicsPipelineCreateInfo *pipeline)
 {
   pipeline->multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
@@ -469,12 +349,12 @@ static void GPU_Init()
       .width = dim,
       .height = dim,
       .layer_count_or_depth = 1,
-      .num_levels = GPU_MipMapCount(dim, dim),
+      .num_levels = CalculateMipMapCount(dim, dim),
       .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
     };
     SDL_GPUTexture *texture = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
     SDL_SetGPUTextureName(APP.gpu.device, texture, "Fallback texture");
-    APP.gpu.fallback_texture = texture;
+    APP.gpu.tex_fallback = texture;
 
     // Fill texture
     {
@@ -721,16 +601,14 @@ static void GPU_Init()
     SDL_ReleaseGPUShader(APP.gpu.device, fragment_shader);
   }
 
-  GPU_LoadTextureFiles();
-
   // Mesh pipeline
   {
     // Create mesh vertex buffers
     ForArray(i, APP.gpu.mesh.batches)
     {
       MSH_Batch *batch = APP.gpu.mesh.batches + i;
-      batch->gpu.vertices =
-        GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, sizeof(batch->verts), "Mesh vertex buffer (one of many)");
+      batch->gpu_vertices =
+        GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, sizeof(batch->vertices), "Mesh vertex buffer (one of many)");
     }
 
     // Texture sampler
@@ -959,7 +837,11 @@ static void GPU_Deinit()
   }
   SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.ui_pipeline);
 
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.fallback_texture);
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_fallback);
+  ForArray(i, APP.gpu.tex_assets)
+  {
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_assets[i].texture);
+  }
 
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
@@ -981,11 +863,7 @@ static void GPU_Deinit()
   // Mesh
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.mesh.gpu_sampler);
   ForArray(i, APP.gpu.mesh.batches)
-  {
-    MSH_Batch *batch = APP.gpu.mesh.batches + i;
-    SDL_ReleaseGPUTexture(APP.gpu.device, batch->gpu.texture);
-    SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.vertices);
-  }
+    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.mesh.batches[i].gpu_vertices);
 
   // UI
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui.gpu.atlas_texture);
@@ -1043,10 +921,10 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
     ForArray(i, APP.gpu.mesh.batches)
     {
       MSH_Batch *batch = APP.gpu.mesh.batches + i;
-      if (batch->vert_count)
+      if (batch->vertices_count)
       {
         // bind vertex buffer
-        SDL_GPUBufferBinding binding_vrt = { .buffer = batch->gpu.vertices };
+        SDL_GPUBufferBinding binding_vrt = { .buffer = batch->gpu_vertices };
         SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
 
         // bind fragment color texture sampler
@@ -1058,7 +936,7 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
         };
         SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
 
-        SDL_DrawGPUPrimitives(pass, batch->vert_count, 1, 0, 0);
+        SDL_DrawGPUPrimitives(pass, batch->vertices_count, 1, 0, 0);
       }
     }
   }
@@ -1105,10 +983,10 @@ static void GPU_Iterate()
   ForArray(i, APP.gpu.mesh.batches)
   {
     MSH_Batch *batch = APP.gpu.mesh.batches + i;
-    if (batch->vert_count)
+    if (batch->vertices_count)
     {
-      U32 transfer_size = batch->vert_count * sizeof(batch->verts[0]);
-      GPU_TransferBuffer(batch->gpu.vertices, batch->verts, transfer_size);
+      U32 transfer_size = batch->vertices_count * sizeof(batch->vertices[0]);
+      GPU_TransferBuffer(batch->gpu_vertices, batch->vertices, transfer_size);
     }
   }
 

@@ -9,6 +9,19 @@ typedef enum
   TEX_COUNT
 } TEX_Kind;
 
+// TEX Paths
+static S8 TEX_Names[] =
+{
+#define TEX_INC(a) {(U8 *)#a, sizeof(#a)-1}
+#include "assets_textures.inc"
+#undef TEX_INC
+};
+
+static S8 TEX_GetName(TEX_Kind tex_kind)
+{
+  Assert(tex_kind < TEX_COUNT);
+  return TEX_Names[tex_kind];
+}
 
 //
 // Models
@@ -21,7 +34,7 @@ typedef enum
   MDL_COUNT
 } MDL_Kind;
 
-
+// MDL Categories
 typedef enum
 {
   MDL_Rigid,
@@ -45,7 +58,7 @@ static MDL_Category MDL_IsSkinned(MDL_Kind model_kind)
   return MDL_GetCategory(model_kind) == MDL_Skinned;
 }
 
-
+// MDL Cstr Names
 static const char *MDL_CstrNames[] =
 {
 #define MDL_INC(a, b) #a

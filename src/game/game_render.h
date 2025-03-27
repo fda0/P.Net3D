@@ -59,14 +59,9 @@ typedef struct
 
 typedef struct
 {
-  MSH_GpuVertex verts[1024 * 8];
-  U32 vert_count;
-
-  struct
-  {
-    SDL_GPUTexture *texture;
-    SDL_GPUBuffer *vertices;
-  } gpu;
+  MSH_GpuVertex vertices[1024 * 8];
+  U32 vertices_count;
+  SDL_GPUBuffer *gpu_vertices;
 } MSH_Batch;
 
 // UI - User Interface

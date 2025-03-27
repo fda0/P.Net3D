@@ -309,7 +309,7 @@ static void FA_ProcessWindowResize(bool init)
         .width = APP.atlas.texture_dim,
         .height = APP.atlas.texture_dim,
         .layer_count_or_depth = FONT_ATLAS_LAYERS,
-        .num_levels = GPU_MipMapCount(APP.atlas.texture_dim, APP.atlas.texture_dim),
+        .num_levels = CalculateMipMapCount(APP.atlas.texture_dim, APP.atlas.texture_dim),
         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
       };
       APP.gpu.ui.gpu.atlas_texture = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);

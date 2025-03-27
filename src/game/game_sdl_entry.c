@@ -21,6 +21,7 @@
 #include "base_string.h"
 #include "base_arena.h"
 #include "base_hash.h"
+#include "base_printer.h"
 #include "game_constants.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
