@@ -242,30 +242,41 @@ static void Game_DrawObjects()
   }
 
   // UI wip experiment
+  float full_dim = Min(APP.window_width, APP.window_height);
+  V2 off = V2_Scale((V2){APP.window_width - full_dim, APP.window_height - full_dim}, 0.5f);
+  float dim = full_dim*0.5f;
+
+  APP.gpu.ui.indices_count = 0;
+  APP.gpu.ui.shapes_count = 0;
+  ForU32(shape_index, 4)
   {
-    U32 shape_index = 0;
     U32 shape_encoded = (shape_index << 2);
     U32 encoded = shape_encoded;
 
-    APP.gpu.ui.indices_count = 6;
-    APP.gpu.ui.indices[0] = 0 | encoded;
-    APP.gpu.ui.indices[1] = 1 | encoded;
-    APP.gpu.ui.indices[2] = 2 | encoded;
+    U32 ic = APP.gpu.ui.indices_count;
+    APP.gpu.ui.indices[ic + 0] = 0 | encoded;
+    APP.gpu.ui.indices[ic + 1] = 1 | encoded;
+    APP.gpu.ui.indices[ic + 2] = 2 | encoded;
+    APP.gpu.ui.indices[ic + 3] = 2 | encoded;
+    APP.gpu.ui.indices[ic + 4] = 1 | encoded;
+    APP.gpu.ui.indices[ic + 5] = 3 | encoded;
+    APP.gpu.ui.indices_count += 6;
 
-    APP.gpu.ui.indices[3] = 2 | encoded;
-    APP.gpu.ui.indices[4] = 1 | encoded;
-    APP.gpu.ui.indices[5] = 3 | encoded;
-
-    APP.gpu.ui.shapes_count = 1;
-    APP.gpu.ui.shapes[0] = (UI_GpuShape)
+    float alpha = (shape_index == APP.atlas.active_layer ? 1.f : 0.6f);
+    UI_GpuShape shape =
     {
-      .p_min = (V2){50.f, 50.f},
-      .p_max = (V2){APP.window_width - 100.f, APP.window_height - 100.f},
-      .color = Color32_RGBf(1.f, 1.f, 1.f),
+      .p_min = off,
+      .color = Color32_RGBAf(1, 1, 1, alpha),
       .tex_min = (V2){0.f, 0.f},
       .tex_max = (V2){APP.atlas.texture_dim, APP.atlas.texture_dim},
-      .tex_layer = APP.atlas.active_layer,
+      .tex_layer = shape_index,
     };
+    if (shape_index & 1) shape.p_min.x += dim;
+    if (shape_index & 2) shape.p_min.y += dim;
+    shape.p_max = V2_Add(shape.p_min, (V2){dim, dim});
+
+    APP.gpu.ui.shapes[shape_index] = shape;
+    APP.gpu.ui.shapes_count += 1;
 
     APP.gpu.ui.clips_count = 1;
     APP.gpu.ui.clips[0] = (UI_GpuClip){};
