@@ -25,7 +25,8 @@
 #include "game_constants.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
-#include "game_assets.h"
+#include "game_asset_definitions.h"
+#include "game_asset.h"
 #include "game_render.h"
 #include "game_object.h"
 #include "game_tick.h"
@@ -51,7 +52,7 @@
 
 static AppState APP;
 #include "game_util.c"
-#include "game_assets.c"
+#include "game_asset.c"
 #include "game_key.c"
 #include "game_object.c"
 #include "game_client.c"
@@ -309,6 +310,7 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
   (void)appstate;
 
   SDLNet_Quit();
+  AST_Deinit();
   GPU_Deinit();
 
   SDL_ReleaseWindowFromGPUDevice(APP.gpu.device, APP.window);

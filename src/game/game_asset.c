@@ -1,31 +1,136 @@
-static SDL_GPUTexture *TEX_GetGPUTexture(TEX_Kind tex_kind)
+static void AST_Init()
+{
+  // Init fallback texture
+  {
+    I32 dim = 512;
+    I32 tex_size = dim*dim*sizeof(U32);
+    U32 and_mask = (1 << 6);
+
+    SDL_GPUTextureCreateInfo tex_info =
+    {
+      .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
+      .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+      .width = dim,
+      .height = dim,
+      .layer_count_or_depth = 1,
+      .num_levels = CalculateMipMapCount(dim, dim),
+      .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
+    };
+    SDL_GPUTexture *texture = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
+    SDL_SetGPUTextureName(APP.gpu.device, texture, "Fallback texture");
+    APP.ast.tex_fallback = texture;
+
+    // Fill texture
+    {
+      SDL_GPUTransferBufferCreateInfo trans_desc =
+      {
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        .size = tex_size
+      };
+      SDL_GPUTransferBuffer *trans_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
+      Assert(trans_buf);
+
+      // Fill GPU memory
+      {
+        U32 *map = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_buf, false);
+        U32 *pixel = map;
+        ForI32(y, dim)
+        {
+          ForI32(x, dim)
+          {
+            pixel[0] = (x & y & and_mask) ? 0xff000000 : 0xffFF00FF;
+            pixel += 1;
+          }
+        }
+        SDL_UnmapGPUTransferBuffer(APP.gpu.device, trans_buf);
+      }
+
+      // GPU memory -> GPU buffers
+      {
+        SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+        SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+        SDL_GPUTextureTransferInfo trans_info = { .transfer_buffer = trans_buf };
+        SDL_GPUTextureRegion dst_region =
+        {
+          .texture = texture,
+          .w = dim,
+          .h = dim,
+          .d = 1,
+        };
+        SDL_UploadToGPUTexture(copy_pass, &trans_info, &dst_region, false);
+
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(cmd);
+      }
+      SDL_ReleaseGPUTransferBuffer(APP.gpu.device, trans_buf);
+    }
+
+    // Generate texture mipmap
+    {
+      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+      SDL_GenerateMipmapsForGPUTexture(cmd, texture);
+      SDL_SubmitGPUCommandBuffer(cmd);
+    }
+  }
+
+  ForArray(i, APP.ast.tex_assets)
+    APP.ast.tex_assets[i].texture = APP.ast.tex_fallback;
+}
+
+static void AST_Deinit()
+{
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_fallback);
+  ForArray(i, APP.ast.tex_assets)
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_assets[i].texture);
+}
+
+static void AST_PostFrame()
+{
+  // Wake up texture asset loading thread
+  if (APP.ast.tex_load_needed)
+  {
+    SDL_SignalSemaphore(APP.ast.tex_sem);
+    APP.ast.tex_load_needed = false;
+  }
+
+  // Increment loaded_t
+  ForArray(i, APP.ast.tex_assets)
+  {
+    Asset *asset = APP.ast.tex_assets + i;
+    float speed = 10.f;
+    asset->loaded_t += (float)asset->loaded * APP.dt * speed;
+    asset->loaded_t = Min(1.f, asset->loaded_t);
+  }
+}
+
+static Asset *TEX_GetAsset(TEX_Kind tex_kind)
 {
   Assert(tex_kind < TEX_COUNT);
-  APP.gpu.tex_assets[tex_kind].last_request_frame = APP.frame_id;
 
-  SDL_GPUTexture *result = APP.gpu.tex_assets[tex_kind].texture;
-  if (!result)
-  {
-    APP.asset_tex_load_needed = true;
-    result = APP.gpu.tex_fallback;
-  }
+  Asset *result = APP.ast.tex_assets + tex_kind;
+  result->last_touched_frame = APP.frame_id;
+
+  if (!result->loaded)
+    APP.ast.tex_load_needed = true;
+
   return result;
 }
 
-static void TEX_Prefetch(TEX_Kind tex_kind)
+static void TEX_PrefetchAsset(TEX_Kind tex_kind)
 {
-  TEX_GetGPUTexture(tex_kind);
+  TEX_GetAsset(tex_kind);
 }
 
 //
 // Thread
 //
-static void TEX_LoadTexture(TEX_Kind tex_kind)
+static void TEX_LoadTexture(TEX_Kind tex_kind, U64 min_frame)
 {
   Assert(tex_kind < TEX_COUNT);
-  GPU_AssetSlot *asset = APP.gpu.tex_assets + tex_kind;
+  Asset *asset = APP.ast.tex_assets + tex_kind;
 
-  if (asset->texture || asset->error)
+  if (asset->loaded || asset->last_touched_frame < min_frame)
     return;
 
   S8 tex_name = TEX_GetName(tex_kind);
@@ -101,6 +206,7 @@ static void TEX_LoadTexture(TEX_Kind tex_kind)
       SDL_DestroySurface(params[i].surface);
 
     asset->error = true;
+    asset->loaded = true;
     return;
   }
 
@@ -194,6 +300,7 @@ static void TEX_LoadTexture(TEX_Kind tex_kind)
   }
 
   asset->texture = texture;
+  asset->loaded = true;
 }
 
 static int SDLCALL TEX_ThreadEntry(void *data)
@@ -208,13 +315,9 @@ static int SDLCALL TEX_ThreadEntry(void *data)
     else                           min_frame = 0;
 
     ForU32(tex_kind, TEX_COUNT)
-    {
-      GPU_AssetSlot *asset = APP.gpu.tex_assets + tex_kind;
-      if (!asset->texture && asset->last_request_frame >= min_frame)
-        TEX_LoadTexture(tex_kind);
-    }
+      TEX_LoadTexture(tex_kind, min_frame);
 
-    SDL_WaitSemaphore(APP.asset_tex_sem);
+    SDL_WaitSemaphore(APP.ast.tex_sem);
     if (APP.in_shutdown)
       return 0;
   }
@@ -222,7 +325,7 @@ static int SDLCALL TEX_ThreadEntry(void *data)
 
 static void TEX_InitThread()
 {
-  APP.asset_tex_sem = SDL_CreateSemaphore(0);
+  APP.ast.tex_sem = SDL_CreateSemaphore(0);
   SDL_Thread *asset_tex_thread = SDL_CreateThread(TEX_ThreadEntry, "Tex asset load thread", 0);
   SDL_DetachThread(asset_tex_thread);
 }

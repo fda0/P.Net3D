@@ -35,6 +35,7 @@ struct World_DxUniform
   V3 camera_position;
   V3 background_color;
   V3 towards_sun_dir;
+  float tex_loaded_t;
 };
 
 cbuffer VertexUniformBuf : register(b0, space1) { World_DxUniform UniV; };
@@ -173,19 +174,25 @@ V4 World_DxShaderPS(World_VertexToFragment frag) : SV_Target0
 
   // Load texture data
 #if IS_TEXTURED
-  V4 tex_color        = ColorTexture.Sample(ColorSampler, V3(frag.uv, 0.f));
-  V4 tex_normal_og    = ColorTexture.Sample(ColorSampler, V3(frag.uv, 1.f));
-  V4 tex_roughness    = ColorTexture.Sample(ColorSampler, V3(frag.uv, 2.f));
-  //V4 tex_displacement = ColorTexture.Sample(ColorSampler, V3(frag.uv, 3.f));
-  V4 tex_occlusion    = ColorTexture.Sample(ColorSampler, V3(frag.uv, 4.f));
-
-  // apply color
-  color *= tex_color;
-
+  V3 tex_color  = ColorTexture.Sample(ColorSampler, V3(frag.uv, 0.f)).xyz;
+  V3 tex_normal = ColorTexture.Sample(ColorSampler, V3(frag.uv, 1.f)).xyz;
   // swizzle normal components into engine format - ideally this would be done by asset preprocessor
-  V3 tex_normal = tex_normal_og.yxz;
   tex_normal.y = 1.f - tex_normal.y;
   tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
+  float tex_roughness = ColorTexture.Sample(ColorSampler, V3(frag.uv, 2.f)).x;
+  // @todo occlusion & displacement
+
+  // apply tex_loaded_t
+  {
+    float loaded_t = UniP.tex_loaded_t;
+    tex_color = lerp(UniP.background_color, tex_color, loaded_t);
+    tex_normal = lerp(face_normal, tex_normal, loaded_t);
+    tex_roughness = lerp(0.5f, tex_roughness, loaded_t);
+    //tex_occlusion = lerp(0.5f, tex_occlusion, loaded_t);
+  }
+
+  // apply color
+  color *= V4(tex_color, 1.f);
 
   V3 pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
 

@@ -336,80 +336,6 @@ static void GPU_Init()
     .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
   };
 
-  // Init fallback texture
-  {
-    I32 dim = 512;
-    I32 tex_size = dim*dim*sizeof(U32);
-    U32 and_mask = (1 << 6);
-
-    SDL_GPUTextureCreateInfo tex_info =
-    {
-      .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-      .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-      .width = dim,
-      .height = dim,
-      .layer_count_or_depth = 1,
-      .num_levels = CalculateMipMapCount(dim, dim),
-      .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
-    };
-    SDL_GPUTexture *texture = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
-    SDL_SetGPUTextureName(APP.gpu.device, texture, "Fallback texture");
-    APP.gpu.tex_fallback = texture;
-
-    // Fill texture
-    {
-      SDL_GPUTransferBufferCreateInfo trans_desc =
-      {
-        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-        .size = tex_size
-      };
-      SDL_GPUTransferBuffer *trans_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
-      Assert(trans_buf);
-
-      // Fill GPU memory
-      {
-        U32 *map = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_buf, false);
-        U32 *pixel = map;
-        ForI32(y, dim)
-        {
-          ForI32(x, dim)
-          {
-            pixel[0] = (x & y & and_mask) ? 0xff000000 : 0xffFF00FF;
-            pixel += 1;
-          }
-        }
-        SDL_UnmapGPUTransferBuffer(APP.gpu.device, trans_buf);
-      }
-
-      // GPU memory -> GPU buffers
-      {
-        SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-        SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
-
-        SDL_GPUTextureTransferInfo trans_info = { .transfer_buffer = trans_buf };
-        SDL_GPUTextureRegion dst_region =
-        {
-          .texture = texture,
-          .w = dim,
-          .h = dim,
-          .d = 1,
-        };
-        SDL_UploadToGPUTexture(copy_pass, &trans_info, &dst_region, false);
-
-        SDL_EndGPUCopyPass(copy_pass);
-        SDL_SubmitGPUCommandBuffer(cmd);
-      }
-      SDL_ReleaseGPUTransferBuffer(APP.gpu.device, trans_buf);
-    }
-
-    // Generate texture mipmap
-    {
-      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-      SDL_GenerateMipmapsForGPUTexture(cmd, texture);
-      SDL_SubmitGPUCommandBuffer(cmd);
-    }
-  }
-
   // Init model buffers (rigid + skinned)
   {
     ForU32(model_index, MDL_COUNT)
@@ -837,12 +763,6 @@ static void GPU_Deinit()
   }
   SDL_ReleaseGPUGraphicsPipeline(APP.gpu.device, APP.gpu.ui_pipeline);
 
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_fallback);
-  ForArray(i, APP.gpu.tex_assets)
-  {
-    SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_assets[i].texture);
-  }
-
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_depth);
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_msaa);
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
@@ -901,7 +821,29 @@ static void GPU_DrawModel(SDL_GPURenderPass *pass, U32 model_index)
   SDL_DrawGPUIndexedPrimitives(pass, batch->gpu.indices_count, batch->instances_count, 0, 0, 0);
 }
 
-static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
+static void GPU_UpdateWorldUniform(SDL_GPUCommandBuffer *cmd, World_GpuUniform uniform)
+{
+  U64 uniform_hash = U64_Hash(sizeof(uniform), &uniform, sizeof(uniform));
+  if (APP.gpu.bound_uniform_hash != uniform_hash)
+  {
+    APP.gpu.bound_uniform_hash = uniform_hash;
+    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
+    SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));
+  }
+}
+
+static void GPU_UpdateUIUniform(SDL_GPUCommandBuffer *cmd, UI_GpuUniform uniform)
+{
+  U64 uniform_hash = U64_Hash(sizeof(uniform), &uniform, sizeof(uniform));
+  if (APP.gpu.bound_uniform_hash != uniform_hash)
+  {
+    APP.gpu.bound_uniform_hash = uniform_hash;
+    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
+    //SDL_PushGPUFragmentUniformData(cmd, 0, &uniform, sizeof(uniform));
+  }
+}
+
+static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, U32 pipeline_index)
 {
   AssertBounds(pipeline_index, APP.gpu.world_pipelines);
 
@@ -927,11 +869,15 @@ static void GPU_RenderPassDrawCalls(SDL_GPURenderPass *pass, U32 pipeline_index)
         SDL_GPUBufferBinding binding_vrt = { .buffer = batch->gpu_vertices };
         SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
 
+        Asset *tex_asset = TEX_GetAsset(i);
+        APP.gpu.world_uniform.tex_loaded_t = tex_asset->loaded_t;
+        GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+
         // bind fragment color texture sampler
         SDL_GPUTextureSamplerBinding binding_sampl =
         {
           //.texture = batch->gpu.texture,
-          .texture = TEX_GetGPUTexture(i),
+          .texture = tex_asset->texture,
           .sampler = APP.gpu.mesh.gpu_sampler,
         };
         SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
@@ -1019,7 +965,7 @@ static void GPU_Iterate()
     .cycle = true,
   };
 
-  World_GpuUniform world_uniform =
+  APP.gpu.world_uniform = (World_GpuUniform)
   {
     .camera_transform = APP.sun_camera_transform,
     .shadow_transform = APP.sun_camera_transform,
@@ -1027,28 +973,25 @@ static void GPU_Iterate()
     .background_color = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B},
     .towards_sun_dir = APP.towards_sun_dir,
   };
+  GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
   // Sun shadow map render pass
   {
-    SDL_PushGPUVertexUniformData(cmd, 0, &world_uniform, sizeof(world_uniform));
-    SDL_PushGPUFragmentUniformData(cmd, 0, &world_uniform, sizeof(world_uniform));
-
     depth_target.texture = APP.gpu.shadow_tex;
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, 0, 0, &depth_target);
-    GPU_RenderPassDrawCalls(pass, 1);
+    GPU_DrawWorld(cmd, pass, 1);
     SDL_EndGPURenderPass(pass);
   }
 
   // World render pass
   {
-    world_uniform.camera_transform = APP.camera_transform;
+    APP.gpu.world_uniform.camera_transform = APP.camera_transform;
     if (APP.debug.sun_camera)
     {
-      world_uniform.camera_transform = APP.sun_camera_transform;
-      world_uniform.camera_position = APP.sun_camera_p;
+      APP.gpu.world_uniform.camera_transform = APP.sun_camera_transform;
+      APP.gpu.world_uniform.camera_position = APP.sun_camera_p;
     }
-    SDL_PushGPUVertexUniformData(cmd, 0, &world_uniform, sizeof(world_uniform));
-    SDL_PushGPUFragmentUniformData(cmd, 0, &world_uniform, sizeof(world_uniform));
+    GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
     depth_target.texture = APP.gpu.tex_depth;
 
@@ -1080,7 +1023,7 @@ static void GPU_Iterate()
     }
 
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
-    GPU_RenderPassDrawCalls(pass, 0);
+    GPU_DrawWorld(cmd, pass, 0);
     SDL_EndGPURenderPass(pass);
   }
 
@@ -1115,7 +1058,7 @@ static void GPU_Iterate()
       .window_dim = (V2){APP.window_width, APP.window_height},
       .texture_dim = (V2){APP.atlas.texture_dim, APP.atlas.texture_dim},
     };
-    SDL_PushGPUVertexUniformData(cmd, 0, &uniform, sizeof(uniform));
+    GPU_UpdateUIUniform(cmd, uniform);
 
     // Upload buffers to GPU
     {

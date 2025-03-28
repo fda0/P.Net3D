@@ -64,6 +64,7 @@ struct AppState
   bool headless; // no window mode
   GPU_State gpu;
   FA_State atlas;
+  AST_State ast;
 
   Arena *tmp;
   Arena *a_frame;
@@ -116,10 +117,6 @@ struct AppState
   bool world_mouse_valid;
   V2 world_mouse;
   Key keys[KEY_COUNT];
-
-  // asset thread
-  bool asset_tex_load_needed;
-  SDL_Semaphore *asset_tex_sem;
 
   // objects
   union

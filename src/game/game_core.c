@@ -496,13 +496,7 @@ static void Game_Iterate()
     Game_DrawObjects();
     GPU_Iterate();
     GPU_PostFrameCleanup();
-  }
-
-  // Wake up texture asset loading thread
-  if (APP.asset_tex_load_needed)
-  {
-    SDL_SignalSemaphore(APP.asset_tex_sem);
-    APP.asset_tex_load_needed = false;
+    AST_PostFrame();
   }
 
   // Input cleanup
@@ -538,6 +532,7 @@ static void Game_Init()
   if (!APP.headless)
   {
     GPU_Init();
+    AST_Init();
     FA_Init();
     TEX_InitThread();
   }

@@ -7,13 +7,6 @@ typedef struct
 
 typedef struct
 {
-  bool error;
-  U64 last_request_frame;
-  SDL_GPUTexture *texture;
-} GPU_AssetSlot;
-
-typedef struct
-{
   SDL_GPUDevice *device;
 
   SDL_GPUTexture *tex_depth;
@@ -28,9 +21,8 @@ typedef struct
   GPU_WorldPipelines world_pipelines[2]; // 0: 4xMSAA; 1: no AA (for shadow mapping)
   SDL_GPUGraphicsPipeline *ui_pipeline;
 
-
-  SDL_GPUTexture *tex_fallback;
-  GPU_AssetSlot tex_assets[TEX_COUNT];
+  U64 bound_uniform_hash;
+  World_GpuUniform world_uniform;
 
   // model, mesh, ui resources
   struct

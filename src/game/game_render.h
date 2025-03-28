@@ -8,6 +8,7 @@ typedef struct
   _Alignas(16) V3 camera_position;
   _Alignas(16) V3 background_color;
   _Alignas(16) V3 towards_sun_dir;
+  float tex_loaded_t;
 } World_GpuUniform;
 
 // Vertices
