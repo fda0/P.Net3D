@@ -498,6 +498,13 @@ static void Game_Iterate()
     GPU_PostFrameCleanup();
   }
 
+  // Wake up texture asset loading thread
+  if (APP.asset_tex_load_needed)
+  {
+    SDL_SignalSemaphore(APP.asset_tex_sem);
+    APP.asset_tex_load_needed = false;
+  }
+
   // Input cleanup
   APP.mouse_delta = (V2){};
 
@@ -532,6 +539,7 @@ static void Game_Init()
   {
     GPU_Init();
     FA_Init();
+    TEX_InitThread();
   }
 
   APP.timestamp = SDL_GetTicks();

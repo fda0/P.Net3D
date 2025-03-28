@@ -1,3 +1,25 @@
+static SDL_GPUTexture *TEX_GetGPUTexture(TEX_Kind tex_kind)
+{
+  Assert(tex_kind < TEX_COUNT);
+  APP.gpu.tex_assets[tex_kind].last_request_frame = APP.frame_id;
+
+  SDL_GPUTexture *result = APP.gpu.tex_assets[tex_kind].texture;
+  if (!result)
+  {
+    APP.asset_tex_load_needed = true;
+    result = APP.gpu.tex_fallback;
+  }
+  return result;
+}
+
+static void TEX_Prefetch(TEX_Kind tex_kind)
+{
+  TEX_GetGPUTexture(tex_kind);
+}
+
+//
+// Thread
+//
 static void TEX_LoadTexture(TEX_Kind tex_kind)
 {
   Assert(tex_kind < TEX_COUNT);
@@ -174,22 +196,33 @@ static void TEX_LoadTexture(TEX_Kind tex_kind)
   asset->texture = texture;
 }
 
-static SDL_GPUTexture *TEX_GetGPUTexture(TEX_Kind tex_kind)
+static int SDLCALL TEX_ThreadEntry(void *data)
 {
-  Assert(tex_kind < TEX_COUNT);
-  APP.gpu.tex_assets[tex_kind].last_request_frame = APP.frame_id;
+  (void)data;
 
-  SDL_GPUTexture *result = APP.gpu.tex_assets[tex_kind].texture;
-  if (!result)
+  for (;;)
   {
-    // unlock some multithreaded thing here @todo
-    TEX_LoadTexture(tex_kind); // @todo move this to another thread
-    result = APP.gpu.tex_fallback;
+    U64 frame_margin = 2;
+    U64 min_frame = APP.frame_id;
+    if (min_frame >= frame_margin) min_frame -= frame_margin;
+    else                           min_frame = 0;
+
+    ForU32(tex_kind, TEX_COUNT)
+    {
+      GPU_AssetSlot *asset = APP.gpu.tex_assets + tex_kind;
+      if (!asset->texture && asset->last_request_frame >= min_frame)
+        TEX_LoadTexture(tex_kind);
+    }
+
+    SDL_WaitSemaphore(APP.asset_tex_sem);
+    if (APP.in_shutdown)
+      return 0;
   }
-  return result;
 }
 
-static void TEX_Prefetch(TEX_Kind tex_kind)
+static void TEX_InitThread()
 {
-  TEX_GetGPUTexture(tex_kind);
+  APP.asset_tex_sem = SDL_CreateSemaphore(0);
+  SDL_Thread *asset_tex_thread = SDL_CreateThread(TEX_ThreadEntry, "Tex asset load thread", 0);
+  SDL_DetachThread(asset_tex_thread);
 }

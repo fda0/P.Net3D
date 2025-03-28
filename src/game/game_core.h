@@ -58,6 +58,7 @@ struct AppState
   // SDL, window stuff
   SDL_Window* window;
   float dpi_scaling;
+  bool in_shutdown;
 
   bool fullscreen;
   bool headless; // no window mode
@@ -115,6 +116,10 @@ struct AppState
   bool world_mouse_valid;
   V2 world_mouse;
   Key keys[KEY_COUNT];
+
+  // asset thread
+  bool asset_tex_load_needed;
+  SDL_Semaphore *asset_tex_sem;
 
   // objects
   union
