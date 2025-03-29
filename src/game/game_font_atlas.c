@@ -90,13 +90,19 @@ static FA_GlyphRun *FA_CreateGlyphRunInLayer(U32 layer_index, U64 hash, I16 orig
   float height_left = max_dim - all_lines_height;
   if (best_line_index < FONT_ATLAS_LAYER_MAX_LINES && height_left >= height)
   {
-    // heuristics for: should we start a new line if using "best line" wastes a lot of height space
+    // We have a line that can be used. But it's still possible to create a new line.
+    // Let's check if we should create a new line - it's a heuristic that tries to minimize
+    // avoid wasting space in lines that are too big for this glyph run.
     I16 best_line_height = layer->line_heights[best_line_index];
-    I16 waste = best_line_height - height;
-    float waste_share = (float)waste / (float)best_line_height;
+    I16 waste_px = best_line_height - height;
+    float waste_share = (float)waste_px / (float)best_line_height;
 
-    if (waste > 4 && waste_share > 0.2f)
-      best_line_height = FONT_ATLAS_LAYER_MAX_LINES;
+    // If layer is almost full the threshold for starting a new line is very big.
+    float used_height_share = all_lines_height / max_dim;
+    float share_threshold = 0.2f + 0.8f*used_height_share;
+
+    if (waste_px > 8 && waste_share > share_threshold)
+      best_line_index = FONT_ATLAS_LAYER_MAX_LINES;
   }
 
   // if no best line - try to create a create new line
@@ -271,6 +277,8 @@ static void FA_ProcessWindowResize(bool init)
     float scale = APP.window_height / 16.f;
     TTF_SetFontSize(APP.atlas.fonts[FA_Regular][0], scale);
     TTF_SetFontSize(APP.atlas.fonts[FA_Regular][1], scale);
+    TTF_SetFontSize(APP.atlas.fonts[FA_Header][0], scale*2.f);
+    TTF_SetFontSize(APP.atlas.fonts[FA_Header][1], scale*2.f);
 
     I32 new_texture_dim = U32_CeilPow2(APP.window_height); // @todo consider window area instead of height
     new_texture_dim = Max(256, new_texture_dim);
@@ -321,15 +329,18 @@ static void FA_ProcessWindowResize(bool init)
 static void FA_Init()
 {
   APP.atlas.margin = 1;
-  float default_size = 120.f;
+  float default_size = 32.f;
 
   // load font
   {
-    TTF_Font *emoji_font = TTF_OpenFont("../res/fonts/NotoColorEmoji-Regular.ttf", default_size);
-    TTF_Font *font = TTF_OpenFont("../res/fonts/Jacquard24-Regular.ttf", default_size);
-    TTF_AddFallbackFont(font, emoji_font);
-    APP.atlas.fonts[FA_Regular][0] = font;
-    APP.atlas.fonts[FA_Regular][1] = emoji_font;
+    APP.atlas.fonts[FA_Regular][0] = TTF_OpenFont("../res/fonts/NotoColorEmoji-Regular.ttf", default_size);
+    APP.atlas.fonts[FA_Regular][1] = TTF_OpenFont("../res/fonts/Jacquard24-Regular.ttf", default_size);
+
+    APP.atlas.fonts[FA_Header][0] = TTF_CopyFont(APP.atlas.fonts[FA_Regular][0]);
+    APP.atlas.fonts[FA_Header][1] = TTF_CopyFont(APP.atlas.fonts[FA_Regular][1]);
+
+    TTF_AddFallbackFont(APP.atlas.fonts[FA_Regular][0], APP.atlas.fonts[FA_Regular][1]);
+    TTF_AddFallbackFont(APP.atlas.fonts[FA_Header][0], APP.atlas.fonts[FA_Header][1]);
   }
 
   FA_ProcessWindowResize(true);

@@ -271,8 +271,8 @@ static void Game_DrawObjects()
       .tex_max = (V2){APP.atlas.texture_dim, APP.atlas.texture_dim},
       .tex_layer = shape_index,
     };
-    if (shape_index & 1) shape.p_min.x += dim;
-    if (shape_index & 2) shape.p_min.y += dim;
+    if (shape_index & 2) shape.p_min.x += dim;
+    if (shape_index & 1) shape.p_min.y += dim;
     shape.p_max = V2_Add(shape.p_min, (V2){dim, dim});
 
     APP.gpu.ui.shapes[shape_index] = shape;
@@ -324,8 +324,11 @@ static void Game_Iterate()
 
   // font experiments
   {
-    FA_GlyphRun g0 = FA_GetGlyphRun(FA_Regular, S8Lit("hello world 🌍"));
-    g0 = FA_GetGlyphRun(FA_Regular, S8Lit("hello sailor ⛵"));
+    FA_GlyphRun g0;
+    g0 = FA_GetGlyphRun(FA_Header, S8Lit("Łabędź🦢"));
+    g0 = FA_GetGlyphRun(FA_Header, S8Lit("Skull💀"));
+    g0 = FA_GetGlyphRun(FA_Regular, S8Lit("World🌍"));
+    g0 = FA_GetGlyphRun(FA_Regular, S8Lit("Boat⛵"));
   }
 
   NET_IterateReceive();

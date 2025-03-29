@@ -26,6 +26,7 @@ typedef struct
 typedef enum
 {
   FA_Regular,
+  FA_Header,
   FA_Font_COUNT,
 } FA_Font;
 
