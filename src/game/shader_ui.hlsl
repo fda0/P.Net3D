@@ -11,19 +11,6 @@ struct UI_DxUniform
   V2 texture_dim;
 };
 
-struct UI_VertexToFragment
-{
-  V4 color : TEXCOORD0;
-  V4 border_color : TEXCOORD1;
-  V3 tex_uv : TEXCOORD2;
-  V2 screen_p : TEXCOORD3;
-  V2 box_center : TEXCOORD4;
-  V2 box_dim : TEXCOORD5;
-  float box_border : TEXCOORD6;
-  V2 box_radius[4] : TEXCOORD7;
-  V4 clip_space_p : SV_Position;
-};
-
 struct UI_DxShape
 {
   V2 p_min;
@@ -31,9 +18,10 @@ struct UI_DxShape
   V2 tex_min;
   V2 tex_max;
   float tex_layer;
-  U32 color;
-  U32 border_color;
-  float border_radius[4];
+  float corner_radius;
+  float edge_softness;
+  float border_thickness;
+  U32 color; // @todo array4
 };
 
 struct UI_DxClip
@@ -41,6 +29,26 @@ struct UI_DxClip
   V2 p_min;
   V2 p_max;
 };
+
+struct UI_Fragment
+{
+  V4 color               : TEXCOORD0;
+  V3 tex_uv              : TEXCOORD1;
+  V2 pos                 : TEXCOORD2;
+  V2 center              : TEXCOORD3;
+  V2 half_dim            : TEXCOORD4;
+  float corner_radius    : TEXCOORD5;
+  float edge_softness    : TEXCOORD6;
+  float border_thickness : TEXCOORD7;
+  V4 vertex_p            : SV_Position;
+};
+
+static float RoundedRectSDF(V2 pos, V2 center, V2 half_dim, float r)
+{
+  V2 d2 = (abs(center - pos) - half_dim + V2(r,r));
+  float l = length(max(d2, V2(0.f,0.f)));
+  return min(max(d2.x, d2.y), 0.f) + l - r;
+}
 
 // Dx resources
 cbuffer VertexUniformBuf : register(b0, space1) { UI_DxUniform UniV; };
@@ -52,7 +60,7 @@ Texture2DArray<V4> AtlasTexture : register(t0, space2);
 SamplerState AtlasSampler : register(s0, space2);
 
 // Shaders
-UI_VertexToFragment UI_DxShaderVS(UI_VertexInput input)
+UI_Fragment UI_DxShaderVS(UI_VertexInput input)
 {
   U32 corner_index = input.vertex_index & 3u; // 2 bits; [0:1]
   U32 shape_index = (input.vertex_index >> 2u) & 0xFFFFu; // 16 bits; [2:17]
@@ -71,17 +79,36 @@ UI_VertexToFragment UI_DxShaderVS(UI_VertexInput input)
   tex_uv /= UniV.texture_dim;
 
   //
-  UI_VertexToFragment frag;
+  UI_Fragment frag;
   frag.color = UnpackColor32(shape.color);
   frag.tex_uv = V3(tex_uv, shape.tex_layer);
-  frag.clip_space_p = V4(2.f*pos / UniV.window_dim - 1.f, 1, 1);
+  frag.pos = pos;
+  frag.center   = (shape.p_min + shape.p_max) * 0.5f;
+  frag.half_dim = (shape.p_max - shape.p_min) * 0.5f;
+  frag.corner_radius    = shape.corner_radius;
+  frag.edge_softness    = shape.edge_softness;
+  frag.border_thickness = shape.border_thickness;
+  frag.vertex_p = V4(2.f*pos / UniV.window_dim - 1.f, 1, 1);
   return frag;
 }
 
-V4 UI_DxShaderPS(UI_VertexToFragment frag) : SV_Target0
+V4 UI_DxShaderPS(UI_Fragment frag) : SV_Target0
 {
-  V4 tex_color = AtlasTexture.Sample(AtlasSampler, frag.tex_uv);
   V4 color = frag.color;
-  color *= tex_color;
+  if (frag.tex_uv.z >= 0.f)
+  {
+    V4 tex_color = AtlasTexture.Sample(AtlasSampler, frag.tex_uv);
+    color *= tex_color;
+  }
+
+  {
+    float softness_padding = frag.edge_softness * 2 - 1;
+    V2 half_dim = frag.half_dim - V2(softness_padding, softness_padding);
+
+    float dist = RoundedRectSDF(frag.pos, frag.center, half_dim, frag.corner_radius);
+    float sdf_factor = 1.f - smoothstep(0, 2*frag.edge_softness, dist);
+    color.a *= sdf_factor;
+  }
+
   return color;
 }

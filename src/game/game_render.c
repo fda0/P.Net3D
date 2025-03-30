@@ -46,6 +46,28 @@ static MSH_GpuVertex *MSH_PushVertices(TEX_Kind tex, U32 push_vertices_count)
   return res;
 }
 
+static void UI_DrawShape(UI_GpuShape shape)
+{
+  if (APP.gpu.ui.indices_count + 6 > ArrayCount(APP.gpu.ui.indices))
+    return;
+  if (APP.gpu.ui.shapes_count + 6 > ArrayCount(APP.gpu.ui.shapes))
+    return;
+
+  U32 shape_i = APP.gpu.ui.shapes_count;
+  APP.gpu.ui.shapes_count += 1;
+  APP.gpu.ui.shapes[shape_i] = shape;
+
+  U32 index_i = APP.gpu.ui.indices_count;
+  APP.gpu.ui.indices_count += 6;
+  U32 encoded = (shape_i << 2);
+  APP.gpu.ui.indices[index_i + 0] = 0 | encoded;
+  APP.gpu.ui.indices[index_i + 1] = 1 | encoded;
+  APP.gpu.ui.indices[index_i + 2] = 2 | encoded;
+  APP.gpu.ui.indices[index_i + 3] = 2 | encoded;
+  APP.gpu.ui.indices[index_i + 4] = 1 | encoded;
+  APP.gpu.ui.indices[index_i + 5] = 3 | encoded;
+}
+
 static void GPU_PostFrameCleanup()
 {
   // model
@@ -60,5 +82,6 @@ static void GPU_PostFrameCleanup()
   // ui
   APP.gpu.ui.indices_count = 0;
   APP.gpu.ui.shapes_count = 0;
-  APP.gpu.ui.clips_count = 0;
+  APP.gpu.ui.clips_count = 1;
+  APP.gpu.ui.clips[0] = (UI_GpuClip){0,0,FLT_MAX,FLT_MAX};
 }

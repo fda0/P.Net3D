@@ -41,7 +41,7 @@ struct World_DxUniform
 cbuffer VertexUniformBuf : register(b0, space1) { World_DxUniform UniV; };
 cbuffer PixelUniformBuf  : register(b0, space3) { World_DxUniform UniP; };
 
-struct World_VertexInput
+struct World_Vertex
 {
   Quat normal_rot : TEXCOORD0;
   V3   position   : TEXCOORD1;
@@ -64,7 +64,7 @@ struct World_VertexInput
   U32 instance_index : SV_InstanceID;
 };
 
-struct World_VertexToFragment
+struct World_Fragment
 {
   V4 color      : TEXCOORD0;
   V4 shadow_p   : TEXCOORD1; // position in shadow space
@@ -75,7 +75,7 @@ struct World_VertexToFragment
 #else
   Mat3 normal_rot : TEXCOORD3;
 #endif
-  V4 clip_p : SV_Position;
+  V4 vertex_p : SV_Position;
 };
 
 #if USES_INSTANCE_BUFFER
@@ -93,7 +93,7 @@ StructuredBuffer<Mat4> PoseBuf : register(t1);
 #endif
 
 
-World_VertexToFragment World_DxShaderVS(World_VertexInput input)
+World_Fragment World_DxShaderVS(World_Vertex input)
 {
   V4 input_color = UnpackColor32(input.color);
   V4 color = input_color;
@@ -140,14 +140,14 @@ World_VertexToFragment World_DxShaderVS(World_VertexInput input)
 #endif
 
   V4 world_p = mul(position_transform, float4(input.position, 1.0f));
-  V4 clip_p = mul(UniV.camera_transform, world_p);
+  V4 vertex_p = mul(UniV.camera_transform, world_p);
 
   Mat3 input_normal_mat = Mat3_Rotation_Quat(input.normal_rot);
   Mat3 position_rotation = Mat3_FromMat4(Mat4_RotationPart(position_transform));
   Mat3 normal_rotation = mul(position_rotation, input_normal_mat);
 
   // Return
-  World_VertexToFragment frag;
+  World_Fragment frag;
   frag.color = color;
   frag.shadow_p = mul(UniV.shadow_transform, world_p);
   frag.world_p = world_p.xyz;
@@ -155,7 +155,7 @@ World_VertexToFragment World_DxShaderVS(World_VertexInput input)
   frag.uv = input.uv;
 #endif
   frag.normal_rot = normal_rotation;
-  frag.clip_p = clip_p;
+  frag.vertex_p = vertex_p;
   return frag;
 }
 
@@ -166,7 +166,7 @@ Texture2DArray<float4> ColorTexture : register(t1, space2);
 SamplerState ColorSampler : register(s1, space2);
 #endif
 
-V4 World_DxShaderPS(World_VertexToFragment frag) : SV_Target0
+V4 World_DxShaderPS(World_Fragment frag) : SV_Target0
 {
   V4 color = frag.color;
   float shininess = 16.f;

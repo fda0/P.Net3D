@@ -79,9 +79,10 @@ typedef struct
   V2 tex_min;
   V2 tex_max;
   float tex_layer;
-  U32 color;
-  U32 border_color;
-  float border_radius[4];
+  float corner_radius;
+  float edge_softness;
+  float border_thickness;
+  U32 color; // @todo array4
 } UI_GpuShape;
 
 typedef struct
