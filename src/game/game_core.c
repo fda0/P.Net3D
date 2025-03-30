@@ -271,6 +271,7 @@ static void Game_DrawObjects()
       .tex_layer = -1.f,
       .corner_radius = 80.f,
       .edge_softness = 10.f,
+      .border_thickness = 30.f,
       .color = Color32_RGBf(0.7f, 0.6f, 0.02f),
     };
     UI_DrawShape(shape);
