@@ -266,16 +266,14 @@ static void Game_DrawObjects()
   {
     UI_GpuShape shape =
     {
-      .p_min = (V2){10,10},
-      .p_max = (V2){300,300},
-      .corner_radius = 80.f,
-      .edge_softness = 10.f,
-      .border_thickness = 30.f,
+      .p_min = (V2){300, 300},
+      .p_max = (V2){400, 400},
+      .corner_radius = 10.f,
+      .edge_softness = 5.f,
       .color = Color32_RGBf(0.7f, 0.6f, 0.02f),
     };
     UI_DrawRect(shape);
   }
-
 
 }
 
@@ -441,7 +439,7 @@ static void Game_Iterate()
     V2 view_mouse =
     {
       (APP.mouse.x / (float)APP.window_width)  * 2.f - 1.f,
-      (APP.mouse.y / (float)APP.window_height) * 2.f - 1.f,
+      (APP.mouse.y / (float)APP.window_height) * -2.f + 1.f,
     };
 
     V3 plane_origin = {};
@@ -504,12 +502,27 @@ static void Game_Iterate()
 
   if (!APP.headless)
   {
+    Game_DrawObjects();
 #if 1
     CLAY_StartFrame();
     CLAY_AddLayoutItems();
     CLAY_FinishFrame();
 #endif
-    Game_DrawObjects();
+
+    {
+      float r = 20.f;
+      UI_GpuShape shape =
+      {
+        .corner_radius = r*0.5f,
+        .edge_softness = 1.f,
+        .border_thickness = 5.f,
+        .color = Color32_RGBf(0.2f, 0.3f, 0.9f),
+      };
+      shape.p_min = V2_Sub(APP.mouse, (V2){r*0.5f,r*0.5f});
+      shape.p_max = V2_Add(shape.p_min, (V2){r,r});
+      UI_DrawRect(shape);
+    }
+
     GPU_Iterate();
     GPU_PostFrameCleanup();
     AST_PostFrame();

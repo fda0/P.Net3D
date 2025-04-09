@@ -50,6 +50,17 @@ static void CLAY_StartFrame()
   Clay_BeginLayout();
 }
 
+void CLAY_RenderDropdownMenuItem(Clay_String text)
+{
+  CLAY({.layout = { .padding = CLAY_PADDING_ALL(16)}}) {
+    CLAY_TEXT(text, CLAY_TEXT_CONFIG({
+                                      .fontId = FA_Regular,
+                                      .fontSize = 16,
+                                      .textColor = { 255, 255, 255, 255 }
+                                      }));
+  }
+}
+
 static void CLAY_AddLayoutItems()
 {
   Clay_Sizing layoutExpand = {
@@ -61,7 +72,7 @@ static void CLAY_AddLayoutItems()
 
   // Build UI here
   CLAY({.id = CLAY_ID("OuterContainer"),
-        .backgroundColor = {43, 41, 51, 255 },
+        .backgroundColor = {43, 41, 51, 0 },
         .layout =
         {
          .layoutDirection = CLAY_TOP_TO_BOTTOM,
@@ -80,7 +91,7 @@ static void CLAY_AddLayoutItems()
             .height = CLAY_SIZING_FIXED(60),
             .width = CLAY_SIZING_GROW(0)
             },
-           .padding = { 16, 16, 16, 0 },
+           .padding = { 16, 16, 0, 0 },
            .childGap = 16,
            .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
            },
@@ -88,14 +99,57 @@ static void CLAY_AddLayoutItems()
           .cornerRadius = CLAY_CORNER_RADIUS(8)
           })
     {
-      CLAY_TEXT(CLAY_STRING("File"),
-                CLAY_TEXT_CONFIG({
-                                  .fontId = FA_Regular,
-                                  .fontSize = 16,
-                                  .textColor = { 255, 255, 255, 255 }
-                                  }));
+      CLAY({ .id = CLAY_ID("FileButton"),
+            .layout = { .padding = { 16, 16, 8, 8 } },
+            .backgroundColor = { 140, 140, 140, 255 },
+            .cornerRadius = CLAY_CORNER_RADIUS(5)
+            })
+      {
+        CLAY_TEXT(CLAY_STRING("File"),
+                  CLAY_TEXT_CONFIG({
+                                    .fontId = FA_Regular,
+                                    .fontSize = 16,
+                                    .textColor = { 255, 255, 255, 255 }
+                                    }));
+
+        bool fileMenuVisible =
+          Clay_PointerOver(Clay_GetElementId(CLAY_STRING("FileButton"))) ||
+          Clay_PointerOver(Clay_GetElementId(CLAY_STRING("FileMenu")));
+
+        if (fileMenuVisible)
+        { // Below has been changed slightly to fix the small bug where the menu would dismiss when mousing over the top gap
+          CLAY({ .id = CLAY_ID("FileMenu"),
+                .floating =
+                {
+                 .attachTo = CLAY_ATTACH_TO_PARENT,
+                 .attachPoints = { .parent = CLAY_ATTACH_POINT_LEFT_BOTTOM },
+                 },
+                .layout = { .padding = {0, 0, 8, 8} }
+                })
+          {
+            CLAY({
+                  .layout =
+                  {
+                   .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                   .sizing = { .width = CLAY_SIZING_FIXED(200) },
+                   },
+                  .backgroundColor = { 40, 40, 40, 255 },
+                  .cornerRadius = CLAY_CORNER_RADIUS(8)
+                  })
+            {
+              // Render dropdown items here
+              CLAY_RenderDropdownMenuItem(CLAY_STRING("New"));
+              CLAY_RenderDropdownMenuItem(CLAY_STRING("Open"));
+              CLAY_RenderDropdownMenuItem(CLAY_STRING("Close"));
+            }
+          }
+
+        }
+      }
     }
   }
+
+
 }
 
 static void CLAY_FinishFrame()

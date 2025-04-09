@@ -77,7 +77,6 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   {
     // Mouse
     SDL_MouseButtonFlags mouse_keys = SDL_GetMouseState(&APP.mouse.x, &APP.mouse.y);
-    APP.mouse.y = APP.window_height - APP.mouse.y;
 
     KEY_Update(KEY_MouseLeft, mouse_keys & SDL_BUTTON_LMASK);
     KEY_Update(KEY_MouseRight, mouse_keys & SDL_BUTTON_RMASK);

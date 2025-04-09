@@ -274,7 +274,7 @@ static void FA_ProcessWindowResize(bool init)
 {
   if (APP.window_resized || init)
   {
-    float scale = APP.window_height / 16.f;
+    float scale = APP.window_height / 32.f;
     TTF_SetFontSize(APP.atlas.fonts[FA_Regular][0], scale);
     TTF_SetFontSize(APP.atlas.fonts[FA_Regular][1], scale);
     TTF_SetFontSize(APP.atlas.fonts[FA_Header][0], scale*2.f);
