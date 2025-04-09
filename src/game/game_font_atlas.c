@@ -1,3 +1,7 @@
+// @future: This code probably should use freetype directly.
+// We don't use any features specific to SDL_ttf and we do the caching on the gpu ourselves.
+// We don't want SDL_ttf to do additional caching on their side.
+
 static U64 FA_TextHash(FA_Font font, S8 text)
 {
   AssertBounds(font, APP.atlas.fonts);

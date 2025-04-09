@@ -315,7 +315,7 @@ static void Game_Iterate()
 
   GPU_ProcessWindowResize(false);
   FA_ProcessWindowResize(false);
-  CLAY_ProcessWindowResize();
+  CL_ProcessWindowResize();
 
   // font experiments
   {
@@ -504,9 +504,9 @@ static void Game_Iterate()
   {
     Game_DrawObjects();
 #if 1
-    CLAY_StartFrame();
-    CLAY_AddLayoutItems();
-    CLAY_FinishFrame();
+    CL_StartFrame();
+    CL_CreateUI();
+    CL_FinishFrame();
 #endif
 
     {
@@ -561,7 +561,7 @@ static void Game_Init()
     AST_Init();
     FA_Init();
     TEX_InitThread();
-    CLAY_Init();
+    CL_Init();
   }
 
   APP.timestamp = SDL_GetTicks();

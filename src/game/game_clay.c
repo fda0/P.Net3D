@@ -1,12 +1,135 @@
-static void CLAY_LogError(Clay_ErrorData error)
+static void CL_RenderHeaderButton(Clay_String text)
+{
+  CLAY({.layout = {.padding = {16, 16, 8, 8}},
+        .backgroundColor = {140, 140, 140, 255},
+        .cornerRadius = CLAY_CORNER_RADIUS(5)})
+  {
+    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FA_Regular,
+                                      .textColor = {255, 255, 255, 255}}));
+  }
+}
+
+
+static void CL_RenderDropdownMenuItem(Clay_String text)
+{
+  CLAY({.layout = {.padding = CLAY_PADDING_ALL(16)}})
+  {
+    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FA_Regular,
+                                      .fontSize = 16,
+                                      .textColor = {255, 255, 255, 255}}));
+  }
+}
+
+static void CL_CreateUI()
+{
+  Clay_Sizing layoutExpand =
+  {
+    .width = CLAY_SIZING_GROW(0),
+    .height = CLAY_SIZING_GROW(0)
+  };
+
+  Clay_Color contentBackgroundColor = {90, 90, 90, 255};
+
+  // Build UI here
+  CLAY({.id = CLAY_ID("OuterContainer"),
+        .backgroundColor = {43, 41, 51, 0},
+        .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                   .sizing = layoutExpand,
+                   .padding = CLAY_PADDING_ALL(16),
+                   .childGap = 16}})
+  {
+    // Child elements go inside braces
+    CLAY({.id = CLAY_ID("HeaderBar"),
+          .layout = {.sizing = {.height = CLAY_SIZING_FIXED(60),
+                                .width = CLAY_SIZING_GROW(0)},
+                     .padding = {16, 16, 0, 0},
+                     .childGap = 16,
+                     .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
+          .backgroundColor = contentBackgroundColor,
+          .cornerRadius = CLAY_CORNER_RADIUS(8)})
+    {
+      CLAY({.id = CLAY_ID("FileButton"),
+            .layout = {.padding = {16, 16, 8, 8}},
+            .backgroundColor = {140, 140, 140, 255},
+            .cornerRadius = CLAY_CORNER_RADIUS(5)
+            })
+      {
+        CLAY_TEXT(CLAY_STRING("File"),
+                  CLAY_TEXT_CONFIG({.fontId = FA_Regular,
+                                    .textColor = {255, 255, 255, 255}}));
+
+        bool fileMenuVisible =
+          Clay_PointerOver(Clay_GetElementId(CLAY_STRING("FileButton"))) ||
+          Clay_PointerOver(Clay_GetElementId(CLAY_STRING("FileMenu")));
+
+        if (fileMenuVisible)
+        {
+          CLAY({.id = CLAY_ID("FileMenu"),
+                .floating = {.attachTo = CLAY_ATTACH_TO_PARENT,
+                             .attachPoints = {.parent = CLAY_ATTACH_POINT_LEFT_BOTTOM}},
+                .layout = {.padding = {0, 0, 8, 8}}})
+          {
+            CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                             .sizing = {.width = CLAY_SIZING_FIXED(200)}},
+                  .backgroundColor = {40, 40, 40, 255},
+                  .cornerRadius = CLAY_CORNER_RADIUS(8)})
+            {
+              // Render dropdown items here
+              CL_RenderDropdownMenuItem(CLAY_STRING("New"));
+              CL_RenderDropdownMenuItem(CLAY_STRING("Open"));
+              CL_RenderDropdownMenuItem(CLAY_STRING("Close"));
+            }
+          }
+        }
+      }
+
+      CL_RenderHeaderButton(CLAY_STRING("Edit"));
+      CLAY({.layout = {.sizing = {CLAY_SIZING_GROW(0)}}}) {}
+      CL_RenderHeaderButton(CLAY_STRING("Upload"));
+      CL_RenderHeaderButton(CLAY_STRING("Media"));
+      CL_RenderHeaderButton(CLAY_STRING("Support"));
+    }
+
+    CLAY({.id = CLAY_ID("LowerContent"),
+          .layout = {.sizing = layoutExpand, .childGap = 16}})
+    {
+      CLAY({.id = CLAY_ID("Sidebar"),
+            .backgroundColor = contentBackgroundColor,
+            .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                       .padding = CLAY_PADDING_ALL(16),
+                       .childGap = 8,
+                       .sizing = {.width = CLAY_SIZING_FIXED(250),
+                                  .height = CLAY_SIZING_GROW(0)}}})
+      {
+
+      }
+
+      CLAY({.id = CLAY_ID("MainContent"),
+            .backgroundColor = contentBackgroundColor,
+            .scroll = { .vertical = true },
+            .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                       .childGap = 16,
+                       .padding = CLAY_PADDING_ALL(16),
+                       .sizing = layoutExpand}})
+      {
+
+      }
+    }
+  }
+}
+
+//
+//
+//
+static void CL_LogError(Clay_ErrorData error)
 {
   LOG(Log_Clay, "%s", error.errorText.chars);
 }
 
-static Clay_Dimensions CLAY_MeasureText(Clay_StringSlice clay_string, Clay_TextElementConfig *config, void *user_data)
+static Clay_Dimensions CL_MeasureText(Clay_StringSlice clay_slice, Clay_TextElementConfig *config, void *user_data)
 {
   (void)user_data;
-  S8 string = S8_Make((U8 *)clay_string.chars, clay_string.length);
+  S8 string = S8_FromClaySlice(clay_slice);
 
   FA_Font font_index = config->fontId;
   if (config->fontId < 0 || config->fontId > FA_Font_COUNT)
@@ -22,7 +145,7 @@ static Clay_Dimensions CLAY_MeasureText(Clay_StringSlice clay_string, Clay_TextE
   return result;
 }
 
-static void CLAY_Init()
+static void CL_Init()
 {
   U64 memory_size = Clay_MinMemorySize();
   Clay_Arena clay_arena = (Clay_Arena)
@@ -31,11 +154,11 @@ static void CLAY_Init()
     .capacity = memory_size
   };
 
-  Clay_Initialize(clay_arena, (Clay_Dimensions){APP.window_width, APP.window_height}, (Clay_ErrorHandler){CLAY_LogError});
-  Clay_SetMeasureTextFunction(CLAY_MeasureText, 0);
+  Clay_Initialize(clay_arena, (Clay_Dimensions){APP.window_width, APP.window_height}, (Clay_ErrorHandler){CL_LogError});
+  Clay_SetMeasureTextFunction(CL_MeasureText, 0);
 }
 
-static void CLAY_ProcessWindowResize()
+static void CL_ProcessWindowResize()
 {
   if (APP.window_resized)
   {
@@ -43,116 +166,14 @@ static void CLAY_ProcessWindowResize()
   }
 }
 
-static void CLAY_StartFrame()
+static void CL_StartFrame()
 {
   Clay_SetPointerState((Clay_Vector2){APP.mouse.x, APP.mouse.y}, KEY_Pressed(KEY_MouseLeft));
   Clay_UpdateScrollContainers(true, (Clay_Vector2){APP.mouse_scroll.x, APP.mouse_scroll.y}, APP.dt);
   Clay_BeginLayout();
 }
 
-void CLAY_RenderDropdownMenuItem(Clay_String text)
-{
-  CLAY({.layout = { .padding = CLAY_PADDING_ALL(16)}}) {
-    CLAY_TEXT(text, CLAY_TEXT_CONFIG({
-                                      .fontId = FA_Regular,
-                                      .fontSize = 16,
-                                      .textColor = { 255, 255, 255, 255 }
-                                      }));
-  }
-}
-
-static void CLAY_AddLayoutItems()
-{
-  Clay_Sizing layoutExpand = {
-    .width = CLAY_SIZING_GROW(0),
-    .height = CLAY_SIZING_GROW(0)
-  };
-
-  Clay_Color contentBackgroundColor = { 90, 90, 90, 255 };
-
-  // Build UI here
-  CLAY({.id = CLAY_ID("OuterContainer"),
-        .backgroundColor = {43, 41, 51, 0 },
-        .layout =
-        {
-         .layoutDirection = CLAY_TOP_TO_BOTTOM,
-         .sizing = layoutExpand,
-         .padding = CLAY_PADDING_ALL(16),
-         .childGap = 16
-         }
-        })
-  {
-    // Child elements go inside braces
-    CLAY({ .id = CLAY_ID("HeaderBar"),
-          .layout =
-          {
-           .sizing =
-           {
-            .height = CLAY_SIZING_FIXED(60),
-            .width = CLAY_SIZING_GROW(0)
-            },
-           .padding = { 16, 16, 0, 0 },
-           .childGap = 16,
-           .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
-           },
-          .backgroundColor = contentBackgroundColor,
-          .cornerRadius = CLAY_CORNER_RADIUS(8)
-          })
-    {
-      CLAY({ .id = CLAY_ID("FileButton"),
-            .layout = { .padding = { 16, 16, 8, 8 } },
-            .backgroundColor = { 140, 140, 140, 255 },
-            .cornerRadius = CLAY_CORNER_RADIUS(5)
-            })
-      {
-        CLAY_TEXT(CLAY_STRING("File"),
-                  CLAY_TEXT_CONFIG({
-                                    .fontId = FA_Regular,
-                                    .fontSize = 16,
-                                    .textColor = { 255, 255, 255, 255 }
-                                    }));
-
-        bool fileMenuVisible =
-          Clay_PointerOver(Clay_GetElementId(CLAY_STRING("FileButton"))) ||
-          Clay_PointerOver(Clay_GetElementId(CLAY_STRING("FileMenu")));
-
-        if (fileMenuVisible)
-        { // Below has been changed slightly to fix the small bug where the menu would dismiss when mousing over the top gap
-          CLAY({ .id = CLAY_ID("FileMenu"),
-                .floating =
-                {
-                 .attachTo = CLAY_ATTACH_TO_PARENT,
-                 .attachPoints = { .parent = CLAY_ATTACH_POINT_LEFT_BOTTOM },
-                 },
-                .layout = { .padding = {0, 0, 8, 8} }
-                })
-          {
-            CLAY({
-                  .layout =
-                  {
-                   .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                   .sizing = { .width = CLAY_SIZING_FIXED(200) },
-                   },
-                  .backgroundColor = { 40, 40, 40, 255 },
-                  .cornerRadius = CLAY_CORNER_RADIUS(8)
-                  })
-            {
-              // Render dropdown items here
-              CLAY_RenderDropdownMenuItem(CLAY_STRING("New"));
-              CLAY_RenderDropdownMenuItem(CLAY_STRING("Open"));
-              CLAY_RenderDropdownMenuItem(CLAY_STRING("Close"));
-            }
-          }
-
-        }
-      }
-    }
-  }
-
-
-}
-
-static void CLAY_FinishFrame()
+static void CL_FinishFrame()
 {
   Clay_RenderCommandArray render_commands = Clay_EndLayout();
   ForI32(i, render_commands.length)
@@ -179,7 +200,7 @@ static void CLAY_FinishFrame()
       case CLAY_RENDER_COMMAND_TYPE_TEXT:
       {
         Clay_TextRenderData text = command->renderData.text;
-        S8 string = S8_Make((U8 *)text.stringContents.chars, text.stringContents.length);
+        S8 string = S8_FromClaySlice(text.stringContents);
         FA_GlyphRun glyphs = FA_GetGlyphRun(FA_Regular, string);
         if (glyphs.hash)
         {
