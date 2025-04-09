@@ -168,16 +168,16 @@ static U16 M_FindOrInsertRdrRigidVertex(MDL_GpuRigidVertex rdr_vertex)
   //U64 hash = HashU64(0, &rdr_vertex, sizeof(rdr_vertex));
   // @todo this is n^2, use hash table instead
 
-  ForArray(i, M.vertex_table)
+  ForArray(i, BAKER.vertex_table)
   {
-    if (!M.vertex_table[i].filled)
+    if (!BAKER.vertex_table[i].filled)
     {
-      M.vertex_table[i].filled = true;
-      M.vertex_table[i].rdr = rdr_vertex;
+      BAKER.vertex_table[i].filled = true;
+      BAKER.vertex_table[i].rdr = rdr_vertex;
       return (U16)i;
     }
 
-    if (Memeq(&rdr_vertex, &M.vertex_table[i].rdr, sizeof(rdr_vertex)))
+    if (Memeq(&rdr_vertex, &BAKER.vertex_table[i].rdr, sizeof(rdr_vertex)))
     {
       return (U16)i;
     }
@@ -189,23 +189,23 @@ static U16 M_FindOrInsertRdrRigidVertex(MDL_GpuRigidVertex rdr_vertex)
 
 static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
 {
-  ArenaScope tmp_scope = Arena_PushScope(M.tmp);
+  ArenaScope tmp_scope = Arena_PushScope(BAKER.tmp);
 
   // Clear global memory
-  SDL_zeroa(M.vertex_table);
+  SDL_zeroa(BAKER.vertex_table);
 
   // Prepare tmp memory
   U32 max_elems = 1024*1024;
   S8 active_material = {};
 
-  float *obj_verts = AllocZeroed(M.tmp, float, max_elems);
-  float *obj_normals = AllocZeroed(M.tmp, float, max_elems);
-  M_ObjFacePart *obj_parts = AllocZeroed(M.tmp, M_ObjFacePart, max_elems);
+  float *obj_verts = AllocZeroed(BAKER.tmp, float, max_elems);
+  float *obj_normals = AllocZeroed(BAKER.tmp, float, max_elems);
+  M_ObjFacePart *obj_parts = AllocZeroed(BAKER.tmp, M_ObjFacePart, max_elems);
   U64 obj_vert_count = 0;
   U64 obj_normal_count = 0;
   U64 obj_part_count = 0;
 
-  U16 *out_inds = AllocZeroed(M.tmp, U16, max_elems);
+  U16 *out_inds = AllocZeroed(BAKER.tmp, U16, max_elems);
   U64 out_ind_count = 0;
 
   // Prepare transformation matrices
@@ -521,12 +521,12 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
   //
   Pr_Cstr(out, "// Model: "); Pr_S8(out, model_name); Pr_Cstr(out, "\n");
   Pr_Cstr(out, "static MDL_GpuRigidVertex Model_"); Pr_S8(out, model_name); Pr_Cstr(out, "_vrt[] =\n{\n");
-  ForArray(i, M.vertex_table)
+  ForArray(i, BAKER.vertex_table)
   {
-    if (!M.vertex_table[i].filled)
+    if (!BAKER.vertex_table[i].filled)
       break;
 
-    MDL_GpuRigidVertex rdr = M.vertex_table[i].rdr;
+    MDL_GpuRigidVertex rdr = BAKER.vertex_table[i].rdr;
 
     Pr_Cstr(out, "  ");
 

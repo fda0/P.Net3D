@@ -10,5 +10,5 @@ typedef struct
   Arena *cgltf_arena;
 
   M_VertexEntry vertex_table[1024*1024];
-} Meta_State;
-static Meta_State M;
+} BAKER_State;
+static BAKER_State BAKER;
