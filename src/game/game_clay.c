@@ -1,10 +1,12 @@
 static void CL_RenderHeaderButton(Clay_String text)
 {
-  CLAY({.layout = {.padding = {16, 16, 8, 8}},
+  CLAY({.layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
+                   .padding = {16, 16, 8, 8},
+                   .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
         .backgroundColor = {140, 140, 140, 255},
         .cornerRadius = CLAY_CORNER_RADIUS(5)})
   {
-    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FA_Regular,
+    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FA_Header,
                                       .textColor = {255, 255, 255, 255}}));
   }
 }
@@ -40,7 +42,7 @@ static void CL_CreateUI()
   {
     // Child elements go inside braces
     CLAY({.id = CLAY_ID("HeaderBar"),
-          .layout = {.sizing = {.height = CLAY_SIZING_FIXED(60),
+          .layout = {.sizing = {.height = CLAY_SIZING_FIXED(80),
                                 .width = CLAY_SIZING_GROW(0)},
                      .padding = {16, 16, 0, 0},
                      .childGap = 16,
@@ -49,13 +51,14 @@ static void CL_CreateUI()
           .cornerRadius = CLAY_CORNER_RADIUS(8)})
     {
       CLAY({.id = CLAY_ID("FileButton"),
-            .layout = {.padding = {16, 16, 8, 8}},
+            .layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
+                       .padding = {16, 16, 8, 8},
+                       .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
             .backgroundColor = {140, 140, 140, 255},
-            .cornerRadius = CLAY_CORNER_RADIUS(5)
-            })
+            .cornerRadius = CLAY_CORNER_RADIUS(5)})
       {
         CLAY_TEXT(CLAY_STRING("File"),
-                  CLAY_TEXT_CONFIG({.fontId = FA_Regular,
+                  CLAY_TEXT_CONFIG({.fontId = FA_Header,
                                     .textColor = {255, 255, 255, 255}}));
 
         bool fileMenuVisible =
@@ -132,8 +135,7 @@ static Clay_Dimensions CL_MeasureText(Clay_StringSlice clay_slice, Clay_TextElem
   S8 string = S8_FromClaySlice(clay_slice);
 
   FA_Font font_index = config->fontId;
-  if (config->fontId < 0 || config->fontId > FA_Font_COUNT)
-    font_index = FA_Regular;
+  if (font_index < 0 || font_index >= FA_Font_COUNT) font_index = FA_Regular;
   TTF_Font *ttf_font = APP.atlas.fonts[font_index][0];
 
   I32 width = 0, height = 0;
@@ -178,8 +180,8 @@ static void CL_FinishFrame()
   Clay_RenderCommandArray render_commands = Clay_EndLayout();
   ForI32(i, render_commands.length)
   {
-    Clay_RenderCommand *command = Clay_RenderCommandArray_Get(&render_commands, i);
-    Clay_BoundingBox box = command->boundingBox;
+    Clay_RenderCommand *rcom = Clay_RenderCommandArray_Get(&render_commands, i);
+    Clay_BoundingBox box = rcom->boundingBox;
 
     UI_GpuShape shape =
     {
@@ -188,20 +190,32 @@ static void CL_FinishFrame()
       .tex_layer = -1.f,
     };
 
-    switch (command->commandType)
+    switch (rcom->commandType)
     {
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
       {
-        Clay_RectangleRenderData rect = command->renderData.rectangle;
+        Clay_RectangleRenderData rect = rcom->renderData.rectangle;
         shape.color = Color32_ClayColor(rect.backgroundColor);
         shape.corner_radius = rect.cornerRadius.topLeft; // @todo support corner radius for each corner
       } break;
 
+      case CLAY_RENDER_COMMAND_TYPE_BORDER:
+      {
+        Clay_BorderRenderData border = rcom->renderData.border;
+        shape.color = Color32_ClayColor(border.color);
+        shape.corner_radius = border.cornerRadius.topLeft; // @todo support corner radius for each corner
+        shape.border_thickness = border.width.left; // @todo support border width per direction?
+      } break;
+
       case CLAY_RENDER_COMMAND_TYPE_TEXT:
       {
-        Clay_TextRenderData text = command->renderData.text;
+        Clay_TextRenderData text = rcom->renderData.text;
         S8 string = S8_FromClaySlice(text.stringContents);
-        FA_GlyphRun glyphs = FA_GetGlyphRun(FA_Regular, string);
+
+        FA_Font font_index = text.fontId;
+        if (font_index < 0 || font_index >= FA_Font_COUNT) font_index = FA_Regular;
+
+        FA_GlyphRun glyphs = FA_GetGlyphRun(font_index, string);
         if (glyphs.hash)
         {
           shape.tex_min = V2_FromV2I16(glyphs.p);

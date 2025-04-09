@@ -278,11 +278,11 @@ static void FA_ProcessWindowResize(bool init)
 {
   if (APP.window_resized || init)
   {
-    float scale = APP.window_height / 32.f;
+    float scale = APP.window_height / 48.f;
     TTF_SetFontSize(APP.atlas.fonts[FA_Regular][0], scale);
     TTF_SetFontSize(APP.atlas.fonts[FA_Regular][1], scale);
-    TTF_SetFontSize(APP.atlas.fonts[FA_Header][0], scale*2.f);
-    TTF_SetFontSize(APP.atlas.fonts[FA_Header][1], scale*2.f);
+    TTF_SetFontSize(APP.atlas.fonts[FA_Header][0], scale*1.6f);
+    TTF_SetFontSize(APP.atlas.fonts[FA_Header][1], scale*1.6f);
 
     I32 new_texture_dim = U32_CeilPow2(APP.window_height); // @todo consider window area instead of height
     new_texture_dim = Max(256, new_texture_dim);
