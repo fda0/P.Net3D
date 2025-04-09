@@ -177,7 +177,7 @@ static TICK_Input *CLIENT_PollInput()
   if (KEY_Held(SDL_SCANCODE_A)) dir.y += 1;
   if (KEY_Held(SDL_SCANCODE_D)) dir.y -= 1;
 
-  TICK_Input *input = Q_Push(APP.client.inputs_qbuf, &APP.client.inputs_range);
+  TICK_Input *input = (TICK_Input *)Q_Push(APP.client.inputs_qbuf, &APP.client.inputs_range);
   SDL_zerop(input);
 
   input->move_dir = V2_Normalize(dir);

@@ -30,7 +30,7 @@ static void SERVER_InsertPlayerInput(SERVER_PlayerInputs *pi, NET_SendInputs *ne
     }
 
     // store input
-    TICK_Input *pi_input = Q_Push(pi->qbuf, &pi->playback_range);
+    TICK_Input *pi_input = (TICK_Input *)Q_Push(pi->qbuf, &pi->playback_range);
     *pi_input = inputs[input_index];
   }
 
@@ -54,7 +54,7 @@ static void SERVER_InsertPlayerInput(SERVER_PlayerInputs *pi, NET_SendInputs *ne
 static TICK_Input SERVER_PopPlayerInput(SERVER_PlayerInputs *pi)
 {
   TICK_Input result = {};
-  TICK_Input *pop = Q_Pop(pi->qbuf, &pi->playback_range);
+  TICK_Input *pop = (TICK_Input *)Q_Pop(pi->qbuf, &pi->playback_range);
   if (pop)
     result = *pop;
 

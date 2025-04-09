@@ -65,6 +65,9 @@ static AppState APP;
 #include "game_font_atlas.c"
 #include "game_core.c"
 
+#define CLAY_IMPLEMENTATION
+#include "clay.h"
+
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
   (void)appstate;

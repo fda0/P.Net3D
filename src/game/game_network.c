@@ -365,9 +365,7 @@ static void NET_IterateSend()
           break;
         }
 
-        TICK_Input *peek = Q_PeekAt(APP.client.inputs_qbuf,
-                                    &APP.client.inputs_range,
-                                    i);
+        TICK_Input *peek = (TICK_Input *)Q_PeekAt(APP.client.inputs_qbuf, &APP.client.inputs_range, i);
         if (!peek)
         {
           Assert(false);

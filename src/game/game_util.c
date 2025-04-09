@@ -59,10 +59,11 @@ static U8 *Queue_PeekAt(void *buf, U64 elem_count, U64 elem_size, RngU64 *range,
   return res;
 }
 
-#define Q_Push(Arr, RangePtr) (typeof(&*Arr))Queue_Push(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr)
-#define Q_Pop(Arr, RangePtr) (typeof(&*Arr))Queue_Pop(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr)
-#define Q_Peek(Arr, RangePtr) (typeof(&*Arr))Queue_Peek(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr)
-#define Q_PeekAt(Arr, RangePtr, Index) (typeof(&*Arr))Queue_PeekAt(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr, Index)
+// These macros used (typeof(&*Arr)) in the past - but that requires C23 spec. At the same time MSVC std:clastest target crashes when I try to use clib library...
+#define Q_Push(Arr, RangePtr) Queue_Push(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr)
+#define Q_Pop(Arr, RangePtr) Queue_Pop(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr)
+#define Q_Peek(Arr, RangePtr) Queue_Peek(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr)
+#define Q_PeekAt(Arr, RangePtr, Index) Queue_PeekAt(Arr, ArrayCount(Arr), sizeof(Arr[0]), RangePtr, Index)
 
 //
 // clamps
