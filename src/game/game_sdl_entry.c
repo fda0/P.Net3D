@@ -50,6 +50,9 @@
 #include "gen_models_gltf.h"
 #include "gen_animations.h"
 
+#define CLAY_IMPLEMENTATION
+#include "clay.h"
+
 static AppState APP;
 #include "game_util.c"
 #include "game_asset.c"
@@ -63,10 +66,8 @@ static AppState APP;
 #include "game_render.c"
 #include "game_gpu.c"
 #include "game_font_atlas.c"
+#include "game_clay.c"
 #include "game_core.c"
-
-#define CLAY_IMPLEMENTATION
-#include "clay.h"
 
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
@@ -100,6 +101,12 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     APP.timestamp_post_first_frame = SDL_GetTicks();
     U64 startup_delta = APP.timestamp_post_first_frame - APP.timestamp_app_launch;
     LOG(Log_Perf, "Launch to first frame took: %llums", startup_delta);
+  }
+
+  // Post frame input cleanup
+  {
+    APP.mouse_scroll = (V2){};
+    APP.mouse_delta = (V2){};
   }
 
   APP.window_resized = false;
@@ -149,8 +156,16 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
     case SDL_EVENT_MOUSE_MOTION:
     {
       SDL_MouseMotionEvent motion = event->motion;
-      APP.mouse_delta = (V2){motion.xrel, motion.yrel};
+      V2 delta = (V2){motion.xrel, motion.yrel};
+      APP.mouse_delta = V2_Add(APP.mouse_delta, delta);
     } break;
+
+    case SDL_EVENT_MOUSE_WHEEL:
+    {
+      SDL_MouseWheelEvent wheel = event->wheel;
+      V2 delta = (V2){wheel.x, wheel.y};
+      APP.mouse_scroll = V2_Add(APP.mouse_scroll, delta);
+    }
   }
 
   return SDL_APP_CONTINUE;

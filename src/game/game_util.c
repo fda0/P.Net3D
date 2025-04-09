@@ -170,3 +170,11 @@ static U32 CalculateMipMapCount(U32 width, U32 height)
   if (msb < 0) return 0;
   return msb;
 }
+
+//
+//
+//
+static U32 Color32_ClayColor(Clay_Color color)
+{
+  return Color32_RGBAi((U32)color.r, (U32)color.g, (U32)color.b, (U32)color.a);
+}

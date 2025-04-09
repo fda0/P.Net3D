@@ -74,7 +74,7 @@ static void Game_DrawObjects()
         transform = Mat4_Mul(transform, rot_mat); // rotate first, translate second
       }
 
-      MDL_Add(obj->s.model, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
+      MDL_Draw(obj->s.model, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
     if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollision))
@@ -260,22 +260,23 @@ static void Game_DrawObjects()
     if (layer_index & 2) shape.p_min.x += dim;
     if (layer_index & 1) shape.p_min.y += dim;
     shape.p_max = V2_Add(shape.p_min, (V2){dim, dim});
-    UI_DrawShape(shape);
+    UI_DrawRaw(shape);
   }
 
   {
     UI_GpuShape shape =
     {
-      .p_min = (V2){300,300},
-      .p_max = (V2){600,600},
-      .tex_layer = -1.f,
+      .p_min = (V2){10,10},
+      .p_max = (V2){300,300},
       .corner_radius = 80.f,
       .edge_softness = 10.f,
       .border_thickness = 30.f,
       .color = Color32_RGBf(0.7f, 0.6f, 0.02f),
     };
-    UI_DrawShape(shape);
+    UI_DrawRect(shape);
   }
+
+
 }
 
 static void Game_SetWindowPosSize(I32 px, I32 py, I32 w, I32 h)
@@ -316,6 +317,7 @@ static void Game_Iterate()
 
   GPU_ProcessWindowResize(false);
   FA_ProcessWindowResize(false);
+  CLAY_ProcessWindowResize();
 
   // font experiments
   {
@@ -502,14 +504,16 @@ static void Game_Iterate()
 
   if (!APP.headless)
   {
+#if 1
+    CLAY_StartFrame();
+    CLAY_AddLayoutItems();
+    CLAY_FinishFrame();
+#endif
     Game_DrawObjects();
     GPU_Iterate();
     GPU_PostFrameCleanup();
     AST_PostFrame();
   }
-
-  // Input cleanup
-  APP.mouse_delta = (V2){};
 
   // Frame arena cleanup
   Arena_Reset(APP.a_frame, 0);
@@ -544,6 +548,7 @@ static void Game_Init()
     AST_Init();
     FA_Init();
     TEX_InitThread();
+    CLAY_Init();
   }
 
   APP.timestamp = SDL_GetTicks();

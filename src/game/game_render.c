@@ -1,5 +1,5 @@
-static void MDL_Add(MDL_Kind model_kind, Mat4 transform, U32 color,
-                    U32 animation_index, float animation_t)
+static void MDL_Draw(MDL_Kind model_kind, Mat4 transform, U32 color,
+                     U32 animation_index, float animation_t)
 {
   Assert(model_kind < MDL_COUNT);
 
@@ -46,7 +46,7 @@ static MSH_GpuVertex *MSH_PushVertices(TEX_Kind tex, U32 push_vertices_count)
   return res;
 }
 
-static void UI_DrawShape(UI_GpuShape shape)
+static void UI_DrawRaw(UI_GpuShape shape)
 {
   if (APP.gpu.ui.indices_count + 6 > ArrayCount(APP.gpu.ui.indices))
     return;
@@ -66,6 +66,12 @@ static void UI_DrawShape(UI_GpuShape shape)
   APP.gpu.ui.indices[index_i + 3] = 2 | encoded;
   APP.gpu.ui.indices[index_i + 4] = 1 | encoded;
   APP.gpu.ui.indices[index_i + 5] = 3 | encoded;
+}
+
+static void UI_DrawRect(UI_GpuShape shape)
+{
+  shape.tex_layer = -1.f;
+  UI_DrawRaw(shape);
 }
 
 static void GPU_PostFrameCleanup()

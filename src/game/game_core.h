@@ -14,6 +14,7 @@ typedef enum
   Log_Debug = (1 << 9),
   Log_GPU = (1 << 10),
   Log_Perf = (1 << 11),
+  Log_Clay = (1 << 12),
 } Log_Flags;
 
 // @note disable logging
@@ -114,6 +115,7 @@ struct AppState
   // user input
   V2 mouse;
   V2 mouse_delta;
+  V2 mouse_scroll;
   bool world_mouse_valid;
   V2 world_mouse;
   Key keys[KEY_COUNT];

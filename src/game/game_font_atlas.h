@@ -6,7 +6,7 @@ typedef struct
 {
   U64 hash;
   V2I16 p;
-  V2I16 dim;
+  V2I16 dim; // @change to pmax?
   U32 layer : 2;
   U32 next_plus_one : 30; // index+1 into the collision table
   U32 debug_line_index;

@@ -166,7 +166,8 @@ static V4 AxisV4_Z() { return (V4){0,0,1,0}; }
 static V4 AxisV4_W() { return (V4){0,0,0,1}; }
 
 // Ctors V2
-static V2 V2_FromV3_XY(V3 vec) { return (V2){vec.x, vec.y}; }
+static V2 V2_FromV3_XY(V3 v) { return (V2){v.x, v.y}; }
+static V2 V2_FromV2I16(V2I16 v) {return (V2){v.x, v.y}; }
 
 // Ctors V3
 static V3 V3_From_XY_Z(V2 xy, float z) { return (V3){xy.x, xy.y, z}; }

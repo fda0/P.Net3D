@@ -73,9 +73,9 @@ UI_Fragment UI_DxShaderVS(UI_VertexInput input)
   if (corner_index & 2) pos.y = shape.p_max.y;
 
   // texture uv
-  V2 tex_uv = V2(shape.tex_min.x, shape.tex_max.y); // @todo not sure why Y is flipped
+  V2 tex_uv = V2(shape.tex_min.x, shape.tex_min.y);
   if (corner_index & 1) tex_uv.x = shape.tex_max.x;
-  if (corner_index & 2) tex_uv.y = shape.tex_min.y;
+  if (corner_index & 2) tex_uv.y = shape.tex_max.y;
   tex_uv /= UniV.texture_dim;
 
   //
@@ -89,6 +89,7 @@ UI_Fragment UI_DxShaderVS(UI_VertexInput input)
   frag.edge_softness    = shape.edge_softness;
   frag.border_thickness = shape.border_thickness;
   frag.vertex_p = V4(2.f*pos / UniV.window_dim - 1.f, 1, 1);
+  frag.vertex_p.y = -frag.vertex_p.y; // Flip Y so 0 means top of the window
   return frag;
 }
 
