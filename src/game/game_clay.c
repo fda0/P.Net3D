@@ -1,9 +1,15 @@
+static Clay_Color CL_content_bg = {0, 0, 0, 128};
+static Clay_Color CL_btn_color = {40,40,40,255};
+static Clay_Color CL_btn_hover_color = {60,60,60,255};
+static Clay_Padding CL_button_pad = {8, 8, 4, 4};
+static bool CL_checkbox_test;
+
 static void CL_RenderHeaderButton(Clay_String text)
 {
   CLAY({.layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
-                   .padding = {16, 16, 8, 8},
+                   .padding = CL_button_pad,
                    .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-        .backgroundColor = {140, 140, 140, 255},
+        .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
         .cornerRadius = CLAY_CORNER_RADIUS(5)})
   {
     CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FA_Header,
@@ -17,44 +23,41 @@ static void CL_RenderDropdownMenuItem(Clay_String text)
   CLAY({.layout = {.padding = CLAY_PADDING_ALL(16)}})
   {
     CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FA_Regular,
-                                      .fontSize = 16,
                                       .textColor = {255, 255, 255, 255}}));
   }
 }
 
 static void CL_CreateUI()
 {
-  Clay_Sizing layoutExpand =
+  Clay_Sizing layout_expand =
   {
     .width = CLAY_SIZING_GROW(0),
     .height = CLAY_SIZING_GROW(0)
   };
 
-  Clay_Color contentBackgroundColor = {90, 90, 90, 255};
-
   // Build UI here
   CLAY({.id = CLAY_ID("OuterContainer"),
         .backgroundColor = {43, 41, 51, 0},
         .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                   .sizing = layoutExpand,
+                   .sizing = layout_expand,
                    .padding = CLAY_PADDING_ALL(16),
                    .childGap = 16}})
   {
     // Child elements go inside braces
     CLAY({.id = CLAY_ID("HeaderBar"),
-          .layout = {.sizing = {.height = CLAY_SIZING_FIXED(80),
+          .layout = {.sizing = {.height = CLAY_SIZING_FIT(0),
                                 .width = CLAY_SIZING_GROW(0)},
                      .padding = {16, 16, 0, 0},
                      .childGap = 16,
                      .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-          .backgroundColor = contentBackgroundColor,
+          .backgroundColor = CL_content_bg,
           .cornerRadius = CLAY_CORNER_RADIUS(8)})
     {
       CLAY({.id = CLAY_ID("FileButton"),
             .layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
-                       .padding = {16, 16, 8, 8},
+                       .padding = CL_button_pad,
                        .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-            .backgroundColor = {140, 140, 140, 255},
+            .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
             .cornerRadius = CLAY_CORNER_RADIUS(5)})
       {
         CLAY_TEXT(CLAY_STRING("File"),
@@ -87,6 +90,44 @@ static void CL_CreateUI()
       }
 
       CL_RenderHeaderButton(CLAY_STRING("Edit"));
+
+      {
+
+        CLAY({.id = CLAY_ID("CheckboxContainer"),
+              .layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
+                         .padding = CL_button_pad,
+                         .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
+              .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
+              .cornerRadius = CLAY_CORNER_RADIUS(5)})
+        {
+          if (Clay_PointerOver(Clay_GetElementId(CLAY_STRING("CheckboxContainer"))) && KEY_Pressed(KEY_MouseLeft))
+            CL_checkbox_test = !CL_checkbox_test;
+
+          CLAY({.id = CLAY_ID("TestCheckbox"),
+                .layout = {.sizing = {.width = CLAY_SIZING_FIXED(25),
+                                      .height = CLAY_SIZING_FIXED(25)},
+                           .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
+                .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
+                .border = {.color = {240, 240, 240, 255},
+                           .width = CLAY_BORDER_ALL(2)},
+                .cornerRadius = CLAY_CORNER_RADIUS(4)})
+          {
+            if (CL_checkbox_test)
+            {
+              CLAY_TEXT(CLAY_STRING("X"),
+                        CLAY_TEXT_CONFIG({.fontId = FA_Header,
+                                          .textColor = {255, 255, 255, 255}}));
+            }
+          }
+          CLAY({.layout = {.sizing = {CLAY_SIZING_FIXED(10)}}}) {}
+
+          CLAY_TEXT(CLAY_STRING("Nice checkbox"),
+                    CLAY_TEXT_CONFIG({.fontId = FA_Header,
+                                      .textColor = {255, 255, 255, 255}}));
+        }
+      }
+
+
       CLAY({.layout = {.sizing = {CLAY_SIZING_GROW(0)}}}) {}
       CL_RenderHeaderButton(CLAY_STRING("Upload"));
       CL_RenderHeaderButton(CLAY_STRING("Media"));
@@ -94,10 +135,10 @@ static void CL_CreateUI()
     }
 
     CLAY({.id = CLAY_ID("LowerContent"),
-          .layout = {.sizing = layoutExpand, .childGap = 16}})
+          .layout = {.sizing = layout_expand, .childGap = 16}})
     {
       CLAY({.id = CLAY_ID("Sidebar"),
-            .backgroundColor = contentBackgroundColor,
+            .backgroundColor = CL_content_bg,
             .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
                        .padding = CLAY_PADDING_ALL(16),
                        .childGap = 8,
@@ -108,12 +149,12 @@ static void CL_CreateUI()
       }
 
       CLAY({.id = CLAY_ID("MainContent"),
-            .backgroundColor = contentBackgroundColor,
-            .scroll = { .vertical = true },
+            .backgroundColor = CL_content_bg,
+            .scroll = {.vertical = true },
             .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
                        .childGap = 16,
                        .padding = CLAY_PADDING_ALL(16),
-                       .sizing = layoutExpand}})
+                       .sizing = layout_expand}})
       {
 
       }
@@ -139,9 +180,8 @@ static Clay_Dimensions CL_MeasureText(Clay_StringSlice clay_slice, Clay_TextElem
   TTF_Font *ttf_font = APP.atlas.fonts[font_index][0];
 
   I32 width = 0, height = 0;
-  if (!TTF_GetStringSize(ttf_font, (char *)string.str, string.size, &width, &height)) {
+  if (!TTF_GetStringSize(ttf_font, (char *)string.str, string.size, &width, &height))
     LOG(Log_Clay, "Failed to measure text: %s", SDL_GetError());
-  }
 
   Clay_Dimensions result = {width, height};
   return result;
@@ -165,6 +205,7 @@ static void CL_ProcessWindowResize()
   if (APP.window_resized)
   {
     Clay_SetLayoutDimensions((Clay_Dimensions){APP.window_width, APP.window_height});
+    Clay_ResetMeasureTextCache();
   }
 }
 
@@ -221,12 +262,22 @@ static void CL_FinishFrame()
           shape.tex_min = V2_FromV2I16(glyphs.p);
           shape.tex_max = V2_FromV2I16(V2I16_Add(glyphs.p, glyphs.dim));
           shape.tex_layer = glyphs.layer;
+
+          V2 dim = V2_Sub(shape.tex_max, shape.tex_min);
+          shape.p_max = V2_Add(shape.p_min, dim);
         }
+
+        //float real_width = shape.p_max.x - shape.p_min.x;
+        //float tex_width = shape.tex_max.x - shape.tex_min.x;
+        //LOG(Log_Clay, "real width: %f, tex width: %f", real_width, tex_width);
 
         shape.color = Color32_ClayColor(text.textColor);
         // @todo font id, letterSpacing, lineHeight etc
       } break;
     }
+
+    if (shape.corner_radius > 0.f)
+      shape.edge_softness = 1.f;
 
     UI_DrawRaw(shape);
   }

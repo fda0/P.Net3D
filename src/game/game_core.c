@@ -243,7 +243,6 @@ static void Game_DrawObjects()
 
   // UI wip experiment
   float full_dim = Min(APP.window_width, APP.window_height);
-  V2 off = V2_Scale((V2){APP.window_width - full_dim, APP.window_height - full_dim}, 0.5f);
   float dim = full_dim*0.5f;
 
   ForU32(layer_index, 4)
@@ -251,7 +250,6 @@ static void Game_DrawObjects()
     float alpha = (layer_index == APP.atlas.active_layer ? 1.f : 0.6f);
     UI_GpuShape shape =
     {
-      .p_min = off,
       .color = Color32_RGBAf(1, 1, 1, alpha),
       .tex_min = (V2){0.f, 0.f},
       .tex_max = (V2){APP.atlas.texture_dim, APP.atlas.texture_dim},

@@ -278,11 +278,14 @@ static void FA_ProcessWindowResize(bool init)
 {
   if (APP.window_resized || init)
   {
-    float scale = APP.window_height / 48.f;
-    TTF_SetFontSize(APP.atlas.fonts[FA_Regular][0], scale);
-    TTF_SetFontSize(APP.atlas.fonts[FA_Regular][1], scale);
-    TTF_SetFontSize(APP.atlas.fonts[FA_Header][0], scale*1.6f);
-    TTF_SetFontSize(APP.atlas.fonts[FA_Header][1], scale*1.6f);
+    APP.atlas.sizes[FA_Regular] = APP.window_height / 32.f;
+    APP.atlas.sizes[FA_Header] = APP.atlas.sizes[FA_Regular] * 1.5f;
+    ForU32(i, FA_Font_COUNT)
+    {
+      float dpi = 72.f * 0.5f;
+      TTF_SetFontSizeDPI(APP.atlas.fonts[i][0], APP.atlas.sizes[i], dpi, dpi);
+      TTF_SetFontSizeDPI(APP.atlas.fonts[i][1], APP.atlas.sizes[i], dpi, dpi);
+    }
 
     I32 new_texture_dim = U32_CeilPow2(APP.window_height); // @todo consider window area instead of height
     new_texture_dim = Max(256, new_texture_dim);
@@ -337,8 +340,13 @@ static void FA_Init()
 
   // load font
   {
-    APP.atlas.fonts[FA_Regular][0] = TTF_OpenFont("../res/fonts/NotoColorEmoji-Regular.ttf", default_size);
-    APP.atlas.fonts[FA_Regular][1] = TTF_OpenFont("../res/fonts/Jacquard24-Regular.ttf", default_size);
+    TTF_Font *jacq = TTF_OpenFont("../res/fonts/Jacquard24-Regular.ttf", default_size);
+    (void)jacq;
+    TTF_Font *playfair = TTF_OpenFont("../res/fonts/PlayfairDisplay-Regular.ttf", default_size);
+    TTF_Font *emoji = TTF_OpenFont("../res/fonts/NotoColorEmoji-Regular.ttf", default_size);
+
+    APP.atlas.fonts[FA_Regular][0] = playfair;
+    APP.atlas.fonts[FA_Regular][1] = emoji;
 
     APP.atlas.fonts[FA_Header][0] = TTF_CopyFont(APP.atlas.fonts[FA_Regular][0]);
     APP.atlas.fonts[FA_Header][1] = TTF_CopyFont(APP.atlas.fonts[FA_Regular][1]);
