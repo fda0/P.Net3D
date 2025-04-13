@@ -74,6 +74,7 @@ struct AppState
   I32 init_window_px, init_window_py; // 0 if wasn't set
   I32 init_window_width, init_window_height;
   I32 window_width, window_height;
+  V2 window_dim;
   bool window_resized;
   bool window_on_top;
   bool window_borderless;
@@ -153,6 +154,9 @@ struct AppState
   // debug
   struct
   {
+    V2 win_p;
+    bool win_drag;
+
     float fixed_dt;
     bool single_tick_stepping;
     bool unpause_one_tick;
@@ -161,10 +165,6 @@ struct AppState
     bool sun_camera;
 
     bool draw_collision_box;
-    float collision_sprite_animation_t;
-    U32 collision_sprite_frame_index;
-
-    bool draw_texture_box;
   } debug;
 };
 

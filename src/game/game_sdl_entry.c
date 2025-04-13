@@ -128,6 +128,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
     {
       APP.window_width = event->window.data1;
       APP.window_height = event->window.data2;
+      APP.window_dim = (V2){APP.window_width, APP.window_height};
       APP.window_resized = true;
     } break;
 
@@ -274,6 +275,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
     APP.window_width = APP.init_window_width;
     APP.window_height = APP.init_window_height;
+    APP.window_dim = (V2){APP.window_width, APP.window_height};
 
     APP.gpu.device =
       SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL,

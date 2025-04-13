@@ -242,7 +242,7 @@ static void Game_DrawObjects()
   }
 
   // UI wip experiment
-  float full_dim = Min(APP.window_width, APP.window_height);
+  float full_dim = Min(APP.window_dim.x, APP.window_dim.y);
   float dim = full_dim*0.5f;
 
   ForU32(layer_index, 4)
@@ -412,8 +412,8 @@ static void Game_Iterate()
     Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(sun_dir, AxisV3_X()));
 
     float scale = 0.8f;
-    float w = APP.window_width * 0.5f * scale;
-    float h = APP.window_height * 0.5f * scale;
+    float w = APP.window_dim.x * 0.5f * scale;
+    float h = APP.window_dim.y * 0.5f * scale;
     w = h = 700.f * scale;
 
     Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 700.f, 2000.f);
@@ -427,7 +427,7 @@ static void Game_Iterate()
     rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_angles.z), rot);
     rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_angles.y), rot);
     Mat4 projection =
-      Mat4_Perspective(APP.camera_fov_y, (float)APP.window_width/APP.window_height, 80.f, 2000.f);
+      Mat4_Perspective(APP.camera_fov_y, APP.window_dim.x/APP.window_dim.y, 80.f, 2000.f);
 
     APP.camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
@@ -436,14 +436,14 @@ static void Game_Iterate()
   {
     V2 view_mouse =
     {
-      (APP.mouse.x / (float)APP.window_width)  * 2.f - 1.f,
-      (APP.mouse.y / (float)APP.window_height) * -2.f + 1.f,
+      (APP.mouse.x / APP.window_dim.x)  * 2.f - 1.f,
+      (APP.mouse.y / APP.window_dim.y) * -2.f + 1.f,
     };
 
     V3 plane_origin = {};
     V3 plane_normal = {0,0,1};
 
-    float aspect = (float)APP.window_width / APP.window_height;
+    float aspect = APP.window_dim.x / APP.window_dim.y;
     float tan = FTan(APP.camera_fov_y * 0.5f);
     aspect *= aspect;
     tan    *= tan;
@@ -501,24 +501,10 @@ static void Game_Iterate()
   if (!APP.headless)
   {
     Game_DrawObjects();
-    
-    CL_StartFrame();
-    CL_LayoutUIElements();
-    CL_FinishFrame();
 
-    {
-      float r = 20.f;
-      UI_GpuShape shape =
-      {
-        .corner_radius = r*0.5f,
-        .edge_softness = 1.f,
-        .border_thickness = 5.f,
-        .color = Color32_RGBf(0.2f, 0.3f, 0.9f),
-      };
-      shape.p_min = V2_Sub(APP.mouse, (V2){r*0.5f,r*0.5f});
-      shape.p_max = V2_Add(shape.p_min, (V2){r,r});
-      UI_DrawRect(shape);
-    }
+    CL_StartFrame();
+    CL_BuildUILayoutElements();
+    CL_FinishFrame();
 
     GPU_Iterate();
     GPU_PostFrameCleanup();

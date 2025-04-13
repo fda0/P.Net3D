@@ -35,6 +35,16 @@ static V2POST V2POST_Mul(V2POST a, V2POST b) { return (V2POST){a.x * b.x, a.y * 
 static V3POST V3POST_Mul(V3POST a, V3POST b) { return (V3POST){a.x * b.x, a.y * b.y, a.z * b.z}; }
 static V4POST V4POST_Mul(V4POST a, V4POST b) { return (V4POST){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w}; }
 
+static V2POST V2POST_Clamp(V2POST min, V2POST max, V2POST val) {
+  return (V2POST){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
+}
+static V3POST V3POST_Clamp(V3POST min, V3POST max, V3POST val) {
+  return (V3POST){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z)};
+}
+static V4POST V4POST_Clamp(V4POST min, V4POST max, V4POST val) {
+  return (V4POST){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
+
 static V2POST V2POST_Reverse(V2POST a) { return (V2POST){-a.x, -a.y}; }
 static V3POST V3POST_Reverse(V3POST a) { return (V3POST){-a.x, -a.y, -a.z}; }
 static V4POST V4POST_Reverse(V4POST a) { return (V4POST){-a.x, -a.y, -a.z, -a.w}; }

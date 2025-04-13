@@ -40,6 +40,16 @@ static V2 V2_Mul(V2 a, V2 b) { return (V2){a.x * b.x, a.y * b.y}; }
 static V3 V3_Mul(V3 a, V3 b) { return (V3){a.x * b.x, a.y * b.y, a.z * b.z}; }
 static V4 V4_Mul(V4 a, V4 b) { return (V4){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w}; }
 
+static V2 V2_Clamp(V2 min, V2 max, V2 val) {
+  return (V2){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
+}
+static V3 V3_Clamp(V3 min, V3 max, V3 val) {
+  return (V3){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z)};
+}
+static V4 V4_Clamp(V4 min, V4 max, V4 val) {
+  return (V4){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
+
 static V2 V2_Reverse(V2 a) { return (V2){-a.x, -a.y}; }
 static V3 V3_Reverse(V3 a) { return (V3){-a.x, -a.y, -a.z}; }
 static V4 V4_Reverse(V4 a) { return (V4){-a.x, -a.y, -a.z, -a.w}; }
@@ -88,6 +98,16 @@ static V2I32 V2I32_Mul(V2I32 a, V2I32 b) { return (V2I32){a.x * b.x, a.y * b.y};
 static V3I32 V3I32_Mul(V3I32 a, V3I32 b) { return (V3I32){a.x * b.x, a.y * b.y, a.z * b.z}; }
 static V4I32 V4I32_Mul(V4I32 a, V4I32 b) { return (V4I32){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w}; }
 
+static V2I32 V2I32_Clamp(V2I32 min, V2I32 max, V2I32 val) {
+  return (V2I32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
+}
+static V3I32 V3I32_Clamp(V3I32 min, V3I32 max, V3I32 val) {
+  return (V3I32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z)};
+}
+static V4I32 V4I32_Clamp(V4I32 min, V4I32 max, V4I32 val) {
+  return (V4I32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
+
 static V2I32 V2I32_Reverse(V2I32 a) { return (V2I32){-a.x, -a.y}; }
 static V3I32 V3I32_Reverse(V3I32 a) { return (V3I32){-a.x, -a.y, -a.z}; }
 static V4I32 V4I32_Reverse(V4I32 a) { return (V4I32){-a.x, -a.y, -a.z, -a.w}; }
@@ -135,6 +155,16 @@ static V4I16 V4I16_Sub(V4I16 a, V4I16 b) { return (V4I16){a.x - b.x, a.y - b.y, 
 static V2I16 V2I16_Mul(V2I16 a, V2I16 b) { return (V2I16){a.x * b.x, a.y * b.y}; }
 static V3I16 V3I16_Mul(V3I16 a, V3I16 b) { return (V3I16){a.x * b.x, a.y * b.y, a.z * b.z}; }
 static V4I16 V4I16_Mul(V4I16 a, V4I16 b) { return (V4I16){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w}; }
+
+static V2I16 V2I16_Clamp(V2I16 min, V2I16 max, V2I16 val) {
+  return (V2I16){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
+}
+static V3I16 V3I16_Clamp(V3I16 min, V3I16 max, V3I16 val) {
+  return (V3I16){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z)};
+}
+static V4I16 V4I16_Clamp(V4I16 min, V4I16 max, V4I16 val) {
+  return (V4I16){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
 
 static V2I16 V2I16_Reverse(V2I16 a) { return (V2I16){-a.x, -a.y}; }
 static V3I16 V3I16_Reverse(V3I16 a) { return (V3I16){-a.x, -a.y, -a.z}; }

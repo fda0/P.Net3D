@@ -18,7 +18,6 @@ static void CL_RenderHeaderButton(Clay_String text)
   }
 }
 
-
 static void CL_RenderDropdownMenuItem(Clay_String text)
 {
   CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0)},
@@ -31,7 +30,7 @@ static void CL_RenderDropdownMenuItem(Clay_String text)
   }
 }
 
-static void CL_HoverCheckbox(Clay_ElementId element_id, Clay_PointerData pointer_info, intptr_t user_data)
+static void CL_HoverCallbackCheckbox(Clay_ElementId element_id, Clay_PointerData pointer_info, intptr_t user_data)
 {
   (void)element_id;
   bool *checkbox_ptr = (bool *)user_data;
@@ -41,136 +40,76 @@ static void CL_HoverCheckbox(Clay_ElementId element_id, Clay_PointerData pointer
   }
 }
 
-static void CL_LayoutUIElements()
+static void CL_RenderCheckbox(FA_Font font, Clay_String label, bool in_horizontal_bar, bool *checkbox_bool)
 {
-  Clay_Sizing layout_expand =
-  {
-    .width = CLAY_SIZING_GROW(0),
-    .height = CLAY_SIZING_GROW(0)
-  };
+  Clay_Sizing root_sizing = {};
+  if (in_horizontal_bar) root_sizing.height = CLAY_SIZING_GROW(0);
+  else                   root_sizing.width  = CLAY_SIZING_GROW(0);
 
-  // Build UI here
-  CLAY({.id = CLAY_ID("OuterContainer"),
-        .backgroundColor = {43, 41, 51, 0},
-        .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                   .sizing = layout_expand,
-                   .padding = CLAY_PADDING_ALL(16),
-                   .childGap = 16}})
+  CLAY({.layout = {.sizing = root_sizing,
+                   .padding = CL_button_pad,
+                   .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
+        .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
+        .cornerRadius = CL_radius})
   {
-    // Child elements go inside braces
-    CLAY({.id = CLAY_ID("HeaderBar"),
-          .layout = {.sizing = {.height = CLAY_SIZING_FIT(0),
-                                .width = CLAY_SIZING_GROW(0)},
-                     .padding = {16, 16, 0, 0},
-                     .childGap = 16,
-                     .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-          .backgroundColor = CL_content_bg,
-          .cornerRadius = CL_radius})
+    Clay_OnHover(CL_HoverCallbackCheckbox, (intptr_t)checkbox_bool);
+
+    CLAY({.layout = {.sizing = {.width = CLAY_SIZING_FIXED(25),
+                                .height = CLAY_SIZING_FIXED(25)},
+                     .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
+          .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
+          .border = {.color = {240, 240, 240, 255},
+                     .width = CLAY_BORDER_ALL(2)},
+          .cornerRadius = CLAY_CORNER_RADIUS(4)})
     {
-      CLAY({.id = CLAY_ID("FileButton"),
-            .layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
-                       .padding = CL_button_pad,
-                       .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-            .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
-            .cornerRadius = CL_radius})
-      {
-        CLAY_TEXT(CLAY_STRING("File"),
-                  CLAY_TEXT_CONFIG({.fontId = FA_Header,
-                                    .textColor = {255, 255, 255, 255}}));
+      if (*checkbox_bool)
+        CLAY_TEXT(CLAY_STRING("X"), CLAY_TEXT_CONFIG({.fontId = font, .textColor = {255, 255, 255, 255}}));
+    }
+    CLAY({.layout = {.sizing = {CLAY_SIZING_FIXED(10)}}}) {}
+    CLAY_TEXT(label, CLAY_TEXT_CONFIG({.fontId = font, .textColor = {255, 255, 255, 255}}));
+  }
+}
 
-        bool fileMenuVisible =
-          Clay_PointerOver(Clay_GetElementId(CLAY_STRING("FileButton"))) ||
-          Clay_PointerOver(Clay_GetElementId(CLAY_STRING("FileMenu")));
+static void CL_BuildUILayoutElements()
+{
+  V2 clamped_win_p = V2_Clamp((V2){}, V2_Scale(APP.window_dim, 0.9f), APP.debug.win_p);
 
-        if (fileMenuVisible)
-        {
-          CLAY({.id = CLAY_ID("FileMenu"),
-                .floating = {.attachTo = CLAY_ATTACH_TO_PARENT,
-                             .attachPoints = {.parent = CLAY_ATTACH_POINT_LEFT_BOTTOM}},
-                .layout = {.padding = {0, 0, 8, 8}}})
-          {
-            CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                             .sizing = {.width = CLAY_SIZING_FIXED(200)}},
-                  .backgroundColor = CL_btn_color,
-                  .cornerRadius = CL_radius})
-            {
-              // Render dropdown items here
-              CL_RenderDropdownMenuItem(CLAY_STRING("New"));
-              CL_RenderDropdownMenuItem(CLAY_STRING("Open"));
-              CL_RenderDropdownMenuItem(CLAY_STRING("Close"));
-            }
-          }
-        }
-      }
+  CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                   .sizing = {.width = CLAY_SIZING_FIT(),
+                              .height = CLAY_SIZING_FIT()}},
+        .backgroundColor = {10, 250, 10, 128},
+        .floating = {.offset = {clamped_win_p.x, clamped_win_p.y},
+                     .attachTo = CLAY_ATTACH_TO_ROOT},
+        .border = {.color = {0,0,0,255},
+                   .width = CLAY_BORDER_OUTSIDE(2)}})
+  {
+    CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
+                                .height = CLAY_SIZING_FIT()},
+                     .padding = CLAY_PADDING_ALL(2),
+                     .childAlignment = {.x = CLAY_ALIGN_X_CENTER}},
+          .backgroundColor = {10, 10, 250, 128}})
+    {
+      if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft))
+        APP.debug.win_drag = true;
+      if (APP.debug.win_drag)
+        APP.debug.win_p = V2_Add(APP.debug.win_p, APP.mouse_delta);
+      if (!APP.debug.win_drag)
+        APP.debug.win_p = clamped_win_p;
 
-      CL_RenderHeaderButton(CLAY_STRING("Edit"));
-
-      {
-
-        CLAY({.id = CLAY_ID("CheckboxContainer"),
-              .layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
-                         .padding = CL_button_pad,
-                         .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-              .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
-              .cornerRadius = CLAY_CORNER_RADIUS(5)})
-        {
-          Clay_OnHover(CL_HoverCheckbox, (intptr_t)&CL_checkbox_test);
-          
-          CLAY({.id = CLAY_ID("TestCheckbox"),
-                .layout = {.sizing = {.width = CLAY_SIZING_FIXED(25),
-                                      .height = CLAY_SIZING_FIXED(25)},
-                           .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
-                .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
-                .border = {.color = {240, 240, 240, 255},
-                           .width = CLAY_BORDER_ALL(2)},
-                .cornerRadius = CLAY_CORNER_RADIUS(4)})
-          {
-            if (CL_checkbox_test)
-            {
-              CLAY_TEXT(CLAY_STRING("X"),
-                        CLAY_TEXT_CONFIG({.fontId = FA_Header,
-                                          .textColor = {255, 255, 255, 255}}));
-            }
-          }
-          CLAY({.layout = {.sizing = {CLAY_SIZING_FIXED(10)}}}) {}
-
-          CLAY_TEXT(CLAY_STRING("Nice checkbox"),
-                    CLAY_TEXT_CONFIG({.fontId = FA_Header,
-                                      .textColor = {255, 255, 255, 255}}));
-        }
-      }
-
-
-      CLAY({.layout = {.sizing = {CLAY_SIZING_GROW(0)}}}) {}
-      CL_RenderHeaderButton(CLAY_STRING("Upload"));
-      CL_RenderHeaderButton(CLAY_STRING("Media"));
-      CL_RenderHeaderButton(CLAY_STRING("Support"));
+      CLAY_TEXT(CLAY_STRING("Debug window"),
+                CLAY_TEXT_CONFIG({.fontId = FA_Regular, .textColor = {255,255,255,255}}));
     }
 
-    CLAY({.id = CLAY_ID("LowerContent"),
-          .layout = {.sizing = layout_expand, .childGap = 16}})
+    CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                     .sizing = {.width = CLAY_SIZING_GROW(0),
+                                .height = CLAY_SIZING_FIT()},
+                     .padding = CLAY_PADDING_ALL(16),
+                     .childGap = 8},
+          .backgroundColor = {250, 10, 10, 128}})
     {
-      CLAY({.id = CLAY_ID("Sidebar"),
-            .backgroundColor = CL_content_bg,
-            .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                       .padding = CLAY_PADDING_ALL(16),
-                       .childGap = 8,
-                       .sizing = {.width = CLAY_SIZING_FIXED(250),
-                                  .height = CLAY_SIZING_GROW(0)}}})
-      {
-
-      }
-
-      CLAY({.id = CLAY_ID("MainContent"),
-            .backgroundColor = CL_content_bg,
-            .scroll = {.vertical = true },
-            .layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                       .childGap = 16,
-                       .padding = CLAY_PADDING_ALL(16),
-                       .sizing = layout_expand}})
-      {
-
-      }
+      CL_RenderCheckbox(FA_Regular, CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
+      CL_RenderCheckbox(FA_Regular, CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
+      CL_RenderCheckbox(FA_Regular, CLAY_STRING("📦 Draw collision box"), false, &APP.debug.draw_collision_box);
     }
   }
 }
@@ -209,7 +148,7 @@ static void CL_Init()
     .capacity = memory_size
   };
 
-  Clay_Initialize(clay_arena, (Clay_Dimensions){APP.window_width, APP.window_height}, (Clay_ErrorHandler){CL_LogError});
+  Clay_Initialize(clay_arena, (Clay_Dimensions){APP.window_dim.x, APP.window_dim.y}, (Clay_ErrorHandler){CL_LogError});
   Clay_SetMeasureTextFunction(CL_MeasureText, 0);
 }
 
@@ -217,14 +156,19 @@ static void CL_ProcessWindowResize()
 {
   if (APP.window_resized)
   {
-    Clay_SetLayoutDimensions((Clay_Dimensions){APP.window_width, APP.window_height});
+    Clay_SetLayoutDimensions((Clay_Dimensions){APP.window_dim.x, APP.window_dim.y});
     Clay_ResetMeasureTextCache();
   }
 }
 
 static void CL_StartFrame()
 {
-  Clay_SetPointerState((Clay_Vector2){APP.mouse.x, APP.mouse.y}, KEY_Pressed(KEY_MouseLeft));
+  if (!KEY_Held(KEY_MouseLeft) || KEY_Released(KEY_MouseLeft))
+  {
+    APP.debug.win_drag = false;
+  }
+
+  Clay_SetPointerState((Clay_Vector2){APP.mouse.x, APP.mouse.y}, KEY_Held(KEY_MouseLeft));
   Clay_UpdateScrollContainers(true, (Clay_Vector2){APP.mouse_scroll.x, APP.mouse_scroll.y}, APP.dt);
   Clay_BeginLayout();
 }
