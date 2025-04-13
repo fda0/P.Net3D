@@ -501,11 +501,10 @@ static void Game_Iterate()
   if (!APP.headless)
   {
     Game_DrawObjects();
-#if 1
+    
     CL_StartFrame();
-    CL_CreateUI();
+    CL_LayoutUIElements();
     CL_FinishFrame();
-#endif
 
     {
       float r = 20.f;

@@ -2,6 +2,7 @@ static Clay_Color CL_content_bg = {0, 0, 0, 128};
 static Clay_Color CL_btn_color = {40,40,40,255};
 static Clay_Color CL_btn_hover_color = {60,60,60,255};
 static Clay_Padding CL_button_pad = {8, 8, 4, 4};
+static Clay_CornerRadius CL_radius = {8, 8, 8, 8};
 static bool CL_checkbox_test;
 
 static void CL_RenderHeaderButton(Clay_String text)
@@ -20,14 +21,27 @@ static void CL_RenderHeaderButton(Clay_String text)
 
 static void CL_RenderDropdownMenuItem(Clay_String text)
 {
-  CLAY({.layout = {.padding = CLAY_PADDING_ALL(16)}})
+  CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0)},
+                   .padding = CLAY_PADDING_ALL(16)},
+        .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
+        .cornerRadius = CL_radius})
   {
     CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FA_Regular,
                                       .textColor = {255, 255, 255, 255}}));
   }
 }
 
-static void CL_CreateUI()
+static void CL_HoverCheckbox(Clay_ElementId element_id, Clay_PointerData pointer_info, intptr_t user_data)
+{
+  (void)element_id;
+  bool *checkbox_ptr = (bool *)user_data;
+  if (pointer_info.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME)
+  {
+    *checkbox_ptr = !(*checkbox_ptr);
+  }
+}
+
+static void CL_LayoutUIElements()
 {
   Clay_Sizing layout_expand =
   {
@@ -51,14 +65,14 @@ static void CL_CreateUI()
                      .childGap = 16,
                      .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
           .backgroundColor = CL_content_bg,
-          .cornerRadius = CLAY_CORNER_RADIUS(8)})
+          .cornerRadius = CL_radius})
     {
       CLAY({.id = CLAY_ID("FileButton"),
             .layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
                        .padding = CL_button_pad,
                        .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
             .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
-            .cornerRadius = CLAY_CORNER_RADIUS(5)})
+            .cornerRadius = CL_radius})
       {
         CLAY_TEXT(CLAY_STRING("File"),
                   CLAY_TEXT_CONFIG({.fontId = FA_Header,
@@ -77,8 +91,8 @@ static void CL_CreateUI()
           {
             CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
                              .sizing = {.width = CLAY_SIZING_FIXED(200)}},
-                  .backgroundColor = {40, 40, 40, 255},
-                  .cornerRadius = CLAY_CORNER_RADIUS(8)})
+                  .backgroundColor = CL_btn_color,
+                  .cornerRadius = CL_radius})
             {
               // Render dropdown items here
               CL_RenderDropdownMenuItem(CLAY_STRING("New"));
@@ -100,9 +114,8 @@ static void CL_CreateUI()
               .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
               .cornerRadius = CLAY_CORNER_RADIUS(5)})
         {
-          if (Clay_PointerOver(Clay_GetElementId(CLAY_STRING("CheckboxContainer"))) && KEY_Pressed(KEY_MouseLeft))
-            CL_checkbox_test = !CL_checkbox_test;
-
+          Clay_OnHover(CL_HoverCheckbox, (intptr_t)&CL_checkbox_test);
+          
           CLAY({.id = CLAY_ID("TestCheckbox"),
                 .layout = {.sizing = {.width = CLAY_SIZING_FIXED(25),
                                       .height = CLAY_SIZING_FIXED(25)},
