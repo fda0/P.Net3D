@@ -312,16 +312,16 @@ static void Game_Iterate()
   }
 
   GPU_ProcessWindowResize(false);
-  FA_ProcessWindowResize(false);
+  FONT_ProcessWindowResize(false);
   CL_ProcessWindowResize();
 
   // font experiments
   {
-    FA_GlyphRun g0;
-    g0 = FA_GetGlyphRun(FA_Header, S8Lit("Łabędź🦢"));
-    g0 = FA_GetGlyphRun(FA_Header, S8Lit("Skull💀"));
-    g0 = FA_GetGlyphRun(FA_Regular, S8Lit("World🌍"));
-    g0 = FA_GetGlyphRun(FA_Regular, S8Lit("Boat⛵"));
+    FONT_GlyphRun g0;
+    g0 = FONT_GetGlyphRun(FONT_Header, S8Lit("Łabędź🦢"));
+    g0 = FONT_GetGlyphRun(FONT_Header, S8Lit("Skull💀"));
+    g0 = FONT_GetGlyphRun(FONT_Regular, S8Lit("World🌍"));
+    g0 = FONT_GetGlyphRun(FONT_Regular, S8Lit("Boat⛵"));
   }
 
   NET_IterateReceive();
@@ -542,7 +542,7 @@ static void Game_Init()
   {
     GPU_Init();
     AST_Init();
-    FA_Init();
+    FONT_Init();
     TEX_InitThread();
     CL_Init();
   }

@@ -13,7 +13,7 @@ static void CL_RenderHeaderButton(Clay_String text)
         .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
         .cornerRadius = CLAY_CORNER_RADIUS(5)})
   {
-    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FA_Header,
+    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FONT_Header,
                                       .textColor = {255, 255, 255, 255}}));
   }
 }
@@ -25,7 +25,7 @@ static void CL_RenderDropdownMenuItem(Clay_String text)
         .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
         .cornerRadius = CL_radius})
   {
-    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FA_Regular,
+    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FONT_Regular,
                                       .textColor = {255, 255, 255, 255}}));
   }
 }
@@ -40,7 +40,7 @@ static void CL_HoverCallbackCheckbox(Clay_ElementId element_id, Clay_PointerData
   }
 }
 
-static void CL_RenderCheckbox(FA_Font font, Clay_String label, bool in_horizontal_bar, bool *checkbox_bool)
+static void CL_RenderCheckbox(FONT_Type font, Clay_String label, bool in_horizontal_bar, bool *checkbox_bool)
 {
   Clay_Sizing root_sizing = {};
   if (in_horizontal_bar) root_sizing.height = CLAY_SIZING_GROW(0);
@@ -97,7 +97,7 @@ static void CL_BuildUILayoutElements()
         APP.debug.win_p = clamped_win_p;
 
       CLAY_TEXT(CLAY_STRING("Debug window"),
-                CLAY_TEXT_CONFIG({.fontId = FA_Regular, .textColor = {255,255,255,255}}));
+                CLAY_TEXT_CONFIG({.fontId = FONT_Regular, .textColor = {255,255,255,255}}));
     }
 
     CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
@@ -107,9 +107,9 @@ static void CL_BuildUILayoutElements()
                      .childGap = 8},
           .backgroundColor = {250, 10, 10, 128}})
     {
-      CL_RenderCheckbox(FA_Regular, CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
-      CL_RenderCheckbox(FA_Regular, CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
-      CL_RenderCheckbox(FA_Regular, CLAY_STRING("📦 Draw collision box"), false, &APP.debug.draw_collision_box);
+      CL_RenderCheckbox(FONT_Regular, CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
+      CL_RenderCheckbox(FONT_Regular, CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
+      CL_RenderCheckbox(FONT_Regular, CLAY_STRING("📦 Draw collision box"), false, &APP.debug.draw_collision_box);
     }
   }
 }
@@ -127,8 +127,8 @@ static Clay_Dimensions CL_MeasureText(Clay_StringSlice clay_slice, Clay_TextElem
   (void)user_data;
   S8 string = S8_FromClaySlice(clay_slice);
 
-  FA_Font font_index = config->fontId;
-  if (font_index < 0 || font_index >= FA_Font_COUNT) font_index = FA_Regular;
+  FONT_Type font_index = config->fontId;
+  if (font_index < 0 || font_index >= FONT_COUNT) font_index = FONT_Regular;
   TTF_Font *ttf_font = APP.atlas.fonts[font_index][0];
 
   I32 width = 0, height = 0;
@@ -210,10 +210,10 @@ static void CL_FinishFrame()
         Clay_TextRenderData text = rcom->renderData.text;
         S8 string = S8_FromClaySlice(text.stringContents);
 
-        FA_Font font_index = text.fontId;
-        if (font_index < 0 || font_index >= FA_Font_COUNT) font_index = FA_Regular;
+        FONT_Type font_index = text.fontId;
+        if (font_index < 0 || font_index >= FONT_COUNT) font_index = FONT_Regular;
 
-        FA_GlyphRun glyphs = FA_GetGlyphRun(font_index, string);
+        FONT_GlyphRun glyphs = FONT_GetGlyphRun(font_index, string);
         if (glyphs.hash)
         {
           shape.tex_min = V2_FromV2I16(glyphs.p);

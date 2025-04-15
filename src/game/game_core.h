@@ -64,7 +64,7 @@ struct AppState
   bool fullscreen;
   bool headless; // no window mode
   GPU_State gpu;
-  FA_State atlas;
+  FONT_State atlas;
   AST_State ast;
 
   Arena *tmp;
