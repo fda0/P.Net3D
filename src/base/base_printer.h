@@ -73,6 +73,48 @@ static void Pr_Printer(Printer *p, Printer *copy)
   Pr_S8(p, Pr_AsS8(copy));
 }
 
+// Number printers - @todo remove clib dependency in the future
+static void Pr_U16(Printer *p, U16 value)
+{
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%u", (U32)value);
+  Pr_Cstr(p, buf);
+}
+
+static void Pr_U32(Printer *p, U32 value)
+{
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%u", value);
+  Pr_Cstr(p, buf);
+}
+
+static void Pr_U64(Printer *p, U64 value)
+{
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%llu", value);
+  Pr_Cstr(p, buf);
+}
+
+static void Pr_I32(Printer *p, I32 value)
+{
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%d", value);
+  Pr_Cstr(p, buf);
+}
+
+static void Pr_U32Hex(Printer *p, U32 value)
+{
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%x", value);
+  Pr_Cstr(p, buf);
+}
+
+static void Pr_Float(Printer *p, float value)
+{
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%f", value);
+  Pr_Cstr(p, buf);
+}
 
 //
 // Printer Makers

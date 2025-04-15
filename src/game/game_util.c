@@ -174,6 +174,26 @@ static U32 CalculateMipMapCount(U32 width, U32 height)
 //
 //
 //
+static S8 OS_LoadFile(const char *file_path)
+{
+  U64 size = 0;
+  U8 *data = SDL_LoadFile(file_path, &size);
+  if (!data)
+    LOG(Log_OS, "Failed to load file %s", file_path);
+
+  return S8_Make(data, size);
+}
+
+static void OS_SaveFile(const char *file_path, S8 data)
+{
+  bool success = SDL_SaveFile(file_path, data.str, data.size);
+  if (!success)
+    LOG(Log_OS, "Failed to save to file %s", file_path);
+}
+
+//
+//
+//
 static S8 S8_FromClaySlice(Clay_StringSlice css)
 {
   return S8_Make((U8 *)css.chars, css.length);

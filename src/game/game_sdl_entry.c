@@ -22,6 +22,7 @@
 #include "base_arena.h"
 #include "base_hash.h"
 #include "base_printer.h"
+#include "base_parse.h"
 #include "game_constants.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
@@ -67,6 +68,7 @@ static AppState APP;
 #include "game_gpu.c"
 #include "game_font_atlas.c"
 #include "game_ui.c"
+#include "game_serialize.c"
 #include "game_core.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)

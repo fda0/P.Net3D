@@ -116,7 +116,7 @@ static M_ObjFacePart M_ParseObjFaceTokens(M_ObjParser *p)
     return res;
   }
 
-  res.pos = M_ParseInt(token.text);
+  res.pos = Parse_I32(token.text);
 
   p_copy = *p;
   token = M_ParseObjGetToken(p);
@@ -138,7 +138,7 @@ static M_ObjFacePart M_ParseObjFaceTokens(M_ObjParser *p)
       exit(1);
     }
 
-    res.tex = M_ParseInt(token.text);
+    res.tex = Parse_I32(token.text);
 
     token = M_ParseObjGetToken(p);
     if (token.kind != M_ObjToken_Slash)
@@ -159,7 +159,7 @@ static M_ObjFacePart M_ParseObjFaceTokens(M_ObjParser *p)
     exit(1);
   }
 
-  res.nrm = M_ParseInt(token.text);
+  res.nrm = Parse_I32(token.text);
   return res;
 }
 
@@ -307,9 +307,9 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
         M_Check(obj_normal_count + 3 <= max_elems);
         V4 vec =
         {
-          (float)M_ParseDouble(num0.text),
-          (float)M_ParseDouble(num1.text),
-          (float)M_ParseDouble(num2.text),
+          Parse_Float(num0.text),
+          Parse_Float(num1.text),
+          Parse_Float(num2.text),
           1.f
         };
 

@@ -511,6 +511,11 @@ static void Game_Iterate()
     AST_PostFrame();
   }
 
+  // Serializations
+  {
+    SERIAL_DebugSettings(false);
+  }
+
   // Frame arena cleanup
   Arena_Reset(APP.a_frame, 0);
   Assert(APP.tmp->used == 0);

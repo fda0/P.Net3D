@@ -15,6 +15,7 @@ typedef enum
   Log_GPU = (1 << 10),
   Log_Perf = (1 << 11),
   Log_Clay = (1 << 12),
+  Log_OS = (1 << 13),
 } Log_Flags;
 
 // @note disable logging
@@ -101,7 +102,7 @@ struct AppState
   Mat4 camera_transform;
 
   // time
-  U64 timestamp;
+  U64 timestamp; // ms
   U64 tick_timestamp_accumulator;
   float dt;
   float at;
@@ -154,6 +155,8 @@ struct AppState
   // debug
   struct
   {
+    U64 serialize_last_check_timestamp;
+    U64 serialize_hash;
     V2 win_p;
     bool win_drag;
 

@@ -1,0 +1,7 @@
+// (type, Printer/Parse name)
+TYPE_INC(bool, U32)
+TYPE_INC(U32, U32)
+//TYPE_INC(float)
+//TYPE_INC(V2)
+//TYPE_INC(V3)
+//TYPE_INC(V4)

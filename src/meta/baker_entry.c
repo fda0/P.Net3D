@@ -2,6 +2,7 @@
 #include "meta_util.h"
 #include "base_math.h"
 #include "base_printer.h"
+#include "base_parse.h"
 #include "game_render.h"
 #include "game_animation.h"
 
