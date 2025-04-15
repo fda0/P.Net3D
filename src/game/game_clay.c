@@ -1,16 +1,16 @@
-static Clay_Color CL_content_bg = {0, 0, 0, 128};
-static Clay_Color CL_btn_color = {40,40,40,255};
-static Clay_Color CL_btn_hover_color = {60,60,60,255};
-static Clay_Padding CL_button_pad = {8, 8, 4, 4};
-static Clay_CornerRadius CL_radius = {8, 8, 8, 8};
-static bool CL_checkbox_test;
+static Clay_Color UI_content_bg = {0, 0, 0, 128};
+static Clay_Color UI_btn_color = {40,40,40,255};
+static Clay_Color UI_btn_hover_color = {60,60,60,255};
+static Clay_Padding UI_button_pad = {8, 8, 4, 4};
+static Clay_CornerRadius UI_radius = {8, 8, 8, 8};
+static bool UI_checkbox_test;
 
-static void CL_RenderHeaderButton(Clay_String text)
+static void UI_RenderHeaderButton(Clay_String text)
 {
   CLAY({.layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
-                   .padding = CL_button_pad,
+                   .padding = UI_button_pad,
                    .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-        .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
+        .backgroundColor = Clay_Hovered() ? UI_btn_hover_color : UI_btn_color,
         .cornerRadius = CLAY_CORNER_RADIUS(5)})
   {
     CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FONT_Header,
@@ -18,19 +18,19 @@ static void CL_RenderHeaderButton(Clay_String text)
   }
 }
 
-static void CL_RenderDropdownMenuItem(Clay_String text)
+static void UI_RenderDropdownMenuItem(Clay_String text)
 {
   CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0)},
                    .padding = CLAY_PADDING_ALL(16)},
-        .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
-        .cornerRadius = CL_radius})
+        .backgroundColor = Clay_Hovered() ? UI_btn_hover_color : UI_btn_color,
+        .cornerRadius = UI_radius})
   {
     CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FONT_Regular,
                                       .textColor = {255, 255, 255, 255}}));
   }
 }
 
-static void CL_HoverCallbackCheckbox(Clay_ElementId element_id, Clay_PointerData pointer_info, intptr_t user_data)
+static void UI_HoverCallbackCheckbox(Clay_ElementId element_id, Clay_PointerData pointer_info, intptr_t user_data)
 {
   (void)element_id;
   bool *checkbox_ptr = (bool *)user_data;
@@ -40,24 +40,24 @@ static void CL_HoverCallbackCheckbox(Clay_ElementId element_id, Clay_PointerData
   }
 }
 
-static void CL_RenderCheckbox(FONT_Type font, Clay_String label, bool in_horizontal_bar, bool *checkbox_bool)
+static void UI_RenderCheckbox(FONT_Type font, Clay_String label, bool in_horizontal_bar, bool *checkbox_bool)
 {
   Clay_Sizing root_sizing = {};
   if (in_horizontal_bar) root_sizing.height = CLAY_SIZING_GROW(0);
   else                   root_sizing.width  = CLAY_SIZING_GROW(0);
 
   CLAY({.layout = {.sizing = root_sizing,
-                   .padding = CL_button_pad,
+                   .padding = UI_button_pad,
                    .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-        .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
-        .cornerRadius = CL_radius})
+        .backgroundColor = Clay_Hovered() ? UI_btn_hover_color : UI_btn_color,
+        .cornerRadius = UI_radius})
   {
-    Clay_OnHover(CL_HoverCallbackCheckbox, (intptr_t)checkbox_bool);
+    Clay_OnHover(UI_HoverCallbackCheckbox, (intptr_t)checkbox_bool);
 
     CLAY({.layout = {.sizing = {.width = CLAY_SIZING_FIXED(25),
                                 .height = CLAY_SIZING_FIXED(25)},
                      .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
-          .backgroundColor = Clay_Hovered() ? CL_btn_hover_color : CL_btn_color,
+          .backgroundColor = Clay_Hovered() ? UI_btn_hover_color : UI_btn_color,
           .border = {.color = {240, 240, 240, 255},
                      .width = CLAY_BORDER_ALL(2)},
           .cornerRadius = CLAY_CORNER_RADIUS(4)})
@@ -70,7 +70,7 @@ static void CL_RenderCheckbox(FONT_Type font, Clay_String label, bool in_horizon
   }
 }
 
-static void CL_BuildUILayoutElements()
+static void UI_BuildUILayoutElements()
 {
   V2 clamped_win_p = V2_Clamp((V2){}, V2_Scale(APP.window_dim, 0.9f), APP.debug.win_p);
 
@@ -107,9 +107,9 @@ static void CL_BuildUILayoutElements()
                      .childGap = 8},
           .backgroundColor = {250, 10, 10, 128}})
     {
-      CL_RenderCheckbox(FONT_Regular, CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
-      CL_RenderCheckbox(FONT_Regular, CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
-      CL_RenderCheckbox(FONT_Regular, CLAY_STRING("📦 Draw collision box"), false, &APP.debug.draw_collision_box);
+      UI_RenderCheckbox(FONT_Regular, CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
+      UI_RenderCheckbox(FONT_Regular, CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
+      UI_RenderCheckbox(FONT_Regular, CLAY_STRING("📦 Draw collision box"), false, &APP.debug.draw_collision_box);
     }
   }
 }
@@ -117,12 +117,12 @@ static void CL_BuildUILayoutElements()
 //
 //
 //
-static void CL_LogError(Clay_ErrorData error)
+static void UI_LogError(Clay_ErrorData error)
 {
   LOG(Log_Clay, "%s", error.errorText.chars);
 }
 
-static Clay_Dimensions CL_MeasureText(Clay_StringSlice clay_slice, Clay_TextElementConfig *config, void *user_data)
+static Clay_Dimensions UI_MeasureText(Clay_StringSlice clay_slice, Clay_TextElementConfig *config, void *user_data)
 {
   (void)user_data;
   S8 string = S8_FromClaySlice(clay_slice);
@@ -139,7 +139,7 @@ static Clay_Dimensions CL_MeasureText(Clay_StringSlice clay_slice, Clay_TextElem
   return result;
 }
 
-static void CL_Init()
+static void UI_Init()
 {
   U64 memory_size = Clay_MinMemorySize();
   Clay_Arena clay_arena = (Clay_Arena)
@@ -148,11 +148,11 @@ static void CL_Init()
     .capacity = memory_size
   };
 
-  Clay_Initialize(clay_arena, (Clay_Dimensions){APP.window_dim.x, APP.window_dim.y}, (Clay_ErrorHandler){CL_LogError});
-  Clay_SetMeasureTextFunction(CL_MeasureText, 0);
+  Clay_Initialize(clay_arena, (Clay_Dimensions){APP.window_dim.x, APP.window_dim.y}, (Clay_ErrorHandler){UI_LogError});
+  Clay_SetMeasureTextFunction(UI_MeasureText, 0);
 }
 
-static void CL_ProcessWindowResize()
+static void UI_ProcessWindowResize()
 {
   if (APP.window_resized)
   {
@@ -161,7 +161,7 @@ static void CL_ProcessWindowResize()
   }
 }
 
-static void CL_StartFrame()
+static void UI_StartFrame()
 {
   if (!KEY_Held(KEY_MouseLeft) || KEY_Released(KEY_MouseLeft))
   {
@@ -173,7 +173,7 @@ static void CL_StartFrame()
   Clay_BeginLayout();
 }
 
-static void CL_FinishFrame()
+static void UI_FinishFrame()
 {
   Clay_RenderCommandArray render_commands = Clay_EndLayout();
   ForI32(i, render_commands.length)
