@@ -47,6 +47,28 @@ static S8 Pr_AsS8(Printer *p)
   return S8_Make(p->buf, p->used);
 }
 
+//
+// Printer Makers
+//
+static Printer Pr_Make(U8 *buffer, U64 capacity)
+{
+  Printer res = {.buf = buffer, .cap = capacity};
+  return res;
+}
+
+static Printer Pr_Alloc(Arena *a, U64 capacity)
+{
+  Printer res = Pr_Make(Alloc(a, U8, capacity), capacity);
+  return res;
+}
+
+#define Pr_MakeOnStack(PrinterName, Size) \
+U8 PrinterName##_buffer[Size]; \
+Printer PrinterName = Pr_Make(PrinterName##_buffer, Size)
+
+//
+// Adding things to Printer
+//
 static void Pr_S8(Printer *p, S8 str)
 {
   U64 free_count = Pr_FreeCount(p);
@@ -116,21 +138,23 @@ static void Pr_Float(Printer *p, float value)
   Pr_Cstr(p, buf);
 }
 
-//
-// Printer Makers
-//
-static Printer Pr_Make(U8 *buffer, U64 capacity)
+static void Pr_V2(Printer *p, V2 value)
 {
-  Printer res = {.buf = buffer, .cap = capacity};
-  return res;
+  char buf[128];
+  snprintf(buf, sizeof(buf), "{%f, %f}", value.x, value.y);
+  Pr_Cstr(p, buf);
 }
 
-static Printer Pr_Alloc(Arena *a, U64 capacity)
+static void Pr_V3(Printer *p, V3 value)
 {
-  Printer res = Pr_Make(Alloc(a, U8, capacity), capacity);
-  return res;
+  char buf[128];
+  snprintf(buf, sizeof(buf), "{%f, %f, %f}", value.x, value.y, value.z);
+  Pr_Cstr(p, buf);
 }
 
-#define Pr_MakeOnStack(PrinterName, Size) \
-U8 PrinterName##_buffer[Size]; \
-Printer PrinterName = Pr_Make(PrinterName##_buffer, Size)
+static void Pr_V4(Printer *p, V4 value)
+{
+  char buf[128];
+  snprintf(buf, sizeof(buf), "{%f, %f, %f, %f}", value.x, value.y, value.z, value.w);
+  Pr_Cstr(p, buf);
+}

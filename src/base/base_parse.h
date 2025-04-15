@@ -55,3 +55,33 @@ static float Parse_Float(S8 number)
 {
   return (float)Parse_Double(number);
 }
+
+static void Parse_FloatArray(S8 string, float *arr, U32 arr_count)
+{
+  S8_Consume(&string, S8Lit("{"), 0);
+
+  ForU32(i, arr_count)
+  {
+    while (S8_Consume(&string, S8Lit(" "), 0));
+    arr[i] = Parse_Float(string);
+    S8_Consume(&string, S8Lit(","), 0);
+  }
+}
+static V2 Parse_V2(S8 string)
+{
+  V2 result = {};
+  Parse_FloatArray(string, result.E, ArrayCount(result.E));
+  return result;
+}
+static V3 Parse_V3(S8 string)
+{
+  V3 result = {};
+  Parse_FloatArray(string, result.E, ArrayCount(result.E));
+  return result;
+}
+static V4 Parse_V4(S8 string)
+{
+  V4 result = {};
+  Parse_FloatArray(string, result.E, ArrayCount(result.E));
+  return result;
+}

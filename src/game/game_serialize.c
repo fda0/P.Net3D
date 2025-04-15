@@ -60,7 +60,7 @@ static void TYPE_Parse(TYPE_ENUM type, S8 string, void *dst_ptr)
   switch (type)
   {
     default: Assert(false); break;
-#define TYPE_INC(A, B) case TYPE_##A: *(A *)dst_ptr = (A)Parse_##B(string); break;
+#define TYPE_INC(A, B) case TYPE_##A: *(A *)dst_ptr = Parse_##B(string); break;
 #include "game_serialize_types.inc"
 #undef TYPE_INC
   }
@@ -133,7 +133,7 @@ static void SERIAL_DebugSettings(bool is_load)
   SERIAL_Item items[] =
   {
     SERIAL_DEF(APP.debug., noclip_camera, bool),
-    //SERIAL_DEF(APP.debug., win_p, V2),
+    SERIAL_DEF(APP.debug., win_p, V2),
   };
 
   U64 max_size = Kilobyte(32);
