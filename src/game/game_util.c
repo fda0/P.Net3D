@@ -174,14 +174,16 @@ static U32 CalculateMipMapCount(U32 width, U32 height)
 //
 //
 //
-static S8 OS_LoadFile(const char *file_path)
+static S8 OS_LoadFile(Arena *a, const char *file_path)
 {
   U64 size = 0;
   U8 *data = SDL_LoadFile(file_path, &size);
   if (!data)
     LOG(Log_OS, "Failed to load file %s", file_path);
 
-  return S8_Make(data, size);
+  S8 result = S8_Copy(a, S8_Make(data, size));
+  SDL_free(data); // @todo go through better api
+  return result;
 }
 
 static void OS_SaveFile(const char *file_path, S8 data)

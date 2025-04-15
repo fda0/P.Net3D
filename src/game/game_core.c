@@ -541,6 +541,11 @@ static void Game_Init()
     APP.log_filter &= ~(Log_NetDatagram);
   }
 
+  // Load serialized settings from files
+  {
+    SERIAL_DebugSettings(true);
+  }
+
   NET_Init();
 
   if (!APP.headless)

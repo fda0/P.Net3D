@@ -18,8 +18,9 @@
 
 #include "base_types.h"
 #include "base_math.h"
-#include "base_string.h"
 #include "base_arena.h"
+#include "base_string.h"
+#include "base_string_alloc.h"
 #include "base_hash.h"
 #include "base_printer.h"
 #include "base_parse.h"
