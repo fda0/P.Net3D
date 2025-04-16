@@ -1,31 +1,38 @@
 //
 // Runtime type info
 //
+#define TYPE_LIST(X) \
+X(bool, U32) \
+X(U32, U32) \
+X(U64, U64) \
+X(I32, I32) \
+X(I64, I64) \
+X(float, Float) \
+X(V2, V2) \
+X(V3, V3) \
+X(V4, V4)
+
 typedef enum
 {
-#define TYPE_INC(a, b) TYPE_##a,
-#include "game_serialize_types.inc"
-#undef TYPE_INC
+#define TYPE_DEF_ENUM(a, b) TYPE_##a,
+  TYPE_LIST(TYPE_DEF_ENUM)
   TYPE_COUNT
 } TYPE_ENUM;
 
 READ_ONLY static U32 TYPE_Sizes[] =
 {
-#define TYPE_INC(a, b) sizeof(a),
-#include "game_serialize_types.inc"
-#undef TYPE_INC
+#define TYPE_DEF_SIZES(a, b) sizeof(a),
+  TYPE_LIST(TYPE_DEF_SIZES)
 };
 READ_ONLY static U32 TYPE_Aligns[] =
 {
-#define TYPE_INC(a, b) _Alignof(a),
-#include "game_serialize_types.inc"
-#undef TYPE_INC
+#define TYPE_DEF_ALIGNS(a, b) _Alignof(a),
+  TYPE_LIST(TYPE_DEF_ALIGNS)
 };
 READ_ONLY static S8 TYPE_Names[] =
 {
-#define TYPE_INC(a, b) {(U8 *)#a, sizeof(#a)-1},
-#include "game_serialize_types.inc"
-#undef TYPE_INC
+#define TYPE_DEF_NAMES(a, b) {(U8 *)#a, sizeof(#a)-1},
+  TYPE_LIST(TYPE_DEF_NAMES)
 };
 
 static U32 TYPE_GetSize(TYPE_ENUM type)
@@ -49,9 +56,8 @@ static void TYPE_Print(TYPE_ENUM type, Printer *p, void *src_ptr)
   switch (type)
   {
     default: Assert(false); break;
-#define TYPE_INC(A, B) case TYPE_##A: Pr_##B(p, *(A *)src_ptr); break;
-#include "game_serialize_types.inc"
-#undef TYPE_INC
+#define TYPE_DEF_PRINT(A, B) case TYPE_##A: Pr_##B(p, *(A *)src_ptr); break;
+    TYPE_LIST(TYPE_DEF_PRINT)
   }
 }
 
@@ -60,9 +66,8 @@ static void TYPE_Parse(TYPE_ENUM type, S8 string, void *dst_ptr, bool *err, U64 
   switch (type)
   {
     default: Assert(false); break;
-#define TYPE_INC(A, B) case TYPE_##A: *(A *)dst_ptr = Parse_##B(string, err, adv); break;
-#include "game_serialize_types.inc"
-#undef TYPE_INC
+#define TYPE_DEF_PARSE(A, B) case TYPE_##A: *(A *)dst_ptr = Parse_##B(string, err, adv); break;
+    TYPE_LIST(TYPE_DEF_PARSE)
   }
 }
 
