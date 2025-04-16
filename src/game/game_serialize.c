@@ -55,12 +55,12 @@ static void TYPE_Print(TYPE_ENUM type, Printer *p, void *src_ptr)
   }
 }
 
-static void TYPE_Parse(TYPE_ENUM type, S8 string, void *dst_ptr)
+static void TYPE_Parse(TYPE_ENUM type, S8 string, void *dst_ptr, bool *err)
 {
   switch (type)
   {
     default: Assert(false); break;
-#define TYPE_INC(A, B) case TYPE_##A: *(A *)dst_ptr = Parse_##B(string); break;
+#define TYPE_INC(A, B) case TYPE_##A: *(A *)dst_ptr = Parse_##B(string, err); break;
 #include "game_serialize_types.inc"
 #undef TYPE_INC
   }
@@ -102,41 +102,176 @@ static void SERIAL_SaveToPrinter(SERIAL_Item *items, U32 items_count, Printer *p
   }
 }
 
+typedef enum
+{
+  SERIAL_TokenUnknown,
+  SERIAL_TokenIdentifier,
+  SERIAL_TokenAssignment,
+  SERIAL_TokenValue,
+  SERIAL_TokenEndOfSource,
+} SERIAL_TokenKind;
+
+typedef struct
+{
+  // Keeping the whole source and offset around
+  // for better error reporting in the future.
+  S8 txt;
+  U64 at;
+  S8 token;
+  SERIAL_TokenKind token_kind;
+  TYPE_ENUM suspected_value;
+} SERIAL_Lexer;
+
+static U8 SERIAL_At(SERIAL_Lexer lex)
+{
+  if (lex.at < lex.txt.size)
+    return lex.txt.str[lex.at];
+  return 0;
+}
+
+static SERIAL_Lexer SERIAL_NextToken(SERIAL_Lexer lex)
+{
+  lex.token = (S8){};
+  lex.token_kind = 0;
+  lex.suspected_value = 0;
+
+  // eat white characters
+  while (ByteIsWhite(SERIAL_At(lex)))
+    lex.at += 1;
+
+  if (lex.at >= lex.txt.size)
+  {
+    lex.token_kind = SERIAL_TokenEndOfSource;
+    return lex;
+  }
+
+  if (SERIAL_At(lex) == '=')
+  {
+    lex.token_kind = SERIAL_TokenAssignment;
+    lex.token = S8_Substring(lex.txt, lex.at, lex.at + 1);
+    lex.at += 1;
+    return lex;
+  }
+
+  if (ByteIsAlpha(SERIAL_At(lex)))
+  {
+    lex.token_kind = SERIAL_TokenIdentifier;
+    U64 start_at = lex.at;
+    lex.at += 1;
+
+    while (ByteIsIdentifierPart(SERIAL_At(lex)))
+      lex.at += 1;
+
+    lex.token = S8_Substring(lex.txt, start_at, lex.at);
+    return lex;
+  }
+
+  if (SERIAL_At(lex) == '{')
+  {
+    lex.token_kind = SERIAL_TokenValue;
+    U64 start_at = lex.at;
+
+    U32 comma_count = 0;
+    for (;;)
+    {
+      U8 c = SERIAL_At(lex);
+      if (!c) break;
+
+      if (c == ',')
+        comma_count += 1;
+
+      lex.at += 1;
+
+      if (c == '}')
+        break;
+    }
+
+    lex.token = S8_Substring(lex.txt, start_at, lex.at);
+
+    switch (comma_count)
+    {
+      case 0:
+      {
+        lex.suspected_value = TYPE_float;
+        lex.token = S8_Skip(lex.token, 1);
+      } break;
+      case 1: lex.suspected_value = TYPE_V2; break;
+      case 2: lex.suspected_value = TYPE_V3; break;
+      default:
+      case 3: lex.suspected_value = TYPE_V4; break;
+    }
+    return lex;
+  }
+
+  if (ByteIsDigit(SERIAL_At(lex)) || SERIAL_At(lex) == '-')
+  {
+    lex.token_kind = SERIAL_TokenValue;
+    lex.suspected_value = TYPE_I64;
+
+    U64 start_at = lex.at;
+    lex.at += 1;
+
+    for (;;)
+    {
+      U8 c = SERIAL_At(lex);
+      if (!c) break;
+
+      if (c == '.')
+        lex.suspected_value = TYPE_float;
+
+      if (!ByteIsDigit(c) && c != '.')
+        break;
+    }
+
+    lex.token = S8_Substring(lex.txt, start_at, lex.at);
+    return lex;
+  }
+
+  // we don't know what's going on!
+  lex.at += 1;
+  return lex;
+}
+
 static void SERIAL_LoadFromS8(SERIAL_Item *items, U32 items_count, S8 source)
 {
-#if 1
-  (void)items; (void)items_count; (void)source;
-#else
-  while (source.size)
+  S8 last_identifier = {};
+  SERIAL_Lexer lex = {source};
+  for (;;)
   {
-    // 1. eat white etc etc
-    // 2. get token (also track previous token somehow... tokenizing whole file would require memory alloc, dont do that... use Queue thing from game_util.c?)
-    // 3. minimum thing that needs to be parsable `some_setting = 4`,
-    //    max: `U32 some_setting = 4;`,
-    //    edge_case: `some_setting=        4`
+    lex = SERIAL_NextToken(lex);
+    if (lex.token_kind == SERIAL_TokenEndOfSource)
+      break;
 
-    S8 token = source;
-  }
+    if (lex.token_kind == SERIAL_TokenIdentifier)
+    {
+      last_identifier = lex.token;
+    }
 
-  ForU32(i, items_count)
-  {
-    SERIAL_Item item = items[i];
-    Pr_S8(p, TYPE_GetName(item.type));
-    Pr_S8(p, S8Lit(" "));
-    Pr_S8(p, item.name);
-    Pr_S8(p, S8Lit(" = "));
-    TYPE_Print(item.type, p, item.ptr);
-    Pr_S8(p, S8Lit(";\n"));
+    if (lex.token_kind == SERIAL_TokenValue && last_identifier.size)
+    {
+      ForU32(i, items_count)
+      {
+        SERIAL_Item item = items[i];
+        if (S8_Match(item.name, last_identifier, 0))
+        {
+          TYPE_Parse(item.type, lex.token, item.ptr, 0); // @todo report parse error
+          break;
+        }
+      }
+      last_identifier = (S8){};
+    }
   }
-#endif
 }
 
 static void SERIAL_DebugSettings(bool is_load)
 {
-  U64 period_ms = 100;
-  if (APP.debug.serialize_last_check_timestamp + period_ms > APP.timestamp)
-    return;
-  APP.debug.serialize_last_check_timestamp = APP.timestamp;
+  if (!is_load)
+  {
+    U64 period_ms = 100;
+    if (APP.debug.serialize_last_check_timestamp + period_ms > APP.timestamp)
+      return;
+    APP.debug.serialize_last_check_timestamp = APP.timestamp;
+  }
 
   SERIAL_Item items[] =
   {

@@ -118,6 +118,10 @@ static bool ByteIsAlphaNumeric(U8 c)
 {
   return ByteIsAlphaUpper(c) || ByteIsAlphaLower(c) || ByteIsDigit(c);
 }
+static bool ByteIsIdentifierPart(U8 c)
+{
+  return ByteIsAlphaNumeric(c) || c == '_';
+}
 static bool ByteIsUnreservedSymbol(U8 c)
 {
   return (c == '~' || c == '!' || c == '$' || c == '%' || c == '^' ||

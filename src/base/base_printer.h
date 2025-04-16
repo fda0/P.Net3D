@@ -124,6 +124,13 @@ static void Pr_I32(Printer *p, I32 value)
   Pr_Cstr(p, buf);
 }
 
+static void Pr_I64(Printer *p, I64 value)
+{
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%lld", value);
+  Pr_Cstr(p, buf);
+}
+
 static void Pr_U32Hex(Printer *p, U32 value)
 {
   char buf[128];

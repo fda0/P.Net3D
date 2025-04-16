@@ -2,9 +2,9 @@ static V3 M_ParseV3(S8 x, S8 y, S8 z)
 {
   V3 res =
   {
-    (float)Parse_Float(x),
-    (float)Parse_Float(y),
-    (float)Parse_Float(z)
+    (float)Parse_Float(x, 0),
+    (float)Parse_Float(y, 0),
+    (float)Parse_Float(z, 0)
   };
   return res;
 }
