@@ -3,7 +3,7 @@ typedef struct
   U8 *str;
   U64 size;
 } S8;
-#define S8Print(s) (int)(s).size, (s).str
+#define S8Print(s) (int)(s).size, (s).str // used with "%.*s"
 #define S8Lit(CStrLiteral) S8_Make((U8 *)CStrLiteral, sizeof(CStrLiteral)-1)
 
 typedef enum {

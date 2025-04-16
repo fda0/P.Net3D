@@ -55,12 +55,12 @@ static void TYPE_Print(TYPE_ENUM type, Printer *p, void *src_ptr)
   }
 }
 
-static void TYPE_Parse(TYPE_ENUM type, S8 string, void *dst_ptr, bool *err)
+static void TYPE_Parse(TYPE_ENUM type, S8 string, void *dst_ptr, bool *err, U64 *adv)
 {
   switch (type)
   {
     default: Assert(false); break;
-#define TYPE_INC(A, B) case TYPE_##A: *(A *)dst_ptr = Parse_##B(string, err); break;
+#define TYPE_INC(A, B) case TYPE_##A: *(A *)dst_ptr = Parse_##B(string, err, adv); break;
 #include "game_serialize_types.inc"
 #undef TYPE_INC
   }
@@ -239,6 +239,8 @@ static void SERIAL_LoadFromS8(SERIAL_Item *items, U32 items_count, S8 source)
   for (;;)
   {
     lex = SERIAL_NextToken(lex);
+    LOG(Log_Serial, "[%.*s]", S8Print(lex.token));
+
     if (lex.token_kind == SERIAL_TokenEndOfSource)
       break;
 
@@ -254,13 +256,34 @@ static void SERIAL_LoadFromS8(SERIAL_Item *items, U32 items_count, S8 source)
         SERIAL_Item item = items[i];
         if (S8_Match(item.name, last_identifier, 0))
         {
-          TYPE_Parse(item.type, lex.token, item.ptr, 0); // @todo report parse error
+          TYPE_Parse(item.type, lex.token, item.ptr, 0, 0); // @todo report parse error
           break;
         }
       }
       last_identifier = (S8){};
     }
   }
+}
+
+static void SERIAL_LoadFromFile(SERIAL_Item *items, U32 items_count, const char *file_path)
+{
+  Arena *a = APP.tmp;
+  ArenaScope scope = Arena_PushScope(a);
+  S8 file_content = OS_LoadFile(a, file_path);
+  SERIAL_LoadFromS8(items, items_count, file_content);
+  Arena_PopScope(scope);
+}
+
+static void SERIAL_SaveToFile(SERIAL_Item *items, U32 items_count, const char *file_path)
+{
+  U64 max_save_size = Kilobyte(32);
+
+  Arena *a = APP.tmp;
+  ArenaScope scope = Arena_PushScope(a);
+  Printer p = Pr_Alloc(a, max_save_size);
+  SERIAL_SaveToPrinter(items, items_count, &p);
+  OS_SaveFile(file_path, Pr_AsS8(&p));
+  Arena_PopScope(scope);
 }
 
 static void SERIAL_DebugSettings(bool is_load)
@@ -281,29 +304,23 @@ static void SERIAL_DebugSettings(bool is_load)
     SERIAL_DEF(APP.debug., draw_collision_box, bool),
   };
 
-  U64 max_save_size = Kilobyte(32);
   const char *file_path = "debug.p3";
-
-  Arena *a = APP.tmp;
-  ArenaScope scope = Arena_PushScope(a);
   if (is_load)
   {
-    S8 file_content = OS_LoadFile(a, file_path);
-    SERIAL_LoadFromS8(items, ArrayCount(items), file_content);
-
+    SERIAL_LoadFromFile(items, ArrayCount(items), file_path);
     U64 hash = SERIAL_CalculateHash(items, ArrayCount(items));
     APP.debug.serialize_hash = hash;
+
+    LOG(Log_Serial, "(LOAD) win_p: %f, %f, hash: %llu", APP.debug.win_p.x, APP.debug.win_p.y, hash);
   }
-  else // is_save
+  else
   {
     U64 hash = SERIAL_CalculateHash(items, ArrayCount(items));
     if (APP.debug.serialize_hash == hash)
       return;
     APP.debug.serialize_hash = hash;
+    LOG(Log_Serial, "(SAVE) win_p: %f, %f, hash: %llu", APP.debug.win_p.x, APP.debug.win_p.y, hash);
 
-    Printer p = Pr_Alloc(a, max_save_size);
-    SERIAL_SaveToPrinter(items, ArrayCount(items), &p);
-    OS_SaveFile(file_path, Pr_AsS8(&p));
+    SERIAL_SaveToFile(items, ArrayCount(items), file_path);
   }
-  Arena_PopScope(scope);
 }

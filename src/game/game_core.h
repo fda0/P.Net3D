@@ -16,6 +16,7 @@ typedef enum
   Log_Perf = (1 << 11),
   Log_Clay = (1 << 12),
   Log_OS = (1 << 13),
+  Log_Serial = (1 << 14),
 } Log_Flags;
 
 // @note disable logging
