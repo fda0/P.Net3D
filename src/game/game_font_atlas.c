@@ -278,8 +278,11 @@ static void FONT_ProcessWindowResize(bool init)
 {
   if (APP.window_resized || init)
   {
-    APP.atlas.sizes[FONT_Regular] = APP.window_height / 32.f;
-    APP.atlas.sizes[FONT_Header] = APP.atlas.sizes[FONT_Regular] * 1.5f;
+    // @todo clean up this scale thing... do all this work only if scale actually changed
+    APP.atlas.scale = FCeil(APP.window_height / 512.f);
+    APP.atlas.sizes[FONT_Regular] = APP.atlas.scale * 24.f;
+    APP.atlas.sizes[FONT_Header] = APP.atlas.scale * 24.f * 1.5f;
+
     ForU32(i, FONT_COUNT)
     {
       float dpi = 72.f * 0.5f;

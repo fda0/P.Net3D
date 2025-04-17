@@ -1,34 +1,20 @@
-static Clay_Color UI_content_bg = {0, 0, 0, 128};
-static Clay_Color UI_btn_color = {40,40,40,255};
-static Clay_Color UI_btn_hover_color = {60,60,60,255};
-static Clay_Padding UI_button_pad = {8, 8, 4, 4};
-static Clay_CornerRadius UI_radius = {8, 8, 8, 8};
-static bool UI_checkbox_test;
+static Clay_Color UI_bg = {40, 40, 40, 255};
+static Clay_Color UI_fg = {235, 219, 178, 255};
+static Clay_Color UI_bar_bg = {254, 128, 25, 255};
+static Clay_Color UI_bar_fg = {40, 40, 40, 255};
+static Clay_Color UI_border_bg = {29, 32, 33, 255};
 
-static void UI_RenderHeaderButton(Clay_String text)
-{
-  CLAY({.layout = {.sizing = {.height = CLAY_SIZING_GROW(0)},
-                   .padding = UI_button_pad,
-                   .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-        .backgroundColor = Clay_Hovered() ? UI_btn_hover_color : UI_btn_color,
-        .cornerRadius = CLAY_CORNER_RADIUS(5)})
-  {
-    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FONT_Header,
-                                      .textColor = {255, 255, 255, 255}}));
-  }
-}
+static Clay_Padding UI_window_pad = {8,8,8,8};
+static U16 UI_window_gap = 8;
 
-static void UI_RenderDropdownMenuItem(Clay_String text)
-{
-  CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0)},
-                   .padding = CLAY_PADDING_ALL(16)},
-        .backgroundColor = Clay_Hovered() ? UI_btn_hover_color : UI_btn_color,
-        .cornerRadius = UI_radius})
-  {
-    CLAY_TEXT(text, CLAY_TEXT_CONFIG({.fontId = FONT_Regular,
-                                      .textColor = {255, 255, 255, 255}}));
-  }
-}
+static Clay_Color UI_btn_bg = {80, 73, 69, 255};
+static Clay_Color UI_btn_hover_bg = {102, 92, 84, 255};
+static Clay_Padding UI_btn_pad = {8, 8, 4, 4};
+
+static Clay_BorderWidth UI_checkbox_border_width = CLAY_BORDER_OUTSIDE(1.5);
+
+static Clay_CornerRadius UI_radius = {4,4,4,4};
+static Clay_BorderWidth UI_border_width = CLAY_BORDER_OUTSIDE(1.5);
 
 static void UI_HoverCallbackCheckbox(Clay_ElementId element_id, Clay_PointerData pointer_info, intptr_t user_data)
 {
@@ -47,26 +33,27 @@ static void UI_RenderCheckbox(FONT_Type font, Clay_String label, bool in_horizon
   else                   root_sizing.width  = CLAY_SIZING_GROW(0);
 
   CLAY({.layout = {.sizing = root_sizing,
-                   .padding = UI_button_pad,
+                   .padding = UI_btn_pad,
                    .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
-        .backgroundColor = Clay_Hovered() ? UI_btn_hover_color : UI_btn_color,
+        .backgroundColor = Clay_Hovered() ? UI_btn_hover_bg : UI_btn_bg,
         .cornerRadius = UI_radius})
   {
     Clay_OnHover(UI_HoverCallbackCheckbox, (intptr_t)checkbox_bool);
 
-    CLAY({.layout = {.sizing = {.width = CLAY_SIZING_FIXED(25),
-                                .height = CLAY_SIZING_FIXED(25)},
+    float checkbox_dim = 15 * APP.atlas.scale;
+    CLAY({.layout = {.sizing = {.width = CLAY_SIZING_FIXED(checkbox_dim),
+                                .height = CLAY_SIZING_FIXED(checkbox_dim)},
                      .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
-          .backgroundColor = Clay_Hovered() ? UI_btn_hover_color : UI_btn_color,
-          .border = {.color = {240, 240, 240, 255},
-                     .width = CLAY_BORDER_ALL(2)},
+          .backgroundColor = Clay_Hovered() ? UI_btn_hover_bg : UI_btn_bg,
+          .border = {.color = UI_fg,
+                     .width = UI_checkbox_border_width},
           .cornerRadius = CLAY_CORNER_RADIUS(4)})
     {
       if (*checkbox_bool)
-        CLAY_TEXT(CLAY_STRING("X"), CLAY_TEXT_CONFIG({.fontId = font, .textColor = {255, 255, 255, 255}}));
+        CLAY_TEXT(CLAY_STRING("X"), CLAY_TEXT_CONFIG({.fontId = font, .textColor = UI_fg}));
     }
     CLAY({.layout = {.sizing = {CLAY_SIZING_FIXED(10)}}}) {}
-    CLAY_TEXT(label, CLAY_TEXT_CONFIG({.fontId = font, .textColor = {255, 255, 255, 255}}));
+    CLAY_TEXT(label, CLAY_TEXT_CONFIG({.fontId = font, .textColor = UI_fg}));
   }
 }
 
@@ -77,17 +64,19 @@ static void UI_BuildUILayoutElements()
   CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
                    .sizing = {.width = CLAY_SIZING_FIT(),
                               .height = CLAY_SIZING_FIT()}},
-        .backgroundColor = {10, 250, 10, 128},
+        .backgroundColor = UI_bg,
         .floating = {.offset = {clamped_win_p.x, clamped_win_p.y},
                      .attachTo = CLAY_ATTACH_TO_ROOT},
-        .border = {.color = {0,0,0,255},
-                   .width = CLAY_BORDER_OUTSIDE(2)}})
+        .border = {.color = UI_border_bg,
+                   .width = UI_border_width},
+        .cornerRadius = UI_radius})
   {
     CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
                                 .height = CLAY_SIZING_FIT()},
                      .padding = CLAY_PADDING_ALL(2),
                      .childAlignment = {.x = CLAY_ALIGN_X_CENTER}},
-          .backgroundColor = {10, 10, 250, 128}})
+          .backgroundColor = UI_bar_bg,
+          .cornerRadius = UI_radius})
     {
       if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft))
         APP.debug.win_drag = true;
@@ -97,15 +86,15 @@ static void UI_BuildUILayoutElements()
         APP.debug.win_p = clamped_win_p;
 
       CLAY_TEXT(CLAY_STRING("Debug window"),
-                CLAY_TEXT_CONFIG({.fontId = FONT_Regular, .textColor = {255,255,255,255}}));
+                CLAY_TEXT_CONFIG({.fontId = FONT_Regular, .textColor = UI_bar_fg}));
     }
 
     CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
                      .sizing = {.width = CLAY_SIZING_GROW(0),
                                 .height = CLAY_SIZING_FIT()},
-                     .padding = CLAY_PADDING_ALL(16),
-                     .childGap = 8},
-          .backgroundColor = {250, 10, 10, 128}})
+                     .padding = UI_window_pad,
+                     .childGap = UI_window_gap},
+          .cornerRadius = UI_radius})
     {
       UI_RenderCheckbox(FONT_Regular, CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
       UI_RenderCheckbox(FONT_Regular, CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
@@ -194,15 +183,15 @@ static void UI_FinishFrame()
       {
         Clay_RectangleRenderData rect = rcom->renderData.rectangle;
         shape.color = Color32_ClayColor(rect.backgroundColor);
-        shape.corner_radius = rect.cornerRadius.topLeft; // @todo support corner radius for each corner
+        shape.corner_radius = APP.atlas.scale * rect.cornerRadius.topLeft; // @todo support corner radius for each corner
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_BORDER:
       {
         Clay_BorderRenderData border = rcom->renderData.border;
         shape.color = Color32_ClayColor(border.color);
-        shape.corner_radius = border.cornerRadius.topLeft; // @todo support corner radius for each corner
-        shape.border_thickness = border.width.left; // @todo support border width per direction?
+        shape.corner_radius = APP.atlas.scale * border.cornerRadius.topLeft; // @todo support corner radius for each corner
+        shape.border_thickness = APP.atlas.scale * border.width.left; // @todo support border width per direction?
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_TEXT:
@@ -234,7 +223,7 @@ static void UI_FinishFrame()
     }
 
     if (shape.corner_radius > 0.f)
-      shape.edge_softness = 1.f;
+      shape.edge_softness = APP.atlas.scale * 0.5f;
 
     UI_DrawRaw(shape);
   }
