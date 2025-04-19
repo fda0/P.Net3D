@@ -33,8 +33,10 @@ typedef enum
 typedef struct
 {
   float scale;
+  bool scale_changed;
+
   float sizes[FONT_COUNT];
-  TTF_Font *fonts[FONT_COUNT][2];
+  TTF_Font *ttfs[FONT_COUNT][2];
   I16 texture_dim;
   I16 margin;
 

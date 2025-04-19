@@ -66,7 +66,7 @@ struct AppState
   bool fullscreen;
   bool headless; // no window mode
   GPU_State gpu;
-  FONT_State atlas;
+  FONT_State font;
   AST_State ast;
 
   Arena *tmp;
@@ -158,8 +158,10 @@ struct AppState
   {
     U64 serialize_last_check_timestamp;
     U64 serialize_hash;
+
     V2 win_p;
     bool win_drag;
+    U32 menu_category;
 
     float fixed_dt;
     bool single_tick_stepping;

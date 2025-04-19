@@ -315,8 +315,6 @@ static void SERIAL_DebugSettings(bool is_load)
     SERIAL_LoadFromFile(items, ArrayCount(items), file_path);
     U64 hash = SERIAL_CalculateHash(items, ArrayCount(items));
     APP.debug.serialize_hash = hash;
-
-    LOG(Log_Serial, "(LOAD) win_p: %f, %f, hash: %llu", APP.debug.win_p.x, APP.debug.win_p.y, hash);
   }
   else
   {
@@ -324,7 +322,6 @@ static void SERIAL_DebugSettings(bool is_load)
     if (APP.debug.serialize_hash == hash)
       return;
     APP.debug.serialize_hash = hash;
-    LOG(Log_Serial, "(SAVE) win_p: %f, %f, hash: %llu", APP.debug.win_p.x, APP.debug.win_p.y, hash);
 
     SERIAL_SaveToFile(items, ArrayCount(items), file_path);
   }

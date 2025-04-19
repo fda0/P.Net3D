@@ -4,8 +4,8 @@
 
 static U64 FONT_TextHash(FONT_Type font, S8 text)
 {
-  AssertBounds(font, APP.atlas.fonts);
-  float point_size = TTF_GetFontSize(APP.atlas.fonts[font][0]);
+  AssertBounds(font, APP.font.ttfs);
+  float point_size = TTF_GetFontSize(APP.font.ttfs[font][0]);
   U64 hash = U64_Hash(font, &point_size, sizeof(point_size));
   hash = S8_Hash(hash, text);
   return hash;
@@ -13,8 +13,8 @@ static U64 FONT_TextHash(FONT_Type font, S8 text)
 
 static FONT_GlyphRun *FONT_FindGlyphRunInLayer(U32 layer_index, U64 hash, bool create_mode)
 {
-  AssertBounds(layer_index, APP.atlas.layers);
-  FONT_Layer *layer = APP.atlas.layers + layer_index;
+  AssertBounds(layer_index, APP.font.layers);
+  FONT_Layer *layer = APP.font.layers + layer_index;
 
   U32 key = hash % ArrayCount(layer->hash_table);
   FONT_GlyphRun *slot = layer->hash_table + key;
@@ -57,15 +57,15 @@ static FONT_GlyphRun *FONT_FindGlyphRunInLayer(U32 layer_index, U64 hash, bool c
 
 static FONT_GlyphRun *FONT_CreateGlyphRunInLayer(U32 layer_index, U64 hash, I16 orig_width, I16 orig_height)
 {
-  AssertBounds(layer_index, APP.atlas.layers);
-  FONT_Layer *layer = APP.atlas.layers + layer_index;
+  AssertBounds(layer_index, APP.font.layers);
+  FONT_Layer *layer = APP.font.layers + layer_index;
 
-  I32 margin = APP.atlas.margin;
+  I32 margin = APP.font.margin;
   I32 margin2 = margin * 2;
 
   I16 width = orig_width + margin2;
   I16 height = orig_height + margin2;
-  I16 max_dim = APP.atlas.texture_dim;
+  I16 max_dim = APP.font.texture_dim;
   I16 all_lines_height = 0;
 
   // find best line
@@ -132,8 +132,8 @@ static FONT_GlyphRun *FONT_CreateGlyphRunInLayer(U32 layer_index, U64 hash, I16 
         line_y_offset += layer->line_heights[line_index];
 
       slot->hash = hash;
-      slot->p.x = layer->line_advances[best_line_index] + APP.atlas.margin;
-      slot->p.y = line_y_offset + APP.atlas.margin;
+      slot->p.x = layer->line_advances[best_line_index] + APP.font.margin;
+      slot->p.y = line_y_offset + APP.font.margin;
       slot->dim.x = orig_width;
       slot->dim.y = orig_height;
       slot->layer = layer_index;
@@ -154,17 +154,17 @@ static FONT_GlyphRun FONT_GetGlyphRun(FONT_Type font, S8 text)
   if (APP.headless)
     return result;
 
-  I32 margin = APP.atlas.margin;
+  I32 margin = APP.font.margin;
   I32 margin2 = margin * 2;
 
-  AssertBounds(font, APP.atlas.fonts);
+  AssertBounds(font, APP.font.ttfs);
   U64 hash = FONT_TextHash(font, text);
 
   // Find already existing glyph run
-  U32 layer_count_minus_one = ArrayCount(APP.atlas.layers) - 1;
+  U32 layer_count_minus_one = ArrayCount(APP.font.layers) - 1;
   ForU32(layer_offset, layer_count_minus_one)
   {
-    U32 layer_index = (APP.atlas.active_layer + layer_offset) % ArrayCount(APP.atlas.layers);
+    U32 layer_index = (APP.font.active_layer + layer_offset) % ArrayCount(APP.font.layers);
     FONT_GlyphRun *glyph_run = FONT_FindGlyphRunInLayer(layer_index, hash, false);
     if (glyph_run->hash == hash)
       return *glyph_run;
@@ -172,14 +172,14 @@ static FONT_GlyphRun FONT_GetGlyphRun(FONT_Type font, S8 text)
 
   // Create surface, now we have width x height
   SDL_Color color = {255,255,255,255};
-  TTF_Font *ttf_font = APP.atlas.fonts[font][0];
+  TTF_Font *ttf_font = APP.font.ttfs[font][0];
   SDL_Surface *surf = TTF_RenderText_Blended(ttf_font, (char *)text.str, text.size, color);
   if (!surf)
     return result;
 
   // Reject surfaces that are too big
-  if (surf->w + margin2 > APP.atlas.texture_dim ||
-      surf->h + margin2 > APP.atlas.texture_dim)
+  if (surf->w + margin2 > APP.font.texture_dim ||
+      surf->h + margin2 > APP.font.texture_dim)
   {
     SDL_DestroySurface(surf);
     return result;
@@ -188,7 +188,7 @@ static FONT_GlyphRun FONT_GetGlyphRun(FONT_Type font, S8 text)
   FONT_GlyphRun *slot = 0;
   ForU32(layer_offset, layer_count_minus_one)
   {
-    U32 layer_index = (APP.atlas.active_layer + layer_offset) % ArrayCount(APP.atlas.layers);
+    U32 layer_index = (APP.font.active_layer + layer_offset) % ArrayCount(APP.font.layers);
     slot = FONT_CreateGlyphRunInLayer(layer_index, hash, surf->w, surf->h);
     if (slot)
       break;
@@ -197,11 +197,11 @@ static FONT_GlyphRun FONT_GetGlyphRun(FONT_Type font, S8 text)
   if (!slot) // couldn't find space in any layer
   {
     // advance active_layer index (backwards) and clear active layer
-    APP.atlas.active_layer += ArrayCount(APP.atlas.layers) - 1;
-    APP.atlas.active_layer %= ArrayCount(APP.atlas.layers);
-    SDL_zerop(APP.atlas.layers + APP.atlas.active_layer);
+    APP.font.active_layer += ArrayCount(APP.font.layers) - 1;
+    APP.font.active_layer %= ArrayCount(APP.font.layers);
+    SDL_zerop(APP.font.layers + APP.font.active_layer);
 
-    slot = FONT_CreateGlyphRunInLayer(APP.atlas.active_layer, hash, surf->w, surf->h);
+    slot = FONT_CreateGlyphRunInLayer(APP.font.active_layer, hash, surf->w, surf->h);
   }
 
   // Upload surface to GPU (if free slot was found)
@@ -246,8 +246,8 @@ static FONT_GlyphRun FONT_GetGlyphRun(FONT_Type font, S8 text)
 
         Assert(slot->p.x >= margin);
         Assert(slot->p.y >= margin);
-        Assert(slot->p.x + slot->dim.x + margin <= APP.atlas.texture_dim);
-        Assert(slot->p.y + slot->dim.y + margin <= APP.atlas.texture_dim);
+        Assert(slot->p.x + slot->dim.x + margin <= APP.font.texture_dim);
+        Assert(slot->p.y + slot->dim.y + margin <= APP.font.texture_dim);
         SDL_GPUTextureRegion dst_region =
         {
           .texture = APP.gpu.ui.gpu.atlas_texture,
@@ -278,43 +278,50 @@ static void FONT_ProcessWindowResize(bool init)
 {
   if (APP.window_resized || init)
   {
-    // @todo clean up this scale thing... do all this work only if scale actually changed
-    APP.atlas.scale = FCeil(APP.window_height / 512.f);
-    APP.atlas.sizes[FONT_Regular] = APP.atlas.scale * 24.f;
-    APP.atlas.sizes[FONT_Header] = APP.atlas.scale * 24.f * 1.5f;
+    float scale = Max(2.f, FRound(APP.window_height / 256.f) - 2.f);
+    if (scale != APP.font.scale || init)
+      APP.font.scale_changed = true;
+
+    APP.font.scale = scale;
+  }
+
+  if (APP.font.scale_changed)
+  {
+    APP.font.sizes[FONT_Regular] = APP.font.scale * 14.f;
+    APP.font.sizes[FONT_Header] = APP.font.scale * 14.f * 1.5f;
 
     ForU32(i, FONT_COUNT)
     {
       float dpi = 72.f * 0.5f;
-      TTF_SetFontSizeDPI(APP.atlas.fonts[i][0], APP.atlas.sizes[i], dpi, dpi);
-      TTF_SetFontSizeDPI(APP.atlas.fonts[i][1], APP.atlas.sizes[i], dpi, dpi);
+      TTF_SetFontSizeDPI(APP.font.ttfs[i][0], APP.font.sizes[i], dpi, dpi);
+      TTF_SetFontSizeDPI(APP.font.ttfs[i][1], APP.font.sizes[i], dpi, dpi);
     }
 
     I32 new_texture_dim = U32_CeilPow2(APP.window_height); // @todo consider window area instead of height
     new_texture_dim = Max(256, new_texture_dim);
 
     bool resize_texture = false;
-    resize_texture |= new_texture_dim > APP.atlas.texture_dim; // texture grew
-    resize_texture |= new_texture_dim*2 < APP.atlas.texture_dim; // texure shrank by at least 4x
+    resize_texture |= new_texture_dim > APP.font.texture_dim; // texture grew
+    resize_texture |= new_texture_dim*2 < APP.font.texture_dim; // texure shrank by at least 4x
 
     if (resize_texture || init)
     {
-      LOG(Log_GPU, "Font Atlas resize from %d to %d", (I32)APP.atlas.texture_dim, new_texture_dim);
+      LOG(Log_GPU, "Font Atlas resize from %d to %d", (I32)APP.font.texture_dim, new_texture_dim);
 
-      APP.atlas.texture_dim = new_texture_dim;
+      APP.font.texture_dim = new_texture_dim;
 
       // Initialize atlas layers bookkeeping structs
       {
-        SDL_zeroa(APP.atlas.layers); // clear layers
+        SDL_zeroa(APP.font.layers); // clear layers
 
         // Pre-seed layers to be full.
         // This isn't necessary but will result in more optimal fill order.
-        ForArray(i, APP.atlas.layers)
+        ForArray(i, APP.font.layers)
         {
-          FONT_Layer *layer = APP.atlas.layers + i;
+          FONT_Layer *layer = APP.font.layers + i;
           layer->line_count = 1;
-          layer->line_heights[0] = APP.atlas.texture_dim;
-          layer->line_advances[0] = APP.atlas.texture_dim;
+          layer->line_heights[0] = APP.font.texture_dim;
+          layer->line_advances[0] = APP.font.texture_dim;
         }
       }
 
@@ -324,10 +331,10 @@ static void FONT_ProcessWindowResize(bool init)
       {
         .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
         .format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM,
-        .width = APP.atlas.texture_dim,
-        .height = APP.atlas.texture_dim,
+        .width = APP.font.texture_dim,
+        .height = APP.font.texture_dim,
         .layer_count_or_depth = FONT_ATLAS_LAYERS,
-        .num_levels = CalculateMipMapCount(APP.atlas.texture_dim, APP.atlas.texture_dim),
+        .num_levels = CalculateMipMapCount(APP.font.texture_dim, APP.font.texture_dim),
         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
       };
       APP.gpu.ui.gpu.atlas_texture = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
@@ -338,7 +345,7 @@ static void FONT_ProcessWindowResize(bool init)
 
 static void FONT_Init()
 {
-  APP.atlas.margin = 1;
+  APP.font.margin = 1;
   float default_size = 32.f;
 
   // load font
@@ -348,14 +355,14 @@ static void FONT_Init()
     TTF_Font *playfair = TTF_OpenFont("../res/fonts/PlayfairDisplay-Regular.ttf", default_size);
     TTF_Font *emoji = TTF_OpenFont("../res/fonts/NotoColorEmoji-Regular.ttf", default_size);
 
-    APP.atlas.fonts[FONT_Regular][0] = playfair;
-    APP.atlas.fonts[FONT_Regular][1] = emoji;
+    APP.font.ttfs[FONT_Regular][0] = playfair;
+    APP.font.ttfs[FONT_Regular][1] = emoji;
 
-    APP.atlas.fonts[FONT_Header][0] = TTF_CopyFont(APP.atlas.fonts[FONT_Regular][0]);
-    APP.atlas.fonts[FONT_Header][1] = TTF_CopyFont(APP.atlas.fonts[FONT_Regular][1]);
+    APP.font.ttfs[FONT_Header][0] = TTF_CopyFont(APP.font.ttfs[FONT_Regular][0]);
+    APP.font.ttfs[FONT_Header][1] = TTF_CopyFont(APP.font.ttfs[FONT_Regular][1]);
 
-    TTF_AddFallbackFont(APP.atlas.fonts[FONT_Regular][0], APP.atlas.fonts[FONT_Regular][1]);
-    TTF_AddFallbackFont(APP.atlas.fonts[FONT_Header][0], APP.atlas.fonts[FONT_Header][1]);
+    TTF_AddFallbackFont(APP.font.ttfs[FONT_Regular][0], APP.font.ttfs[FONT_Regular][1]);
+    TTF_AddFallbackFont(APP.font.ttfs[FONT_Header][0], APP.font.ttfs[FONT_Header][1]);
   }
 
   FONT_ProcessWindowResize(true);

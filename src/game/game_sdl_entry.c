@@ -112,6 +112,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   }
 
   APP.window_resized = false;
+  APP.font.scale_changed = false;
 
   return SDL_APP_CONTINUE;
 }

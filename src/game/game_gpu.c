@@ -1057,7 +1057,7 @@ static void GPU_Iterate()
     UI_GpuUniform uniform =
     {
       .window_dim = APP.window_dim,
-      .texture_dim = (V2){APP.atlas.texture_dim, APP.atlas.texture_dim},
+      .texture_dim = (V2){APP.font.texture_dim, APP.font.texture_dim},
     };
     GPU_UpdateUIUniform(cmd, uniform);
 

@@ -247,12 +247,12 @@ static void Game_DrawObjects()
 
   ForU32(layer_index, 4)
   {
-    float alpha = (layer_index == APP.atlas.active_layer ? 1.f : 0.6f);
+    float alpha = (layer_index == APP.font.active_layer ? 1.f : 0.6f);
     UI_GpuShape shape =
     {
       .color = Color32_RGBAf(1, 1, 1, alpha),
       .tex_min = (V2){0.f, 0.f},
-      .tex_max = (V2){APP.atlas.texture_dim, APP.atlas.texture_dim},
+      .tex_max = (V2){APP.font.texture_dim, APP.font.texture_dim},
       .tex_layer = layer_index,
     };
     if (layer_index & 2) shape.p_min.x += dim;
@@ -260,19 +260,6 @@ static void Game_DrawObjects()
     shape.p_max = V2_Add(shape.p_min, (V2){dim, dim});
     UI_DrawRaw(shape);
   }
-
-  {
-    UI_GpuShape shape =
-    {
-      .p_min = (V2){300, 300},
-      .p_max = (V2){400, 400},
-      .corner_radius = 10.f,
-      .edge_softness = 5.f,
-      .color = Color32_RGBf(0.7f, 0.6f, 0.02f),
-    };
-    UI_DrawRect(shape);
-  }
-
 }
 
 static void Game_SetWindowPosSize(I32 px, I32 py, I32 w, I32 h)
@@ -313,7 +300,7 @@ static void Game_Iterate()
 
   GPU_ProcessWindowResize(false);
   FONT_ProcessWindowResize(false);
-  UI_ProcessWindowResize();
+  UI_ProcessWindowAndFontResize();
 
   // font experiments
   {
