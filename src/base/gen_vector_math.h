@@ -40,6 +40,10 @@ static V2 V2_Mul(V2 a, V2 b) { return (V2){a.x * b.x, a.y * b.y}; }
 static V3 V3_Mul(V3 a, V3 b) { return (V3){a.x * b.x, a.y * b.y, a.z * b.z}; }
 static V4 V4_Mul(V4 a, V4 b) { return (V4){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w}; }
 
+static V2 V2_Div(V2 a, V2 b) { return (V2){a.x / b.x, a.y / b.y}; }
+static V3 V3_Div(V3 a, V3 b) { return (V3){a.x / b.x, a.y / b.y, a.z / b.z}; }
+static V4 V4_Div(V4 a, V4 b) { return (V4){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
+
 static V2 V2_Clamp(V2 min, V2 max, V2 val) {
   return (V2){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
 }
@@ -98,6 +102,10 @@ static V2I32 V2I32_Mul(V2I32 a, V2I32 b) { return (V2I32){a.x * b.x, a.y * b.y};
 static V3I32 V3I32_Mul(V3I32 a, V3I32 b) { return (V3I32){a.x * b.x, a.y * b.y, a.z * b.z}; }
 static V4I32 V4I32_Mul(V4I32 a, V4I32 b) { return (V4I32){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w}; }
 
+static V2I32 V2I32_Div(V2I32 a, V2I32 b) { return (V2I32){a.x / b.x, a.y / b.y}; }
+static V3I32 V3I32_Div(V3I32 a, V3I32 b) { return (V3I32){a.x / b.x, a.y / b.y, a.z / b.z}; }
+static V4I32 V4I32_Div(V4I32 a, V4I32 b) { return (V4I32){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
+
 static V2I32 V2I32_Clamp(V2I32 min, V2I32 max, V2I32 val) {
   return (V2I32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
 }
@@ -155,6 +163,10 @@ static V4I16 V4I16_Sub(V4I16 a, V4I16 b) { return (V4I16){a.x - b.x, a.y - b.y, 
 static V2I16 V2I16_Mul(V2I16 a, V2I16 b) { return (V2I16){a.x * b.x, a.y * b.y}; }
 static V3I16 V3I16_Mul(V3I16 a, V3I16 b) { return (V3I16){a.x * b.x, a.y * b.y, a.z * b.z}; }
 static V4I16 V4I16_Mul(V4I16 a, V4I16 b) { return (V4I16){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w}; }
+
+static V2I16 V2I16_Div(V2I16 a, V2I16 b) { return (V2I16){a.x / b.x, a.y / b.y}; }
+static V3I16 V3I16_Div(V3I16 a, V3I16 b) { return (V3I16){a.x / b.x, a.y / b.y, a.z / b.z}; }
+static V4I16 V4I16_Div(V4I16 a, V4I16 b) { return (V4I16){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
 static V2I16 V2I16_Clamp(V2I16 min, V2I16 max, V2I16 val) {
   return (V2I16){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};

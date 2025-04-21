@@ -1,3 +1,7 @@
+static Clay_Color UI_red = {140, 40, 40, 255};
+static Clay_Color UI_green = {40, 130, 40, 255};
+static Clay_Color UI_blue = {40, 40, 140, 255};
+
 static Clay_Color UI_bg = {40, 40, 40, 255};
 static Clay_Color UI_fg = {235, 219, 178, 255};
 static Clay_Color UI_bar_bg = {254, 128, 25, 255};
@@ -8,6 +12,8 @@ static U16 UI_window_gap = 8;
 static Clay_Color UI_btn_bg = {80, 73, 69, 255};
 static Clay_Color UI_btn_hover_bg = {102, 92, 84, 255};
 static Clay_Padding UI_btn_pad = {8, 8, 4, 4};
+static float UI_checkbox_dim = 10;
+static float UI_checkbox_gap = 5;
 static Clay_BorderWidth UI_checkbox_border_width = CLAY_BORDER_OUTSIDE(1);
 static Clay_CornerRadius UI_checkbox_radius = {2,2,2,2};
 static Clay_CornerRadius UI_radius = {2,2,2,2};
@@ -49,6 +55,28 @@ static void UI_CallbackButtonBool(Clay_ElementId element_id, Clay_PointerData po
   }
 }
 
+static void UI_CallbackSliderFloat(Clay_ElementId element_id, Clay_PointerData pointer_info, intptr_t user_data)
+{
+  if (pointer_info.state == CLAY_POINTER_DATA_PRESSED)
+  {
+    LOG(Log_Clay, "slider");
+    float *share = (float *)user_data;
+
+    Clay_ElementData element_data = Clay_GetElementData(element_id);
+    V2 elem_p = (V2){element_data.boundingBox.x, element_data.boundingBox.y};
+    V2 elem_dim = (V2){element_data.boundingBox.width, element_data.boundingBox.height};
+
+    V2 rel_mouse = V2_Sub(APP.mouse, elem_p);
+    V2 clamped_mouse = V2_Clamp((V2){}, elem_dim, rel_mouse);
+
+    if (elem_dim.x)
+    {
+      float share_x = clamped_mouse.x / elem_dim.x;
+      *share = share_x;
+    }
+  }
+}
+
 static void UI_RenderCheckbox(FONT_Type font, Clay_String label, bool in_horizontal_bar, bool *checkbox_bool)
 {
   Clay_Sizing root_sizing = {};
@@ -63,9 +91,8 @@ static void UI_RenderCheckbox(FONT_Type font, Clay_String label, bool in_horizon
   {
     Clay_OnHover(UI_CallbackButtonBool, (intptr_t)checkbox_bool);
 
-    float checkbox_dim = 10;
-    CLAY({.layout = {.sizing = {.width = CLAY_SIZING_SCALED(checkbox_dim),
-                                .height = CLAY_SIZING_SCALED(checkbox_dim)},
+    CLAY({.layout = {.sizing = {.width = CLAY_SIZING_SCALED(UI_checkbox_dim),
+                                .height = CLAY_SIZING_SCALED(UI_checkbox_dim)},
                      .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
           .backgroundColor = Clay_Hovered() ? UI_btn_hover_bg : UI_btn_bg,
           .border = {.color = UI_fg,
@@ -75,7 +102,7 @@ static void UI_RenderCheckbox(FONT_Type font, Clay_String label, bool in_horizon
       if (*checkbox_bool)
         CLAY_TEXT(CLAY_STRING("X"), CLAY_TEXT_CONFIG({.fontId = font, .textColor = UI_fg}));
     }
-    CLAY({.layout = {.sizing = {CLAY_SIZING_SCALED(checkbox_dim*0.5f)}}}) {}
+    CLAY({.layout = {.sizing = {CLAY_SIZING_SCALED(UI_checkbox_gap)}}});
     CLAY_TEXT(label, CLAY_TEXT_CONFIG({.fontId = font, .textColor = UI_fg}));
   }
 }
@@ -166,6 +193,51 @@ static void UI_BuildUILayoutElements()
         else if (APP.debug.menu_category == 1)
         {
           CLAY_TEXT(CLAY_STRING("Material editor will be here"),
+                    CLAY_TEXT_CONFIG({.fontId = FONT_Regular, .textColor = UI_fg}));
+
+          CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW()},
+                           .padding = UI_btn_pad,
+                           .childGap = UI_checkbox_gap},
+                .backgroundColor = UI_red})
+          {
+            float width = 100;
+            float scale = APP.debug.slider_share;
+            float filled_width = width * scale;
+
+            CLAY({.layout = {.sizing = {.width = CLAY_SIZING_SCALED(width),
+                                        .height = CLAY_SIZING_GROW()}},
+                  .backgroundColor = UI_blue,
+                  .cornerRadius = UI_radius})
+            {
+              CLAY({.layout = {.sizing = {.width = CLAY_SIZING_SCALED(filled_width),
+                                          .height = CLAY_SIZING_GROW()}},
+                    .backgroundColor = UI_green,
+                    .cornerRadius = UI_radius,
+                    .floating = {.attachTo = CLAY_ATTACH_TO_PARENT}
+                    });
+
+
+              CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(),
+                                          .height = CLAY_SIZING_GROW()},
+                               .childAlignment = {.x = CLAY_ALIGN_X_CENTER,
+                                                  .y = CLAY_ALIGN_Y_CENTER}},
+                    .floating = {.attachTo = CLAY_ATTACH_TO_PARENT}})
+              {
+                Clay_OnHover(UI_CallbackSliderFloat, (intptr_t)&APP.debug.slider_share);
+
+                Printer p = Pr_Alloc(APP.a_frame, 32);
+                Pr_Float(&p, scale);
+                Pr_S8(&p, S8Lit("%"));
+                CLAY_TEXT(ClayString_FromS8(Pr_AsS8(&p)),
+                          CLAY_TEXT_CONFIG({.fontId = FONT_Regular, .textColor = UI_fg}));
+              }
+            }
+
+            CLAY_TEXT(CLAY_STRING("Shininess"),
+                      CLAY_TEXT_CONFIG({.fontId = FONT_Regular, .textColor = UI_fg}));
+          }
+
+          CLAY_TEXT(CLAY_STRING("Displacement"),
                     CLAY_TEXT_CONFIG({.fontId = FONT_Regular, .textColor = UI_fg}));
         }
         else if (APP.debug.menu_category == 2)

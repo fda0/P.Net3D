@@ -162,6 +162,7 @@ struct AppState
     V2 win_p;
     bool win_drag;
     U32 menu_category;
+    float slider_share;
 
     float fixed_dt;
     bool single_tick_stepping;
