@@ -134,6 +134,16 @@ static U8 SERIAL_At(SERIAL_Lexer lex)
   return 0;
 }
 
+static bool SERIAL_IsIdentifierStart(U8 c)
+{
+  return ByteIsAlpha(c) || c == '[';
+}
+
+static bool SERIAL_IsIdentifier(U8 c)
+{
+  return ByteIsIdentifierPart(c) || c == '[' || c == ']' || c == '.';
+}
+
 static SERIAL_Lexer SERIAL_NextToken(SERIAL_Lexer lex)
 {
   lex.token = (S8){};
@@ -158,13 +168,13 @@ static SERIAL_Lexer SERIAL_NextToken(SERIAL_Lexer lex)
     return lex;
   }
 
-  if (ByteIsAlpha(SERIAL_At(lex)))
+  if (SERIAL_IsIdentifierStart(SERIAL_At(lex)))
   {
     lex.token_kind = SERIAL_TokenIdentifier;
     U64 start_at = lex.at;
     lex.at += 1;
 
-    while (ByteIsIdentifierPart(SERIAL_At(lex)) || SERIAL_At(lex) == '[' || SERIAL_At(lex) == ']')
+    while (SERIAL_IsIdentifier(SERIAL_At(lex)))
       lex.at += 1;
 
     lex.token = S8_Substring(lex.txt, start_at, lex.at);
@@ -310,13 +320,9 @@ static void SERIAL_DebugSettings(bool is_load)
     SERIAL_DEF(APP.debug., noclip_camera, bool),
     SERIAL_DEF(APP.debug., sun_camera, bool),
     SERIAL_DEF(APP.debug., draw_collision_box, bool),
-
-//#define TEX_INC(a) SERIAL_DEF(APP.debug., shininess_texs[TEX_##a], float)
-//#include "assets_textures.inc"
-//#undef TEX_INC
   };
 
-  const char *file_path = "debug.p3";
+  const char *file_path = "debug.c_config";
   if (is_load)
   {
     SERIAL_LoadFromFile(items, ArrayCount(items), file_path);
@@ -329,6 +335,41 @@ static void SERIAL_DebugSettings(bool is_load)
     if (APP.debug.serialize_hash == hash)
       return;
     APP.debug.serialize_hash = hash;
+
+    SERIAL_SaveToFile(items, ArrayCount(items), file_path);
+  }
+}
+
+static void SERIAL_AssetSettings(bool is_load)
+{
+  if (!is_load)
+  {
+    U64 period_ms = 100;
+    if (APP.ast.serialize_last_check_timestamp + period_ms > APP.timestamp)
+      return;
+    APP.ast.serialize_last_check_timestamp = APP.timestamp;
+  }
+
+  SERIAL_Item items[] =
+  {
+#define TEX_INC(a) SERIAL_DEF(APP.ast.tex_assets, [TEX_##a].shininess, float)
+#include "assets_textures.inc"
+#undef TEX_INC
+  };
+
+  const char *file_path = "../src/data/assets.c_config";
+  if (is_load)
+  {
+    SERIAL_LoadFromFile(items, ArrayCount(items), file_path);
+    U64 hash = SERIAL_CalculateHash(items, ArrayCount(items));
+    APP.ast.serialize_hash = hash;
+  }
+  else
+  {
+    U64 hash = SERIAL_CalculateHash(items, ArrayCount(items));
+    if (APP.ast.serialize_hash == hash)
+      return;
+    APP.ast.serialize_hash = hash;
 
     SERIAL_SaveToFile(items, ArrayCount(items), file_path);
   }

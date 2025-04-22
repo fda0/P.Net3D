@@ -496,6 +496,7 @@ static void Game_Iterate()
   // Serializations
   {
     SERIAL_DebugSettings(false);
+    SERIAL_AssetSettings(false);
   }
 
   // Frame arena cleanup
@@ -523,17 +524,15 @@ static void Game_Init()
     APP.log_filter &= ~(Log_NetDatagram);
   }
 
-  // Load serialized settings from files
-  {
-    SERIAL_DebugSettings(true);
-  }
-
+  SERIAL_DebugSettings(true);
   NET_Init();
 
   if (!APP.headless)
   {
     GPU_Init();
     AST_Init();
+    SERIAL_AssetSettings(true);
+
     FONT_Init();
     TEX_InitThread();
     UI_Init();

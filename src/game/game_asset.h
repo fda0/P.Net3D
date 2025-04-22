@@ -16,4 +16,7 @@ typedef struct
   // textures thread
   bool tex_load_needed;
   SDL_Semaphore *tex_sem;
+
+  U64 serialize_last_check_timestamp;
+  U64 serialize_hash;
 } AST_State;
