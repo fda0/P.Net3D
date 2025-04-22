@@ -242,23 +242,26 @@ static void Game_DrawObjects()
   }
 
   // UI wip experiment
-  float full_dim = Min(APP.window_dim.x, APP.window_dim.y);
-  float dim = full_dim*0.5f;
-
-  ForU32(layer_index, 4)
+  if (0)
   {
-    float alpha = (layer_index == APP.font.active_layer ? 1.f : 0.6f);
-    UI_GpuShape shape =
+    float full_dim = Min(APP.window_dim.x, APP.window_dim.y);
+    float dim = full_dim*0.5f;
+
+    ForU32(layer_index, 4)
     {
-      .color = Color32_RGBAf(1, 1, 1, alpha),
-      .tex_min = (V2){0.f, 0.f},
-      .tex_max = (V2){APP.font.texture_dim, APP.font.texture_dim},
-      .tex_layer = layer_index,
-    };
-    if (layer_index & 2) shape.p_min.x += dim;
-    if (layer_index & 1) shape.p_min.y += dim;
-    shape.p_max = V2_Add(shape.p_min, (V2){dim, dim});
-    UI_DrawRaw(shape);
+      float alpha = (layer_index == APP.font.active_layer ? 1.f : 0.6f);
+      UI_GpuShape shape =
+      {
+        .color = Color32_RGBAf(1, 1, 1, alpha),
+        .tex_min = (V2){0.f, 0.f},
+        .tex_max = (V2){APP.font.texture_dim, APP.font.texture_dim},
+        .tex_layer = layer_index,
+      };
+      if (layer_index & 2) shape.p_min.x += dim;
+      if (layer_index & 1) shape.p_min.y += dim;
+      shape.p_max = V2_Add(shape.p_min, (V2){dim, dim});
+      UI_DrawRaw(shape);
+    }
   }
 }
 
@@ -354,10 +357,10 @@ static void Game_Iterate()
     }
 
     V3 move_dir = {0};
-    if (KEY_Held(SDL_SCANCODE_UP))    move_dir.x += 1;
-    if (KEY_Held(SDL_SCANCODE_DOWN))  move_dir.x -= 1;
-    if (KEY_Held(SDL_SCANCODE_LEFT))  move_dir.y += 1;
-    if (KEY_Held(SDL_SCANCODE_RIGHT)) move_dir.y -= 1;
+    if (KEY_Held(SDL_SCANCODE_W)) move_dir.x += 1;
+    if (KEY_Held(SDL_SCANCODE_S)) move_dir.x -= 1;
+    if (KEY_Held(SDL_SCANCODE_A)) move_dir.y += 1;
+    if (KEY_Held(SDL_SCANCODE_D)) move_dir.y -= 1;
     if (KEY_Held(SDL_SCANCODE_SPACE)) move_dir.z += 1;
     if (KEY_Held(SDL_SCANCODE_LSHIFT) || KEY_Held(SDL_SCANCODE_RSHIFT)) move_dir.z -= 1;
     move_dir = V3_Normalize(move_dir);
@@ -399,9 +402,9 @@ static void Game_Iterate()
     float scale = 0.8f;
     float w = APP.window_dim.x * 0.5f * scale;
     float h = APP.window_dim.y * 0.5f * scale;
-    w = h = 700.f * scale;
+    w = h = 1200.f * scale;
 
-    Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 700.f, 2000.f);
+    Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 200.f, 3000.f);
     APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
 

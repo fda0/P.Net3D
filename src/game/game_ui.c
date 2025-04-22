@@ -14,11 +14,13 @@ static FONT_Type UI_font = FONT_Regular;
 static Clay_Color UI_bg = {40, 40, 40, 255};
 static Clay_Color UI_fg = {235, 219, 178, 255};
 static Clay_Color UI_border_bg = {29, 32, 33, 255};
+
+static Clay_Color UI_shadow = {29, 32, 33, 96};
+
 static Clay_Color UI_btn_bg = {80, 73, 69, 255};
 static Clay_Color UI_btn_hover_bg = {102, 92, 84, 255};
 static Clay_BorderWidth UI_checkbox_border_width = CLAY_BORDER_OUTSIDE(1);
-static Clay_CornerRadius UI_checkbox_radius = {2,2,2,2};
-static Clay_CornerRadius UI_radius = {2,2,2,2};
+static Clay_CornerRadius UI_radius = {3,3,3,3};
 static Clay_BorderWidth UI_border_width = CLAY_BORDER_OUTSIDE(1);
 static float UI_checkbox_dim = 8;
 #define UI_window_gap 4*APP.font.scale
@@ -59,14 +61,10 @@ static void UI_RenderCheckbox(Clay_String label, bool in_horizontal_bar, bool *c
     CLAY({.layout = {.sizing = {.width = CLAY_SIZING_SCALED(UI_checkbox_dim),
                                 .height = CLAY_SIZING_SCALED(UI_checkbox_dim)},
                      .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
-          .backgroundColor = UI_btn_bg,
+          .backgroundColor = (*checkbox_bool ? UI_yellow1 : UI_btn_bg),
           .border = {.color = UI_fg,
                      .width = UI_checkbox_border_width},
-          .cornerRadius = UI_checkbox_radius})
-    {
-      if (*checkbox_bool)
-        CLAY_TEXT(CLAY_STRING("X"), CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
-    }
+          .cornerRadius = UI_radius});
     CLAY_TEXT(label, CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
   }
 }
@@ -199,9 +197,10 @@ static void UI_BuildUILayoutElements()
         .backgroundColor = UI_bg,
         .floating = {.offset = {clamped_win_p.x, clamped_win_p.y},
                      .attachTo = CLAY_ATTACH_TO_ROOT},
-        .border = {.color = UI_border_bg,
+        .border = {.color = UI_shadow,
                    .width = UI_border_width},
-        .cornerRadius = UI_radius})
+        .cornerRadius = UI_radius,
+        .userData = (void *)1 /* temporary hack: apply big edge smoothing */})
   {
     // Window bar
     Clay_ElementId window_bar_id = CLAY_ID("WindowBar");
@@ -360,7 +359,6 @@ static void UI_FinishFrame()
     Clay_RenderCommand *rcom = Clay_RenderCommandArray_Get(&render_commands, i);
     Clay_BoundingBox box = rcom->boundingBox;
 
-    //if (rcom->commandType == CLAY_RENDER_COMMAND_TYPE_TEXT)
     {
       box.x = FRound(box.x);
       box.y = FRound(box.y);
@@ -388,6 +386,18 @@ static void UI_FinishFrame()
         shape.color = Color32_ClayColor(border.color);
         shape.corner_radius = APP.font.scale * border.cornerRadius.topLeft; // @todo support corner radius for each corner
         shape.border_thickness = APP.font.scale * border.width.left; // @todo support border width per direction?
+
+        if (rcom->userData)
+        {
+          // would be best to draw it in the background;
+          // @todo add sorting in the future
+          shape.corner_radius = 0;
+          float expand = APP.font.scale * 10.f;
+          V2 expand2 = (V2){expand, expand};
+          shape.p_min = V2_Sub(shape.p_min, expand2);
+          shape.p_max = V2_Add(shape.p_max, expand2);
+          shape.edge_softness += expand;
+        }
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_TEXT:
@@ -419,7 +429,7 @@ static void UI_FinishFrame()
     }
 
     if (shape.corner_radius > 0.f)
-      shape.edge_softness = APP.font.scale * 0.25f;
+      shape.edge_softness += APP.font.scale * 0.25f;
 
     UI_DrawRaw(shape);
   }
