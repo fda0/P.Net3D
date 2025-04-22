@@ -159,8 +159,8 @@ struct AppState
     U64 serialize_last_check_timestamp;
     U64 serialize_hash;
 
+    U32 click_id;
     V2 win_p;
-    bool win_drag;
     U32 menu_category;
     float slider_share;
 

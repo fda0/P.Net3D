@@ -346,7 +346,7 @@ static void Game_Iterate()
   // move camera; calculate camera scale
   if (APP.debug.noclip_camera)
   {
-    if (KEY_Held(KEY_MouseLeft))
+    if (KEY_Held(KEY_MouseLeft) && !APP.debug.click_id)
     {
       float rot_speed = 0.05f * APP.dt;
       APP.camera_angles.z += rot_speed * APP.mouse_delta.x;

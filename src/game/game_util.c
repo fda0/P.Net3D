@@ -194,6 +194,22 @@ static void OS_SaveFile(const char *file_path, S8 data)
 }
 
 //
+// Only bottom 48 bits of pointers are actually used on current x64 CPUs
+//
+static void *PackDataIntoPointer(void *pointer, U16 data)
+{
+  return (void *)((U64)pointer | ((U64)data << 48));
+}
+static U16 PointerDecodeData(void *pointer)
+{
+  return (U16)((U64)pointer >> 48);
+}
+static void *PointerMakeCanonical(void *pointer)
+{
+  return (void *)((U64)pointer & 0xffffffffffffull);
+}
+
+//
 //
 //
 static S8 S8_FromClaySlice(Clay_StringSlice css)
