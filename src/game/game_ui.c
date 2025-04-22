@@ -193,7 +193,7 @@ static void UI_BuildUILayoutElements()
 
   CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
                    .sizing = {.width = CLAY_SIZING_FIT(APP.font.scale * 200),
-                              .height = CLAY_SIZING_FIT(APP.font.scale * 200)}},
+                              .height = CLAY_SIZING_SCALED(200)}},
         .backgroundColor = UI_bg,
         .floating = {.offset = {clamped_win_p.x, clamped_win_p.y},
                      .attachTo = CLAY_ATTACH_TO_ROOT},
@@ -266,18 +266,25 @@ static void UI_BuildUILayoutElements()
         {
           UI_RenderHeader(CLAY_STRING("Material editor"));
 
-          ForU32(tex_index, TEX_COUNT)
+          CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                           .sizing = {.width = CLAY_SIZING_GROW(),
+                                      .height = CLAY_SIZING_FIT()},
+                           .childGap = UI_window_gap},
+                .scroll = {.vertical = true}})
           {
-            CLAY_TEXT(ClayString_FromS8(TEX_GetName(tex_index)),
-                      CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
-
-            CLAY({.layout = {.padding = UI_tex_pad}})
+            ForU32(tex_index, TEX_COUNT)
             {
-              UI_RenderSlider(CLAY_STRING("Shininess"), (UI_SliderConfig)
-                              {0, 64,
-                               &TEX_GetAsset(tex_index)->shininess,
-                               tex_index});
-              //UI_RenderSlider(CLAY_STRING("Displacement"), (UI_SliderConfig){0, 16, &APP.debug.tex_displacement});
+              CLAY_TEXT(ClayString_FromS8(TEX_GetName(tex_index)),
+                        CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
+
+              CLAY({.layout = {.padding = UI_tex_pad}})
+              {
+                UI_RenderSlider(CLAY_STRING("Shininess"), (UI_SliderConfig)
+                                {0, 64,
+                                 &TEX_GetAsset(tex_index)->shininess,
+                                 tex_index});
+                //UI_RenderSlider(CLAY_STRING("Displacement"), (UI_SliderConfig){0, 16, &APP.debug.tex_displacement});
+              }
             }
           }
         }
@@ -425,6 +432,12 @@ static void UI_FinishFrame()
 
         shape.color = Color32_ClayColor(text.textColor);
         // @todo font id, letterSpacing, lineHeight etc
+      } break;
+
+      case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
+      case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END:
+      {
+        // @todo
       } break;
     }
 
