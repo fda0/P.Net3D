@@ -2,6 +2,7 @@ typedef struct
 {
   SDL_GPUTexture *texture;
   U64 last_touched_frame;
+  float shininess;
   float loaded_t;
   U32 error : 1;
   U32 loaded : 1;

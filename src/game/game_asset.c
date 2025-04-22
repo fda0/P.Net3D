@@ -75,7 +75,11 @@ static void AST_Init()
   }
 
   ForArray(i, APP.ast.tex_assets)
-    APP.ast.tex_assets[i].texture = APP.ast.tex_fallback;
+  {
+    Asset *asset = APP.ast.tex_assets + i;
+    asset->texture = APP.ast.tex_fallback;
+    asset->shininess = 16.f;
+  }
 }
 
 static void AST_Deinit()

@@ -36,6 +36,7 @@ struct World_DxUniform
   V3 background_color;
   V3 towards_sun_dir;
   float tex_loaded_t;
+  float tex_shininess;
 };
 
 cbuffer VertexUniformBuf : register(b0, space1) { World_DxUniform UniV; };
@@ -169,7 +170,7 @@ SamplerState ColorSampler : register(s1, space2);
 V4 World_DxShaderPS(World_Fragment frag) : SV_Target0
 {
   V4 color = frag.color;
-  float shininess = 16.f;
+  float shininess = UniP.tex_shininess;
   V3 face_normal = mul(frag.normal_rot, V3(0,0,1));
 
   // Load texture data
@@ -197,7 +198,7 @@ V4 World_DxShaderPS(World_Fragment frag) : SV_Target0
   V3 pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
 
   // Apply shininess
-  shininess = 32.f - 32.f*tex_roughness.x;
+  shininess *= (1.f - tex_roughness);
 #else
   V3 pixel_normal = face_normal;
 #endif

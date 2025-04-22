@@ -794,34 +794,6 @@ static void GPU_Deinit()
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui.gpu.clip_buffer);
 }
 
-static void GPU_DrawModel(SDL_GPURenderPass *pass, U32 model_index)
-{
-  Assert(model_index < MDL_COUNT);
-  MDL_Batch *batch = APP.gpu.model.batches + model_index;
-
-  if (!batch->instances_count)
-    return;
-
-  // bind vertex buffer
-  SDL_GPUBufferBinding binding_vrt = { .buffer = batch->gpu.vertices };
-  SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
-
-  // bind index buffer
-  SDL_GPUBufferBinding binding_ind = { .buffer = batch->gpu.indices };
-  SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
-
-  // bind instance storage buffer
-  SDL_GPUBuffer *storage_bufs[2] =
-  {
-    batch->gpu.instances,
-    APP.gpu.model.gpu_pose_buffer
-  };
-  U32 storage_bufs_count = (MDL_IsSkinned(model_index) ? 2 : 1);
-  SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, storage_bufs_count);
-
-  SDL_DrawGPUIndexedPrimitives(pass, batch->gpu.indices_count, batch->instances_count, 0, 0, 0);
-}
-
 static void GPU_UpdateWorldUniform(SDL_GPUCommandBuffer *cmd, World_GpuUniform uniform)
 {
   U64 uniform_hash = U64_Hash(sizeof(uniform), &uniform, sizeof(uniform));
@@ -844,8 +816,9 @@ static void GPU_UpdateUIUniform(SDL_GPUCommandBuffer *cmd, UI_GpuUniform uniform
   }
 }
 
-static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, U32 pipeline_index)
+static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bool is_depth_prepass)
 {
+  U32 pipeline_index = is_depth_prepass ? 1 : 0;
   AssertBounds(pipeline_index, APP.gpu.world_pipelines);
 
   // Bind shadow texture sampler to fragment shader
@@ -883,6 +856,12 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, U3
         };
         SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
 
+        if (!is_depth_prepass)
+        {
+          APP.gpu.world_uniform.tex_shininess = tex_asset->shininess;
+        }
+
+        GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
         SDL_DrawGPUPrimitives(pass, batch->vertices_count, 1, 0, 0);
       }
     }
@@ -893,6 +872,11 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, U3
 
   ForU32(model_index, MDL_COUNT)
   {
+    MDL_Batch *batch = APP.gpu.model.batches + model_index;
+    if (!batch->instances_count)
+      return;
+
+    // Select pipeline (skinned vs rigid)
     if (MDL_IsSkinned(model_index) != skinned_pipeline_bound)
     {
       Assert(!skinned_pipeline_bound); // assert that models are sorted from rigid to skinned
@@ -905,7 +889,25 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, U3
       skinned_pipeline_bound = MDL_IsSkinned(model_index);
     }
 
-    GPU_DrawModel(pass, model_index);
+    // bind vertex buffer
+    SDL_GPUBufferBinding binding_vrt = { .buffer = batch->gpu.vertices };
+    SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
+
+    // bind index buffer
+    SDL_GPUBufferBinding binding_ind = { .buffer = batch->gpu.indices };
+    SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+
+    // bind instance storage buffer
+    SDL_GPUBuffer *storage_bufs[2] =
+    {
+      batch->gpu.instances,
+      APP.gpu.model.gpu_pose_buffer
+    };
+    U32 storage_bufs_count = (MDL_IsSkinned(model_index) ? 2 : 1);
+    SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, storage_bufs_count);
+
+    GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+    SDL_DrawGPUIndexedPrimitives(pass, batch->gpu.indices_count, batch->instances_count, 0, 0, 0);
   }
 }
 
@@ -974,13 +976,12 @@ static void GPU_Iterate()
     .background_color = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B},
     .towards_sun_dir = APP.towards_sun_dir,
   };
-  GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
   // Sun shadow map render pass
   {
     depth_target.texture = APP.gpu.shadow_tex;
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, 0, 0, &depth_target);
-    GPU_DrawWorld(cmd, pass, 1);
+    GPU_DrawWorld(cmd, pass, true);
     SDL_EndGPURenderPass(pass);
   }
 
@@ -992,7 +993,6 @@ static void GPU_Iterate()
       APP.gpu.world_uniform.camera_transform = APP.sun_camera_transform;
       APP.gpu.world_uniform.camera_position = APP.sun_camera_p;
     }
-    GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
     depth_target.texture = APP.gpu.tex_depth;
 
@@ -1024,7 +1024,7 @@ static void GPU_Iterate()
     }
 
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
-    GPU_DrawWorld(cmd, pass, 0);
+    GPU_DrawWorld(cmd, pass, false);
     SDL_EndGPURenderPass(pass);
   }
 

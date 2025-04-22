@@ -302,13 +302,10 @@ static void Game_Iterate()
   FONT_ProcessWindowResize(false);
   UI_ProcessWindowAndFontResize();
 
-  // font experiments
+  if (!APP.headless)
   {
-    FONT_GlyphRun g0;
-    g0 = FONT_GetGlyphRun(FONT_Header, S8Lit("Łabędź🦢"));
-    g0 = FONT_GetGlyphRun(FONT_Header, S8Lit("Skull💀"));
-    g0 = FONT_GetGlyphRun(FONT_Regular, S8Lit("World🌍"));
-    g0 = FONT_GetGlyphRun(FONT_Regular, S8Lit("Boat⛵"));
+    UI_StartFrame();
+    UI_BuildUILayoutElements();
   }
 
   NET_IterateReceive();
@@ -336,6 +333,7 @@ static void Game_Iterate()
 
   NET_IterateTimeoutUsers();
   NET_IterateSend();
+
 
   if (KEY_Pressed(SDL_SCANCODE_RETURN))
     APP.debug.noclip_camera = !APP.debug.noclip_camera;
@@ -488,9 +486,6 @@ static void Game_Iterate()
   if (!APP.headless)
   {
     Game_DrawObjects();
-
-    UI_StartFrame();
-    UI_BuildUILayoutElements();
     UI_FinishFrame();
 
     GPU_Iterate();

@@ -164,7 +164,7 @@ static SERIAL_Lexer SERIAL_NextToken(SERIAL_Lexer lex)
     U64 start_at = lex.at;
     lex.at += 1;
 
-    while (ByteIsIdentifierPart(SERIAL_At(lex)))
+    while (ByteIsIdentifierPart(SERIAL_At(lex)) || SERIAL_At(lex) == '[' || SERIAL_At(lex) == ']')
       lex.at += 1;
 
     lex.token = S8_Substring(lex.txt, start_at, lex.at);
@@ -221,11 +221,13 @@ static SERIAL_Lexer SERIAL_NextToken(SERIAL_Lexer lex)
       U8 c = SERIAL_At(lex);
       if (!c) break;
 
+      if (!ByteIsDigit(c) && c != '.')
+        break;
+
       if (c == '.')
         lex.suspected_value = TYPE_float;
 
-      if (!ByteIsDigit(c) && c != '.')
-        break;
+      lex.at += 1;
     }
 
     lex.token = S8_Substring(lex.txt, start_at, lex.at);
@@ -308,6 +310,10 @@ static void SERIAL_DebugSettings(bool is_load)
     SERIAL_DEF(APP.debug., noclip_camera, bool),
     SERIAL_DEF(APP.debug., sun_camera, bool),
     SERIAL_DEF(APP.debug., draw_collision_box, bool),
+
+//#define TEX_INC(a) SERIAL_DEF(APP.debug., shininess_texs[TEX_##a], float)
+//#include "assets_textures.inc"
+//#undef TEX_INC
   };
 
   const char *file_path = "debug.p3";

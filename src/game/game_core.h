@@ -162,7 +162,8 @@ struct AppState
     U32 click_id;
     V2 win_p;
     U32 menu_category;
-    float slider_share;
+
+    float tex_displacement;
 
     float fixed_dt;
     bool single_tick_stepping;

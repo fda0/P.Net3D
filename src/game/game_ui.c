@@ -14,18 +14,28 @@ static FONT_Type UI_font = FONT_Regular;
 static Clay_Color UI_bg = {40, 40, 40, 255};
 static Clay_Color UI_fg = {235, 219, 178, 255};
 static Clay_Color UI_border_bg = {29, 32, 33, 255};
-static Clay_Padding UI_window_pad = {8,8,8,8};
-static U16 UI_window_gap = 8;
 static Clay_Color UI_btn_bg = {80, 73, 69, 255};
 static Clay_Color UI_btn_hover_bg = {102, 92, 84, 255};
-static Clay_Padding UI_btn_pad = {8, 8, 4, 4};
-static float UI_checkbox_dim = 8;
-static float UI_checkbox_gap = 5;
 static Clay_BorderWidth UI_checkbox_border_width = CLAY_BORDER_OUTSIDE(1);
 static Clay_CornerRadius UI_checkbox_radius = {2,2,2,2};
 static Clay_CornerRadius UI_radius = {2,2,2,2};
 static Clay_BorderWidth UI_border_width = CLAY_BORDER_OUTSIDE(1);
+static float UI_checkbox_dim = 8;
+#define UI_window_gap 4*APP.font.scale
+#define UI_window_pad {UI_window_gap, UI_window_gap, UI_window_gap, UI_window_gap}
+#define UI_bar_pad {0.5f*UI_window_gap, 0.5f*UI_window_gap, 0.5f*UI_window_gap, 0.5f*UI_window_gap}
+#define UI_header_pad {0, 0, 0, UI_window_gap}
+#define UI_btn_pad {UI_window_gap, UI_window_gap, 0.5f*UI_window_gap, 0.5f*UI_window_gap}
+#define UI_tex_pad {UI_window_gap, UI_window_gap, UI_window_gap, 2*UI_window_gap}
+
 #define CLAY_SIZING_SCALED(ScaledPx) CLAY_SIZING_FIXED(APP.font.scale*(ScaledPx))
+
+typedef struct
+{
+  float min, max;
+  float *ptr;
+  U32 index; // temp workaround because of how clay.h works
+} UI_SliderConfig;
 
 static void UI_RenderCheckbox(Clay_String label, bool in_horizontal_bar, bool *checkbox_bool)
 {
@@ -35,11 +45,12 @@ static void UI_RenderCheckbox(Clay_String label, bool in_horizontal_bar, bool *c
 
   CLAY({.layout = {.sizing = root_sizing,
                    .padding = UI_btn_pad,
-                   .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}},
+                   .childAlignment = {.y = CLAY_ALIGN_Y_CENTER},
+                   .childGap = UI_window_gap},
         .backgroundColor = Clay_Hovered() ? UI_btn_hover_bg : UI_btn_bg,
         .cornerRadius = UI_radius})
   {
-    if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft))
+    if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft) && !APP.debug.click_id)
     {
       *checkbox_bool = !(*checkbox_bool);
       APP.debug.click_id = 1;
@@ -56,7 +67,6 @@ static void UI_RenderCheckbox(Clay_String label, bool in_horizontal_bar, bool *c
       if (*checkbox_bool)
         CLAY_TEXT(CLAY_STRING("X"), CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
     }
-    CLAY({.layout = {.sizing = {CLAY_SIZING_SCALED(UI_checkbox_gap)}}});
     CLAY_TEXT(label, CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
   }
 }
@@ -73,7 +83,7 @@ static void UI_RenderButton(Clay_String label, bool in_horizontal_bar, U32 *targ
         .backgroundColor = Clay_Hovered() ? UI_btn_hover_bg : UI_btn_bg,
         .cornerRadius = UI_radius})
   {
-    if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft))
+    if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft) && !APP.debug.click_id)
     {
       *target = value;
       APP.debug.click_id = 1;
@@ -83,14 +93,29 @@ static void UI_RenderButton(Clay_String label, bool in_horizontal_bar, U32 *targ
   }
 }
 
-static void UI_RenderSlider(Clay_String label, float *share_pointer)
+
+
+static void UI_RenderSlider(Clay_String label, UI_SliderConfig config)
 {
   CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW()},
-                   .padding = UI_btn_pad,
-                   .childGap = UI_checkbox_gap}})
+                   .childGap = UI_window_gap}})
   {
+    if (config.min > config.max)
+    {
+      float tmp = config.min;
+      config.min = config.max;
+      config.max = tmp;
+    }
+    float range = config.max - config.min;
+    if (!range)
+    {
+      range += 1;
+      config.max += 1;
+    }
+
     float width = 100;
-    float share = *share_pointer;
+    float value = (config.ptr ? *config.ptr : 0.f);
+    float share = value / range;
     float filled_width = width * share;
     filled_width = Clamp(0, width, filled_width);
 
@@ -107,7 +132,7 @@ static void UI_RenderSlider(Clay_String label, float *share_pointer)
             });
 
 
-      Clay_ElementId overlay_id = Clay__HashString(label, 0, (U32)S8_Hash(0, S8Lit("RenderSliderOverlay")));
+      Clay_ElementId overlay_id = Clay__HashString(label, config.index, (U32)S8_Hash(0, S8Lit("RenderSliderOverlay")));
       CLAY({.id = overlay_id,
             .layout = {.sizing = {.width = CLAY_SIZING_GROW(),
                                   .height = CLAY_SIZING_GROW()},
@@ -115,7 +140,7 @@ static void UI_RenderSlider(Clay_String label, float *share_pointer)
                                           .y = CLAY_ALIGN_Y_CENTER}},
             .floating = {.attachTo = CLAY_ATTACH_TO_PARENT}})
       {
-        if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft))
+        if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft) && !APP.debug.click_id)
           APP.debug.click_id = overlay_id.id;
         if (APP.debug.click_id == overlay_id.id)
         {
@@ -128,18 +153,22 @@ static void UI_RenderSlider(Clay_String label, float *share_pointer)
 
           if (overlay_dim.x)
           {
-            float share_x = clamped_mouse.x / overlay_dim.x;
-            *share_pointer = share_x;
+            float value_x = (clamped_mouse.x / overlay_dim.x) * range;
+            if (config.ptr) *config.ptr = value_x;
           }
         }
 
         Printer p = Pr_Alloc(APP.a_frame, 32);
+#if 1
+        Pr_Float(&p, value);
+#else
         I32 before_period = FRound(share * 100);
         I32 after_period = ((I32)FAbs(FRound(share * 10000))) % 100;
         Pr_I32(&p, before_period);
         Pr_S8(&p, S8Lit("."));
         Pr_I32(&p, after_period);
         Pr_S8(&p, S8Lit("%"));
+#endif
         CLAY_TEXT(ClayString_FromS8(Pr_AsS8(&p)),
                   CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_bg}));
       }
@@ -147,6 +176,16 @@ static void UI_RenderSlider(Clay_String label, float *share_pointer)
 
     CLAY_TEXT(label,
               CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
+  }
+}
+
+static void UI_RenderHeader(Clay_String label)
+{
+  CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(),
+                              .height = CLAY_SIZING_FIT()},
+                   .padding = UI_header_pad}})
+  {
+    CLAY_TEXT(label, CLAY_TEXT_CONFIG({.fontId = FONT_Header, .textColor = UI_fg}));
   }
 }
 
@@ -169,19 +208,19 @@ static void UI_BuildUILayoutElements()
     CLAY({.id = window_bar_id,
           .layout = {.sizing = {.width = CLAY_SIZING_GROW(0),
                                 .height = CLAY_SIZING_FIT()},
-                     .padding = CLAY_PADDING_ALL(2),
+                     .padding = UI_bar_pad,
                      .childAlignment = {.x = CLAY_ALIGN_X_CENTER}},
           .backgroundColor = UI_orange2,
           .cornerRadius = UI_radius})
     {
-      if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft))
+      if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft) && !APP.debug.click_id)
         APP.debug.click_id = window_bar_id.id;
       if (APP.debug.click_id == window_bar_id.id)
         APP.debug.win_p = V2_Add(APP.debug.win_p, APP.mouse_delta);
       else
         APP.debug.win_p = clamped_win_p;
 
-      CLAY_TEXT(CLAY_STRING("Debug window"),
+      CLAY_TEXT(CLAY_STRING("Developer window"),
                 CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_bg}));
     }
 
@@ -204,36 +243,55 @@ static void UI_BuildUILayoutElements()
       }
 
       // Menu content
-        CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                         .sizing = {.width = CLAY_SIZING_GROW(0),
-                                    .height = CLAY_SIZING_FIT()},
-                         .padding = UI_window_pad,
-                         .childGap = UI_window_gap},
-              .cornerRadius = UI_radius})
+      CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                       .sizing = {.width = CLAY_SIZING_GROW(),
+                                  .height = CLAY_SIZING_FIT()},
+                       .padding = UI_window_pad},
+            .cornerRadius = UI_radius})
       {
         if (APP.debug.menu_category == 0)
         {
-          UI_RenderCheckbox(CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
-          UI_RenderCheckbox(CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
-          UI_RenderCheckbox(CLAY_STRING("📦 Draw collision box"), false, &APP.debug.draw_collision_box);
+          UI_RenderHeader(CLAY_STRING("Debug switches"));
+
+          CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                           .sizing = {.width = CLAY_SIZING_GROW(),
+                                      .height = CLAY_SIZING_FIT()},
+                           .childGap = UI_window_gap}})
+          {
+            UI_RenderCheckbox(CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
+            UI_RenderCheckbox(CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
+            UI_RenderCheckbox(CLAY_STRING("📦 Draw collision box"), false, &APP.debug.draw_collision_box);
+          }
         }
         else if (APP.debug.menu_category == 1)
         {
-          CLAY_TEXT(CLAY_STRING("Material editor will be here"),
-                    CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
+          UI_RenderHeader(CLAY_STRING("Material editor"));
 
-          UI_RenderSlider(CLAY_STRING("Shininess"), &APP.debug.slider_share);
+          ForU32(tex_index, TEX_COUNT)
+          {
+            CLAY_TEXT(ClayString_FromS8(TEX_GetName(tex_index)),
+                      CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
 
-          CLAY_TEXT(CLAY_STRING("Displacement"),
-                    CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
+            CLAY({.layout = {.padding = UI_tex_pad}})
+            {
+              UI_RenderSlider(CLAY_STRING("Shininess"), (UI_SliderConfig)
+                              {0, 64,
+                               &TEX_GetAsset(tex_index)->shininess,
+                               tex_index});
+              //UI_RenderSlider(CLAY_STRING("Displacement"), (UI_SliderConfig){0, 16, &APP.debug.tex_displacement});
+            }
+          }
         }
         else if (APP.debug.menu_category == 2)
         {
-          CLAY_TEXT(CLAY_STRING("Nothing here yet"),
-                    CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
+          UI_RenderHeader(CLAY_STRING("Nothing here yet"));
         }
       }
     }
+
+    // Capture uncaptured mouse click
+    if (Clay_Hovered() && KEY_Pressed(KEY_MouseLeft) && !APP.debug.click_id)
+      APP.debug.click_id = 1;
   }
 }
 

@@ -9,6 +9,7 @@ typedef struct
   _Alignas(16) V3 background_color;
   _Alignas(16) V3 towards_sun_dir;
   float tex_loaded_t;
+  float tex_shininess;
 } World_GpuUniform;
 
 // Vertices
