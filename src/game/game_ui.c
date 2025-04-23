@@ -167,10 +167,12 @@ static void UI_RenderSlider(Clay_String label, UI_SliderConfig config)
         if (APP.debug.click_id == overlay_id.id ||
             (Clay_Hovered() && !APP.debug.click_id))
         {
-          if (KEY_Pressed(SDL_SCANCODE_R))
+          if (KEY_Pressed(SDL_SCANCODE_R)) // Round
             if (config.ptr) *config.ptr = FRound(*config.ptr);
-          if (KEY_Pressed(SDL_SCANCODE_C))
+          if (KEY_Pressed(SDL_SCANCODE_C)) // Clamp
             if (config.ptr) *config.ptr = Clamp(config.min, config.max, *config.ptr);
+          if (KEY_Pressed(SDL_SCANCODE_H)) // Half
+            if (config.ptr) *config.ptr = (config.min + config.max) * 0.5f;
           if (KEY_Pressed(SDL_SCANCODE_RIGHT))
             if (config.ptr) *config.ptr = *config.ptr + 1;
           if (KEY_Pressed(SDL_SCANCODE_LEFT))
