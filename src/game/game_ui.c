@@ -16,6 +16,7 @@ static Clay_Color UI_fg = {235, 219, 178, 255};
 static Clay_Color UI_border_bg = {29, 32, 33, 255};
 
 static Clay_Color UI_shadow = {29, 32, 33, 96};
+static Clay_Color UI_darker = {0, 0, 0, 64};
 
 static Clay_Color UI_btn_bg = {80, 73, 69, 255};
 static Clay_Color UI_btn_hover_bg = {102, 92, 84, 255};
@@ -71,13 +72,16 @@ static void UI_RenderCheckbox(Clay_String label, bool in_horizontal_bar, bool *c
 
 static void UI_RenderButton(Clay_String label, bool in_horizontal_bar, U32 *target, U32 value)
 {
-  Clay_Sizing root_sizing = {};
-  if (in_horizontal_bar) root_sizing.height = CLAY_SIZING_GROW(0);
-  else                   root_sizing.width  = CLAY_SIZING_GROW(0);
+  Clay_Sizing root_sizing = {.width = CLAY_SIZING_FIT(), .height = CLAY_SIZING_FIT()};
+  //Clay_Sizing root_sizing = {.height = CLAY_SIZING_SCALED(35)};
+  if (in_horizontal_bar) root_sizing.height = CLAY_SIZING_GROW();
+  else                   root_sizing.width  = CLAY_SIZING_GROW();
 
   CLAY({.layout = {.sizing = root_sizing,
                    .padding = UI_btn_pad,
-                   .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}},
+                   .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER}
+                   //.childAlignment = {.x = CLAY_ALIGN_X_RIGHT, .y = CLAY_ALIGN_Y_BOTTOM}
+                   },
         .backgroundColor = Clay_Hovered() ? UI_btn_hover_bg : UI_btn_bg,
         .cornerRadius = UI_radius})
   {
@@ -87,7 +91,11 @@ static void UI_RenderButton(Clay_String label, bool in_horizontal_bar, U32 *targ
       APP.debug.click_id = 1;
     }
 
-    CLAY_TEXT(label, CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
+    //CLAY({.layout = {.sizing = {CLAY_SIZING_FIT(), CLAY_SIZING_FIT()}},
+          //.backgroundColor = UI_red2})
+    {
+      CLAY_TEXT(label, CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
+    }
   }
 }
 
@@ -200,7 +208,8 @@ static void UI_BuildUILayoutElements()
         .border = {.color = UI_shadow,
                    .width = UI_border_width},
         .cornerRadius = UI_radius,
-        .userData = (void *)1 /* temporary hack: apply big edge smoothing */})
+        .userData = (void *)1 /* temporary hack: apply big edge smoothing */
+        })
   {
     // Window bar
     Clay_ElementId window_bar_id = CLAY_ID("WindowBar");
@@ -380,6 +389,8 @@ static void UI_FinishFrame()
 
     switch (rcom->commandType)
     {
+      default: break;
+      
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
       {
         Clay_RectangleRenderData rect = rcom->renderData.rectangle;
@@ -394,7 +405,7 @@ static void UI_FinishFrame()
         shape.corner_radius = APP.font.scale * border.cornerRadius.topLeft; // @todo support corner radius for each corner
         shape.border_thickness = APP.font.scale * border.width.left; // @todo support border width per direction?
 
-        if (rcom->userData)
+        if (rcom->userData == (void *)1)
         {
           // would be best to draw it in the background;
           // @todo add sorting in the future
