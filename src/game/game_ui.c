@@ -29,7 +29,7 @@ static float UI_checkbox_dim = 8;
 #define UI_bar_pad {0.5f*UI_window_gap, 0.5f*UI_window_gap, 0.5f*UI_window_gap, 0.5f*UI_window_gap}
 #define UI_header_pad {0, 0, 0, UI_window_gap}
 #define UI_btn_pad {UI_window_gap, UI_window_gap, 0.5f*UI_window_gap, 0.5f*UI_window_gap}
-#define UI_tex_pad {UI_window_gap, UI_window_gap, UI_window_gap, 2*UI_window_gap}
+#define UI_tex_pad {UI_window_gap, UI_window_gap, 0.5f*UI_window_gap, 2*UI_window_gap}
 
 #define CLAY_SIZING_SCALED(ScaledPx) CLAY_SIZING_FIXED(APP.font.scale*(ScaledPx))
 
@@ -164,6 +164,23 @@ static void UI_RenderSlider(Clay_String label, UI_SliderConfig config)
           }
         }
 
+        if (APP.debug.click_id == overlay_id.id ||
+            (Clay_Hovered() && !APP.debug.click_id))
+        {
+          if (KEY_Pressed(SDL_SCANCODE_R))
+            if (config.ptr) *config.ptr = FRound(*config.ptr);
+          if (KEY_Pressed(SDL_SCANCODE_C))
+            if (config.ptr) *config.ptr = Clamp(config.min, config.max, *config.ptr);
+          if (KEY_Pressed(SDL_SCANCODE_RIGHT))
+            if (config.ptr) *config.ptr = *config.ptr + 1;
+          if (KEY_Pressed(SDL_SCANCODE_LEFT))
+            if (config.ptr) *config.ptr = *config.ptr - 1;
+          if (KEY_Pressed(SDL_SCANCODE_UP))
+            if (config.ptr) *config.ptr = *config.ptr + 10;
+          if (KEY_Pressed(SDL_SCANCODE_DOWN))
+            if (config.ptr) *config.ptr = *config.ptr - 10;
+        }
+
         Printer p = Pr_Alloc(APP.a_frame, 32);
 #if 1
         Pr_Float(&p, value);
@@ -277,8 +294,7 @@ static void UI_BuildUILayoutElements()
 
           CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
                            .sizing = {.width = CLAY_SIZING_GROW(),
-                                      .height = CLAY_SIZING_FIT()},
-                           .childGap = UI_window_gap},
+                                      .height = CLAY_SIZING_FIT()}},
                 .scroll = {.vertical = true}})
           {
             ForU32(tex_index, TEX_COUNT)
@@ -386,11 +402,10 @@ static void UI_FinishFrame()
       .p_max = (V2){box.x + box.width, box.y + box.height},
       .tex_layer = -1.f,
     };
+    bool skip_shape = false;
 
     switch (rcom->commandType)
     {
-      default: break;
-      
       case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
       {
         Clay_RectangleRenderData rect = rcom->renderData.rectangle;
@@ -446,10 +461,23 @@ static void UI_FinishFrame()
       } break;
 
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
+      {
+        skip_shape = true;
+        UI_GpuClip clip =
+        {
+          shape.p_min,
+          shape.p_max
+        };
+        UI_PushClip(clip);
+      } break;
+
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END:
       {
-        // @todo
+        skip_shape = true;
+        UI_PopClip();
       } break;
+
+      default: skip_shape = true; break;
     }
 
     if (shape.corner_radius > 0.f)

@@ -59,6 +59,8 @@ typedef struct
 
     UI_GpuClip clips[1024];
     U32 clips_count;
+    U32 clip_stack[256];
+    U32 clip_stack_index;
   } ui;
 
   // sdl properties

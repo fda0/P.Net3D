@@ -492,7 +492,7 @@ static void Game_Iterate()
     UI_FinishFrame();
 
     GPU_Iterate();
-    GPU_PostFrameCleanup();
+    GPU_ClearBuffers();
     AST_PostFrame();
   }
 

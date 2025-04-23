@@ -15,8 +15,8 @@ struct UI_DxShape
 {
   V2 p_min;
   V2 p_max;
-  V2 tex_min;
-  V2 tex_max;
+  V2 tex_min; // in pixel space
+  V2 tex_max; // in pixel space
   float tex_layer;
   float corner_radius;
   float edge_softness;
@@ -65,6 +65,7 @@ UI_Fragment UI_DxShaderVS(UI_VertexInput input)
   U32 corner_index = input.vertex_index & 3u; // 2 bits; [0:1]
   U32 shape_index = (input.vertex_index >> 2u) & 0xFFFFu; // 16 bits; [2:17]
   U32 clip_index = (input.vertex_index >> 18u) & 0x3FFFu; // 14 bits; [18:31]
+  UI_DxClip clip = ClipBuf[clip_index];
   UI_DxShape shape = ShapeBuf[shape_index];
 
   // position
@@ -73,9 +74,38 @@ UI_Fragment UI_DxShaderVS(UI_VertexInput input)
   if (corner_index & 2) pos.y = shape.p_max.y;
 
   // texture uv
-  V2 tex_uv = V2(shape.tex_min.x, shape.tex_min.y);
-  if (corner_index & 1) tex_uv.x = shape.tex_max.x;
-  if (corner_index & 2) tex_uv.y = shape.tex_max.y;
+  V2 tex_min = shape.tex_min;
+  V2 tex_max = shape.tex_max;
+
+  // clipping
+  if (clip.p_min.x > pos.x)
+  {
+    float delta = clip.p_min.x - pos.x;
+    tex_min.x += delta;
+    pos.x = clip.p_min.x;
+  }
+  if (clip.p_min.y > pos.y)
+  {
+    float delta = clip.p_min.y - pos.y;
+    tex_min.y += delta;
+    pos.y = clip.p_min.y;
+  }
+  if (clip.p_max.x < pos.x)
+  {
+    float delta = clip.p_max.x - pos.x;
+    tex_max.x += delta;
+    pos.x = clip.p_max.x;
+  }
+  if (clip.p_max.y < pos.y)
+  {
+    float delta = clip.p_max.y - pos.y;
+    tex_max.y += delta;
+    pos.y = clip.p_max.y;
+  }
+
+  V2 tex_uv = V2(tex_min.x, tex_min.y);
+  if (corner_index & 1) tex_uv.x = tex_max.x;
+  if (corner_index & 2) tex_uv.y = tex_max.y;
   tex_uv /= UniV.texture_dim;
 
   //

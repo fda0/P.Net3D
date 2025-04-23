@@ -299,6 +299,8 @@ static void GPU_ModifyPipelineForShadowMapping(SDL_GPUGraphicsPipelineCreateInfo
 
 static void GPU_Init()
 {
+  GPU_ClearBuffers();
+
   // preapre props
   {
     APP.gpu.clear_depth_props = SDL_CreateProperties();
