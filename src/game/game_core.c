@@ -47,7 +47,7 @@ static void Game_AnimateObjects()
       else
       {
         float dist = V3_Length(obj->s.moved_dp);
-        obj->l.animation_t += dist * 0.02f;
+        obj->l.animation_t += dist * 0.015f;
       }
 
       obj->l.animation_t = AN_WrapAnimationTime(&Worker_Skeleton, obj->s.animation_index, obj->l.animation_t);
@@ -463,10 +463,11 @@ static void Game_Iterate()
   Object *marker = OBJ_Get(APP.pathing_marker, ObjStorage_Local);
   if (!OBJ_IsNil(marker))
   {
-    if (KEY_Held(SDL_SCANCODE_W) ||
-        KEY_Held(SDL_SCANCODE_S) ||
-        KEY_Held(SDL_SCANCODE_A) ||
-        KEY_Held(SDL_SCANCODE_D))
+    if (!APP.debug.noclip_camera &&
+        (KEY_Held(SDL_SCANCODE_W) ||
+         KEY_Held(SDL_SCANCODE_S) ||
+         KEY_Held(SDL_SCANCODE_A) ||
+         KEY_Held(SDL_SCANCODE_D)))
     {
       marker->s.p.z = -60.f;
     }

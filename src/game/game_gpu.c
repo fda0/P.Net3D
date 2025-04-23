@@ -876,19 +876,21 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   {
     MDL_Batch *batch = APP.gpu.model.batches + model_index;
     if (!batch->instances_count)
-      return;
+      continue;
+
+    bool is_skinned = MDL_IsSkinned(model_index);
 
     // Select pipeline (skinned vs rigid)
-    if (MDL_IsSkinned(model_index) != skinned_pipeline_bound)
+    if (is_skinned != skinned_pipeline_bound)
     {
       Assert(!skinned_pipeline_bound); // assert that models are sorted from rigid to skinned
 
-      if (MDL_IsSkinned(model_index))
+      if (is_skinned)
         SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].skinned);
       else
         SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].rigid);
 
-      skinned_pipeline_bound = MDL_IsSkinned(model_index);
+      skinned_pipeline_bound = is_skinned;
     }
 
     // bind vertex buffer
@@ -905,7 +907,7 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
       batch->gpu.instances,
       APP.gpu.model.gpu_pose_buffer
     };
-    U32 storage_bufs_count = (MDL_IsSkinned(model_index) ? 2 : 1);
+    U32 storage_bufs_count = (is_skinned ? 2 : 1);
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, storage_bufs_count);
 
     GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);

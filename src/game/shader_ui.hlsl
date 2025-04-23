@@ -43,13 +43,6 @@ struct UI_Fragment
   V4 vertex_p            : SV_Position;
 };
 
-static float RoundedRectSDF(V2 pos, V2 center, V2 half_dim, float r)
-{
-  V2 d2 = (abs(center - pos) - half_dim + V2(r,r));
-  float l = length(max(d2, V2(0.f,0.f)));
-  return min(max(d2.x, d2.y), 0.f) + l - r;
-}
-
 // Dx resources
 cbuffer VertexUniformBuf : register(b0, space1) { UI_DxUniform UniV; };
 

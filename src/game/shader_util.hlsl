@@ -84,3 +84,38 @@ static Mat3 Mat3_Rotation_Quat(Quat q)
   res._m22 = 1.0f - 2.0f * (xx + yy);
   return res;
 }
+
+static float RoundedRectSDF(V2 pos, V2 center, V2 half_dim, float r)
+{
+  V2 d2 = (abs(center - pos) - half_dim + V2(r,r));
+  float l = length(max(d2, V2(0.f,0.f)));
+  return min(max(d2.x, d2.y), 0.f) + l - r;
+}
+
+static float HexagonSDF(V2 pos, float r)
+{
+  V3 k = V3(-0.866025404, 0.5, 0.577350269);
+  V2 p = abs(pos);
+  p -= 2 * min(dot(k.xy, p), 0.0) * k.xy;
+  p -= V2(clamp(p.x, -k.z*r, k.z*r), r);
+  return length(p) * sign(p.y);
+}
+
+static float HexagonBoardSDF(V2 position, float scale)
+{
+  position /= scale;
+
+  position /= V2(2.0, sqrt(3.0));
+  position.y -= 0.5;
+  position.x -= frac(floor(position.y) * 0.5);
+  position = abs(frac(position) - 0.5);
+  float result = abs(1.0 - max(position.x + position.y * 1.5, position.x * 2.0));
+  return result * scale;
+}
+
+static float FWrap(float min, float max, float a)
+{
+  float range = max - min;
+  float offset = a - min;
+  return (offset - (floor(offset / range) * range) + min);
+}

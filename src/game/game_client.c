@@ -172,10 +172,13 @@ static TICK_Input *CLIENT_PollInput()
   // @todo input polling from SDL/OS should be done here directly?
   // Will make sense to revisit it when implementing multithreading.
   V2 dir = {0};
-  if (KEY_Held(SDL_SCANCODE_W)) dir.x += 1;
-  if (KEY_Held(SDL_SCANCODE_S)) dir.x -= 1;
-  if (KEY_Held(SDL_SCANCODE_A)) dir.y += 1;
-  if (KEY_Held(SDL_SCANCODE_D)) dir.y -= 1;
+  if (!APP.debug.noclip_camera)
+  {
+    if (KEY_Held(SDL_SCANCODE_W)) dir.x += 1;
+    if (KEY_Held(SDL_SCANCODE_S)) dir.x -= 1;
+    if (KEY_Held(SDL_SCANCODE_A)) dir.y += 1;
+    if (KEY_Held(SDL_SCANCODE_D)) dir.y -= 1;
+  }
 
   TICK_Input *input = (TICK_Input *)Q_Push(APP.client.inputs_qbuf, &APP.client.inputs_range);
   SDL_zerop(input);

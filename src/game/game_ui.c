@@ -35,8 +35,8 @@ static float UI_checkbox_dim = 8;
 
 typedef struct
 {
-  float min, max;
   float *ptr;
+  float min, max;
   U32 index; // temp workaround because of how clay.h works
 } UI_SliderConfig;
 
@@ -307,9 +307,7 @@ static void UI_BuildUILayoutElements()
               CLAY({.layout = {.padding = UI_tex_pad}})
               {
                 UI_RenderSlider(CLAY_STRING("Shininess"), (UI_SliderConfig)
-                                {0, 64,
-                                 &TEX_GetAsset(tex_index)->shininess,
-                                 tex_index});
+                                {&TEX_GetAsset(tex_index)->shininess, 0, 64, tex_index});
                 //UI_RenderSlider(CLAY_STRING("Displacement"), (UI_SliderConfig){0, 16, &APP.debug.tex_displacement});
               }
             }

@@ -254,6 +254,18 @@ V4 World_DxShaderPS(World_Fragment frag) : SV_Target0
   }
   color.xyz *= ambient + (diffuse + specular) * (1.f - shadow);
 
+  // temp - draw hexagon at world_p.xy
+  {
+    V2 coord = frag.world_p.xy;
+    float hexagon_radius = 30.f;
+
+    float border_thick = 1.f;
+    float dist = HexagonBoardSDF(coord, 15.f);
+    float border_color = smoothstep(-border_thick, border_thick, dist) * smoothstep(border_thick, -border_thick, dist);
+    border_color *= 0.5f;
+    color.rgb -= V3(border_color, border_color, border_color);
+  }
+
   // Apply fog
   {
     float pixel_distance = distance(frag.world_p, UniP.camera_position);
@@ -263,5 +275,6 @@ V4 World_DxShaderPS(World_Fragment frag) : SV_Target0
     float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
     color = lerp(color, V4(UniP.background_color, 1.f), fog_t);
   }
+
   return color;
 }
