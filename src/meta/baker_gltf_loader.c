@@ -280,6 +280,76 @@ static void BK_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
   Pr_S8(p, S8Lit("};\n"));
 }
 
+static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
+{
+  U64 comp_count = cgltf_num_components(accessor->type);
+  U64 total_count = accessor->count * comp_count;
+  U64 comp_size = cgltf_component_size(accessor->component_type);
+
+  if (accessor->component_type == cgltf_component_type_r_32f)
+  {
+    M_Check(buffer->elem_size == 4);
+    float *numbers = BK_BufferPushFloat(buffer, total_count);
+    U64 unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
+    M_Check(unpacked == total_count);
+    return numbers;
+  }
+
+  void *numbers = BK_BufferPush(buffer, total_count);
+
+  if (buffer->elem_size >= comp_size)
+  {
+    U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, buffer->elem_size, total_count);
+    M_Check(unpacked == total_count);
+  }
+  else
+  {
+    // Alloc tmp buffer
+    ArenaScope scope = Arena_PushScope(BAKER.tmp);
+    U64 bytes_to_allocate = comp_size * total_count;
+    void *tmp_nums = Arena_AllocateBytes(scope.a, bytes_to_allocate, comp_size, false);
+
+    // Copy big type into tmp buffer
+    U64 unpacked = cgltf_accessor_unpack_indices(accessor, tmp_nums, comp_size, total_count);
+    M_Check(unpacked == total_count);
+
+    // Copy into numbers with checked truncation
+    ForU64(i, total_count)
+    {
+      // Load value from tmp_nums into U64
+      U64 value = 0;
+      if      (comp_size == 8) value = ((U64 *)tmp_nums)[i];
+      else if (comp_size == 4) value = ((U32 *)tmp_nums)[i];
+      else if (comp_size == 2) value = ((U16 *)tmp_nums)[i];
+      else if (comp_size == 1) value = ((U8 *)tmp_nums)[i];
+      else M_Check(!"Unsupported comp_size downconversion");
+
+      // Store into buffer backed array with truncation
+      if (buffer->elem_size == 1)
+      {
+        M_Check(value <= U8_MAX);
+        ((U8 *)numbers)[i] = (U8)value;
+      }
+      else if (buffer->elem_size == 2)
+      {
+        M_Check(value <= U16_MAX);
+        ((U16 *)numbers)[i] = (U16)value;
+      }
+      else if (buffer->elem_size == 4)
+      {
+        M_Check(value <= U32_MAX);
+        ((U32 *)numbers)[i] = (U32)value;
+      }
+      else
+        M_Check(!"Unsupported elem_size downconversion");
+    }
+
+    Arena_PopScope(scope);
+  }
+
+  return numbers;
+}
+
 static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
 {
   //
@@ -353,17 +423,17 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
         U64 index_start_offset = positions.used/3;
 
         cgltf_accessor *accessor = primitive->indices;
-        M_Check(accessor->component_type == cgltf_component_type_r_16u);
         M_Check(accessor->type == cgltf_type_scalar);
-
-        U16 *numbers = BK_BufferPushU16(&indices, accessor->count);
-        U64 unpacked = cgltf_accessor_unpack_indices(accessor, numbers, indices.elem_size, accessor->count);
-        M_Check(unpacked == accessor->count);
+        U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &indices);
 
         if (index_start_offset)
         {
           ForU64(i, accessor->count)
-            numbers[i] += index_start_offset;
+          {
+            U32 value = numbers[i] + index_start_offset;
+            M_Check(value <= U16_MAX);
+            numbers[i] = value;
+          }
         }
       }
 
@@ -402,7 +472,7 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
           {
             save_buf = &joint_indices;
             M_Check(comp_count == 4);
-            M_Check(accessor->component_type == cgltf_component_type_r_8u);
+            //M_Check(accessor->component_type == cgltf_component_type_r_8u);
           } break;
 
           case cgltf_attribute_type_weights:
@@ -421,6 +491,9 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
           } break;
         }
 
+#if 1
+        BK_GLTF_UnpackAccessor(accessor, save_buf);
+#else
         U64 total_count = comp_count * accessor->count;
         U64 unpacked = 0;
         if (save_buf->elem_size == 4)
@@ -441,6 +514,7 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
           unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
         }
         M_Check(unpacked == total_count);
+#endif
 
         // @todo this is a temporary hack that saves a color per position
         if (attribute->type == cgltf_attribute_type_position)

@@ -50,6 +50,7 @@ int main()
     Printer pr_anim = Pr_Alloc(BAKER.tmp, Megabyte(4));
     //BK_GLTF_Load("../res/models/Worker.gltf", &pr_out, &pr_anim);
     BK_GLTF_Load("../res/models/Formal.gltf", &pr_out, &pr_anim);
+    //BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf", &pr_out, &pr_anim);
     M_SaveFile("../gen/gen_models_gltf.h", Pr_AsS8(&pr_out));
     M_SaveFile("../gen/gen_animations.h", Pr_AsS8(&pr_anim));
 

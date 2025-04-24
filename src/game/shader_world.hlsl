@@ -255,6 +255,7 @@ V4 World_DxShaderPS(World_Fragment frag) : SV_Target0
   color.xyz *= ambient + (diffuse + specular) * (1.f - shadow);
 
   // temp - draw hexagon at world_p.xy
+#if 0
   {
     V2 coord = frag.world_p.xy;
     float hexagon_radius = 30.f;
@@ -265,6 +266,7 @@ V4 World_DxShaderPS(World_Fragment frag) : SV_Target0
     border_color *= 0.5f;
     color.rgb -= V3(border_color, border_color, border_color);
   }
+#endif
 
   // Apply fog
   {

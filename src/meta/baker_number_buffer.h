@@ -15,18 +15,28 @@ static BK_Buffer BK_BufferAlloc(Arena *a, U64 count, U32 elem_size)
   return buf;
 }
 
+static void *BK_BufferPush(BK_Buffer *buf, U64 count)
+{
+  M_Check(buf->cap >= buf->used);
+  M_Check(count <= (buf->cap - buf->used));
+  U8 *res = (U8 *)buf->vals + (buf->used * buf->elem_size);
+  buf->used += count;
+  return res;
+}
+
+static void *BK_BufferAt(BK_Buffer *buf, U64 index)
+{
+  M_Check(buf->used > index);
+  return (U8 *)buf->vals + (index * buf->elem_size);
+}
+
 #define BK_BufferPushImpl(TYPE) \
 M_Check(buf->elem_size == sizeof(TYPE)); \
-M_Check(buf->cap >= buf->used); \
-M_Check(count <= (buf->cap - buf->used)); \
-TYPE *res = (TYPE *)buf->vals + buf->used; \
-buf->used += count; \
-return res;
+return (TYPE *)BK_BufferPush(buf, count)
 
 #define BK_BufferAtImpl(TYPE) \
 M_Check(buf->elem_size == sizeof(TYPE)); \
-M_Check(buf->used > index); \
-return (TYPE *)buf->vals + index;
+return (TYPE *)BK_BufferAt(buf, index)
 
 static U32   *BK_BufferPushU32(BK_Buffer *buf, U64 count) { BK_BufferPushImpl(U32); }
 static U16   *BK_BufferPushU16(BK_Buffer *buf, U64 count) { BK_BufferPushImpl(U16); }
