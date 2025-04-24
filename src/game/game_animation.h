@@ -25,6 +25,9 @@ typedef struct
 
 typedef struct
 {
+  Mat4 root_transform;
+
+  // --- animations ---
   AN_Animation *animations;
   U32 animations_count;
 

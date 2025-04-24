@@ -25,122 +25,134 @@ static U64 BK_GLTF_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
   return result;
 }
 
-static void BK_GLTF_ExportSkeleton(Printer *p, cgltf_data *data)
+static void BK_GLTF_ExportSkeleton(Printer *p, cgltf_data *data, BK_GLTF_Config config)
 {
   M_Check(data->skins_count == 1);
   cgltf_skin *skin = data->skins;
 
   Pr_S8(p, S8Lit("static AN_Skeleton Worker_Skeleton = {\n"));
 
+  {
+    Mat4 root_transform = Mat4_Scale((V3){config.scale, config.scale, config.scale});
+    root_transform = Mat4_Mul(config.rot, root_transform);
+    Pr_S8(p, S8Lit(".root_transform = {\n"));
+    Pr_FloatArray(p, root_transform.flat, ArrayCount(root_transform.flat));
+    Pr_S8(p, S8Lit("\n},\n"));
+  }
+
   // anims[] + anims_count
   {
-    Pr_S8(p, S8Lit(".animations =(AN_Animation []) {\n"));
-
-    ForU64(animation_index, data->animations_count)
+    if (data->animations_count)
     {
-      cgltf_animation *animation = data->animations + animation_index;
+      Pr_S8(p, S8Lit(".animations =(AN_Animation []) {\n"));
 
-      // Animation
-      float t_min = FLT_MAX;
-      float t_max = -FLT_MAX;
-
-      Pr_S8(p, S8Lit("// animation: "));
-      Pr_U64(p, animation_index);
-      Pr_S8(p, S8Lit("\n"));
-      Pr_S8(p, S8Lit("{\n"));
-
-      Pr_S8(p, S8Lit(".name = \""));
-      Pr_Cstr(p, animation->name);
-      Pr_S8(p, S8Lit("\",\n"));
-
-      Pr_S8(p, S8Lit(".channels = (AN_Channel[]) {\n"));
-      ForU64(channel_index, animation->channels_count)
+      ForU64(animation_index, data->animations_count)
       {
-        cgltf_animation_channel *channel = animation->channels + channel_index;
-        cgltf_animation_sampler *sampler = channel->sampler;
-        M_Check(sampler->interpolation == cgltf_interpolation_type_linear);
-        M_Check(sampler->input->count == sampler->output->count);
-        U64 sample_count = sampler->input->count;
+        cgltf_animation *animation = data->animations + animation_index;
 
-        Pr_S8(p, S8Lit("// channel: "));
-        Pr_U64(p, channel_index);
-        Pr_S8(p, S8Lit(" (animation "));
+        // Animation
+        float t_min = FLT_MAX;
+        float t_max = -FLT_MAX;
+
+        Pr_S8(p, S8Lit("// animation: "));
         Pr_U64(p, animation_index);
-        Pr_S8(p, S8Lit(")\n"));
+        Pr_S8(p, S8Lit("\n"));
         Pr_S8(p, S8Lit("{\n"));
 
-        U64 target_joint_index = BK_GLTF_FindJointIndex(skin, channel->target_node);
-        Pr_S8(p, S8Lit(".joint_index = "));
-        Pr_U64(p, target_joint_index);
-        Pr_S8(p, S8Lit(",\n"));
+        Pr_S8(p, S8Lit(".name = \""));
+        Pr_Cstr(p, animation->name);
+        Pr_S8(p, S8Lit("\",\n"));
 
-        Pr_S8(p, S8Lit(".type = AN_"));
-        if (channel->target_path == cgltf_animation_path_type_translation) Pr_S8(p, S8Lit("Translation"));
-        if (channel->target_path == cgltf_animation_path_type_rotation)    Pr_S8(p, S8Lit("Rotation"));
-        if (channel->target_path == cgltf_animation_path_type_scale)       Pr_S8(p, S8Lit("Scale"));
-        Pr_S8(p, S8Lit(",\n"));
-
-        Pr_S8(p, S8Lit(".count = "));
-        Pr_U64(p, sampler->input->count);
-        Pr_S8(p, S8Lit(",\n"));
-
-        // inputs
+        Pr_S8(p, S8Lit(".channels = (AN_Channel[]) {\n"));
+        ForU64(channel_index, animation->channels_count)
         {
-          Pr_S8(p, S8Lit(".inputs = (float[]) {\n"));
+          cgltf_animation_channel *channel = animation->channels + channel_index;
+          cgltf_animation_sampler *sampler = channel->sampler;
+          M_Check(sampler->interpolation == cgltf_interpolation_type_linear);
+          M_Check(sampler->input->count == sampler->output->count);
+          U64 sample_count = sampler->input->count;
 
-          U64 number_count = sample_count;
+          Pr_S8(p, S8Lit("// channel: "));
+          Pr_U64(p, channel_index);
+          Pr_S8(p, S8Lit(" (animation "));
+          Pr_U64(p, animation_index);
+          Pr_S8(p, S8Lit(")\n"));
+          Pr_S8(p, S8Lit("{\n"));
 
-          float *numbers = Alloc(BAKER.tmp, float, number_count);
-          U64 unpacked = cgltf_accessor_unpack_floats(sampler->input, numbers, number_count);
-          M_Check(unpacked == number_count);
-          Pr_FloatArray(p, numbers, unpacked);
+          U64 target_joint_index = BK_GLTF_FindJointIndex(skin, channel->target_node);
+          Pr_S8(p, S8Lit(".joint_index = "));
+          Pr_U64(p, target_joint_index);
+          Pr_S8(p, S8Lit(",\n"));
 
-          // update t_min, t_max
-          ForU64(i, unpacked)
+          Pr_S8(p, S8Lit(".type = AN_"));
+          if (channel->target_path == cgltf_animation_path_type_translation) Pr_S8(p, S8Lit("Translation"));
+          if (channel->target_path == cgltf_animation_path_type_rotation)    Pr_S8(p, S8Lit("Rotation"));
+          if (channel->target_path == cgltf_animation_path_type_scale)       Pr_S8(p, S8Lit("Scale"));
+          Pr_S8(p, S8Lit(",\n"));
+
+          Pr_S8(p, S8Lit(".count = "));
+          Pr_U64(p, sampler->input->count);
+          Pr_S8(p, S8Lit(",\n"));
+
+          // inputs
           {
-            float n = numbers[i];
-            if (n > t_max) t_max = n;
-            if (n < t_min) t_min = n;
+            Pr_S8(p, S8Lit(".inputs = (float[]) {\n"));
+
+            U64 number_count = sample_count;
+
+            float *numbers = Alloc(BAKER.tmp, float, number_count);
+            U64 unpacked = cgltf_accessor_unpack_floats(sampler->input, numbers, number_count);
+            M_Check(unpacked == number_count);
+            Pr_FloatArray(p, numbers, unpacked);
+
+            // update t_min, t_max
+            ForU64(i, unpacked)
+            {
+              float n = numbers[i];
+              if (n > t_max) t_max = n;
+              if (n < t_min) t_min = n;
+            }
+
+            Pr_S8(p, S8Lit("\n},\n"));
           }
 
-          Pr_S8(p, S8Lit("\n},\n"));
+          // outputs
+          {
+            Pr_S8(p, S8Lit(".outputs = (float[]) {\n"));
+
+            U64 comp_count = cgltf_num_components(sampler->output->type);
+            U64 number_count = sample_count * comp_count;
+
+            float *numbers = Alloc(BAKER.tmp, float, number_count);
+            U64 unpacked = cgltf_accessor_unpack_floats(sampler->output, numbers, number_count);
+            M_Check(unpacked == number_count);
+            Pr_FloatArray(p, numbers, unpacked);
+
+            Pr_S8(p, S8Lit("\n},\n"));
+          }
+
+          Pr_S8(p, S8Lit("},\n"));
         }
+        Pr_S8(p, S8Lit("},\n"));
 
-        // outputs
-        {
-          Pr_S8(p, S8Lit(".outputs = (float[]) {\n"));
+        Pr_S8(p, S8Lit(".channels_count = "));
+        Pr_U64(p, animation->channels_count);
+        Pr_S8(p, S8Lit(",\n"));
 
-          U64 comp_count = cgltf_num_components(sampler->output->type);
-          U64 number_count = sample_count * comp_count;
+        Pr_S8(p, S8Lit(".t_min = "));
+        Pr_Float(p, t_min);
+        Pr_S8(p, S8Lit("f,\n"));
 
-          float *numbers = Alloc(BAKER.tmp, float, number_count);
-          U64 unpacked = cgltf_accessor_unpack_floats(sampler->output, numbers, number_count);
-          M_Check(unpacked == number_count);
-          Pr_FloatArray(p, numbers, unpacked);
-
-          Pr_S8(p, S8Lit("\n},\n"));
-        }
+        Pr_S8(p, S8Lit(".t_max = "));
+        Pr_Float(p, t_max);
+        Pr_S8(p, S8Lit("f,\n"));
 
         Pr_S8(p, S8Lit("},\n"));
       }
-      Pr_S8(p, S8Lit("},\n"));
-
-      Pr_S8(p, S8Lit(".channels_count = "));
-      Pr_U64(p, animation->channels_count);
-      Pr_S8(p, S8Lit(",\n"));
-
-      Pr_S8(p, S8Lit(".t_min = "));
-      Pr_Float(p, t_min);
-      Pr_S8(p, S8Lit("f,\n"));
-
-      Pr_S8(p, S8Lit(".t_max = "));
-      Pr_Float(p, t_max);
-      Pr_S8(p, S8Lit("f,\n"));
 
       Pr_S8(p, S8Lit("},\n"));
     }
 
-    Pr_S8(p, S8Lit("},\n"));
     Pr_S8(p, S8Lit(".animations_count = "));
     Pr_U64(p, data->animations_count);
     Pr_S8(p, S8Lit(",\n"));
@@ -350,8 +362,14 @@ static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
   return numbers;
 }
 
-static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
+static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a, BK_GLTF_Config config)
 {
+  // normalize config
+  if (!config.scale)
+    config.scale = 1.f;
+  if (Memeq(&config.rot, &(Mat4){}, sizeof(Mat4)))
+    config.rot = Mat4_Identity();
+
   //
   // Parse .gltf file using cgltf library
   //
@@ -389,18 +407,18 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
   //
   // Collect data from .gltf file
   //
-  ArenaScope tmp_scope = Arena_PushScope(BAKER.tmp);
+  ArenaScope scratch = Arena_PushScope(BAKER.tmp);
 
   U64 max_indices = 1024*256;
-  BK_Buffer indices = BK_BufferAlloc(BAKER.tmp, max_indices, sizeof(U16));
+  BK_Buffer indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
 
   U64 max_verts = 1024*128;
-  BK_Buffer positions     = BK_BufferAlloc(BAKER.tmp, max_verts*3, sizeof(float));
-  BK_Buffer normals       = BK_BufferAlloc(BAKER.tmp, max_verts*3, sizeof(float));
-  BK_Buffer texcoords     = BK_BufferAlloc(BAKER.tmp, max_verts*2, sizeof(float));
-  BK_Buffer joint_indices = BK_BufferAlloc(BAKER.tmp, max_verts*4, sizeof(U8));
-  BK_Buffer weights       = BK_BufferAlloc(BAKER.tmp, max_verts*4, sizeof(float));
-  BK_Buffer colors        = BK_BufferAlloc(BAKER.tmp, max_verts*1, sizeof(U32)); // this doesn't need such a big array actually
+  BK_Buffer positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
+  BK_Buffer normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
+  BK_Buffer texcoords     = BK_BufferAlloc(scratch.a, max_verts*2, sizeof(float));
+  BK_Buffer joint_indices = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(U8));
+  BK_Buffer weights       = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(float));
+  BK_Buffer colors        = BK_BufferAlloc(scratch.a, max_verts*1, sizeof(U32)); // this doesn't need such a big array actually
 
   ForU64(mesh_index, data->meshes_count)
   {
@@ -461,6 +479,12 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
+          case cgltf_attribute_type_tangent:
+          {
+            M_LOG(M_LogGltfDebug, "[GLTF LOADER] Attribute with type tangent skipped");
+            continue;
+          } break;
+
           case cgltf_attribute_type_texcoord:
           {
             save_buf = &texcoords;
@@ -491,30 +515,7 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
           } break;
         }
 
-#if 1
         BK_GLTF_UnpackAccessor(accessor, save_buf);
-#else
-        U64 total_count = comp_count * accessor->count;
-        U64 unpacked = 0;
-        if (save_buf->elem_size == 4)
-        {
-          float *numbers = BK_BufferPushFloat(save_buf, total_count);
-          unpacked = cgltf_accessor_unpack_floats(accessor, numbers, total_count);
-          M_Check(unpacked == total_count);
-        }
-        else if (save_buf->elem_size == 2)
-        {
-          U16 *numbers = BK_BufferPushU16(save_buf, total_count);
-          unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
-          M_Check(unpacked == total_count);
-        }
-        else if (save_buf->elem_size == 1)
-        {
-          U8 *numbers = BK_BufferPushU8(save_buf, total_count);
-          unpacked = cgltf_accessor_unpack_indices(accessor, numbers, save_buf->elem_size, total_count);
-        }
-        M_Check(unpacked == total_count);
-#endif
 
         // @todo this is a temporary hack that saves a color per position
         if (attribute->type == cgltf_attribute_type_position)
@@ -533,7 +534,7 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
     }
   }
 
-  BK_GLTF_ExportSkeleton(out_a, data);
+  BK_GLTF_ExportSkeleton(out_a, data, config);
 
   //
   // Output collected data
@@ -656,5 +657,5 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a)
 
 
   // Reset tmp arena
-  Arena_PopScope(tmp_scope);
+  Arena_PopScope(scratch);
 }
