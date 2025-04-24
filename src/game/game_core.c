@@ -61,7 +61,11 @@ static void Game_DrawObjects()
   {
     Object *obj = APP.all_objects + obj_index;
 
-    if (OBJ_HasAnyFlag(obj, ObjFlag_DrawModel))
+    bool draw_model = OBJ_HasAnyFlag(obj, ObjFlag_DrawModel);
+    bool draw_collision = (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollision));
+    bool draw_model_collision = (draw_model && APP.debug.draw_model_collision);
+
+    if (draw_model)
     {
       V3 pos = obj->s.p;
       if (OBJ_HasAnyFlag(obj, ObjFlag_AnimatePosition))
@@ -77,44 +81,33 @@ static void Game_DrawObjects()
       MDL_Draw(obj->s.model, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
-    if (OBJ_HasAnyFlag(obj, ObjFlag_DrawCollision))
+    if (draw_collision || draw_model_collision)
     {
-      U32 face_count = 6;
-      U32 vertices_per_face = 3*2;
-      U32 vert_count = face_count * vertices_per_face;
+      float height = obj->s.collision_height;
+      TEX_Kind tex_kind = obj->s.texture;
 
-      TEX_Kind tex_kind = Clamp(0, TEX_COUNT-1, obj->s.texture);
-      MSH_GpuVertex *wall_verts = MSH_PushVertices(tex_kind, vert_count);
-      if (wall_verts)
+      if (draw_model_collision)
       {
-        ForU32(i, vert_count)
-        {
-          SDL_zerop(&wall_verts[i]);
-          wall_verts[i].color = obj->s.color;
-        }
+        if (!height) height = 20.f;
+        if (!tex_kind) tex_kind = TEX_Leather011;
+      }
+
+      U32 face_count = (height ? 6 : 1);
+      U32 vertices_per_face = 3*2;
+      U32 mesh_verts_count = face_count * vertices_per_face;
+
+      MSH_GpuVertex *mesh_verts = MSH_PushVertices(tex_kind, mesh_verts_count);
+      if (mesh_verts)
+      {
+        memset(mesh_verts, 0, sizeof(*mesh_verts)*mesh_verts_count);
+        ForU32(i, mesh_verts_count)
+          mesh_verts[i].color = obj->s.color; // @todo remove vert color?
 
         float bot_z = obj->s.p.z;
-        float height = obj->s.collision_height;
-        if (height <= 0.f)
-        {
-          height = 10.f;
-          bot_z -= height; // @todo do not draw floor/walls if height == 0
-        }
         float top_z = bot_z + height;
 
         CollisionVertices collision = obj->s.collision.verts;
         {
-          U32 cube_index_map[] =
-          {
-            0,5,4,0,1,5, // E
-            2,7,6,2,3,7, // W
-            1,6,5,1,2,6, // N
-            3,4,7,3,0,4, // S
-            6,4,5,6,7,4, // Top
-            1,3,2,1,0,3, // Bottom
-          };
-          Assert(ArrayCount(cube_index_map) == vert_count);
-
           V3 cube_verts[8] =
           {
             V3_From_XY_Z(collision.arr[0], bot_z), // 0
@@ -127,31 +120,29 @@ static void Game_DrawObjects()
             V3_From_XY_Z(collision.arr[3], top_z), // 7
           };
 
-          ForArray(i, cube_index_map)
+          // mapping to expand verts to walls (each wall is made out of 2 triangles)
+          U32 cube_verts_map_array[] =
           {
-            AssertBounds(i, cube_index_map);
-            U32 index = cube_index_map[i];
+            0,5,4,0,1,5, // E
+            2,7,6,2,3,7, // W
+            1,6,5,1,2,6, // N
+            3,4,7,3,0,4, // S
+            6,4,5,6,7,4, // Top
+            1,3,2,1,0,3, // Bottom
+          };
+          Assert(mesh_verts_count <= ArrayCount(cube_verts_map_array));
 
-            AssertBounds(index, cube_verts);
-            wall_verts[i].p = cube_verts[index];
-            wall_verts[i].p.x += obj->s.p.x;
-            wall_verts[i].p.y += obj->s.p.y;
-          }
+          U32 *cube_verts_map = cube_verts_map_array;
+          if (face_count == 1) // generate top mesh only
+            cube_verts_map = cube_verts_map_array + 6*WorldDir_T;
 
+          ForU32(mesh_index, mesh_verts_count)
           {
-            V4 test = {};
-            test.x = wall_verts[0].p.x;
-            test.y = wall_verts[0].p.y;
-            test.z = wall_verts[0].p.z;
-            test.w = 1.f;
-
-            V4 post_view = V4_MulM4(APP.camera_transform, test);
-
-            V4 div = post_view;
-            div.x /= div.w;
-            div.y /= div.w;
-            div.z /= div.w;
-            div.w /= div.w;
+            U32 cube_index = cube_verts_map[mesh_index];
+            AssertBounds(cube_index, cube_verts);
+            mesh_verts[mesh_index].p = cube_verts[cube_index];
+            mesh_verts[mesh_index].p.x += obj->s.p.x;
+            mesh_verts[mesh_index].p.y += obj->s.p.y;
           }
         }
 
@@ -166,9 +157,12 @@ static void Game_DrawObjects()
 
         ForU32(face_i, face_count)
         {
+          WorldDir face_dir = face_i;
+          if (face_count == 1) face_dir = WorldDir_T;
+
           // face texture UVs
           V2 face_dim = {};
-          switch (face_i)
+          switch (face_dir)
           {
             case WorldDir_E: face_dim = (V2){w0, height}; break;
             case WorldDir_W: face_dim = (V2){w2, height}; break;
@@ -191,7 +185,7 @@ static void Game_DrawObjects()
 
           // face normals @todo CLEAN THIS UP
           Quat normal_rot = Quat_Identity();
-          switch (face_i)
+          switch (face_dir)
           {
             case WorldDir_E:
             case WorldDir_W:
@@ -199,8 +193,7 @@ static void Game_DrawObjects()
             case WorldDir_S: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), -0.25f); break;
             case WorldDir_B: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), 0.5f); break;
           }
-
-          switch (face_i)
+          switch (face_dir)
           {
             case WorldDir_E: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.5f)); break;
             case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), -0.25f)); break;
@@ -211,18 +204,15 @@ static void Game_DrawObjects()
           V3 ideal_W = (V3){-1,0,0};
           V3 ideal_N = (V3){0,1,0};
           V3 ideal_S = (V3){0,-1,0};
-
           V3 obj_norm_E = V3_From_XY_Z(obj->s.collision.norms.arr[0], 0);
           V3 obj_norm_W = V3_From_XY_Z(obj->s.collision.norms.arr[2], 0);
           V3 obj_norm_N = V3_From_XY_Z(obj->s.collision.norms.arr[1], 0);
           V3 obj_norm_S = V3_From_XY_Z(obj->s.collision.norms.arr[3], 0);
-
           Quat correction_E = Quat_FromNormalizedPair(ideal_E, obj_norm_E);
           Quat correction_W = Quat_FromNormalizedPair(ideal_W, obj_norm_W);
           Quat correction_N = Quat_FromNormalizedPair(ideal_N, obj_norm_N);
           Quat correction_S = Quat_FromNormalizedPair(ideal_S, obj_norm_S);
-
-          switch (face_i)
+          switch (face_dir)
           {
             case WorldDir_E: normal_rot = Quat_Mul(correction_E, normal_rot); break;
             case WorldDir_W: normal_rot = Quat_Mul(correction_W, normal_rot); break;
@@ -233,8 +223,8 @@ static void Game_DrawObjects()
           ForU32(vert_i, vertices_per_face)
           {
             U32 i = (face_i * vertices_per_face) + vert_i;
-            wall_verts[i].uv = face_uvs[vert_i];
-            wall_verts[i].normal_rot = normal_rot;
+            mesh_verts[i].uv = face_uvs[vert_i];
+            mesh_verts[i].normal_rot = normal_rot;
           }
         }
       }
@@ -524,7 +514,7 @@ static void Game_Init()
     //APP.debug.fixed_dt = 0.1f;
     //APP.debug.single_tick_stepping = true;
     //APP.debug.noclip_camera = true;
-    APP.debug.draw_collision_box = true;
+    APP.debug.draw_model_collision = true;
     APP.log_filter &= ~(Log_NetDatagram);
   }
 

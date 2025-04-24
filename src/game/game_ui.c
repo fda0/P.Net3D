@@ -287,7 +287,7 @@ static void UI_BuildUILayoutElements()
           {
             UI_RenderCheckbox(CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
             UI_RenderCheckbox(CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
-            UI_RenderCheckbox(CLAY_STRING("📦 Draw collision box"), false, &APP.debug.draw_collision_box);
+            UI_RenderCheckbox(CLAY_STRING("📦 Draw model collision"), false, &APP.debug.draw_model_collision);
           }
         }
         else if (APP.debug.menu_category == 1)

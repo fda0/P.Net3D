@@ -36,6 +36,7 @@ static void MDL_Draw(MDL_Kind model_kind, Mat4 transform, U32 color,
 static MSH_GpuVertex *MSH_PushVertices(TEX_Kind tex, U32 push_vertices_count)
 {
   AssertBounds(tex, APP.gpu.mesh.batches);
+  tex = Clamp(0, ArrayCount(APP.gpu.mesh.batches), tex);
   MSH_Batch *batch = APP.gpu.mesh.batches + tex;
 
   if (batch->vertices_count + push_vertices_count > ArrayCount(batch->vertices))

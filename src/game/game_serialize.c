@@ -319,7 +319,7 @@ static void SERIAL_DebugSettings(bool is_load)
     SERIAL_DEF(APP.debug., menu_category, U32),
     SERIAL_DEF(APP.debug., noclip_camera, bool),
     SERIAL_DEF(APP.debug., sun_camera, bool),
-    SERIAL_DEF(APP.debug., draw_collision_box, bool),
+    SERIAL_DEF(APP.debug., draw_model_collision, bool),
   };
 
   const char *file_path = "debug.c_config";

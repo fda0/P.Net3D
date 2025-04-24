@@ -172,7 +172,7 @@ struct AppState
     bool noclip_camera;
     bool sun_camera;
 
-    bool draw_collision_box;
+    bool draw_model_collision;
   } debug;
 };
 
