@@ -239,16 +239,6 @@ static void GPU_InitModelBuffers(U32 model_index)
   switch (model_index)
   {
     default: Assert(0); break;
-    case MDL_Teapot:
-    {
-      vertices = Model_teapot_vrt;
-      vertices_size = sizeof(Model_teapot_vrt);
-      indices = Model_teapot_ind;
-      indices_size = sizeof(Model_teapot_ind);
-      vrt_buf_name = "Teapot rigid vrt buf";
-      ind_buf_name = "Teapot rigid ind buf";
-      inst_buf_name = "Teapot rigid inst buf";
-    } break;
     case MDL_Flag:
     {
       vertices = Model_flag_vrt;

@@ -1,14 +1,6 @@
 typedef struct
 {
-  MDL_GpuRigidVertex rdr;
-  bool filled;
-} M_VertexEntry;
-
-typedef struct
-{
   Arena *tmp;
   Arena *cgltf_arena;
-
-  M_VertexEntry vertex_table[1024*1024];
 } BAKER_State;
 static BAKER_State BAKER;

@@ -38,7 +38,6 @@ static S8 TEX_GetName(TEX_Kind tex_kind)
 // Models
 //
 #define MDL_LIST(X) \
-X(Teapot, Rigid) \
 X(Flag, Rigid) \
 X(Tree, Rigid) \
 X(Worker, Skinned) \

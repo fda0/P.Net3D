@@ -48,7 +48,6 @@
 #include "gen_shader_mesh.frag.h"
 #include "gen_shader_ui.vert.h"
 #include "gen_shader_ui.frag.h"
-#include "gen_models.h"
 #include "gen_models_gltf.h"
 #include "gen_animations.h"
 
