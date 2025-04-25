@@ -405,7 +405,7 @@ static void Game_Iterate()
     rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_angles.z), rot);
     rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_angles.y), rot);
     Mat4 projection =
-      Mat4_Perspective(APP.camera_fov_y, APP.window_dim.x/APP.window_dim.y, 80.f, 2000.f);
+      Mat4_Perspective(APP.camera_fov_y, APP.window_dim.x/APP.window_dim.y, 32.f, 2048.f);
 
     APP.camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }

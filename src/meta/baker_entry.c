@@ -37,7 +37,7 @@ int main()
 
     Printer pr_out = Pr_Alloc(scratch.a, Megabyte(1));
     M_ParseObj("../res/models/teapot.obj", &pr_out, (M_ModelSpec){.scale = 10.f, .rot_x = 0.25f});
-    M_ParseObj("../res/models/flag.obj", &pr_out, (M_ModelSpec){.scale = 0.1f, .rot_x = 0.25f, .rot_z = 0.25f});
+    //M_ParseObj("../res/models/flag.obj", &pr_out, (M_ModelSpec){.scale = 0.1f, .rot_x = 0.25f, .rot_z = 0.25f});
     M_SaveFile("../gen/gen_models.h", Pr_AsS8(&pr_out));
 
     Arena_PopScope(scratch);
@@ -49,19 +49,21 @@ int main()
     Printer pr_out = Pr_Alloc(scratch.a, Megabyte(32));
     Printer pr_anim = Pr_Alloc(scratch.a, Megabyte(8));
 
-    Mat4 rot_xz = Mat4_Rotation_RH((V3){1,0,0}, 0.25f);
-    rot_xz = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, 0.25f), rot_xz);
-    BK_GLTF_Config config =
-    {
-      .scale = 40,
-      .rot = rot_xz,
-    };
+    Quat rot_x = Quat_FromAxisAngle_RH(AxisV3_X(), 0.25f);
+    Quat rot_y = Quat_FromAxisAngle_RH(AxisV3_Y(), 0.25f);
+    Quat rot_z = Quat_FromAxisAngle_RH(AxisV3_Z(), 0.25f);
+    Quat rot_xz = Quat_Mul(rot_z, rot_x);
+    (void)rot_y;
 
+    float scale = 40;
+    BK_GLTF_Config config = {.scale = scale, .rot = rot_xz};
+
+    BK_GLTF_Load("flag", "../res/models/Flag.glb", &pr_out, &pr_anim, (BK_GLTF_Config){1.f, rot_x});
     BK_GLTF_Load("", "../res/models/Worker.gltf", &pr_out, &pr_anim, config);
     BK_GLTF_Load("", "../res/models/Formal.gltf", &pr_out, &pr_anim, config);
 
     config.scale = 4.f;
-    config.rot = Mat4_Identity();
+    config.rot = Quat_Identity();
     BK_GLTF_Load("Tree", "../res/models/tree_low-poly/scene.gltf", &pr_out, &pr_anim, config);
 
 

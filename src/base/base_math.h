@@ -490,6 +490,12 @@ static Quat Quat_Identity()
   return (Quat){0,0,0,1};
 }
 
+static bool Quat_IsIdentity(Quat q)
+{
+  Quat i = Quat_Identity();
+  return Memeq(&q, &i, sizeof(Quat));
+}
+
 static Quat Quat_Inv(Quat q)
 {
   float lensq = Quat_Dot(q, q);

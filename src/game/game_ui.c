@@ -288,6 +288,8 @@ static void UI_BuildUILayoutElements()
             UI_RenderCheckbox(CLAY_STRING("📽️ Noclip camera"), false, &APP.debug.noclip_camera);
             UI_RenderCheckbox(CLAY_STRING("☀️ Sun camera"), false, &APP.debug.sun_camera);
             UI_RenderCheckbox(CLAY_STRING("📦 Draw model collision"), false, &APP.debug.draw_model_collision);
+            bool todo = false;
+            UI_RenderCheckbox(CLAY_STRING("🌌 [todo] Render normals"), false, &todo);
           }
         }
         else if (APP.debug.menu_category == 1)

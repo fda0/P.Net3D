@@ -1,7 +1,7 @@
 typedef struct
 {
   float scale;
-  Mat4 rot;
+  Quat rot;
 } BK_GLTF_Config;
 
 typedef struct
@@ -16,6 +16,6 @@ typedef struct
 
   S8 name;
   bool is_skinned;
-  U32 vert_count;
+  U32 verts_count;
   U32 joints_count;
 } BK_GLTF_ModelData;

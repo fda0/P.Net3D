@@ -36,7 +36,7 @@ static void BK_GLTF_ExportSkeleton(Printer *p, cgltf_data *data, S8 model_name, 
 
   {
     Mat4 root_transform = Mat4_Scale((V3){config.scale, config.scale, config.scale});
-    root_transform = Mat4_Mul(config.rot, root_transform);
+    root_transform = Mat4_Mul(Mat4_Rotation_Quat(config.rot), root_transform);
     Pr_S8(p, S8Lit(".root_transform = {\n"));
     Pr_FloatArray(p, root_transform.flat, ArrayCount(root_transform.flat));
     Pr_S8(p, S8Lit("\n},\n"));
@@ -486,10 +486,8 @@ static void BK_GLTF_OutputToPrinter(Printer *out, BK_GLTF_ModelData *model)
 static void BK_GLTF_Load(const char *name, const char *path, Printer *out, Printer *out_a, BK_GLTF_Config config)
 {
   // normalize config
-  if (!config.scale)
-    config.scale = 1.f;
-  if (Memeq(&config.rot, &(Mat4){}, sizeof(Mat4)))
-    config.rot = Mat4_Identity();
+  if (!config.scale) config.scale = 1.f;
+  if (Memeq(&config.rot, &(Quat){}, sizeof(Quat))) config.rot = Quat_Identity();
 
   //
   // Parse .gltf file using cgltf library
@@ -666,23 +664,48 @@ static void BK_GLTF_Load(const char *name, const char *path, Printer *out, Print
 
   // Validate buffer counts
   M_Check(model.positions.used % 3 == 0);
-  model.vert_count = model.positions.used / 3;
+  model.verts_count = model.positions.used / 3;
 
   M_Check(model.normals.used % 3 == 0);
-  M_Check(model.vert_count == model.normals.used / 3);
-  M_Check(model.joint_indices.used % 4 == 0);
-  M_Check(model.vert_count == model.joint_indices.used / 4);
-  M_Check(model.weights.used % 4 == 0);
-  M_Check(model.vert_count == model.weights.used / 4);
+  M_Check(model.verts_count == model.normals.used / 3);
 
-  // Joints
-  M_Check(data->skins_count == 1);
-  M_Check(data->skins[0].joints_count <= U32_MAX);
-  model.joints_count = (U32)data->skins[0].joints_count;
+  if (model.is_skinned)
+  {
+    M_Check(model.joint_indices.used % 4 == 0);
+    M_Check(model.verts_count == model.joint_indices.used / 4);
+    M_Check(model.weights.used % 4 == 0);
+    M_Check(model.verts_count == model.weights.used / 4);
+
+    // Joints
+    M_Check(data->skins_count == 1);
+    M_Check(data->skins[0].joints_count <= U32_MAX);
+    model.joints_count = (U32)data->skins[0].joints_count;
+  }
 
   // Sekeleton export
   if (model.is_skinned)
     BK_GLTF_ExportSkeleton(out_a, data, model.name, config);
+
+  if (!model.is_skinned) // apply transformations directly to rigid mesh
+  {
+    if (config.scale != 1.f || !Quat_IsIdentity(config.rot))
+    {
+      ForU32(i, model.verts_count)
+      {
+        V3 *position = (V3*)BK_BufferAtFloat(&model.positions, i*3);
+        V3 p = *position;
+        p = V3_Rotate(p, config.rot);
+        p = V3_Scale(p, config.scale);
+
+        V3 *normal = (V3*)BK_BufferAtFloat(&model.normals, i*3);
+        V3 n = *normal;
+        n = V3_Rotate(n, config.rot);
+
+        *position = p;
+        *normal = n;
+      }
+    }
+  }
 
   // Vertices export
   BK_GLTF_OutputToPrinter(out, &model);
