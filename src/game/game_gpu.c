@@ -259,6 +259,16 @@ static void GPU_InitModelBuffers(U32 model_index)
       ind_buf_name = "Flag rigid ind buf";
       inst_buf_name = "Flag rigid inst buf";
     } break;
+    case MDL_Tree:
+    {
+      vertices = Model_Tree_vrt;
+      vertices_size = sizeof(Model_Tree_vrt);
+      indices = Model_Tree_ind;
+      indices_size = sizeof(Model_Tree_ind);
+      vrt_buf_name = "Tree rigid vrt buf";
+      ind_buf_name = "Tree rigid ind buf";
+      inst_buf_name = "Tree rigid inst buf";
+    } break;
     case MDL_Worker:
     {
       vertices = Model_Worker_vrt;
@@ -268,6 +278,16 @@ static void GPU_InitModelBuffers(U32 model_index)
       vrt_buf_name = "Worker skinned vrt buf";
       ind_buf_name = "Worker skinned ind buf";
       inst_buf_name = "Worker skinned inst buf";
+    } break;
+    case MDL_Formal:
+    {
+      vertices = Model_Formal_vrt;
+      vertices_size = sizeof(Model_Formal_vrt);
+      indices = Model_Formal_ind;
+      indices_size = sizeof(Model_Formal_ind);
+      vrt_buf_name = "Formal skinned vrt buf";
+      ind_buf_name = "Formal skinned ind buf";
+      inst_buf_name = "Formal skinned inst buf";
     } break;
   }
 

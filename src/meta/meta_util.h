@@ -69,3 +69,21 @@ static void M_SaveFile(const char *file_path, S8 data)
     exit(1);
   }
 }
+
+static S8 M_NameFromPath(S8 path)
+{
+  S8 model_name = path;
+  {
+    S8_FindResult slash = S8_Find(model_name, S8Lit("/"), 0, S8Match_FindLast|S8Match_SlashInsensitive);
+    if (slash.found)
+    {
+      model_name = S8_Skip(model_name, slash.index + 1);
+    }
+    S8_FindResult dot = S8_Find(model_name, S8Lit("."), 0, 0);
+    if (dot.found)
+    {
+      model_name = S8_Prefix(model_name, dot.index);
+    }
+  }
+  return model_name;
+}

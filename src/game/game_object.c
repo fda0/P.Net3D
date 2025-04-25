@@ -142,7 +142,7 @@ static Object *OBJ_CreateWall(V2 p, V2 dim, float height)
   return obj;
 }
 
-static Object *OBJ_CreatePlayer()
+static Object *OBJ_CreatePlayer(MDL_Kind model)
 {
   Object *player = OBJ_Create(ObjStorage_Net,
                               ObjFlag_Move |
@@ -154,7 +154,7 @@ static Object *OBJ_CreatePlayer()
   player->s.collision.verts = CollisionVertices_FromRectDim((V2){20, 20});
   Collision_RecalculateNormals(&player->s.collision);
 
-  player->s.model = MDL_Worker;
+  player->s.model = model;
 
   player->s.color = Color32_RGBf(1,1,1);
   player->s.animation_index = 23;

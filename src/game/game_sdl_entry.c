@@ -179,7 +179,7 @@ static void Game_ParseCmd(int argc, char **argv)
 {
   for (int i = 1; i < argc; i += 1)
   {
-    S8 arg = S8_ScanCstr(argv[i]);
+    S8 arg = S8_FromCstr(argv[i]);
     if (S8_Match(arg, S8Lit("-headless"), 0))
     {
       APP.headless = true;

@@ -352,9 +352,8 @@ static void SERIAL_AssetSettings(bool is_load)
 
   SERIAL_Item items[] =
   {
-#define TEX_INC(a) SERIAL_DEF(APP.ast.tex_assets, [TEX_##a].shininess, float)
-#include "assets_textures.inc"
-#undef TEX_INC
+#define SERIAL_DEF_TEXTURES(a) SERIAL_DEF(APP.ast.tex_assets, [TEX_##a].shininess, float),
+    TEX_LIST(SERIAL_DEF_TEXTURES)
   };
 
   const char *file_path = "../src/data/assets.c_config";

@@ -221,19 +221,7 @@ static void M_ParseObj(const char *path, Printer *out, M_ModelSpec spec)
   vert_mat = Mat4_Mul(rotation_mat, vert_mat);
 
   // Load .obj file
-  S8 model_name = S8_ScanCstr(path);
-  {
-    S8_FindResult slash = S8_Find(model_name, S8Lit("/"), 0, S8Match_FindLast|S8Match_SlashInsensitive);
-    if (slash.found)
-    {
-      model_name = S8_Skip(model_name, slash.index + 1);
-    }
-    S8_FindResult dot = S8_Find(model_name, S8Lit("."), 0, 0);
-    if (dot.found)
-    {
-      model_name = S8_Prefix(model_name, dot.index);
-    }
-  }
+  S8 model_name = M_NameFromPath(S8_FromCstr(path));
 
   //
   // Input - parsing .obj file

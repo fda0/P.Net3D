@@ -6,6 +6,7 @@
 #include "game_render.h"
 #include "game_animation.h"
 
+#include "baker_number_buffer.h"
 #include "baker_obj_loader.h"
 #include "baker_gltf_loader.h"
 #include "baker_entry.h"
@@ -17,10 +18,9 @@
 #include "cgltf.h"
 #pragma warning(pop)
 
-#include "baker_number_buffer.h"
 #include "baker_gltf_loader.c"
 
-static U8 tmp_arena_memory[Megabyte(64)];
+static U8 tmp_arena_memory[Megabyte(256)];
 static U8 cgltf_arena_memory[Megabyte(64)];
 
 int main()
@@ -46,8 +46,8 @@ int main()
   // load .gltf models
   {
     ArenaScope scratch = Arena_PushScope(BAKER.tmp);
-    Printer pr_out = Pr_Alloc(scratch.a, Megabyte(4));
-    Printer pr_anim = Pr_Alloc(scratch.a, Megabyte(4));
+    Printer pr_out = Pr_Alloc(scratch.a, Megabyte(32));
+    Printer pr_anim = Pr_Alloc(scratch.a, Megabyte(8));
 
     Mat4 rot_xz = Mat4_Rotation_RH((V3){1,0,0}, 0.25f);
     rot_xz = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, 0.25f), rot_xz);
@@ -57,12 +57,12 @@ int main()
       .rot = rot_xz,
     };
 
-    //BK_GLTF_Load("../res/models/Worker.gltf", &pr_out, &pr_anim, config);
-    //BK_GLTF_Load("../res/models/Formal.gltf", &pr_out, &pr_anim, config);
+    BK_GLTF_Load("", "../res/models/Worker.gltf", &pr_out, &pr_anim, config);
+    BK_GLTF_Load("", "../res/models/Formal.gltf", &pr_out, &pr_anim, config);
 
     config.scale = 4.f;
     config.rot = Mat4_Identity();
-    BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf", &pr_out, &pr_anim, config);
+    BK_GLTF_Load("Tree", "../res/models/tree_low-poly/scene.gltf", &pr_out, &pr_anim, config);
 
 
     M_SaveFile("../gen/gen_models_gltf.h", Pr_AsS8(&pr_out));

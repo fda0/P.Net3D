@@ -25,12 +25,14 @@ static U64 BK_GLTF_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
   return result;
 }
 
-static void BK_GLTF_ExportSkeleton(Printer *p, cgltf_data *data, BK_GLTF_Config config)
+static void BK_GLTF_ExportSkeleton(Printer *p, cgltf_data *data, S8 model_name, BK_GLTF_Config config)
 {
   M_Check(data->skins_count == 1);
   cgltf_skin *skin = data->skins;
 
-  Pr_S8(p, S8Lit("static AN_Skeleton Worker_Skeleton = {\n"));
+  Pr_S8(p, S8Lit("static AN_Skeleton "));
+  Pr_S8(p, model_name);
+  Pr_S8(p, S8Lit("_Skeleton = {\n"));
 
   {
     Mat4 root_transform = Mat4_Scale((V3){config.scale, config.scale, config.scale});
@@ -289,7 +291,7 @@ static void BK_GLTF_ExportSkeleton(Printer *p, cgltf_data *data, BK_GLTF_Config 
     }
   }
 
-  Pr_S8(p, S8Lit("};\n"));
+  Pr_S8(p, S8Lit("};\n\n\n"));
 }
 
 static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
@@ -362,7 +364,126 @@ static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
   return numbers;
 }
 
-static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a, BK_GLTF_Config config)
+static void BK_GLTF_OutputToPrinter(Printer *out, BK_GLTF_ModelData *model)
+{
+  U64 vert_count = model->positions.used / 3;
+
+  Pr_S8(out, S8Lit("static "));
+  Pr_S8(out, model->is_skinned ? S8Lit("MDL_GpuSkinnedVertex") : S8Lit("MDL_GpuRigidVertex"));
+  Pr_S8(out, S8Lit(" Model_"));
+  Pr_S8(out, model->name);
+  Pr_S8(out, S8Lit("_vrt[] =\n{\n"));
+
+  ForU64(vert_i, vert_count)
+  {
+    V3 normal =
+    {
+      *BK_BufferAtFloat(&model->normals, vert_i*3 + 0),
+      *BK_BufferAtFloat(&model->normals, vert_i*3 + 1),
+      *BK_BufferAtFloat(&model->normals, vert_i*3 + 2),
+    };
+    float normal_lensq = V3_LengthSq(normal);
+    if (normal_lensq < 0.001f)
+    {
+      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Found normal equal to zero");
+      normal = (V3){0,0,1};
+    }
+    else if (normal_lensq < 0.9f || normal_lensq > 1.1f)
+    {
+      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Normal wasn't normalized");
+      normal = V3_Scale(normal, FInvSqrt(normal_lensq));
+    }
+    Quat normal_rot = Quat_FromZupCrossV3(normal);
+    Pr_S8(out, S8Lit("/*nrm*/"));
+    Pr_Float(out, normal_rot.x);
+    Pr_S8(out, S8Lit("f,"));
+    Pr_Float(out, normal_rot.y);
+    Pr_S8(out, S8Lit("f,"));
+    Pr_Float(out, normal_rot.z);
+    Pr_S8(out, S8Lit("f,"));
+    Pr_Float(out, normal_rot.w);
+    Pr_S8(out, S8Lit("f, "));
+
+    Pr_S8(out, S8Lit("  /*pos*/"));
+    Pr_Float(out, *BK_BufferAtFloat(&model->positions, vert_i*3 + 0));
+    Pr_S8(out, S8Lit("f,"));
+    Pr_Float(out, *BK_BufferAtFloat(&model->positions, vert_i*3 + 1));
+    Pr_S8(out, S8Lit("f,"));
+    Pr_Float(out, *BK_BufferAtFloat(&model->positions, vert_i*3 + 2));
+    Pr_S8(out, S8Lit("f, "));
+
+    Pr_S8(out, S8Lit("/*col*/0x"));
+    Pr_U32Hex(out, *BK_BufferAtU32(&model->colors, vert_i));
+    Pr_S8(out, S8Lit(", "));
+
+    if (model->is_skinned)
+    {
+      U32 joint_index_vals[4] =
+      {
+        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 0),
+        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 1),
+        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 2),
+        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 3),
+      };
+      ForArray(i, joint_index_vals)
+      {
+        if (joint_index_vals[i] >= model->joints_count)
+          M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %llu",
+                joint_index_vals[i], model->joints_count);
+      }
+
+      U32 joint_packed4 = (joint_index_vals[0] | (joint_index_vals[1] << 8) |
+                           (joint_index_vals[2] << 16) | (joint_index_vals[3] << 24));
+
+      Pr_S8(out, S8Lit("/*jnt*/0x"));
+      Pr_U32Hex(out, joint_packed4);
+      Pr_S8(out, S8Lit(", "));
+
+      float w0 = *BK_BufferAtFloat(&model->weights, vert_i*4 + 0);
+      float w1 = *BK_BufferAtFloat(&model->weights, vert_i*4 + 1);
+      float w2 = *BK_BufferAtFloat(&model->weights, vert_i*4 + 2);
+      float w3 = *BK_BufferAtFloat(&model->weights, vert_i*4 + 3);
+      float weight_sum = w0 + w1 + w2 + w3;
+      if (weight_sum < 0.9f || weight_sum > 1.1f)
+      {
+        M_LOG(M_LogGltfWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
+      }
+
+      Pr_S8(out, S8Lit("/*wgt*/"));
+      Pr_Float(out, w0);
+      Pr_S8(out, S8Lit("f,"));
+      Pr_Float(out, w1);
+      Pr_S8(out, S8Lit("f,"));
+      Pr_Float(out, w2);
+      Pr_S8(out, S8Lit("f,"));
+      Pr_Float(out, w3);
+      Pr_S8(out, S8Lit("f,"));
+    }
+
+    Pr_S8(out, S8Lit("\n"));
+  }
+  Pr_S8(out, S8Lit("};\n\n"));
+
+
+  Pr_S8(out, S8Lit("static U16 Model_"));
+  Pr_S8(out, model->name);
+  Pr_S8(out, S8Lit("_ind[] =\n{"));
+  ForU64(i, model->indices.used)
+  {
+    U64 per_group = 3;
+    U64 per_row = per_group * 6;
+    if (i % per_row == 0)
+      Pr_S8(out, S8Lit("\n  "));
+    else if ((i % per_row) % per_group == 0)
+      Pr_S8(out, S8Lit(" "));
+
+    Pr_U16(out, *BK_BufferAtU16(&model->indices, i));
+    Pr_S8(out, S8Lit(","));
+  }
+  Pr_S8(out, S8Lit("\n};\n\n"));
+}
+
+static void BK_GLTF_Load(const char *name, const char *path, Printer *out, Printer *out_a, BK_GLTF_Config config)
 {
   // normalize config
   if (!config.scale)
@@ -408,17 +529,17 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a, BK_GLTF
   // Collect data from .gltf file
   //
   ArenaScope scratch = Arena_PushScope(BAKER.tmp);
-
   U64 max_indices = 1024*256;
-  BK_Buffer indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
-
   U64 max_verts = 1024*128;
-  BK_Buffer positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
-  BK_Buffer normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
-  BK_Buffer texcoords     = BK_BufferAlloc(scratch.a, max_verts*2, sizeof(float));
-  BK_Buffer joint_indices = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(U8));
-  BK_Buffer weights       = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(float));
-  BK_Buffer colors        = BK_BufferAlloc(scratch.a, max_verts*1, sizeof(U32)); // this doesn't need such a big array actually
+
+  BK_GLTF_ModelData model = {};
+  model.indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
+  model.positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
+  model.normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
+  model.texcoords     = BK_BufferAlloc(scratch.a, max_verts*2, sizeof(float));
+  model.joint_indices = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(U8));
+  model.weights       = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(float));
+  model.colors        = BK_BufferAlloc(scratch.a, max_verts*1, sizeof(U32)); // this doesn't need such a big array actually
 
   ForU64(mesh_index, data->meshes_count)
   {
@@ -438,11 +559,11 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a, BK_GLTF
 
       M_Check(primitive->indices);
       {
-        U64 index_start_offset = positions.used/3;
+        U64 index_start_offset = model.positions.used/3;
 
         cgltf_accessor *accessor = primitive->indices;
         M_Check(accessor->type == cgltf_type_scalar);
-        U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &indices);
+        U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &model.indices);
 
         if (index_start_offset)
         {
@@ -467,14 +588,14 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a, BK_GLTF
         {
           case cgltf_attribute_type_position:
           {
-            save_buf = &positions;
+            save_buf = &model.positions;
             M_Check(comp_count == 3);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_normal:
           {
-            save_buf = &normals;
+            save_buf = &model.normals;
             M_Check(comp_count == 3);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
@@ -487,21 +608,21 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a, BK_GLTF
 
           case cgltf_attribute_type_texcoord:
           {
-            save_buf = &texcoords;
+            save_buf = &model.texcoords;
             M_Check(comp_count == 2);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_joints:
           {
-            save_buf = &joint_indices;
+            save_buf = &model.joint_indices;
             M_Check(comp_count == 4);
             //M_Check(accessor->component_type == cgltf_component_type_r_8u);
           } break;
 
           case cgltf_attribute_type_weights:
           {
-            save_buf = &weights;
+            save_buf = &model.weights;
             M_Check(comp_count == 4);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
@@ -526,7 +647,7 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a, BK_GLTF
             V4 material_color = *(V4 *)material->pbr_metallic_roughness.base_color_factor;
             static_assert(sizeof(material->pbr_metallic_roughness.base_color_factor) == sizeof(material_color));
 
-            U32 *color_value = BK_BufferPushU32(&colors, 1);
+            U32 *color_value = BK_BufferPushU32(&model.colors, 1);
             *color_value = Color32_V4(material_color);
           }
         }
@@ -534,127 +655,37 @@ static void BK_GLTF_Load(const char *path, Printer *out, Printer *out_a, BK_GLTF
     }
   }
 
-  BK_GLTF_ExportSkeleton(out_a, data, config);
-
   //
-  // Output collected data
   //
-  U64 vert_count = positions.used / 3;
-  M_Check(positions.used % 3 == 0);
-  M_Check(normals.used % 3 == 0);
-  M_Check(vert_count == normals.used / 3);
-  M_Check(joint_indices.used % 4 == 0);
-  M_Check(vert_count == joint_indices.used / 4);
-  M_Check(weights.used % 4 == 0);
-  M_Check(vert_count == weights.used / 4);
+  //
+  model.name = S8_FromCstr(name);
+  if (!model.name.size)
+    model.name = M_NameFromPath(S8_FromCstr(path));
 
+  model.is_skinned = (data->animations_count > 0);
+
+  // Validate buffer counts
+  M_Check(model.positions.used % 3 == 0);
+  model.vert_count = model.positions.used / 3;
+
+  M_Check(model.normals.used % 3 == 0);
+  M_Check(model.vert_count == model.normals.used / 3);
+  M_Check(model.joint_indices.used % 4 == 0);
+  M_Check(model.vert_count == model.joint_indices.used / 4);
+  M_Check(model.weights.used % 4 == 0);
+  M_Check(model.vert_count == model.weights.used / 4);
+
+  // Joints
   M_Check(data->skins_count == 1);
-  U64 joints_count = data->skins[0].joints_count;
+  M_Check(data->skins[0].joints_count <= U32_MAX);
+  model.joints_count = (U32)data->skins[0].joints_count;
 
-  Pr_S8(out, S8Lit("static MDL_GpuSkinnedVertex Model_Worker_vrt[] =\n{\n"));
-  ForU64(vert_i, vert_count)
-  {
-    V3 normal =
-    {
-      *BK_BufferAtFloat(&normals, vert_i*3 + 0),
-      *BK_BufferAtFloat(&normals, vert_i*3 + 1),
-      *BK_BufferAtFloat(&normals, vert_i*3 + 2),
-    };
-    float normal_lensq = V3_LengthSq(normal);
-    if (normal_lensq < 0.001f)
-    {
-      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Found normal equal to zero");
-      normal = (V3){0,0,1};
-    }
-    else if (normal_lensq < 0.9f || normal_lensq > 1.1f)
-    {
-      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Normal wasn't normalized");
-      normal = V3_Scale(normal, FInvSqrt(normal_lensq));
-    }
-    Quat normal_rot = Quat_FromZupCrossV3(normal);
-    Pr_S8(out, S8Lit("/*nrm*/"));
-    Pr_Float(out, normal_rot.x);
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, normal_rot.y);
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, normal_rot.z);
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, normal_rot.w);
-    Pr_S8(out, S8Lit("f, "));
+  // Sekeleton export
+  if (model.is_skinned)
+    BK_GLTF_ExportSkeleton(out_a, data, model.name, config);
 
-    Pr_S8(out, S8Lit("  /*pos*/"));
-    Pr_Float(out, *BK_BufferAtFloat(&positions, vert_i*3 + 0));
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, *BK_BufferAtFloat(&positions, vert_i*3 + 1));
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, *BK_BufferAtFloat(&positions, vert_i*3 + 2));
-    Pr_S8(out, S8Lit("f, "));
-
-    Pr_S8(out, S8Lit("/*col*/0x"));
-    Pr_U32Hex(out, *BK_BufferAtU32(&colors, vert_i));
-    Pr_S8(out, S8Lit(", "));
-
-    U32 joint_index_vals[4] =
-    {
-      *BK_BufferAtU8(&joint_indices, vert_i*4 + 0),
-      *BK_BufferAtU8(&joint_indices, vert_i*4 + 1),
-      *BK_BufferAtU8(&joint_indices, vert_i*4 + 2),
-      *BK_BufferAtU8(&joint_indices, vert_i*4 + 3),
-    };
-    ForArray(i, joint_index_vals)
-    {
-      if (joint_index_vals[i] >= joints_count)
-        M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %llu",
-              joint_index_vals[i], joints_count);
-    }
-
-    U32 joint_packed4 = (joint_index_vals[0] | (joint_index_vals[1] << 8) |
-                         (joint_index_vals[2] << 16) | (joint_index_vals[3] << 24));
-
-    Pr_S8(out, S8Lit("/*jnt*/0x"));
-    Pr_U32Hex(out, joint_packed4);
-    Pr_S8(out, S8Lit(", "));
-
-    float w0 = *BK_BufferAtFloat(&weights, vert_i*4 + 0);
-    float w1 = *BK_BufferAtFloat(&weights, vert_i*4 + 1);
-    float w2 = *BK_BufferAtFloat(&weights, vert_i*4 + 2);
-    float w3 = *BK_BufferAtFloat(&weights, vert_i*4 + 3);
-    float weight_sum = w0 + w1 + w2 + w3;
-    if (weight_sum < 0.9f || weight_sum > 1.1f)
-    {
-      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
-    }
-
-    Pr_S8(out, S8Lit("/*wgt*/"));
-    Pr_Float(out, w0);
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, w1);
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, w2);
-    Pr_S8(out, S8Lit("f,"));
-    Pr_Float(out, w3);
-    Pr_S8(out, S8Lit("f,"));
-
-    Pr_S8(out, S8Lit("\n"));
-  }
-  Pr_S8(out, S8Lit("};\n\n"));
-
-
-  Pr_S8(out, S8Lit("static U16 Model_Worker_ind[] =\n{"));
-  ForU64(i, indices.used)
-  {
-    U64 per_group = 3;
-    U64 per_row = per_group * 6;
-    if (i % per_row == 0)
-      Pr_S8(out, S8Lit("\n  "));
-    else if ((i % per_row) % per_group == 0)
-      Pr_S8(out, S8Lit(" "));
-
-    Pr_U16(out, *BK_BufferAtU16(&indices, i));
-    Pr_S8(out, S8Lit(","));
-  }
-  Pr_S8(out, S8Lit("\n};\n\n"));
-
+  // Vertices export
+  BK_GLTF_OutputToPrinter(out, &model);
 
   // Reset tmp arena
   Arena_PopScope(scratch);

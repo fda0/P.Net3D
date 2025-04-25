@@ -1,19 +1,29 @@
+#define TEX_LIST(X) \
+X(Bricks071) \
+X(Bricks097) \
+X(Grass004) \
+X(Ground037) \
+X(Ground068) \
+X(Ground078) \
+X(Leather011) \
+X(PavingStones067) \
+X(Tiles101) \
+X(TestPBR001)
+
 //
 // Textures
 //
 typedef enum
 {
-#define TEX_INC(a) TEX_##a
-#include "assets_textures.inc"
-#undef TEX_INC
+#define TEX_DEF_ENUM(a) TEX_##a,
+  TEX_LIST(TEX_DEF_ENUM)
   TEX_COUNT
 } TEX_Kind;
 
 READ_ONLY static S8 TEX_Names[] =
 {
-#define TEX_INC(a) {(U8 *)#a, sizeof(#a)-1}
-#include "assets_textures.inc"
-#undef TEX_INC
+#define TEX_DEF_NAMES(a) {(U8 *)#a, sizeof(#a)-1},
+  TEX_LIST(TEX_DEF_NAMES)
 };
 
 static S8 TEX_GetName(TEX_Kind tex_kind)
@@ -22,14 +32,22 @@ static S8 TEX_GetName(TEX_Kind tex_kind)
   return TEX_Names[tex_kind];
 }
 
+
+
 //
 // Models
 //
+#define MDL_LIST(X) \
+X(Teapot, Rigid) \
+X(Flag, Rigid) \
+X(Tree, Rigid) \
+X(Worker, Skinned) \
+X(Formal, Skinned)
+
 typedef enum
 {
-#define MDL_INC(a, b) MDL_##a
-#include "assets_models.inc"
-#undef MDL_INC
+#define MDL_DEF_ENUM(a, b) MDL_##a,
+  MDL_LIST(MDL_DEF_ENUM)
   MDL_COUNT
 } MDL_Kind;
 
@@ -42,15 +60,13 @@ typedef enum
 
 READ_ONLY static MDL_Category MDL_Categories[] =
 {
-#define MDL_INC(a, b) MDL_##b
-#include "assets_models.inc"
-#undef MDL_INC
+#define MDL_DEF_CATEGORIES(a, b) MDL_##b,
+  MDL_LIST(MDL_DEF_CATEGORIES)
 };
 READ_ONLY static const char *MDL_CstrNames[] =
 {
-#define MDL_INC(a, b) #a
-#include "assets_models.inc"
-#undef MDL_INC
+#define MDL_DEF_CSTR_NAMES(a, b) #a
+  MDL_LIST(MDL_DEF_CSTR_NAMES)
 };
 
 static MDL_Category MDL_GetCategory(MDL_Kind model_kind)
