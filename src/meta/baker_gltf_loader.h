@@ -2,6 +2,7 @@ typedef struct
 {
   float scale;
   Quat rot;
+  V3 move;
 } BK_GLTF_Config;
 
 typedef struct

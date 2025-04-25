@@ -688,14 +688,16 @@ static void BK_GLTF_Load(const char *name, const char *path, Printer *out, Print
 
   if (!model.is_skinned) // apply transformations directly to rigid mesh
   {
-    if (config.scale != 1.f || !Quat_IsIdentity(config.rot))
+    if (config.scale != 1.f || !Quat_IsIdentity(config.rot) ||
+        config.move.x || config.move.y || config.move.z)
     {
       ForU32(i, model.verts_count)
       {
         V3 *position = (V3*)BK_BufferAtFloat(&model.positions, i*3);
         V3 p = *position;
-        p = V3_Rotate(p, config.rot);
         p = V3_Scale(p, config.scale);
+        p = V3_Rotate(p, config.rot);
+        p = V3_Add(p, config.move);
 
         V3 *normal = (V3*)BK_BufferAtFloat(&model.normals, i*3);
         V3 n = *normal;

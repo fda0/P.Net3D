@@ -41,7 +41,8 @@ static S8 TEX_GetName(TEX_Kind tex_kind)
 X(Flag, Rigid) \
 X(Tree, Rigid) \
 X(Worker, Skinned) \
-X(Formal, Skinned)
+X(Formal, Skinned) \
+X(Casual, Skinned)
 
 typedef enum
 {

@@ -47,9 +47,10 @@ int main()
     float scale = 40;
     BK_GLTF_Config config = {.scale = scale, .rot = rot_xz};
 
-    BK_GLTF_Load("flag", "../res/models/Flag.glb", &pr_out, &pr_anim, (BK_GLTF_Config){1.f, rot_x});
+    BK_GLTF_Load("flag", "../res/models/Flag.glb", &pr_out, &pr_anim, (BK_GLTF_Config){1.f, rot_x, (V3){0,0,-4.5f}});
     BK_GLTF_Load("", "../res/models/Worker.gltf", &pr_out, &pr_anim, config);
     BK_GLTF_Load("", "../res/models/Formal.gltf", &pr_out, &pr_anim, config);
+    BK_GLTF_Load("", "../res/models/Casual.gltf", &pr_out, &pr_anim, config);
 
     config.scale = 4.f;
     config.rot = Quat_Identity();

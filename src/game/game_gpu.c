@@ -279,6 +279,16 @@ static void GPU_InitModelBuffers(U32 model_index)
       ind_buf_name = "Formal skinned ind buf";
       inst_buf_name = "Formal skinned inst buf";
     } break;
+    case MDL_Casual:
+    {
+      vertices = Model_Casual_vrt;
+      vertices_size = sizeof(Model_Casual_vrt);
+      indices = Model_Casual_ind;
+      indices_size = sizeof(Model_Casual_ind);
+      vrt_buf_name = "Casual skinned vrt buf";
+      ind_buf_name = "Casual skinned ind buf";
+      inst_buf_name = "Casual skinned inst buf";
+    } break;
   }
 
   MDL_Batch *batch = APP.gpu.model.batches + model_index;

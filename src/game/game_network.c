@@ -222,7 +222,8 @@ static void NET_IterateSend()
 
         if (!player_key->serial_number)
         {
-          Object *player = OBJ_CreatePlayer(user_index % MDL_COUNT);
+          MDL_Kind model = MDL_Worker + (user_index % (MDL_COUNT - MDL_Worker));
+          Object *player = OBJ_CreatePlayer(model);
           if (!OBJ_IsNil(player))
           {
             player->s.p.y = -150.f + user_index * 70.f;
