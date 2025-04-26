@@ -105,6 +105,10 @@ typedef int64_t I64;
 #define Swap(a, b) do { typeof(a) tmp = a; a = b; b = tmp; } while (0)
 #define ModuloPow2(X, Y) ((X) & ((Y)-1))
 
+#define Memset(ptr, value, size) memset(ptr, value, size)
+#define Memclear(ptr, size) memset(ptr, 0, size)
+#define Memcpy(dest, src, size) memcpy(dest, src, size)
+
 static bool Memeq(const void *ptr_a, const void *ptr_b, U64 byte_size)
 {
   return memcmp(ptr_a, ptr_b, byte_size) == 0;

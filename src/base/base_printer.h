@@ -69,20 +69,36 @@ Printer PrinterName = Pr_Make(PrinterName##_buffer, Size)
 //
 // Adding things to Printer
 //
-static void Pr_S8(Printer *p, S8 str)
+static void Pr_Data(Printer *p, void *data, U64 data_size)
 {
   U64 free_count = Pr_FreeCount(p);
-  if (free_count < str.size)
+  if (free_count < data_size)
   {
     p->err |= PrErr_Truncated;
     if (!free_count)
       return;
 
-    str = S8_Prefix(str, free_count);
+    data_size = free_count;
   }
 
-  memcpy(p->buf + p->used, str.str, str.size);
-  p->used += str.size;
+  memcpy(p->buf + p->used, data, data_size);
+  p->used += data_size;
+}
+
+static void *Pr_ReserveBytes(Printer *p, U64 data_size) // returns 0 on lack of space
+{
+  U64 free_count = Pr_FreeCount(p);
+  if (free_count < data_size)
+    return 0;
+
+  void *result = p->buf + p->used;
+  p->used += data_size;
+  return result;
+}
+
+static void Pr_S8(Printer *p, S8 str)
+{
+  Pr_Data(p, str.str, str.size);
 }
 
 static void Pr_Cstr(Printer *p, const char *cstr)

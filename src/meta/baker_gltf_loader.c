@@ -364,17 +364,15 @@ static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
   return numbers;
 }
 
-static void BK_GLTF_OutputToPrinter(Printer *out, BK_GLTF_ModelData *model)
+static void BK_GLTF_ExportModelToPrinter(Printer *out, BK_GLTF_ModelData *model)
 {
-  U64 vert_count = model->positions.used / 3;
-
   Pr_S8(out, S8Lit("static "));
   Pr_S8(out, model->is_skinned ? S8Lit("MDL_GpuSkinnedVertex") : S8Lit("MDL_GpuRigidVertex"));
   Pr_S8(out, S8Lit(" Model_"));
   Pr_S8(out, model->name);
   Pr_S8(out, S8Lit("_vrt[] =\n{\n"));
 
-  ForU64(vert_i, vert_count)
+  ForU64(vert_i, model->verts_count)
   {
     V3 normal =
     {
@@ -483,7 +481,90 @@ static void BK_GLTF_OutputToPrinter(Printer *out, BK_GLTF_ModelData *model)
   Pr_S8(out, S8Lit("\n};\n\n"));
 }
 
-static void BK_GLTF_Load(const char *name, const char *path, Printer *out, Printer *out_a, BK_GLTF_Config config)
+static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *model)
+{
+  BREAD_AddModel(bb, model->kind, model->is_skinned);
+
+  // vertices
+  ForU64(vert_i, model->verts_count)
+  {
+    V3 normal =
+    {
+      *BK_BufferAtFloat(&model->normals, vert_i*3 + 0),
+      *BK_BufferAtFloat(&model->normals, vert_i*3 + 1),
+      *BK_BufferAtFloat(&model->normals, vert_i*3 + 2),
+    };
+    float normal_lensq = V3_LengthSq(normal);
+    if (normal_lensq < 0.001f)
+    {
+      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Found normal equal to zero");
+      normal = (V3){0,0,1};
+    }
+    else if (normal_lensq < 0.9f || normal_lensq > 1.1f)
+    {
+      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Normal wasn't normalized");
+      normal = V3_Scale(normal, FInvSqrt(normal_lensq));
+    }
+    Quat normal_rot = Quat_FromZupCrossV3(normal);
+
+    V3 pos = {};
+    pos.x = *BK_BufferAtFloat(&model->positions, vert_i*3 + 0);
+    pos.y = *BK_BufferAtFloat(&model->positions, vert_i*3 + 1);
+    pos.z = *BK_BufferAtFloat(&model->positions, vert_i*3 + 2);
+
+    U32 color = *BK_BufferAtU32(&model->colors, vert_i);
+
+    if (!model->is_skinned) // it's rigid
+    {
+      MDL_GpuRigidVertex rigid = {};
+      rigid.normal_rot = normal_rot;
+      rigid.p = pos;
+      rigid.color = color;
+      *BREAD_AddModelRigidVertex(bb) = rigid;
+    }
+    else // it's skinned
+    {
+      U32 joint_indices[4] =
+      {
+        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 0),
+        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 1),
+        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 2),
+        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 3),
+      };
+      ForArray(i, joint_indices)
+      {
+        if (joint_indices[i] >= model->joints_count)
+          M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %llu",
+                joint_indices[i], model->joints_count);
+      }
+      U32 joints_packed4 = (joint_indices[0] |
+                            (joint_indices[1] << 8) |
+                            (joint_indices[2] << 16) |
+                            (joint_indices[3] << 24));
+
+      V4 weights = {};
+      weights.x = *BK_BufferAtFloat(&model->weights, vert_i*4 + 0);
+      weights.y = *BK_BufferAtFloat(&model->weights, vert_i*4 + 1);
+      weights.z = *BK_BufferAtFloat(&model->weights, vert_i*4 + 2);
+      weights.w = *BK_BufferAtFloat(&model->weights, vert_i*4 + 3);
+      float weight_sum = weights.x + weights.y + weights.z + weights.w;
+      if (weight_sum < 0.9f || weight_sum > 1.1f)
+        M_LOG(M_LogGltfWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
+
+      MDL_GpuSkinnedVertex skinned = {};
+      skinned.normal_rot = normal_rot;
+      skinned.p = pos;
+      skinned.color = color;
+      skinned.joints_packed4 = joints_packed4;
+      skinned.weights = weights;
+      *BREAD_AddModelSkinnedVertex(bb) = skinned;
+    }
+  }
+
+  BREAD_CopyIndices(bb, model->indices.vals, model->indices.used);
+}
+
+static void BK_GLTF_Load(MDL_Kind model_kind, const char *name, const char *path, Printer *out, Printer *out_a, BREAD_Builder *bb, BK_GLTF_Config config)
 {
   // normalize config
   if (!config.scale) config.scale = 1.f;
@@ -531,6 +612,7 @@ static void BK_GLTF_Load(const char *name, const char *path, Printer *out, Print
   U64 max_verts = 1024*128;
 
   BK_GLTF_ModelData model = {};
+  model.kind = model_kind;
   model.indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
   model.positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
   model.normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
@@ -710,8 +792,14 @@ static void BK_GLTF_Load(const char *name, const char *path, Printer *out, Print
   }
 
   // Vertices export
-  BK_GLTF_OutputToPrinter(out, &model);
+  if (false)
+    BK_GLTF_ExportModelToPrinter(out, &model);
+  else
+    BK_GLTF_ExportModelToBread(bb, &model);
 
   // Reset tmp arena
   Arena_PopScope(scratch);
+
+  M_Check(!out->err);
+  M_Check(!out_a->err);
 }

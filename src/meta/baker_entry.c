@@ -4,9 +4,12 @@
 #include "base_math.h"
 #include "base_printer.h"
 #include "base_parse.h"
+#include "base_hash.h"
 #include "game_render.h"
 #include "game_animation.h"
+#include "game_asset_definitions.h"
 
+#include "baker_bread_file_format.h"
 #include "baker_number_buffer.h"
 #include "baker_gltf_loader.h"
 #include "baker_entry.h"
@@ -19,6 +22,7 @@
 #include "cgltf.h"
 #pragma warning(pop)
 
+#include "baker_bread_builder.c"
 #include "baker_gltf_loader.c"
 
 //
@@ -35,6 +39,8 @@ int main()
   // load .gltf models
   {
     ArenaScope scratch = Arena_PushScope(BAKER.tmp);
+    BREAD_Builder bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(64));
+
     Printer pr_out = Pr_Alloc(scratch.a, Megabyte(32));
     Printer pr_anim = Pr_Alloc(scratch.a, Megabyte(8));
 
@@ -47,18 +53,21 @@ int main()
     float scale = 40;
     BK_GLTF_Config config = {.scale = scale, .rot = rot_xz};
 
-    BK_GLTF_Load("flag", "../res/models/Flag.glb", &pr_out, &pr_anim, (BK_GLTF_Config){1.f, rot_x, (V3){0,0,-4.5f}});
-    BK_GLTF_Load("", "../res/models/Worker.gltf", &pr_out, &pr_anim, config);
-    BK_GLTF_Load("", "../res/models/Formal.gltf", &pr_out, &pr_anim, config);
-    BK_GLTF_Load("", "../res/models/Casual.gltf", &pr_out, &pr_anim, config);
+    BK_GLTF_Load(MDL_Flag, "flag", "../res/models/Flag.glb", &pr_out, &pr_anim, &bb, (BK_GLTF_Config){1.f, rot_x, (V3){0,0,-4.5f}});
+    BK_GLTF_Load(MDL_Worker, "", "../res/models/Worker.gltf", &pr_out, &pr_anim, &bb, config);
+    BK_GLTF_Load(MDL_Formal, "", "../res/models/Formal.gltf", &pr_out, &pr_anim, &bb, config);
+    BK_GLTF_Load(MDL_Casual, "", "../res/models/Casual.gltf", &pr_out, &pr_anim, &bb, config);
 
     config.scale = 4.f;
     config.rot = Quat_Identity();
-    BK_GLTF_Load("Tree", "../res/models/tree_low-poly/scene.gltf", &pr_out, &pr_anim, config);
+    BK_GLTF_Load(MDL_Tree, "Tree", "../res/models/tree_low-poly/scene.gltf", &pr_out, &pr_anim, &bb, config);
 
 
     M_SaveFile("../gen/gen_models_gltf.h", Pr_AsS8(&pr_out));
     M_SaveFile("../gen/gen_animations.h", Pr_AsS8(&pr_anim));
+
+    BREAD_FinalizeBuilder(&bb);
+    BREAD_SaveToFile(&bb, "data.bread");
 
     Arena_PopScope(scratch);
   }

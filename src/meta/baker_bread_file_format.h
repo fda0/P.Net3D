@@ -29,6 +29,7 @@ typedef struct
 {
   bool is_skinned;
   BREAD_Range vertices; // [MDL_GpuSkinnedVertex or MDL_GpuRigidVertex]
+  BREAD_Range indices; // [U16]
   U32 skeleton_offset; // [BREAD_Skeleton] for skinned only
 } BREAD_Model;
 
@@ -39,7 +40,17 @@ typedef struct
 
 typedef struct
 {
-  U32 file_hash; // of everything after itself (the first 4 bytes)
-  U32 file_magic_number;
+  U32 file_hash; // of everything after itself (the first 4 bytes) - seeded with BREAD_MAGIC_HASH_SEED
+#define BREAD_MAGIC_HASH_SEED 0xB5'EA'DC'0D
   U32 contents_offset; // [BREAD_Contents]
-} BREAD_File;
+} BREAD_Header;
+
+//
+// The format is a bit flexible in regards to where stuff is located.
+// With the current BreadBuilder implementation we can expect it to be:
+//
+// BREAD_Header [4*3 bytes at the start]
+// [buffers of vertices (MDL_GpuSkinnedVertex, MDL_GpuRigidVertex), indices (U16)]
+// [continuous array of BREAD_Model]
+// BREAD_Contents [4*2 bytes at the end]
+//
