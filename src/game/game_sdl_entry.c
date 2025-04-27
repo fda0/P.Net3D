@@ -25,6 +25,7 @@
 #include "base_printer.h"
 #include "base_parse.h"
 #include "game_constants.h"
+#include "baker_bread_file_format.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
 #include "game_asset_definitions.h"
@@ -64,8 +65,9 @@ static AppState APP;
 #include "game_network.c"
 #include "game_tick.c"
 #include "game_animation.c"
-#include "game_render.c"
 #include "game_gpu.c"
+#include "game_bread_loader.c"
+#include "game_render.c"
 #include "game_font_atlas.c"
 #include "game_ui.c"
 #include "game_serialize.c"
@@ -247,6 +249,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   APP.tmp = Arena_Malloc(Megabyte(16));
   APP.a_frame = Arena_Malloc(Megabyte(1));
   APP.gpu.mem.buffer_arena = Arena_Malloc(Kilobyte(128));
+  APP.ast.bread_arena = Arena_Malloc(Megabyte(16));
 
   APP.log_filter = ~(U32)Log_NetAll;
   APP.init_window_width = WINDOW_WIDTH;

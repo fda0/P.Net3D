@@ -96,138 +96,140 @@ static void Game_DrawObjects()
       U32 vertices_per_face = 3*2;
       U32 mesh_verts_count = face_count * vertices_per_face;
 
-      MSH_GpuVertex *mesh_verts = MSH_PushVertices(tex_kind, mesh_verts_count);
-      if (mesh_verts)
+      MSH_GpuVertex mesh_verts[6 * 3 * 2]; // CPU side temporary buffer
+      Memclear(mesh_verts, sizeof(mesh_verts));
+      Assert(ArrayCount(mesh_verts) >= mesh_verts_count);
+
+      ForU32(i, mesh_verts_count)
+        mesh_verts[i].color = obj->s.color; // @todo remove vert color?
+
+      float bot_z = obj->s.p.z;
+      float top_z = bot_z + height;
+
+      CollisionVertices collision = obj->s.collision.verts;
       {
-        memset(mesh_verts, 0, sizeof(*mesh_verts)*mesh_verts_count);
-        ForU32(i, mesh_verts_count)
-          mesh_verts[i].color = obj->s.color; // @todo remove vert color?
-
-        float bot_z = obj->s.p.z;
-        float top_z = bot_z + height;
-
-        CollisionVertices collision = obj->s.collision.verts;
+        V3 cube_verts[8] =
         {
-          V3 cube_verts[8] =
-          {
-            V3_From_XY_Z(collision.arr[0], bot_z), // 0
-            V3_From_XY_Z(collision.arr[1], bot_z), // 1
-            V3_From_XY_Z(collision.arr[2], bot_z), // 2
-            V3_From_XY_Z(collision.arr[3], bot_z), // 3
-            V3_From_XY_Z(collision.arr[0], top_z), // 4
-            V3_From_XY_Z(collision.arr[1], top_z), // 5
-            V3_From_XY_Z(collision.arr[2], top_z), // 6
-            V3_From_XY_Z(collision.arr[3], top_z), // 7
-          };
+          V3_From_XY_Z(collision.arr[0], bot_z), // 0
+          V3_From_XY_Z(collision.arr[1], bot_z), // 1
+          V3_From_XY_Z(collision.arr[2], bot_z), // 2
+          V3_From_XY_Z(collision.arr[3], bot_z), // 3
+          V3_From_XY_Z(collision.arr[0], top_z), // 4
+          V3_From_XY_Z(collision.arr[1], top_z), // 5
+          V3_From_XY_Z(collision.arr[2], top_z), // 6
+          V3_From_XY_Z(collision.arr[3], top_z), // 7
+        };
 
-          // mapping to expand verts to walls (each wall is made out of 2 triangles)
-          U32 cube_verts_map_array[] =
-          {
-            0,5,4,0,1,5, // E
-            2,7,6,2,3,7, // W
-            1,6,5,1,2,6, // N
-            3,4,7,3,0,4, // S
-            6,4,5,6,7,4, // Top
-            1,3,2,1,0,3, // Bottom
-          };
-          Assert(mesh_verts_count <= ArrayCount(cube_verts_map_array));
-
-          U32 *cube_verts_map = cube_verts_map_array;
-          if (face_count == 1) // generate top mesh only
-            cube_verts_map = cube_verts_map_array + 6*WorldDir_T;
-
-          ForU32(mesh_index, mesh_verts_count)
-          {
-            U32 cube_index = cube_verts_map[mesh_index];
-            AssertBounds(cube_index, cube_verts);
-            mesh_verts[mesh_index].p = cube_verts[cube_index];
-            mesh_verts[mesh_index].p.x += obj->s.p.x;
-            mesh_verts[mesh_index].p.y += obj->s.p.y;
-          }
-        }
-
-        float w0 = V2_Length(V2_Sub(collision.arr[0], collision.arr[1]));
-        float w1 = V2_Length(V2_Sub(collision.arr[1], collision.arr[2]));
-        float w2 = V2_Length(V2_Sub(collision.arr[2], collision.arr[3]));
-        float w3 = V2_Length(V2_Sub(collision.arr[3], collision.arr[0]));
-
-        float texels_per_cm = obj->s.texture_texels_per_cm;
-        if (texels_per_cm <= 0.f)
-          texels_per_cm = 0.015f;
-
-        ForU32(face_i, face_count)
+        // mapping to expand verts to walls (each wall is made out of 2 triangles)
+        U32 cube_verts_map_array[] =
         {
-          WorldDir face_dir = face_i;
-          if (face_count == 1) face_dir = WorldDir_T;
+          0,5,4,0,1,5, // E
+          2,7,6,2,3,7, // W
+          1,6,5,1,2,6, // N
+          3,4,7,3,0,4, // S
+          6,4,5,6,7,4, // Top
+          1,3,2,1,0,3, // Bottom
+        };
+        Assert(mesh_verts_count <= ArrayCount(cube_verts_map_array));
 
-          // face texture UVs
-          V2 face_dim = {};
-          switch (face_dir)
-          {
-            case WorldDir_E: face_dim = (V2){w0, height}; break;
-            case WorldDir_W: face_dim = (V2){w2, height}; break;
-            case WorldDir_N: face_dim = (V2){w3, height}; break;
-            case WorldDir_S: face_dim = (V2){w1, height}; break;
-            case WorldDir_T: face_dim = (V2){w0, w1}; break; // works for rects only
-            case WorldDir_B: face_dim = (V2){w0, w1}; break; // works for rects only
-          }
+        U32 *cube_verts_map = cube_verts_map_array;
+        if (face_count == 1) // generate top mesh only
+          cube_verts_map = cube_verts_map_array + 6*WorldDir_T;
 
-          face_dim = V2_Scale(face_dim, texels_per_cm);
-          V2 face_uvs[6] =
-          {
-            (V2){0, face_dim.y},
-            (V2){face_dim.x, 0},
-            (V2){0, 0},
-            (V2){0, face_dim.y},
-            (V2){face_dim.x, face_dim.y},
-            (V2){face_dim.x, 0},
-          };
-
-          // face normals @todo CLEAN THIS UP
-          Quat normal_rot = Quat_Identity();
-          switch (face_dir)
-          {
-            case WorldDir_E:
-            case WorldDir_W:
-            case WorldDir_N:
-            case WorldDir_S: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), -0.25f); break;
-            case WorldDir_B: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), 0.5f); break;
-          }
-          switch (face_dir)
-          {
-            case WorldDir_E: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.5f)); break;
-            case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), -0.25f)); break;
-            case WorldDir_S: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.25f)); break;
-          }
-
-          V3 ideal_E = (V3){1,0,0};
-          V3 ideal_W = (V3){-1,0,0};
-          V3 ideal_N = (V3){0,1,0};
-          V3 ideal_S = (V3){0,-1,0};
-          V3 obj_norm_E = V3_From_XY_Z(obj->s.collision.norms.arr[0], 0);
-          V3 obj_norm_W = V3_From_XY_Z(obj->s.collision.norms.arr[2], 0);
-          V3 obj_norm_N = V3_From_XY_Z(obj->s.collision.norms.arr[1], 0);
-          V3 obj_norm_S = V3_From_XY_Z(obj->s.collision.norms.arr[3], 0);
-          Quat correction_E = Quat_FromNormalizedPair(ideal_E, obj_norm_E);
-          Quat correction_W = Quat_FromNormalizedPair(ideal_W, obj_norm_W);
-          Quat correction_N = Quat_FromNormalizedPair(ideal_N, obj_norm_N);
-          Quat correction_S = Quat_FromNormalizedPair(ideal_S, obj_norm_S);
-          switch (face_dir)
-          {
-            case WorldDir_E: normal_rot = Quat_Mul(correction_E, normal_rot); break;
-            case WorldDir_W: normal_rot = Quat_Mul(correction_W, normal_rot); break;
-            case WorldDir_N: normal_rot = Quat_Mul(correction_N, normal_rot); break;
-            case WorldDir_S: normal_rot = Quat_Mul(correction_S, normal_rot); break;
-          }
-
-          ForU32(vert_i, vertices_per_face)
-          {
-            U32 i = (face_i * vertices_per_face) + vert_i;
-            mesh_verts[i].uv = face_uvs[vert_i];
-            mesh_verts[i].normal_rot = normal_rot;
-          }
+        ForU32(mesh_index, mesh_verts_count)
+        {
+          U32 cube_index = cube_verts_map[mesh_index];
+          AssertBounds(cube_index, cube_verts);
+          mesh_verts[mesh_index].p = cube_verts[cube_index];
+          mesh_verts[mesh_index].p.x += obj->s.p.x;
+          mesh_verts[mesh_index].p.y += obj->s.p.y;
         }
       }
+
+      float w0 = V2_Length(V2_Sub(collision.arr[0], collision.arr[1]));
+      float w1 = V2_Length(V2_Sub(collision.arr[1], collision.arr[2]));
+      float w2 = V2_Length(V2_Sub(collision.arr[2], collision.arr[3]));
+      float w3 = V2_Length(V2_Sub(collision.arr[3], collision.arr[0]));
+
+      float texels_per_cm = obj->s.texture_texels_per_cm;
+      if (texels_per_cm <= 0.f)
+        texels_per_cm = 0.015f;
+
+      ForU32(face_i, face_count)
+      {
+        WorldDir face_dir = face_i;
+        if (face_count == 1) face_dir = WorldDir_T;
+
+        // face texture UVs
+        V2 face_dim = {};
+        switch (face_dir)
+        {
+          case WorldDir_E: face_dim = (V2){w0, height}; break;
+          case WorldDir_W: face_dim = (V2){w2, height}; break;
+          case WorldDir_N: face_dim = (V2){w3, height}; break;
+          case WorldDir_S: face_dim = (V2){w1, height}; break;
+          case WorldDir_T: face_dim = (V2){w0, w1}; break; // works for rects only
+          case WorldDir_B: face_dim = (V2){w0, w1}; break; // works for rects only
+        }
+
+        face_dim = V2_Scale(face_dim, texels_per_cm);
+        V2 face_uvs[6] =
+        {
+          (V2){0, face_dim.y},
+          (V2){face_dim.x, 0},
+          (V2){0, 0},
+          (V2){0, face_dim.y},
+          (V2){face_dim.x, face_dim.y},
+          (V2){face_dim.x, 0},
+        };
+
+        // face normals @todo CLEAN THIS UP
+        Quat normal_rot = Quat_Identity();
+        switch (face_dir)
+        {
+          case WorldDir_E:
+          case WorldDir_W:
+          case WorldDir_N:
+          case WorldDir_S: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), -0.25f); break;
+          case WorldDir_B: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), 0.5f); break;
+        }
+        switch (face_dir)
+        {
+          case WorldDir_E: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.5f)); break;
+          case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), -0.25f)); break;
+          case WorldDir_S: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.25f)); break;
+        }
+
+        V3 ideal_E = (V3){1,0,0};
+        V3 ideal_W = (V3){-1,0,0};
+        V3 ideal_N = (V3){0,1,0};
+        V3 ideal_S = (V3){0,-1,0};
+        V3 obj_norm_E = V3_From_XY_Z(obj->s.collision.norms.arr[0], 0);
+        V3 obj_norm_W = V3_From_XY_Z(obj->s.collision.norms.arr[2], 0);
+        V3 obj_norm_N = V3_From_XY_Z(obj->s.collision.norms.arr[1], 0);
+        V3 obj_norm_S = V3_From_XY_Z(obj->s.collision.norms.arr[3], 0);
+        Quat correction_E = Quat_FromNormalizedPair(ideal_E, obj_norm_E);
+        Quat correction_W = Quat_FromNormalizedPair(ideal_W, obj_norm_W);
+        Quat correction_N = Quat_FromNormalizedPair(ideal_N, obj_norm_N);
+        Quat correction_S = Quat_FromNormalizedPair(ideal_S, obj_norm_S);
+        switch (face_dir)
+        {
+          case WorldDir_E: normal_rot = Quat_Mul(correction_E, normal_rot); break;
+          case WorldDir_W: normal_rot = Quat_Mul(correction_W, normal_rot); break;
+          case WorldDir_N: normal_rot = Quat_Mul(correction_N, normal_rot); break;
+          case WorldDir_S: normal_rot = Quat_Mul(correction_S, normal_rot); break;
+        }
+
+        ForU32(vert_i, vertices_per_face)
+        {
+          U32 i = (face_i * vertices_per_face) + vert_i;
+          mesh_verts[i].uv = face_uvs[vert_i];
+          mesh_verts[i].normal_rot = normal_rot;
+        }
+      }
+
+      // Transfer verts to GPU
+      MSH_DrawVertices(tex_kind, mesh_verts, mesh_verts_count);
     }
   }
 
@@ -532,7 +534,7 @@ static void Game_Init()
     SERIAL_AssetSettings(true);
 
     FONT_Init();
-    TEX_InitThread();
+    AST_InitTextureThread();
     UI_Init();
   }
 

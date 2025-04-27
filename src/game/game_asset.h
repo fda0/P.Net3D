@@ -11,13 +11,26 @@ typedef struct
       SDL_GPUTexture *handle;
       float shininess;
     } Tex;
+
     struct
     {
       SDL_GPUBuffer *vertices;
       SDL_GPUBuffer *indices;
     } Geo;
+
+    //AN_Skeleton skeleton;
   };
 } Asset;
+
+typedef struct
+{
+  Arena *arena;
+  S8 file;
+  BREAD_Header *header;
+  BREAD_Contents *contents;
+  U32 models_count;
+  BREAD_Model *models;
+} AST_BreadFile;
 
 typedef struct
 {
@@ -28,6 +41,14 @@ typedef struct
   bool tex_load_needed;
   SDL_Semaphore *tex_sem;
 
+  AST_BreadFile bread;
+
+  // geometry
+  Asset geo_assets[MDL_COUNT];
+
   U64 serialize_last_check_timestamp;
   U64 serialize_hash;
 } AST_State;
+
+static void BREAD_InitFile();
+static void BREAD_LoadModel(MDL_Kind model_kind);

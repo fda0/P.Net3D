@@ -11,7 +11,8 @@ static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, 
   SDL_GPUBufferCreateInfo desc = {.usage = usage, .size = size};
   SDL_GPUBuffer *result = SDL_CreateGPUBuffer(APP.gpu.device, &desc);
   Assert(result);
-  SDL_SetGPUBufferName(APP.gpu.device, result, name);
+  if (name)
+    SDL_SetGPUBufferName(APP.gpu.device, result, name);
   return result;
 }
 
@@ -86,13 +87,27 @@ static GPU_MemoryResult GPU_MemoryAlloc(GPU_MemorySpec spec)
   Assert(alloc_size <= max_gpu_alloc_size);
   Assert(alloc_index < GPU_MEM_FREE_LIST_SIZE);
 
+  U32 offset_in_elements = 0;
   if (allow_fragmentation)
   {
+    // Track previously allocated sizes.
+    // We want each item in the chain to be larger to avoid excessive fragmentation.
+    U32 highest_alloc_size = 0;
+
     // Advance to the last DynamicBuffer allocated in the chains of ->next pointers.
     // @todo Consider reversing the order of this list so the most recent DynamicBuffer is first?
     //       Then we would have to do that traversal once at the end.
-    while ((*buf_ptr) && (*buf_ptr)->next)
+    while (*buf_ptr)
+    {
+      // Gather stats
+      highest_alloc_size = Max(highest_alloc_size, (*buf_ptr)->cap_bytes);
+      offset_in_elements += (*buf_ptr)->element_count;
+
+      // Advance to next ptr
+      if (!(*buf_ptr)->next)
+        break;
       buf_ptr = &(*buf_ptr)->next;
+    }
 
     // If DynamicBuffer is already allocated check if it has enough size
     if (*buf_ptr)
@@ -111,6 +126,14 @@ static GPU_MemoryResult GPU_MemoryAlloc(GPU_MemorySpec spec)
         // Move buf_ptr to ->next.
         buf_ptr = &(*buf_ptr)->next;
       }
+    }
+
+    // Grow ceil_alloc_size & alloc_index if previous
+    // buffers in the chain had larger sizes.
+    if (highest_alloc_size > ceil_alloc_size)
+    {
+      alloc_index = Min(alloc_index + 1, GPU_MEM_FREE_LIST_SIZE);
+      ceil_alloc_size = GPU_MemoryIndexToSize(alloc_index);
     }
   }
 
@@ -166,13 +189,18 @@ static GPU_MemoryResult GPU_MemoryAlloc(GPU_MemorySpec spec)
     }
   }
 
+  // Prepare result
   GPU_MemoryResult result = {};
   result.buffer = *buf_ptr;
+  result.alloc_size = alloc_size;
+
   if (!spec.final_buffer)
   {
-    result.offsetted_memory = (U8 *)result.buffer->mapped_memory + result.buffer->used_bytes;
+    result.alloc_mapped = (U8 *)result.buffer->mapped_memory + result.buffer->used_bytes;
+    result.alloc_offset_in_elements = offset_in_elements;
   }
 
+  // Increment buffer counters
   result.buffer->used_bytes += alloc_size;
   result.buffer->element_count += spec.count;
   return result;
@@ -387,103 +415,6 @@ static SDL_GPUGraphicsPipelineCreateInfo GPU_DefaultPipeline(SDL_GPUColorTargetD
   return pipeline;
 }
 
-static void GPU_InitModelBuffers(U32 model_index)
-{
-  Assert(model_index < MDL_COUNT);
-
-  void *vertices = 0;
-  U32 vertices_size = 0;
-  U16 *indices = 0;
-  U32 indices_size = 0;
-  const char *vrt_buf_name = "";
-  const char *ind_buf_name = "";
-  const char *inst_buf_name = "";
-
-  GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryMeshVertices,
-                                   .tex = TEX_Grass004,
-                                   .count = 30});
-  GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryMeshVertices,
-                                   .tex = TEX_Grass004,
-                                   .count = 30,
-                                   .final_buffer = true});
-
-#if 0
-  switch (model_index)
-  {
-    default: Assert(0); break;
-    case MDL_Flag:
-    {
-      vertices = Model_flag_vrt;
-      vertices_size = sizeof(Model_flag_vrt);
-      indices = Model_flag_ind;
-      indices_size = sizeof(Model_flag_ind);
-      vrt_buf_name = "Flag rigid vrt buf";
-      ind_buf_name = "Flag rigid ind buf";
-      inst_buf_name = "Flag rigid inst buf";
-    } break;
-    case MDL_Tree:
-    {
-      vertices = Model_Tree_vrt;
-      vertices_size = sizeof(Model_Tree_vrt);
-      indices = Model_Tree_ind;
-      indices_size = sizeof(Model_Tree_ind);
-      vrt_buf_name = "Tree rigid vrt buf";
-      ind_buf_name = "Tree rigid ind buf";
-      inst_buf_name = "Tree rigid inst buf";
-    } break;
-    case MDL_Worker:
-    {
-      vertices = Model_Worker_vrt;
-      vertices_size = sizeof(Model_Worker_vrt);
-      indices = Model_Worker_ind;
-      indices_size = sizeof(Model_Worker_ind);
-      vrt_buf_name = "Worker skinned vrt buf";
-      ind_buf_name = "Worker skinned ind buf";
-      inst_buf_name = "Worker skinned inst buf";
-    } break;
-    case MDL_Formal:
-    {
-      vertices = Model_Formal_vrt;
-      vertices_size = sizeof(Model_Formal_vrt);
-      indices = Model_Formal_ind;
-      indices_size = sizeof(Model_Formal_ind);
-      vrt_buf_name = "Formal skinned vrt buf";
-      ind_buf_name = "Formal skinned ind buf";
-      inst_buf_name = "Formal skinned inst buf";
-    } break;
-    case MDL_Casual:
-    {
-      vertices = Model_Casual_vrt;
-      vertices_size = sizeof(Model_Casual_vrt);
-      indices = Model_Casual_ind;
-      indices_size = sizeof(Model_Casual_ind);
-      vrt_buf_name = "Casual skinned vrt buf";
-      ind_buf_name = "Casual skinned ind buf";
-      inst_buf_name = "Casual skinned inst buf";
-    } break;
-  }
-#endif
-
-  MDL_Batch *batch = APP.gpu.model.batches + model_index;
-  batch->gpu.indices_count = indices_size / sizeof(U16);
-
-  // create model vertex buffer
-  batch->gpu.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, vertices_size, vrt_buf_name);
-  Assert(batch->gpu.vertices); // @todo report err
-
-  // create model index buffer
-  batch->gpu.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, indices_size, ind_buf_name);
-  Assert(batch->gpu.indices); // @todo report err
-
-  // create model per instance storage buffer
-  U32 instances_size = sizeof(MDL_GpuInstance)*MDL_MAX_INSTANCES;
-  batch->gpu.instances = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, instances_size, inst_buf_name);
-  Assert(batch->gpu.instances); // @todo report err
-
-  GPU_TransferBuffer(batch->gpu.vertices, vertices, vertices_size);
-  GPU_TransferBuffer(batch->gpu.indices, indices, indices_size);
-}
-
 static void GPU_ModifyPipelineForShadowMapping(SDL_GPUGraphicsPipelineCreateInfo *pipeline)
 {
   pipeline->multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
@@ -530,15 +461,6 @@ static void GPU_Init()
   {
     .format = SDL_GetGPUSwapchainTextureFormat(APP.gpu.device, APP.window),
   };
-
-  // Init model buffers (rigid + skinned)
-  {
-    ForU32(model_index, MDL_COUNT)
-      GPU_InitModelBuffers(model_index);
-
-    APP.gpu.model.gpu_pose_buffer = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                                                     sizeof(APP.gpu.model.poses), "Poses buffer");
-  }
 
   // Rigid pipeline
   {
@@ -724,14 +646,6 @@ static void GPU_Init()
 
   // Mesh pipeline
   {
-    // Create mesh vertex buffers
-    ForArray(i, APP.gpu.mesh.batches)
-    {
-      MSH_Batch *batch = APP.gpu.mesh.batches + i;
-      batch->gpu_vertices =
-        GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, sizeof(batch->vertices), "Mesh vertex buffer (one of many)");
-    }
-
     // Texture sampler
     {
       SDL_GPUSamplerCreateInfo sampler_info =
@@ -1038,7 +952,7 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
         SDL_GPUBufferBinding binding_vrt = { .buffer = batch->gpu_vertices };
         SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
 
-        Asset *tex_asset = TEX_GetAsset(i);
+        Asset *tex_asset = AST_GetTexture(i);
         APP.gpu.world_uniform.tex_loaded_t = tex_asset->loaded_t;
         GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 

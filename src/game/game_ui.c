@@ -309,7 +309,7 @@ static void UI_BuildUILayoutElements()
               CLAY({.layout = {.padding = UI_tex_pad}})
               {
                 UI_RenderSlider(CLAY_STRING("Shininess"), (UI_SliderConfig)
-                                {&TEX_GetAsset(tex_index)->Tex.shininess, 0, 64, tex_index});
+                                {&AST_GetTexture(tex_index)->Tex.shininess, 0, 64, tex_index});
                 //UI_RenderSlider(CLAY_STRING("Displacement"), (UI_SliderConfig){0, 16, &APP.debug.tex_displacement});
               }
             }

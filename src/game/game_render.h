@@ -33,9 +33,10 @@ typedef struct
 {
   Mat4 transform;
   U32 color;
-  U32 pose_offset; // unused for rigid
+  U32 pose_offset; // in indices; unused for rigid
 } MDL_GpuInstance;
 
+#if 0
 typedef struct
 {
   MDL_GpuInstance instances[MDL_MAX_INSTANCES];
@@ -49,6 +50,7 @@ typedef struct
     U32 indices_count;
   } gpu;
 } MDL_Batch;
+#endif
 
 // MSH - Mesh
 typedef struct
@@ -59,12 +61,14 @@ typedef struct
   U32 color;
 } MSH_GpuVertex;
 
+#if 0
 typedef struct
 {
   MSH_GpuVertex vertices[1024 * 8];
   U32 vertices_count;
   SDL_GPUBuffer *gpu_vertices;
 } MSH_Batch;
+#endif
 
 // UI - User Interface
 typedef struct
@@ -91,3 +95,5 @@ typedef struct
   V2 p_min;
   V2 p_max;
 } UI_GpuClip;
+
+static void GPU_ClearBuffers();

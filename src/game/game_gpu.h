@@ -33,17 +33,21 @@ typedef enum
 
 typedef struct
 {
+  bool final_buffer; // if false request transfer buffer
   GPU_MemoryTarget target;
   TEX_Kind tex;
   MDL_Kind model;
   U32 count;
-  bool final_buffer; // if false request transfer buffer
 } GPU_MemorySpec;
 
 typedef struct
 {
   GPU_DynamicBuffer *buffer;
-  void *offsetted_memory;
+  U32 alloc_size;
+
+  // for transfer buffers only:
+  void *alloc_mapped;
+  U32 alloc_offset_in_elements;
 } GPU_MemoryResult;
 
 typedef struct
@@ -106,6 +110,7 @@ typedef struct
 
 
   // model, mesh, ui resources
+#if 0
   struct
   {
     MDL_Batch batches[MDL_COUNT];
@@ -114,10 +119,13 @@ typedef struct
 
     SDL_GPUBuffer *gpu_pose_buffer;
   } model;
+#endif
 
   struct
   {
+#if 0
     MSH_Batch batches[TEX_COUNT];
+#endif
     SDL_GPUSampler *gpu_sampler;
   } mesh;
 

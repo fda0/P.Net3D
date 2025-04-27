@@ -84,7 +84,7 @@ struct MDL_DxInstance
 {
   Mat4 transform;
   U32 color;
-  U32 pose_offset;
+  U32 pose_offset; // in indices; unused for rigid
 };
 StructuredBuffer<MDL_DxInstance> InstanceBuf : register(t0);
 #endif

@@ -1,6 +1,6 @@
 static void AST_Init()
 {
-  // Init fallback texture
+  // Init textures, create fallback texture
   {
     I32 dim = 512;
     I32 tex_size = dim*dim*sizeof(U32);
@@ -72,13 +72,27 @@ static void AST_Init()
       SDL_GenerateMipmapsForGPUTexture(cmd, texture);
       SDL_SubmitGPUCommandBuffer(cmd);
     }
+
+    ForArray(i, APP.ast.tex_assets)
+    {
+      Asset *asset = APP.ast.tex_assets + i;
+      asset->Tex.handle = APP.ast.tex_fallback;
+      asset->Tex.shininess = 16.f;
+    }
   }
 
-  ForArray(i, APP.ast.tex_assets)
+  // Load BREAD file - in the future as these files get huge we should probably stream them. Memory map it?
   {
-    Asset *asset = APP.ast.tex_assets + i;
-    asset->Tex.handle = APP.ast.tex_fallback;
-    asset->Tex.shininess = 16.f;
+    APP.ast.bread.file = OS_LoadFile(APP.ast.bread.arena, "data.bread");
+    Assert(APP.ast.bread.file.size); // @todo Handle lack of file gracefully in the future
+    BREAD_InitFile();
+  }
+
+  // Geometry
+  {
+    // @todo Stream these resources in the future.
+    ForI32(model_kind, MDL_COUNT)
+      BREAD_LoadModel(model_kind);
   }
 }
 
@@ -108,7 +122,7 @@ static void AST_PostFrame()
   }
 }
 
-static Asset *TEX_GetAsset(TEX_Kind tex_kind)
+static Asset *AST_GetTexture(TEX_Kind tex_kind)
 {
   Assert(tex_kind < TEX_COUNT);
 
@@ -121,15 +135,15 @@ static Asset *TEX_GetAsset(TEX_Kind tex_kind)
   return result;
 }
 
-static void TEX_PrefetchAsset(TEX_Kind tex_kind)
+static void AST_PrefetchTexture(TEX_Kind tex_kind)
 {
-  TEX_GetAsset(tex_kind);
+  AST_GetTexture(tex_kind);
 }
 
 //
 // Thread
 //
-static void TEX_LoadTexture(TEX_Kind tex_kind, U64 min_frame)
+static void AST_LoadTextureFromFile(TEX_Kind tex_kind, U64 min_frame)
 {
   Assert(tex_kind < TEX_COUNT);
   Asset *asset = APP.ast.tex_assets + tex_kind;
@@ -307,7 +321,7 @@ static void TEX_LoadTexture(TEX_Kind tex_kind, U64 min_frame)
   asset->loaded = true;
 }
 
-static int SDLCALL TEX_ThreadEntry(void *data)
+static int SDLCALL AST_TextureThread(void *data)
 {
   (void)data;
 
@@ -319,7 +333,7 @@ static int SDLCALL TEX_ThreadEntry(void *data)
     else                           min_frame = 0;
 
     ForU32(tex_kind, TEX_COUNT)
-      TEX_LoadTexture(tex_kind, min_frame);
+      AST_LoadTextureFromFile(tex_kind, min_frame);
 
     SDL_WaitSemaphore(APP.ast.tex_sem);
     if (APP.in_shutdown)
@@ -327,9 +341,21 @@ static int SDLCALL TEX_ThreadEntry(void *data)
   }
 }
 
-static void TEX_InitThread()
+static void AST_InitTextureThread()
 {
   APP.ast.tex_sem = SDL_CreateSemaphore(0);
-  SDL_Thread *asset_tex_thread = SDL_CreateThread(TEX_ThreadEntry, "Tex asset load thread", 0);
+  SDL_Thread *asset_tex_thread = SDL_CreateThread(AST_TextureThread, "Tex asset load thread", 0);
   SDL_DetachThread(asset_tex_thread);
+}
+
+//
+// Geometry
+//
+static Asset *AST_GetGeometry(MDL_Kind model_kind)
+{
+  // @todo @speed Stream geometry assets in the future.
+  Assert(model_kind < MDL_COUNT);
+  Asset *asset = APP.ast.geo_assets + model_kind;
+  asset->last_touched_frame = APP.frame_id;
+  return asset;
 }

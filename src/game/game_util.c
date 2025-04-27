@@ -181,7 +181,10 @@ static S8 OS_LoadFile(Arena *a, const char *file_path)
   if (!data)
     LOG(Log_OS, "Failed to load file %s", file_path);
 
-  S8 result = S8_Copy(a, S8_Make(data, size));
+  U8 *dest = Arena_AllocateBytes(a, size, 64, false); // high alignment
+  Memcpy(dest, data, size);
+  S8 result = S8_Make(dest, size);
+
   SDL_free(data); // @todo go through better api
   return result;
 }

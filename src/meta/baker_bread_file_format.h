@@ -41,8 +41,8 @@ typedef struct
 
 typedef struct
 {
-  U32 file_hash; // of everything after itself (the first 4 bytes) - seeded with BREAD_MAGIC_HASH_SEED
-#define BREAD_MAGIC_HASH_SEED 0xB5'EA'DC'0D
+  U64 file_hash; // of everything after itself (the first 8 bytes) - seeded with BREAD_MAGIC_HASH_SEED
+#define BREAD_MAGIC_HASH_SEED (0xB5'EA'DC'0D + 0)
   U32 contents_offset; // [BREAD_Contents]
 } BREAD_Header;
 

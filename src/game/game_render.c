@@ -1,50 +1,40 @@
 static void MDL_Draw(MDL_Kind model_kind, Mat4 transform, U32 color,
                      U32 animation_index, float animation_t)
 {
-  Assert(model_kind < MDL_COUNT);
-
-  MDL_Batch *batch = APP.gpu.model.batches + model_kind;
-  if (batch->instances_count < ArrayCount(batch->instances))
+  MDL_GpuInstance instance =
   {
-    U32 instance_index = batch->instances_count;
-    batch->instances_count += 1;
+    .transform = transform,
+    .color = color,
+  };
 
-    MDL_GpuInstance *instance = batch->instances + instance_index;
-    *instance = (MDL_GpuInstance)
-    {
-      .transform = transform,
-      .color = color,
-    };
+  if (MDL_IsSkinned(model_kind))
+  {
+    AN_Pose animation_pose = AN_PoseFromAnimation(&Worker_Skeleton, animation_index, animation_t);
+    GPU_MemoryResult anim_mem =
+      GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryJointTransforms,
+                                       .count = animation_pose.matrices_count});
 
-    if (MDL_IsSkinned(model_kind))
-    {
-      AN_Pose animation_pose = AN_PoseFromAnimation(&Worker_Skeleton, animation_index, animation_t);
-      U32 poses_left = ArrayCount(APP.gpu.model.poses) - APP.gpu.model.poses_count;
-
-      if (animation_pose.matrices_count <= poses_left)
-      {
-        instance->pose_offset = APP.gpu.model.poses_count;
-        APP.gpu.model.poses_count += animation_pose.matrices_count;
-
-        Mat4 *poses = APP.gpu.model.poses + instance->pose_offset;
-        memcpy(poses, animation_pose.matrices, sizeof(Mat4)*animation_pose.matrices_count);
-      }
-    }
+    Assert(anim_mem.alloc_size == sizeof(Mat4)*animation_pose.matrices_count);
+    Memcpy(anim_mem.alloc_mapped, animation_pose.matrices, anim_mem.alloc_size);
+    instance.pose_offset = anim_mem.alloc_offset_in_elements;
   }
+
+  GPU_MemoryResult instance_mem =
+    GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryModelInstances,
+                                     .model = model_kind,
+                                     .count = 1});
+  Assert(instance_mem.alloc_size == sizeof(instance));
+  Memcpy(instance_mem.alloc_mapped, &instance, instance_mem.alloc_size);
 }
 
-static MSH_GpuVertex *MSH_PushVertices(TEX_Kind tex, U32 push_vertices_count)
+static void MSH_DrawVertices(TEX_Kind tex, MSH_GpuVertex *vertices, U32 vertices_count)
 {
-  AssertBounds(tex, APP.gpu.mesh.batches);
-  tex = Clamp(0, ArrayCount(APP.gpu.mesh.batches), tex);
-  MSH_Batch *batch = APP.gpu.mesh.batches + tex;
-
-  if (batch->vertices_count + push_vertices_count > ArrayCount(batch->vertices))
-    return 0;
-
-  MSH_GpuVertex *res = batch->vertices + batch->vertices_count;
-  batch->vertices_count += push_vertices_count;
-  return res;
+  GPU_MemoryResult vertices_mem =
+    GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryMeshVertices,
+                                     .tex = tex,
+                                     .count = vertices_count});
+  Assert(vertices_mem.alloc_size == sizeof(vertices[0])*vertices_count);
+  Memcpy(vertices_mem.alloc_mapped, vertices, vertices_mem.alloc_size);
 }
 
 static U32 UI_ActiveClipIndex()
