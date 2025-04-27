@@ -206,6 +206,28 @@ static GPU_MemoryResult GPU_MemoryAlloc(GPU_MemorySpec spec)
   return result;
 }
 
+static void GPU_TransferToFinal(GPU_DynamicBuffer *transfer, GPU_DynamicBuffer *final)
+{
+  (void)transfer; (void)final;
+  Assert(false);
+}
+
+static void GPU_MoveTransferBuffersToFinalBuffers()
+{
+  // @todo iterating through everything is bad, fix design in the future?
+  GPU_MemoryManager *mem = &APP.gpu.mem;
+  GPU_MemoryBuckets *T = &mem->transfer_buckets;
+  GPU_MemoryBuckets *F = &mem->final_buckets;
+
+  ForI32(i, TEX_COUNT)
+    GPU_TransferToFinal(T->mesh_vertices[i], F->mesh_vertices[i]);
+
+  ForI32(i, MDL_COUNT)
+    GPU_TransferToFinal(T->model_instances[i], F->model_instances[i]);
+
+  GPU_TransferToFinal(T->joint_transforms, F->joint_transforms);
+}
+
 static SDL_GPUTexture *GPU_CreateDepthTexture(U32 width, U32 height, bool used_in_sampler)
 {
   SDL_GPUTextureCreateInfo info = {
@@ -881,6 +903,7 @@ static void GPU_Deinit()
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
   // Model
+#if 0
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.model.gpu_pose_buffer);
   ForArray(i, APP.gpu.model.batches)
   {
@@ -894,6 +917,7 @@ static void GPU_Deinit()
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.mesh.gpu_sampler);
   ForArray(i, APP.gpu.mesh.batches)
     SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.mesh.batches[i].gpu_vertices);
+#endif
 
   // UI
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui.gpu.atlas_texture);
