@@ -1,11 +1,22 @@
 typedef struct
 {
-  SDL_GPUTexture *texture;
   U64 last_touched_frame;
-  float shininess;
-  float loaded_t;
   U32 error : 1;
   U32 loaded : 1;
+  float loaded_t;
+  union
+  {
+    struct
+    {
+      SDL_GPUTexture *handle;
+      float shininess;
+    } Tex;
+    struct
+    {
+      SDL_GPUBuffer *vertices;
+      SDL_GPUBuffer *indices;
+    } Geo;
+  };
 } Asset;
 
 typedef struct

@@ -69,6 +69,7 @@ static AppState APP;
 #include "game_font_atlas.c"
 #include "game_ui.c"
 #include "game_serialize.c"
+#include "game_tests.c"
 #include "game_core.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)
@@ -245,6 +246,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
   APP.tmp = Arena_Malloc(Megabyte(16));
   APP.a_frame = Arena_Malloc(Megabyte(1));
+  APP.gpu.mem.buffer_arena = Arena_Malloc(Kilobyte(128));
+
   APP.log_filter = ~(U32)Log_NetAll;
   APP.init_window_width = WINDOW_WIDTH;
   APP.init_window_height = WINDOW_HEIGHT;

@@ -31,8 +31,9 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
     BREAD_Model *model = bb->models + i;
     if (!model->vertices.count || !model->indices.count)
     {
-      M_LOG(M_LogGltfWarning, "BREAD warning: "
-            "When finalizing file found model with index %d that wasn't initialized.", i);
+      M_LOG(M_LogGltfWarning, "BREAD warning: When finalizing file "
+            "found model with index %d (%s) that wasn't initialized.",
+            i, MDL_GetCstrName(i));
     }
   }
 
@@ -77,7 +78,7 @@ static void BREAD_AddModel(BREAD_Builder *bb, MDL_Kind model_kind, bool is_skinn
   BREAD_Model *model = bb->models + bb->selected_model;
   model->is_skinned = is_skinned;
   // make sure model wasn't initialized already
-  M_Check(!model->vertices.offset && !model->skeleton_offset);
+  M_Check(!model->vertices.offset);
 }
 
 static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)

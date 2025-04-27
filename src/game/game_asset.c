@@ -77,8 +77,8 @@ static void AST_Init()
   ForArray(i, APP.ast.tex_assets)
   {
     Asset *asset = APP.ast.tex_assets + i;
-    asset->texture = APP.ast.tex_fallback;
-    asset->shininess = 16.f;
+    asset->Tex.handle = APP.ast.tex_fallback;
+    asset->Tex.shininess = 16.f;
   }
 }
 
@@ -86,7 +86,7 @@ static void AST_Deinit()
 {
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_fallback);
   ForArray(i, APP.ast.tex_assets)
-    SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_assets[i].texture);
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_assets[i].Tex.handle);
 }
 
 static void AST_PostFrame()
@@ -303,7 +303,7 @@ static void TEX_LoadTexture(TEX_Kind tex_kind, U64 min_frame)
     SDL_ReleaseGPUTransferBuffer(APP.gpu.device, trans_buf);
   }
 
-  asset->texture = texture;
+  asset->Tex.handle = texture;
   asset->loaded = true;
 }
 

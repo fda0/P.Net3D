@@ -15,6 +15,169 @@ static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, 
   return result;
 }
 
+static U32 GPU_MemoryIndexToSize(U32 free_bucket_index)
+{
+  U32 shift = (free_bucket_index*2 + 2);
+  U32 size = 4 << shift;
+  return size;
+}
+
+static U32 GPU_MemorySizeToIndex(U32 size)
+{
+  if (size <= 16)
+    return 0;
+
+  I32 msb = MostSignificantBitU32(size);
+  Assert(msb > 0);
+
+  // round up to power of two
+  if ((1u << msb) != size)
+    msb += 1;
+
+  // round up to power of 4
+  if (msb & 1)
+    msb += 1;
+
+  // transform to index format
+  msb /= 2;
+  Assert(msb >= 2);
+  msb -= 2;
+  return msb;
+}
+
+static GPU_MemoryResult GPU_MemoryAlloc(GPU_MemorySpec spec)
+{
+  GPU_MemoryManager *mem = &APP.gpu.mem;
+  GPU_MemoryBuckets *buckets = spec.final_buffer ? &mem->final_buckets : &mem->transfer_buckets;
+  bool allow_fragmentation = !spec.final_buffer;
+  spec.count = Max(spec.count, 1);
+
+  // Select alloc_size and dynamic_buffer slot
+  U32 alloc_size = 0;
+  GPU_DynamicBuffer **buf_ptr = 0;
+
+  switch (spec.target)
+  {
+    case GPU_MemoryMeshVertices:
+    {
+      AssertBounds(spec.tex, buckets->mesh_vertices);
+      buf_ptr = buckets->mesh_vertices + spec.tex;
+      alloc_size = spec.count * sizeof(MSH_GpuVertex);
+    } break;
+    case GPU_MemoryModelInstances:
+    {
+      AssertBounds(spec.model, buckets->model_instances);
+      buf_ptr = buckets->model_instances + spec.model;
+      alloc_size = spec.count * sizeof(MDL_GpuInstance);
+    } break;
+    case GPU_MemoryJointTransforms:
+    {
+      buf_ptr = &buckets->joint_transforms;
+      alloc_size = spec.count * sizeof(Mat4);
+    } break;
+  }
+  Assert(alloc_size && buf_ptr);
+
+  // Values calculated from alloc_size
+  static_assert(GPU_MEM_FREE_LIST_SIZE == ArrayCount(buckets->free_list));
+  U32 max_gpu_alloc_size = GPU_MemoryIndexToSize(GPU_MEM_FREE_LIST_SIZE);
+  U32 alloc_index = GPU_MemorySizeToIndex(alloc_size);
+  U32 ceil_alloc_size = GPU_MemoryIndexToSize(alloc_index);
+  Assert(alloc_size <= max_gpu_alloc_size);
+  Assert(alloc_index < GPU_MEM_FREE_LIST_SIZE);
+
+  if (allow_fragmentation)
+  {
+    // Advance to the last DynamicBuffer allocated in the chains of ->next pointers.
+    // @todo Consider reversing the order of this list so the most recent DynamicBuffer is first?
+    //       Then we would have to do that traversal once at the end.
+    while ((*buf_ptr) && (*buf_ptr)->next)
+      buf_ptr = &(*buf_ptr)->next;
+
+    // If DynamicBuffer is already allocated check if it has enough size
+    if (*buf_ptr)
+    {
+      U32 bytes_left = (*buf_ptr)->cap_bytes - (*buf_ptr)->used_bytes;
+      if (bytes_left < alloc_size)
+      {
+        // Not enough memory to fit new alloc.
+
+        // Unmap CPU->GPU memory.
+        Assert(!spec.final_buffer);
+        Assert((*buf_ptr)->mapped_memory);
+        (*buf_ptr)->mapped_memory = 0;
+        SDL_UnmapGPUTransferBuffer(APP.gpu.device, (*buf_ptr)->transfer);
+
+        // Move buf_ptr to ->next.
+        buf_ptr = &(*buf_ptr)->next;
+      }
+    }
+  }
+
+  // New DynamicBuffer needs to be allocated
+  if (!*buf_ptr)
+  {
+    if (buckets->free_list[alloc_index]) // reclaim buffer from free list
+    {
+      *buf_ptr = buckets->free_list[alloc_index];
+      buckets->free_list[alloc_index] = buckets->free_list[alloc_index]->next;
+
+      Assert((*buf_ptr)->cap_bytes = ceil_alloc_size);
+      Assert(!(*buf_ptr)->mapped_memory);
+    }
+    else // allocate new buffer
+    {
+      *buf_ptr = Alloc(mem->buffer_arena, GPU_DynamicBuffer, 1);
+      (*buf_ptr)->cap_bytes = ceil_alloc_size;
+
+      if (spec.final_buffer)
+      {
+        SDL_GPUBufferCreateInfo create_info =
+        {
+          .usage = SDL_GPU_BUFFERUSAGE_VERTEX|SDL_GPU_BUFFERUSAGE_INDEX|SDL_GPU_BUFFERUSAGE_INDIRECT,
+          .size = ceil_alloc_size
+        };
+        (*buf_ptr)->final = SDL_CreateGPUBuffer(APP.gpu.device, &create_info);
+        Assert((*buf_ptr)->final);
+      }
+      else
+      {
+        SDL_GPUTransferBufferCreateInfo create_info =
+        {
+          .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+          .size = ceil_alloc_size
+        };
+        (*buf_ptr)->transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &create_info);
+        Assert((*buf_ptr)->transfer);
+      }
+    }
+
+    (*buf_ptr)->used_bytes = 0;
+    (*buf_ptr)->element_count = 0;
+    (*buf_ptr)->next = 0;
+
+    if (!spec.final_buffer)
+    {
+      Assert(!(*buf_ptr)->mapped_memory);
+      // If/when we stop using SDL_GPU a redesign might be needed as
+      // cycling might be doing some heavy lifting in the background.
+      // https://moonside.games/posts/sdl-gpu-concepts-cycling/
+      (*buf_ptr)->mapped_memory = SDL_MapGPUTransferBuffer(APP.gpu.device, (*buf_ptr)->transfer, /*cycling = */true);
+    }
+  }
+
+  GPU_MemoryResult result = {};
+  result.buffer = *buf_ptr;
+  if (!spec.final_buffer)
+  {
+    result.offsetted_memory = (U8 *)result.buffer->mapped_memory + result.buffer->used_bytes;
+  }
+
+  result.buffer->used_bytes += alloc_size;
+  result.buffer->element_count += spec.count;
+  return result;
+}
+
 static SDL_GPUTexture *GPU_CreateDepthTexture(U32 width, U32 height, bool used_in_sampler)
 {
   SDL_GPUTextureCreateInfo info = {
@@ -236,6 +399,15 @@ static void GPU_InitModelBuffers(U32 model_index)
   const char *ind_buf_name = "";
   const char *inst_buf_name = "";
 
+  GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryMeshVertices,
+                                   .tex = TEX_Grass004,
+                                   .count = 30});
+  GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryMeshVertices,
+                                   .tex = TEX_Grass004,
+                                   .count = 30,
+                                   .final_buffer = true});
+
+#if 0
   switch (model_index)
   {
     default: Assert(0); break;
@@ -290,6 +462,7 @@ static void GPU_InitModelBuffers(U32 model_index)
       inst_buf_name = "Casual skinned inst buf";
     } break;
   }
+#endif
 
   MDL_Batch *batch = APP.gpu.model.batches + model_index;
   batch->gpu.indices_count = indices_size / sizeof(U16);
@@ -873,14 +1046,14 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
         SDL_GPUTextureSamplerBinding binding_sampl =
         {
           //.texture = batch->gpu.texture,
-          .texture = tex_asset->texture,
+          .texture = tex_asset->Tex.handle,
           .sampler = APP.gpu.mesh.gpu_sampler,
         };
         SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
 
         if (!is_depth_prepass)
         {
-          APP.gpu.world_uniform.tex_shininess = tex_asset->shininess;
+          APP.gpu.world_uniform.tex_shininess = tex_asset->Tex.shininess;
         }
 
         GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);

@@ -30,12 +30,13 @@ typedef struct
   bool is_skinned;
   BREAD_Range vertices; // [MDL_GpuSkinnedVertex or MDL_GpuRigidVertex]
   BREAD_Range indices; // [U16]
-  U32 skeleton_offset; // [BREAD_Skeleton] for skinned only
+  U32 skeleton_index; // [BREAD_Skeleton]; for skinned only; index to skeletons from BREAD_Contens
 } BREAD_Model;
 
 typedef struct
 {
   BREAD_Range models; // [BREAD_Model]
+  BREAD_Range skeletons; // [BREAD_Skeleton]
 } BREAD_Contents;
 
 typedef struct

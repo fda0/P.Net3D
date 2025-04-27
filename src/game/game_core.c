@@ -518,6 +518,10 @@ static void Game_Init()
     APP.log_filter &= ~(Log_NetDatagram);
   }
 
+#if TESTS_ENABLED
+  TEST_RunOnce();
+#endif
+
   SERIAL_DebugSettings(true);
   NET_Init();
 
