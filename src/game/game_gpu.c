@@ -50,7 +50,6 @@ static GPU_MemoryResult GPU_MemoryAlloc(GPU_MemorySpec spec)
 {
   GPU_MemoryManager *mem = &APP.gpu.mem;
   GPU_MemoryBuckets *buckets = spec.final_buffer ? &mem->final_buckets : &mem->transfer_buckets;
-  bool allow_fragmentation = !spec.final_buffer;
   spec.count = Max(spec.count, 1);
 
   // Select alloc_size and dynamic_buffer slot
@@ -88,7 +87,7 @@ static GPU_MemoryResult GPU_MemoryAlloc(GPU_MemorySpec spec)
   Assert(alloc_index < GPU_MEM_FREE_LIST_SIZE);
 
   U32 offset_in_elements = 0;
-  if (allow_fragmentation)
+  if (!spec.final_buffer)
   {
     // Track previously allocated sizes.
     // We want each item in the chain to be larger to avoid excessive fragmentation.
@@ -206,13 +205,51 @@ static GPU_MemoryResult GPU_MemoryAlloc(GPU_MemorySpec spec)
   return result;
 }
 
-static void GPU_TransferToFinal(GPU_DynamicBuffer *transfer, GPU_DynamicBuffer *final)
+static void GPU_MemoryFreeDynamicBuffer(GPU_MemoryBuckets *buckets, GPU_DynamicBuffer **buf_ptr)
 {
+  GPU_DynamicBuffer *buf = *buf_ptr; // save pointer under slot
+  *buf_ptr = (*buf_ptr)->next; // write ->next to slot
+
+  // put buf pointer into a free list
+  U32 free_index = GPU_MemorySizeToIndex(buf->cap_bytes);
+  AssertBounds(free_index, buckets->free_list);
+  buf->next = buckets->free_list[free_index];
+  buckets->free_list[free_index] = buf;
+}
+
+static void GPU_MemoryTransferToFinal(GPU_DynamicBuffer **transfer, GPU_DynamicBuffer **final)
+{
+  GPU_MemoryManager *mem = &APP.gpu.mem;
+
+  U64 total_size = 0;
+  U64 total_element_count = 0;
+  {
+    GPU_DynamicBuffer **T = transfer;
+    while (*T)
+    {
+      total_element_count += (*T)->element_count;
+      total_size += (*T)->used_bytes;
+      T = &(*T)->next;
+    }
+  }
+
+  if (*final && (*final)->cap_bytes < total_size)
+  {
+    GPU_MemoryFreeDynamicBuffer(&mem->transfer_buckets, final);
+    Assert(!(*final));
+  }
+
+  if (!(*final))
+  {
+    GPU_MemoryAlloc((GPU_MemorySpec){.final_buffer = true,
+                                     .});
+  }
+
   (void)transfer; (void)final;
   Assert(false);
 }
 
-static void GPU_MoveTransferBuffersToFinalBuffers()
+static void GPU_MemoryMoveTransferBuffersToFinalBuffers()
 {
   // @todo iterating through everything is bad, fix design in the future?
   GPU_MemoryManager *mem = &APP.gpu.mem;
@@ -220,12 +257,12 @@ static void GPU_MoveTransferBuffersToFinalBuffers()
   GPU_MemoryBuckets *F = &mem->final_buckets;
 
   ForI32(i, TEX_COUNT)
-    GPU_TransferToFinal(T->mesh_vertices[i], F->mesh_vertices[i]);
+    GPU_TransferToFinal(&T->mesh_vertices[i], &F->mesh_vertices[i]);
 
   ForI32(i, MDL_COUNT)
-    GPU_TransferToFinal(T->model_instances[i], F->model_instances[i]);
+    GPU_TransferToFinal(&T->model_instances[i], &F->model_instances[i]);
 
-  GPU_TransferToFinal(T->joint_transforms, F->joint_transforms);
+  GPU_TransferToFinal(&T->joint_transforms, &F->joint_transforms);
 }
 
 static SDL_GPUTexture *GPU_CreateDepthTexture(U32 width, U32 height, bool used_in_sampler)
