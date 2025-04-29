@@ -5,92 +5,10 @@ typedef struct
   SDL_GPUGraphicsPipeline *wall;
 } GPU_WorldPipelines;
 
-typedef struct GPU_DynamicBuffer GPU_DynamicBuffer;
-struct GPU_DynamicBuffer
-{
-  // init once fields
-  union
-  {
-    SDL_GPUTransferBuffer *transfer;
-    SDL_GPUBuffer *final;
-  };
-  U32 cap_bytes;
-
-  // can be modified fields
-  U32 used_bytes;
-  U32 element_count;
-  void *mapped_memory; // transfer buffer only
-  GPU_DynamicBuffer *next;
-};
-
-typedef enum
-{
-  GPU_MemoryUnknown,
-  GPU_MemoryMeshVertices,
-  GPU_MemoryModelInstances,
-  GPU_MemoryJointTransforms,
-} GPU_MemoryTarget;
-
-typedef struct
-{
-  bool final_buffer; // if false request transfer buffer
-  GPU_MemoryTarget target;
-  TEX_Kind tex;
-  MDL_Kind model;
-  U32 count;
-} GPU_MemorySpec;
-
-typedef struct
-{
-  GPU_DynamicBuffer *buffer;
-  U32 alloc_size;
-
-  // for transfer buffers only:
-  void *alloc_mapped;
-  U32 alloc_offset_in_elements;
-} GPU_MemoryResult;
-
-typedef struct
-{
-  // IndexToSize formula: 4^(n+2) bytes.
-  // 0 -> 16 bytes
-  // 1 -> 64 bytes
-  // 2 -> 256 bytes
-  // 3 -> Kilobyte(1)
-  // 4 -> Kilobyte(4)
-  // 5 -> Kilobyte(16)
-  // 6 -> Kilobyte(64)
-  // 7 -> Kilobyte(256)
-  // 8 -> Megabyte(1)
-  // 9 -> Megabyte(4)
-  // 10 -> Megabyte(16)
-  // 11 -> Megabyte(64)
-#define GPU_MEM_FREE_LIST_SIZE 12
-  GPU_DynamicBuffer *free_list[GPU_MEM_FREE_LIST_SIZE];
-
-  // used
-  GPU_DynamicBuffer *mesh_vertices[TEX_COUNT];
-  GPU_DynamicBuffer *model_instances[MDL_COUNT];
-  GPU_DynamicBuffer *joint_transforms; // this probably should be broken down into batches in the future (based on update frequency?)
-} GPU_MemoryBuckets;
-
-typedef struct
-{
-  Arena *buffer_arena;
-  GPU_MemoryBuckets transfer_buckets;
-  GPU_MemoryBuckets final_buckets;
-
-  // stats - not needed?
-  //U32 mesh_this_frame_required_bytes[TEX_COUNT];
-  //U32 model_this_frame_required_bytes[MDL_COUNT]
-  //U32 mesh_max_required_bytes[TEX_COUNT];
-  //U32 model_max_required_bytes[MDL_COUNT];
-} GPU_MemoryManager;
-
 typedef struct
 {
   SDL_GPUDevice *device;
-  GPU_MemoryManager mem;
+  GPU_MemoryState mem;
 
   SDL_GPUTexture *tex_depth;
   SDL_GPUTexture *tex_msaa;
@@ -110,16 +28,16 @@ typedef struct
 
 
   // model, mesh, ui resources
-#if 0
   struct
   {
+#if 0
     MDL_Batch batches[MDL_COUNT];
+#endif
     Mat4 poses[128 * MDL_MAX_INSTANCES * MDL_COUNT];
     U32 poses_count;
 
     SDL_GPUBuffer *gpu_pose_buffer;
   } model;
-#endif
 
   struct
   {

@@ -16,6 +16,7 @@ typedef struct
     {
       SDL_GPUBuffer *vertices;
       SDL_GPUBuffer *indices;
+      U32 indices_count;
     } Geo;
 
     //AN_Skeleton skeleton;

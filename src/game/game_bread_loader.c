@@ -89,6 +89,7 @@ static void BREAD_LoadModel(MDL_Kind model_kind)
   asset->loaded = true;
   asset->Geo.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, vertices_string.size, 0);
   asset->Geo.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, indices_string.size, 0);
+  asset->Geo.indices_count = bread_model->indices.count;
 
   GPU_TransferBuffer(asset->Geo.vertices, vertices_string.str, vertices_string.size);
   GPU_TransferBuffer(asset->Geo.indices, indices_string.str, indices_string.size);

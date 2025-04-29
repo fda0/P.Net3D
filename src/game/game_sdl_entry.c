@@ -37,6 +37,7 @@
 #include "game_client.h"
 #include "game_server.h"
 #include "game_animation.h"
+#include "game_gpu_memory.h"
 #include "game_gpu.h"
 #include "game_font_atlas.h"
 #include "game_core.h"
@@ -65,6 +66,7 @@ static AppState APP;
 #include "game_network.c"
 #include "game_tick.c"
 #include "game_animation.c"
+#include "game_gpu_memory.c"
 #include "game_gpu.c"
 #include "game_bread_loader.c"
 #include "game_render.c"
@@ -248,8 +250,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 
   APP.tmp = Arena_Malloc(Megabyte(16));
   APP.a_frame = Arena_Malloc(Megabyte(1));
-  APP.gpu.mem.buffer_arena = Arena_Malloc(Kilobyte(128));
-  APP.ast.bread_arena = Arena_Malloc(Megabyte(16));
+  APP.gpu.mem.arena = Arena_Malloc(Kilobyte(16));
+  APP.ast.bread.arena = Arena_Malloc(Megabyte(16));
 
   APP.log_filter = ~(U32)Log_NetAll;
   APP.init_window_width = WINDOW_WIDTH;

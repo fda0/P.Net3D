@@ -9,32 +9,29 @@ static void MDL_Draw(MDL_Kind model_kind, Mat4 transform, U32 color,
 
   if (MDL_IsSkinned(model_kind))
   {
-    AN_Pose animation_pose = AN_PoseFromAnimation(&Worker_Skeleton, animation_index, animation_t);
-    GPU_MemoryResult anim_mem =
-      GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryJointTransforms,
-                                       .count = animation_pose.matrices_count});
+    GPU_MemoryTarget gpu_target = {.type = GPU_MemoryJointTransforms};
+    GPU_MemoryEntry *gpu_entry = GPU_MemoryTargetToEntry(gpu_target);
+    instance.pose_offset = gpu_entry->element_count;
 
-    Assert(anim_mem.alloc_size == sizeof(Mat4)*animation_pose.matrices_count);
-    Memcpy(anim_mem.alloc_mapped, animation_pose.matrices, anim_mem.alloc_size);
-    instance.pose_offset = anim_mem.alloc_offset_in_elements;
+    AN_Pose pose = AN_PoseFromAnimation(&Worker_Skeleton, animation_index, animation_t);
+    GPU_MemoryTransferUploadBytes(gpu_target,
+                                  pose.matrices,
+                                  pose.matrices_count * sizeof(pose.matrices[0]),
+                                  pose.matrices_count);
   }
 
-  GPU_MemoryResult instance_mem =
-    GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryModelInstances,
-                                     .model = model_kind,
-                                     .count = 1});
-  Assert(instance_mem.alloc_size == sizeof(instance));
-  Memcpy(instance_mem.alloc_mapped, &instance, instance_mem.alloc_size);
+  GPU_MemoryTransferUploadBytes((GPU_MemoryTarget){.type = GPU_MemoryModelInstances,
+                                                   .model = model_kind},
+                                &instance, sizeof(instance), 1);
 }
 
 static void MSH_DrawVertices(TEX_Kind tex, MSH_GpuVertex *vertices, U32 vertices_count)
 {
-  GPU_MemoryResult vertices_mem =
-    GPU_MemoryAlloc((GPU_MemorySpec){.target = GPU_MemoryMeshVertices,
-                                     .tex = tex,
-                                     .count = vertices_count});
-  Assert(vertices_mem.alloc_size == sizeof(vertices[0])*vertices_count);
-  Memcpy(vertices_mem.alloc_mapped, vertices, vertices_mem.alloc_size);
+  GPU_MemoryTransferUploadBytes((GPU_MemoryTarget){.type = GPU_MemoryMeshVertices,
+                                                   .tex = tex},
+                                vertices,
+                                vertices_count * sizeof(*vertices),
+                                vertices_count);
 }
 
 static U32 UI_ActiveClipIndex()
@@ -110,16 +107,9 @@ static void UI_DrawRect(UI_GpuShape shape)
   UI_DrawRaw(shape);
 }
 
-static void GPU_ClearBuffers()
+static void GPU_PostFrameClear()
 {
-  // model
-  APP.gpu.model.poses_count = 0;
-  ForArray(i, APP.gpu.model.batches)
-    APP.gpu.model.batches[i].instances_count = 0;
-
-  // mesh
-  ForArray(i, APP.gpu.mesh.batches)
-    APP.gpu.mesh.batches[i].vertices_count = 0;
+  GPU_MemoryClearEntries();
 
   // ui
   APP.gpu.ui.indices_count = 0;
