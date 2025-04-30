@@ -159,6 +159,8 @@ struct AppState
     U64 serialize_last_check_timestamp;
     U64 serialize_hash;
 
+    bool show_debug_window;
+
     U32 click_id;
     V2 win_p;
     U32 menu_category;

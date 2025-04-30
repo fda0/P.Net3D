@@ -28,16 +28,16 @@ typedef struct
 
 
   // model, mesh, ui resources
+#if 0
   struct
   {
-#if 0
     MDL_Batch batches[MDL_COUNT];
-#endif
     Mat4 poses[128 * MDL_MAX_INSTANCES * MDL_COUNT];
     U32 poses_count;
 
     SDL_GPUBuffer *gpu_pose_buffer;
   } model;
+#endif
 
   struct
   {

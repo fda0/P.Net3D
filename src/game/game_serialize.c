@@ -315,6 +315,7 @@ static void SERIAL_DebugSettings(bool is_load)
 
   SERIAL_Item items[] =
   {
+    SERIAL_DEF(APP.debug., show_debug_window, bool),
     SERIAL_DEF(APP.debug., win_p, V2),
     SERIAL_DEF(APP.debug., menu_category, U32),
     SERIAL_DEF(APP.debug., noclip_camera, bool),

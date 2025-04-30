@@ -216,6 +216,9 @@ static void UI_RenderHeader(Clay_String label)
 
 static void UI_BuildUILayoutElements()
 {
+  if (!APP.debug.show_debug_window)
+    return;
+
   V2 clamped_win_p = V2_Clamp((V2){}, V2_Scale(APP.window_dim, 0.9f), APP.debug.win_p);
 
   CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,

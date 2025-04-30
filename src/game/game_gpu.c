@@ -796,14 +796,16 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   bool skinned_pipeline_bound = false;
   SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].rigid);
 
+  GPU_MemoryEntry *joints_entry =
+    GPU_MemoryTargetToEntry((GPU_MemoryTarget)
+                            {.type = GPU_MemoryJointTransforms});
+
   ForU32(model_index, MDL_COUNT)
   {
-    GPU_MemoryTarget gpu_target =
-    {
-      .type = GPU_MemoryModelInstances,
-      .model = model_index
-    };
-    GPU_MemoryEntry *instance_entry = GPU_MemoryTargetToEntry(gpu_target);
+    GPU_MemoryEntry *instance_entry =
+      GPU_MemoryTargetToEntry((GPU_MemoryTarget)
+                              {.type = GPU_MemoryModelInstances,
+                               .model = model_index});
     if (!instance_entry->element_count)
       continue;
 
@@ -836,7 +838,7 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     SDL_GPUBuffer *storage_bufs[2] =
     {
       instance_entry->buffer->handle,
-      APP.gpu.model.gpu_pose_buffer
+      joints_entry->buffer->handle,
     };
     U32 storage_bufs_count = (is_skinned ? 2 : 1);
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, storage_bufs_count);
@@ -861,13 +863,6 @@ static void GPU_Iterate()
     // Swapchain is unavailable, cancel work
     SDL_CancelGPUCommandBuffer(cmd);
     return;
-  }
-
-  // Upload poses
-  if (APP.gpu.model.poses_count)
-  {
-    U32 transfer_size = APP.gpu.model.poses_count * sizeof(APP.gpu.model.poses[0]);
-    GPU_TransferBuffer(APP.gpu.model.gpu_pose_buffer, APP.gpu.model.poses, transfer_size);
   }
 
   GPU_MemoryTransferToBuffers(cmd);

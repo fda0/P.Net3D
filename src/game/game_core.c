@@ -330,6 +330,9 @@ static void Game_Iterate()
   NET_IterateSend();
 
 
+  if (KEY_Pressed(SDL_SCANCODE_GRAVE))
+    APP.debug.show_debug_window = !APP.debug.show_debug_window;
+
   if (KEY_Pressed(SDL_SCANCODE_RETURN))
     APP.debug.noclip_camera = !APP.debug.noclip_camera;
 

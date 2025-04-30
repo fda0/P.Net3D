@@ -87,6 +87,7 @@ static GPU_TransferStorage *GPU_MemoryTransferCreate(GPU_MemoryTarget target, U3
     .size = alloc_size
   };
   result->handle = SDL_CreateGPUTransferBuffer(APP.gpu.device, &transfer_info);
+  result->cap = alloc_size;
   result->mapped_memory = SDL_MapGPUTransferBuffer(APP.gpu.device, result->handle, false);
 
   // Chain result into its GPU_MemoryEntry
@@ -110,10 +111,14 @@ static void *GPU_MemoryTransferMappedMemory(GPU_MemoryTarget target, U32 size, U
 
   GPU_TransferStorage *storage = entry->transfer_last;
 
-  if (storage && (storage->cap - storage->used < size))
+  if (storage)
   {
-    GPU_MemoryTransferUnmap(storage);
-    storage = 0;
+    Assert(storage->cap > storage->used);
+    if (storage->cap - storage->used < size)
+    {
+      GPU_MemoryTransferUnmap(storage);
+      storage = 0;
+    }
   }
 
   if (!storage)
