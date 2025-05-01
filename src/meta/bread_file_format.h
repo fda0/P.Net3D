@@ -28,12 +28,13 @@ typedef struct
 
 typedef struct
 {
-  bool is_skinned;
-  BREAD_Range vertices; // [MDL_GpuSkinnedVertex or MDL_GpuRigidVertex] @todo Remove this member? Old code, redundant info.
-  BREAD_Range indices; // [U16] @todo Remove this member? Only indices.elem_count is needed
+  U8 is_skinned : 1;
+  U8 is_init_vertices : 1;
+  U8 is_init_indices : 1;
   U32 vertices_start_index;
   U32 indices_start_index;
-  U32 skeleton_index; // [BREAD_Skeleton]; for skinned only; index to skeletons from BREAD_Contens
+  U32 indices_count;
+  U32 skeleton_index; // [BREAD_Skeleton]; for skinned only; index to skeletons from BREAD_Contents
 } BREAD_Model;
 
 typedef struct
@@ -60,10 +61,10 @@ typedef struct
 // The format is a bit flexible in regards to where stuff is located.
 // With the current BreadBuilder implementation we can expect it to be:
 //
-// BREAD_Header [4*3 bytes at the start]
+// [BREAD_Header]
 // all rigid vertices [MDL_GpuRigidVertex]
 // all skinned vertices [MDL_GpuSkinnedVertex]
-// all indices (U16)
-// [continuous array of BREAD_Model]
-// BREAD_Contents [4*2 bytes at the end]
+// all indices [U16]
+// array of [BREAD_Model]
+// [BREAD_Contents]
 //

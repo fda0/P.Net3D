@@ -48,17 +48,12 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
   ForArray(i, bb->models)
   {
     BREAD_Model *model = bb->models + i;
-    if (!model->vertices.size || !model->indices.size)
+    if (!model->indices_count)
     {
       M_LOG(M_LogGltfWarning, "BREAD warning: When finalizing file "
             "found model with index %d (%s) that wasn't initialized.",
             i, MODEL_GetCstrName(i));
     }
-
-    model->vertices.offset += (model->is_skinned ?
-                               contents.models.skinned_vertices.offset :
-                               contents.models.rigid_vertices.offset);
-    model->indices.offset += contents.models.indices.offset;
   }
 
   // Models array - put in memory
@@ -105,8 +100,10 @@ static void BREAD_AddModel(BREAD_Builder *bb, MODEL_Type model_type, bool is_ski
 
   BREAD_Model *model = bb->models + bb->selected_model;
   model->is_skinned = is_skinned;
-  // make sure model wasn't initialized already
-  M_Check(!model->vertices.offset);
+  // Check that model wasn't initialized already
+  M_Check(!model->is_init_vertices &&
+          !model->is_init_indices &&
+          !model->indices_count);
 }
 
 static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)
@@ -120,16 +117,11 @@ static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)
   BREAD_Model *model = bb->models + bb->selected_model;
 
   // init vertices offset
-  if (!model->vertices.size)
-    model->vertices.offset = vert_printer->used;
-
-  // check if memory is continous
-  M_Check(model->vertices.offset + model->vertices.size == vert_printer->used);
-
-  model->vertices.size += vert_size;
-  model->vertices.elem_count += 1;
-  model->vertices_start_index = model->vertices.offset / vert_size;
-  M_Check(model->vertices.size == vert_size * model->vertices.elem_count);
+  if (!model->is_init_vertices)
+  {
+    model->is_init_vertices = true;
+    model->vertices_start_index = vert_printer->used / vert_size;
+  }
 
   void *result = BREAD_ReserveBytes(vert_printer, vert_size, vert_align);
   Memclear(result, vert_size);
@@ -144,11 +136,12 @@ static void BREAD_CopyIndices(BREAD_Builder *bb, U16 *src_indices, U32 src_indic
   M_Check(bb->selected_model < MODEL_COUNT);
   BREAD_Model *model = bb->models + bb->selected_model;
 
-  M_Check(!model->indices.offset);
-  model->indices.offset = bb->indices.used;
-  model->indices.size = src_indices_count*sizeof(U16);
-  model->indices.elem_count = src_indices_count;
-  model->indices_start_index = model->indices.offset / sizeof(U16);
+  if (!model->is_init_indices)
+  {
+    model->is_init_indices = true;
+    model->indices_start_index = bb->indices.used / sizeof(U16);
+  }
+  model->indices_count += src_indices_count;
 
   U16 *dst = BREAD_Reserve(&bb->indices, U16, src_indices_count);
   Memcpy(dst, src_indices, sizeof(U16)*src_indices_count);

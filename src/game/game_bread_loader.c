@@ -98,6 +98,6 @@ static void BREAD_LoadModels()
     asset->Geo.is_skinned = bread_model->is_skinned;
     asset->Geo.vertices_start_index = bread_model->vertices_start_index;
     asset->Geo.indices_start_index = bread_model->indices_start_index;
-    asset->Geo.indices_count = bread_model->indices.elem_count;
+    asset->Geo.indices_count = bread_model->indices_count;
   }
 }
