@@ -97,9 +97,15 @@ static void AST_Init()
 
 static void AST_Deinit()
 {
+  // textures
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_fallback);
   ForArray(i, APP.ast.tex_assets)
     SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_assets[i].Tex.handle);
+
+  // geometry
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.rigid_vertices);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.skinned_vertices);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.indices);
 }
 
 static void AST_PostFrame()

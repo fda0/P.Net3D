@@ -690,6 +690,8 @@ static void GPU_Deinit()
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
+  GPU_MemoryDeinit();
+
   // Mesh
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.mesh_tex_sampler);
 
@@ -839,8 +841,6 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, gpu_bundle->element_count,
                                  geo_asset->Geo.indices_start_index, geo_asset->Geo.vertices_start_index, 0);
   }
-
-
 }
 
 static void GPU_Iterate()

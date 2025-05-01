@@ -237,3 +237,13 @@ static void GPU_MemoryClearEntries()
     bundle->element_count = 0;
   }
 }
+
+static void GPU_MemoryDeinit()
+{
+  ForU32(bundle_index, GPU_MEMORY_TARGET_COUNT)
+  {
+    GPU_MemoryBundle *bundle = APP.gpu.mem.bundles + bundle_index;
+    if (bundle->buffer)
+      SDL_ReleaseGPUBuffer(APP.gpu.device, bundle->buffer->handle);
+  }
+}
