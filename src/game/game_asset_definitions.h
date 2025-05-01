@@ -37,49 +37,28 @@ static S8 TEX_GetName(TEX_Kind tex_kind)
 //
 // Models
 //
-#define MDL_LIST(X) \
-X(Flag, Rigid) \
-X(Tree, Rigid) \
-X(Worker, Skinned) \
-X(Formal, Skinned) \
-X(Casual, Skinned)
+#define MODEL_LIST(X) \
+X(Flag) \
+X(Tree) \
+X(Worker) \
+X(Formal) \
+X(Casual)
 
 typedef enum
 {
-#define MDL_DEF_ENUM(a, b) MDL_##a,
-  MDL_LIST(MDL_DEF_ENUM)
-  MDL_COUNT
-} MDL_Kind;
+#define MODEL_DEF_ENUM(a) MODEL_##a,
+  MODEL_LIST(MODEL_DEF_ENUM)
+  MODEL_COUNT
+} MODEL_Type;
 
-// MDL Categories
-typedef enum
+READ_ONLY static const char *MODEL_CstrNames[] =
 {
-  MDL_Rigid,
-  MDL_Skinned,
-} MDL_Category;
-
-READ_ONLY static MDL_Category MDL_Categories[] =
-{
-#define MDL_DEF_CATEGORIES(a, b) MDL_##b,
-  MDL_LIST(MDL_DEF_CATEGORIES)
-};
-READ_ONLY static const char *MDL_CstrNames[] =
-{
-#define MDL_DEF_CSTR_NAMES(a, b) #a
-  MDL_LIST(MDL_DEF_CSTR_NAMES)
+#define MODEL_DEF_CSTR_NAMES(a) #a
+  MODEL_LIST(MODEL_DEF_CSTR_NAMES)
 };
 
-static MDL_Category MDL_GetCategory(MDL_Kind model_kind)
+static const char *MODEL_GetCstrName(MODEL_Type model)
 {
-  Assert(model_kind < MDL_COUNT);
-  return MDL_Categories[model_kind];
-}
-static MDL_Category MDL_IsSkinned(MDL_Kind model_kind) // @todo remove this, this is a property of asset loaded from file
-{
-  return MDL_GetCategory(model_kind) == MDL_Skinned;
-}
-static const char *MDL_GetCstrName(MDL_Kind model_kind)
-{
-  Assert(model_kind < MDL_COUNT);
-  return MDL_CstrNames[model_kind];
+  Assert(model < MODEL_COUNT);
+  return MODEL_CstrNames[model];
 }

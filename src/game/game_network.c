@@ -222,7 +222,7 @@ static void NET_IterateSend()
 
         if (!player_key->serial_number)
         {
-          MDL_Kind model = MDL_Worker + (user_index % (MDL_COUNT - MDL_Worker));
+          MODEL_Type model = MODEL_Worker + (user_index % (MODEL_COUNT - MODEL_Worker));
           Object *player = OBJ_CreatePlayer(model);
           if (!OBJ_IsNil(player))
           {

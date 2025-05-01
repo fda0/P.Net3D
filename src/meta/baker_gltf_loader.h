@@ -16,7 +16,7 @@ typedef struct
   BK_Buffer colors;
 
   S8 name; // @todo remove
-  MDL_Kind kind;
+  MODEL_Type type;
   bool is_skinned;
   U32 verts_count;
   U32 joints_count;

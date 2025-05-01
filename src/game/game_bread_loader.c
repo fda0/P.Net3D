@@ -57,7 +57,7 @@ static void BREAD_InitFile()
   // Models
   {
     bread->models_count = bread->contents->models.list.elem_count;
-    Assert(bread->models_count == MDL_COUNT);
+    Assert(bread->models_count == MODEL_COUNT);
 
     S8 model_array_string = BREAD_FileRange(bread->contents->models.list);
     bread->models = BREAD_AsType(model_array_string, BREAD_Model, bread->models_count);
@@ -89,7 +89,7 @@ static void BREAD_LoadModels()
   GPU_TransferBuffer(APP.ast.skinned_vertices, skinned_string.str, skinned_string.size);
   GPU_TransferBuffer(APP.ast.indices, indices_string.str, indices_string.size);
 
-  ForU32(model_kind, MDL_COUNT)
+  ForU32(model_kind, MODEL_COUNT)
   {
     BREAD_Model *bread_model = bread->models + model_kind;
     Asset *asset = APP.ast.geo_assets + model_kind;

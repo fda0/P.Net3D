@@ -23,29 +23,9 @@ typedef struct
   SDL_GPUGraphicsPipeline *ui_pipeline;
 
   U64 bound_uniform_hash;
-  World_GpuUniform world_uniform;
+  WORLD_GpuUniform world_uniform;
 
-
-
-  // model, mesh, ui resources
-#if 0
-  struct
-  {
-    MDL_Batch batches[MDL_COUNT];
-    Mat4 poses[128 * MDL_MAX_INSTANCES * MDL_COUNT];
-    U32 poses_count;
-
-    SDL_GPUBuffer *gpu_pose_buffer;
-  } model;
-#endif
-
-  struct
-  {
-#if 0
-    MSH_Batch batches[TEX_COUNT];
-#endif
-    SDL_GPUSampler *gpu_sampler;
-  } mesh;
+  SDL_GPUSampler *mesh_tex_sampler;
 
   struct
   {

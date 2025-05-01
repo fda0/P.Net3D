@@ -17,13 +17,13 @@ static GPU_MemoryTarget GPU_MemoryIndexToTarget(U32 index)
   }
   index -= TEX_COUNT;
 
-  if (index < MDL_COUNT)
+  if (index < MODEL_COUNT)
   {
     target.type = GPU_MemoryModelInstances;
     target.model = index;
     return target;
   }
-  index -= MDL_COUNT;
+  index -= MODEL_COUNT;
 
   Assert(index == 0);
   target.type = GPU_MemoryJointTransforms;
@@ -39,7 +39,7 @@ static U32 GPU_MemoryTargetToIndex(GPU_MemoryTarget target)
 
   if (target.type == GPU_MemoryModelInstances)
     return index + target.model;
-  index += MDL_COUNT;
+  index += MODEL_COUNT;
 
   Assert(target.type == GPU_MemoryJointTransforms);
   return index;

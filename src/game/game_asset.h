@@ -37,6 +37,8 @@ typedef struct
 
 typedef struct
 {
+  AST_BreadFile bread;
+
   // textures
   SDL_GPUTexture *tex_fallback;
   Asset tex_assets[TEX_COUNT];
@@ -44,13 +46,11 @@ typedef struct
   bool tex_load_needed;
   SDL_Semaphore *tex_sem;
 
-  AST_BreadFile bread;
-
   // geometry
   SDL_GPUBuffer *rigid_vertices;
   SDL_GPUBuffer *skinned_vertices;
   SDL_GPUBuffer *indices;
-  Asset geo_assets[MDL_COUNT];
+  Asset geo_assets[MODEL_COUNT];
 
   U64 serialize_last_check_timestamp;
   U64 serialize_hash;

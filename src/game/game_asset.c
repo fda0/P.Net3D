@@ -350,11 +350,11 @@ static void AST_InitTextureThread()
 //
 // Geometry
 //
-static Asset *AST_GetGeometry(MDL_Kind model_kind)
+static Asset *AST_GetGeometry(MODEL_Type model_type)
 {
   // @todo @speed Stream geometry assets in the future.
-  Assert(model_kind < MDL_COUNT);
-  Asset *asset = APP.ast.geo_assets + model_kind;
+  Assert(model_type < MODEL_COUNT);
+  Asset *asset = APP.ast.geo_assets + model_type;
   asset->last_touched_frame = APP.frame_id;
   return asset;
 }

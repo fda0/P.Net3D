@@ -483,7 +483,7 @@ static void BK_GLTF_ExportModelToPrinter(Printer *out, BK_GLTF_ModelData *model)
 
 static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *model)
 {
-  BREAD_AddModel(bb, model->kind, model->is_skinned);
+  BREAD_AddModel(bb, model->type, model->is_skinned);
 
   // vertices
   ForU64(vert_i, model->verts_count)
@@ -516,7 +516,7 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
 
     if (!model->is_skinned) // it's rigid
     {
-      MDL_GpuRigidVertex rigid = {};
+      WORLD_GpuRigidVertex rigid = {};
       rigid.normal_rot = normal_rot;
       rigid.p = pos;
       rigid.color = color;
@@ -551,7 +551,7 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
       if (weight_sum < 0.9f || weight_sum > 1.1f)
         M_LOG(M_LogGltfWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
 
-      MDL_GpuSkinnedVertex skinned = {};
+      WORLD_GpuSkinnedVertex skinned = {};
       skinned.normal_rot = normal_rot;
       skinned.p = pos;
       skinned.color = color;
@@ -564,7 +564,8 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
   BREAD_CopyIndices(bb, model->indices.vals, model->indices.used);
 }
 
-static void BK_GLTF_Load(MDL_Kind model_kind, const char *name, const char *path, Printer *out, Printer *out_a, BREAD_Builder *bb, BK_GLTF_Config config)
+static void BK_GLTF_Load(MODEL_Type model_type, const char *name, const char *path,
+                         Printer *out, Printer *out_a, BREAD_Builder *bb, BK_GLTF_Config config)
 {
   // normalize config
   if (!config.scale) config.scale = 1.f;
@@ -612,7 +613,7 @@ static void BK_GLTF_Load(MDL_Kind model_kind, const char *name, const char *path
   U64 max_verts = 1024*128;
 
   BK_GLTF_ModelData model = {};
-  model.kind = model_kind;
+  model.type = model_type;
   model.indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
   model.positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
   model.normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));

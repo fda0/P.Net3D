@@ -320,7 +320,7 @@ static void GPU_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(MDL_GpuRigidVertex),
+          .pitch = sizeof(WORLD_GpuRigidVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -406,7 +406,7 @@ static void GPU_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(MDL_GpuSkinnedVertex),
+          .pitch = sizeof(WORLD_GpuSkinnedVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -469,7 +469,7 @@ static void GPU_Init()
         .min_lod = 0.f,
         .max_lod = 100.f,
       };
-      APP.gpu.mesh.gpu_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
+      APP.gpu.mesh_tex_sampler = SDL_CreateGPUSampler(APP.gpu.device, &sampler_info);
     }
 
     SDL_GPUShader *vertex_shader = 0;
@@ -518,7 +518,7 @@ static void GPU_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(MSH_GpuVertex),
+          .pitch = sizeof(WORLD_GpuMeshVertex),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -690,22 +690,8 @@ static void GPU_Deinit()
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
-  // Model
-#if 0
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.model.gpu_pose_buffer);
-  ForArray(i, APP.gpu.model.batches)
-  {
-    MDL_Batch *batch = APP.gpu.model.batches + i;
-    SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.vertices);
-    SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.indices);
-    SDL_ReleaseGPUBuffer(APP.gpu.device, batch->gpu.instances);
-  }
-
   // Mesh
-  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.mesh.gpu_sampler);
-  ForArray(i, APP.gpu.mesh.batches)
-    SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.mesh.batches[i].gpu_vertices);
-#endif
+  SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.mesh_tex_sampler);
 
   // UI
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.ui.gpu.atlas_texture);
@@ -715,7 +701,7 @@ static void GPU_Deinit()
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui.gpu.clip_buffer);
 }
 
-static void GPU_UpdateWorldUniform(SDL_GPUCommandBuffer *cmd, World_GpuUniform uniform)
+static void GPU_UpdateWorldUniform(SDL_GPUCommandBuffer *cmd, WORLD_GpuUniform uniform)
 {
   U64 uniform_hash = U64_Hash(sizeof(uniform), &uniform, sizeof(uniform));
   if (APP.gpu.bound_uniform_hash != uniform_hash)
@@ -776,9 +762,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
         // bind fragment color texture sampler
         SDL_GPUTextureSamplerBinding binding_sampl =
         {
-          //.texture = batch->gpu.texture,
           .texture = tex_asset->Tex.handle,
-          .sampler = APP.gpu.mesh.gpu_sampler,
+          .sampler = APP.gpu.mesh_tex_sampler,
         };
         SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
 
@@ -804,15 +789,15 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   // bind index buffer for all models
   SDL_BindGPUIndexBuffer(pass, &(SDL_GPUBufferBinding){.buffer = APP.ast.indices}, SDL_GPU_INDEXELEMENTSIZE_16BIT);
 
-  ForU32(model_index, MDL_COUNT)
+  ForU32(model_type, MODEL_COUNT)
   {
-    Asset *geo_asset = AST_GetGeometry(model_index);
+    Asset *geo_asset = AST_GetGeometry(model_type);
     if (geo_asset->Geo.is_skinned)
       continue;
 
     GPU_MemoryEntry *instance_entry = GPU_MemoryTargetToEntry((GPU_MemoryTarget)
                                                               {.type = GPU_MemoryModelInstances,
-                                                               .model = model_index});
+                                                               .model = model_type});
     if (!instance_entry->element_count)
       continue;
 
@@ -837,15 +822,15 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     GPU_MemoryTargetToEntry((GPU_MemoryTarget)
                             {.type = GPU_MemoryJointTransforms});
 
-  ForU32(model_index, MDL_COUNT)
+  ForU32(model_type, MODEL_COUNT)
   {
-    Asset *geo_asset = AST_GetGeometry(model_index);
+    Asset *geo_asset = AST_GetGeometry(model_type);
     if (!geo_asset->Geo.is_skinned)
       continue;
 
     GPU_MemoryEntry *instance_entry = GPU_MemoryTargetToEntry((GPU_MemoryTarget)
                                                               {.type = GPU_MemoryModelInstances,
-                                                               .model = model_index});
+                                                               .model = model_type});
     if (!instance_entry->element_count)
       continue;
 
@@ -894,7 +879,7 @@ static void GPU_Iterate()
     .cycle = true,
   };
 
-  APP.gpu.world_uniform = (World_GpuUniform)
+  APP.gpu.world_uniform = (WORLD_GpuUniform)
   {
     .camera_transform = APP.sun_camera_transform,
     .shadow_transform = APP.sun_camera_transform,

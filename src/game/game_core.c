@@ -78,7 +78,7 @@ static void Game_DrawObjects()
         transform = Mat4_Mul(transform, rot_mat); // rotate first, translate second
       }
 
-      MDL_Draw(obj->s.model, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
+      WORLD_RenderModel(obj->s.model, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
     if (draw_collision || draw_model_collision)
@@ -96,7 +96,7 @@ static void Game_DrawObjects()
       U32 vertices_per_face = 3*2;
       U32 mesh_verts_count = face_count * vertices_per_face;
 
-      MSH_GpuVertex mesh_verts[6 * 3 * 2]; // CPU side temporary buffer
+      WORLD_GpuMeshVertex mesh_verts[6 * 3 * 2]; // CPU side temporary buffer
       Memclear(mesh_verts, sizeof(mesh_verts));
       Assert(ArrayCount(mesh_verts) >= mesh_verts_count);
 
@@ -229,7 +229,7 @@ static void Game_DrawObjects()
       }
 
       // Transfer verts to GPU
-      MSH_DrawVertices(tex_kind, mesh_verts, mesh_verts_count);
+      WORLD_RenderMeshVertices(tex_kind, mesh_verts, mesh_verts_count);
     }
   }
 
@@ -470,7 +470,7 @@ static void Game_Iterate()
     if (KEY_Held(KEY_MouseRight) && APP.world_mouse_valid)
     {
       marker->s.flags |= ObjFlag_DrawModel;
-      marker->s.model = MDL_Flag;
+      marker->s.model = MODEL_Flag;
       marker->s.p = V3_From_XY_Z(APP.world_mouse, 0);
 
       marker->l.animated_p.x = marker->s.p.x;

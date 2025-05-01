@@ -1,13 +1,13 @@
-static void MDL_Draw(MDL_Kind model_kind, Mat4 transform, U32 color,
-                     U32 animation_index, float animation_t)
+static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
+                              U32 animation_index, float animation_t)
 {
-  MDL_GpuInstance instance =
+  WORLD_GpuModelInstance instance =
   {
     .transform = transform,
     .color = color,
   };
 
-  if (MDL_IsSkinned(model_kind))
+  if (AST_GetGeometry(model_type)->Geo.is_skinned)
   {
     GPU_MemoryTarget gpu_target = {.type = GPU_MemoryJointTransforms};
     GPU_MemoryEntry *gpu_entry = GPU_MemoryTargetToEntry(gpu_target);
@@ -21,11 +21,11 @@ static void MDL_Draw(MDL_Kind model_kind, Mat4 transform, U32 color,
   }
 
   GPU_MemoryTransferUploadBytes((GPU_MemoryTarget){.type = GPU_MemoryModelInstances,
-                                                   .model = model_kind},
+                                                   .model = model_type},
                                 &instance, sizeof(instance), 1);
 }
 
-static void MSH_DrawVertices(TEX_Kind tex, MSH_GpuVertex *vertices, U32 vertices_count)
+static void WORLD_RenderMeshVertices(TEX_Kind tex, WORLD_GpuMeshVertex *vertices, U32 vertices_count)
 {
   GPU_MemoryTransferUploadBytes((GPU_MemoryTarget){.type = GPU_MemoryMeshVertices,
                                                    .tex = tex},

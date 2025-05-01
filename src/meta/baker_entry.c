@@ -53,14 +53,14 @@ int main()
     float scale = 40;
     BK_GLTF_Config config = {.scale = scale, .rot = rot_xz};
 
-    BK_GLTF_Load(MDL_Flag, "flag", "../res/models/Flag.glb", &pr_out, &pr_anim, &bb, (BK_GLTF_Config){1.f, rot_x, (V3){0,0,-4.5f}});
-    BK_GLTF_Load(MDL_Worker, "", "../res/models/Worker.gltf", &pr_out, &pr_anim, &bb, config);
-    BK_GLTF_Load(MDL_Formal, "", "../res/models/Formal.gltf", &pr_out, &pr_anim, &bb, config);
-    BK_GLTF_Load(MDL_Casual, "", "../res/models/Casual.gltf", &pr_out, &pr_anim, &bb, config);
+    BK_GLTF_Load(MODEL_Flag, "flag", "../res/models/Flag.glb", &pr_out, &pr_anim, &bb, (BK_GLTF_Config){1.f, rot_x, (V3){0,0,-4.5f}});
+    BK_GLTF_Load(MODEL_Worker, "", "../res/models/Worker.gltf", &pr_out, &pr_anim, &bb, config);
+    BK_GLTF_Load(MODEL_Formal, "", "../res/models/Formal.gltf", &pr_out, &pr_anim, &bb, config);
+    BK_GLTF_Load(MODEL_Casual, "", "../res/models/Casual.gltf", &pr_out, &pr_anim, &bb, config);
 
     config.scale = 4.f;
     config.rot = Quat_Identity();
-    BK_GLTF_Load(MDL_Tree, "Tree", "../res/models/tree_low-poly/scene.gltf", &pr_out, &pr_anim, &bb, config);
+    BK_GLTF_Load(MODEL_Tree, "Tree", "../res/models/tree_low-poly/scene.gltf", &pr_out, &pr_anim, &bb, config);
 
 
     M_SaveFile("../gen/gen_models_gltf.h", Pr_AsS8(&pr_out));

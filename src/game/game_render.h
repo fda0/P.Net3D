@@ -10,7 +10,7 @@ typedef struct
   _Alignas(16) V3 towards_sun_dir;
   float tex_loaded_t;
   float tex_shininess;
-} World_GpuUniform;
+} WORLD_GpuUniform;
 
 // Vertices
 typedef struct
@@ -18,7 +18,7 @@ typedef struct
   Quat normal_rot;
   V3 p;
   U32 color;
-} MDL_GpuRigidVertex;
+} WORLD_GpuRigidVertex;
 
 typedef struct
 {
@@ -27,48 +27,22 @@ typedef struct
   U32 color;
   U32 joints_packed4;
   V4 weights;
-} MDL_GpuSkinnedVertex;
+} WORLD_GpuSkinnedVertex;
 
 typedef struct
 {
   Mat4 transform;
   U32 color;
   U32 pose_offset; // in indices; unused for rigid
-} MDL_GpuInstance;
+} WORLD_GpuModelInstance;
 
-#if 0
-typedef struct
-{
-  MDL_GpuInstance instances[MDL_MAX_INSTANCES];
-  U32 instances_count;
-
-  struct
-  {
-    SDL_GPUBuffer *vertices;
-    SDL_GPUBuffer *indices;
-    SDL_GPUBuffer *instances;
-    U32 indices_count;
-  } gpu;
-} MDL_Batch;
-#endif
-
-// MSH - Mesh
 typedef struct
 {
   Quat normal_rot;
   V3 p;
   V2 uv;
   U32 color;
-} MSH_GpuVertex;
-
-#if 0
-typedef struct
-{
-  MSH_GpuVertex vertices[1024 * 8];
-  U32 vertices_count;
-  SDL_GPUBuffer *gpu_vertices;
-} MSH_Batch;
-#endif
+} WORLD_GpuMeshVertex;
 
 // UI - User Interface
 typedef struct

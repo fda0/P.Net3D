@@ -48,7 +48,7 @@ typedef struct
   U32 color;
   Quat rotation;
   U32 animation_index; // used by DrawModel
-  MDL_Kind model; // used by DrawModel
+  MODEL_Type model; // used by DrawModel
   float collision_height; // used by DrawCollision
   TEX_Kind texture; // used by DrawCollision
   float texture_texels_per_cm; // used by DrawCollision

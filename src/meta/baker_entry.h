@@ -5,8 +5,8 @@ typedef struct
   Printer skinned_vertices;
   Printer indices;
 
-  BREAD_Model models[MDL_COUNT];
-  MDL_Kind selected_model;
+  BREAD_Model models[MODEL_COUNT];
+  MODEL_Type selected_model;
 
   bool finalized;
 } BREAD_Builder;

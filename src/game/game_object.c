@@ -142,7 +142,7 @@ static Object *OBJ_CreateWall(V2 p, V2 dim, float height)
   return obj;
 }
 
-static Object *OBJ_CreatePlayer(MDL_Kind model)
+static Object *OBJ_CreatePlayer(MODEL_Type model)
 {
   Object *player = OBJ_Create(ObjStorage_Net,
                               ObjFlag_Move |

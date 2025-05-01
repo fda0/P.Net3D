@@ -17,13 +17,13 @@ static BREAD_Builder BREAD_CreateBuilder(Arena *a, U32 max_file_size)
   bb.indices = Pr_Alloc(a, max_file_size / 2);
 
   Pr_ReserveBytes(&bb.file, sizeof(BREAD_Header)); // reserve space for header
-  bb.selected_model = MDL_COUNT;
+  bb.selected_model = MODEL_COUNT;
   return bb;
 }
 
 static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
 {
-  bb->selected_model = MDL_COUNT;
+  bb->selected_model = MODEL_COUNT;
 
   //
   // Prepare BREAD_Contents and append it to memory
@@ -32,12 +32,12 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
 
   contents.models.rigid_vertices.offset = bb->file.used;
   contents.models.rigid_vertices.size = bb->rigid_vertices.used;
-  contents.models.rigid_vertices.elem_count = bb->rigid_vertices.used / sizeof(MDL_GpuRigidVertex);
+  contents.models.rigid_vertices.elem_count = bb->rigid_vertices.used / sizeof(WORLD_GpuRigidVertex);
   Pr_Printer(&bb->file, &bb->rigid_vertices);
 
   contents.models.skinned_vertices.offset = bb->file.used;
   contents.models.skinned_vertices.size = bb->skinned_vertices.used;
-  contents.models.skinned_vertices.elem_count = bb->skinned_vertices.used / sizeof(MDL_GpuSkinnedVertex);
+  contents.models.skinned_vertices.elem_count = bb->skinned_vertices.used / sizeof(WORLD_GpuSkinnedVertex);
   Pr_Printer(&bb->file, &bb->skinned_vertices);
 
   contents.models.indices.offset = bb->file.used;
@@ -52,7 +52,7 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
     {
       M_LOG(M_LogGltfWarning, "BREAD warning: When finalizing file "
             "found model with index %d (%s) that wasn't initialized.",
-            i, MDL_GetCstrName(i));
+            i, MODEL_GetCstrName(i));
     }
 
     model->vertices.offset += (model->is_skinned ?
@@ -97,11 +97,11 @@ static void BREAD_SaveToFile(BREAD_Builder *bb, const char *file_path)
 //
 // Helpers
 //
-static void BREAD_AddModel(BREAD_Builder *bb, MDL_Kind model_kind, bool is_skinned)
+static void BREAD_AddModel(BREAD_Builder *bb, MODEL_Type model_type, bool is_skinned)
 {
   M_Check(!bb->finalized);
-  M_Check(model_kind < MDL_COUNT);
-  bb->selected_model = model_kind;
+  M_Check(model_type < MODEL_COUNT);
+  bb->selected_model = model_type;
 
   BREAD_Model *model = bb->models + bb->selected_model;
   model->is_skinned = is_skinned;
@@ -113,10 +113,10 @@ static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)
 {
   M_Check(!bb->finalized);
   Printer *vert_printer = is_skinned ? &bb->skinned_vertices : &bb->rigid_vertices;
-  U64 vert_align = is_skinned ? _Alignof(MDL_GpuSkinnedVertex) : _Alignof(MDL_GpuRigidVertex);
-  U64 vert_size = is_skinned ? sizeof(MDL_GpuSkinnedVertex) : sizeof(MDL_GpuRigidVertex);
+  U64 vert_align = is_skinned ? _Alignof(WORLD_GpuSkinnedVertex) : _Alignof(WORLD_GpuRigidVertex);
+  U64 vert_size = is_skinned ? sizeof(WORLD_GpuSkinnedVertex) : sizeof(WORLD_GpuRigidVertex);
 
-  M_Check(bb->selected_model < MDL_COUNT);
+  M_Check(bb->selected_model < MODEL_COUNT);
   BREAD_Model *model = bb->models + bb->selected_model;
 
   // init vertices offset
@@ -135,13 +135,13 @@ static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)
   Memclear(result, vert_size);
   return result;
 }
-static MDL_GpuSkinnedVertex *BREAD_AddModelSkinnedVertex(BREAD_Builder *bb) { return BREAD_AddModelVertex(bb, true); }
-static MDL_GpuRigidVertex   *BREAD_AddModelRigidVertex(BREAD_Builder *bb)   { return BREAD_AddModelVertex(bb, false); }
+static WORLD_GpuSkinnedVertex *BREAD_AddModelSkinnedVertex(BREAD_Builder *bb) { return BREAD_AddModelVertex(bb, true); }
+static WORLD_GpuRigidVertex   *BREAD_AddModelRigidVertex(BREAD_Builder *bb)   { return BREAD_AddModelVertex(bb, false); }
 
 static void BREAD_CopyIndices(BREAD_Builder *bb, U16 *src_indices, U32 src_indices_count)
 {
   M_Check(!bb->finalized);
-  M_Check(bb->selected_model < MDL_COUNT);
+  M_Check(bb->selected_model < MODEL_COUNT);
   BREAD_Model *model = bb->models + bb->selected_model;
 
   M_Check(!model->indices.offset);

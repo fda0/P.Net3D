@@ -1,4 +1,4 @@
-#define GPU_MEMORY_TARGET_COUNT (TEX_COUNT + MDL_COUNT + 1/*joints_count*/)
+#define GPU_MEMORY_TARGET_COUNT (TEX_COUNT + MODEL_COUNT + 1/*joints_count*/)
 
 typedef enum
 {
@@ -12,7 +12,7 @@ typedef struct
 {
   GPU_MemoryTargetType type;
   TEX_Kind tex;
-  MDL_Kind model;
+  MODEL_Type model;
 } GPU_MemoryTarget;
 
 typedef struct GPU_TransferStorage GPU_TransferStorage;
