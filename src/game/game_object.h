@@ -1,6 +1,6 @@
 #define OBJ_MAX_NETWORK_OBJECTS 24
-#define OBJ_MAX_CONST_OBJECTS 128
-#define OBJ_MAX_ALL_OBJECTS (OBJ_MAX_NETWORK_OBJECTS + OBJ_MAX_CONST_OBJECTS)
+#define OBJ_MAX_OFFLINE_OBJECTS 512
+#define OBJ_MAX_ALL_OBJECTS (OBJ_MAX_NETWORK_OBJECTS + OBJ_MAX_OFFLINE_OBJECTS)
 
 typedef struct
 {
@@ -23,9 +23,11 @@ typedef enum
 
 typedef enum
 {
-  ObjStorage_Local = (1 << 0),
-  ObjStorage_Net   = (1 << 1),
-  ObjStorage_All = (ObjStorage_Local | ObjStorage_Net)
+  // This is a flag so it can be used for querying multiple types of Objects.
+  // A single object can have only one storage type.
+  OBJ_Offline = (1 << 0),
+  OBJ_Network = (1 << 1),
+  OBJ_StorageAll = (OBJ_Offline | OBJ_Network)
 } OBJ_Storage;
 
 typedef struct

@@ -23,13 +23,13 @@ static Object *OBJ_Get(OBJ_Key key, U32 storage_mask)
   bool index_in_valid_storage = false;
   {
     U32 min = 0;
-    U32 max = OBJ_MAX_CONST_OBJECTS;
-    if (storage_mask & ObjStorage_Local)
+    U32 max = OBJ_MAX_OFFLINE_OBJECTS;
+    if (storage_mask & OBJ_Offline)
       index_in_valid_storage |= (key.index >= min && key.index < max);
 
     min = max;
     max += OBJ_MAX_NETWORK_OBJECTS;
-    if (storage_mask & ObjStorage_Net)
+    if (storage_mask & OBJ_Network)
       index_in_valid_storage |= (key.index >= min && key.index < max);
   }
 
@@ -44,7 +44,7 @@ static Object *OBJ_Get(OBJ_Key key, U32 storage_mask)
 
 static Object *OBJ_GetAny(OBJ_Key key)
 {
-  return OBJ_Get(key, ObjStorage_All);
+  return OBJ_Get(key, OBJ_StorageAll);
 }
 
 static bool OBJ_SyncIsInit(OBJ_Sync *sync)
@@ -81,14 +81,14 @@ static Object *OBJ_Create(OBJ_Storage storage, U32 flags)
   bool matched_storage = false;
   Object *obj = 0;
 
-  if (storage & ObjStorage_Local)
+  if (storage & OBJ_Offline)
   {
     Assert(!matched_storage);
     matched_storage = true;
 
-    ForArray(i, APP.const_objects)
+    ForArray(i, APP.offline_objects)
     {
-      Object *search = APP.const_objects + i;
+      Object *search = APP.offline_objects + i;
       if (!OBJ_SyncIsInit(&search->s))
       {
         obj = search;
@@ -96,7 +96,7 @@ static Object *OBJ_Create(OBJ_Storage storage, U32 flags)
       }
     }
   }
-  if (storage & ObjStorage_Net)
+  if (storage & OBJ_Network)
   {
     Assert(!matched_storage);
     matched_storage = true;
@@ -131,7 +131,7 @@ static Object *OBJ_Create(OBJ_Storage storage, U32 flags)
 
 static Object *OBJ_CreateWall(V2 p, V2 dim, float height)
 {
-  Object *obj = OBJ_Create(ObjStorage_Local,
+  Object *obj = OBJ_Create(OBJ_Offline,
                            ObjFlag_DrawCollision | ObjFlag_Collide);
   obj->s.p = V3_From_XY_Z(p, 0);
   obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
@@ -144,7 +144,7 @@ static Object *OBJ_CreateWall(V2 p, V2 dim, float height)
 
 static Object *OBJ_CreatePlayer(MODEL_Type model)
 {
-  Object *player = OBJ_Create(ObjStorage_Net,
+  Object *player = OBJ_Create(OBJ_Network,
                               ObjFlag_Move |
                               ObjFlag_Collide |
                               ObjFlag_DrawModel |

@@ -73,7 +73,9 @@ static AppState APP;
 #include "game_font_atlas.c"
 #include "game_ui.c"
 #include "game_serialize.c"
+#if TESTS_ENABLED
 #include "game_tests.c"
+#endif
 #include "game_core.c"
 
 SDL_AppResult SDL_AppIterate(void *appstate)

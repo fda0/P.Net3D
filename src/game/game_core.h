@@ -128,7 +128,7 @@ struct AppState
   {
     struct
     {
-      Object const_objects[OBJ_MAX_CONST_OBJECTS];
+      Object offline_objects[OBJ_MAX_OFFLINE_OBJECTS];
       Object net_objects[OBJ_MAX_NETWORK_OBJECTS];
     };
     Object all_objects[OBJ_MAX_ALL_OBJECTS];

@@ -365,7 +365,7 @@ static void Game_Iterate()
   }
   else
   {
-    Object *player = OBJ_Get(APP.client.player_key, ObjStorage_Net);
+    Object *player = OBJ_Get(APP.client.player_key, OBJ_Network);
     if (!OBJ_IsNil(player))
     {
       APP.camera_p = player->s.p;
@@ -383,7 +383,7 @@ static void Game_Iterate()
 
     V3 sun_dist = V3_Scale(APP.towards_sun_dir, 900.f);
     V3 sun_obj_p = V3_Add(APP.camera_p, sun_dist);
-    OBJ_Get(APP.sun, ObjStorage_Local)->s.p = sun_obj_p;
+    OBJ_Get(APP.sun, OBJ_Offline)->s.p = sun_obj_p;
   }
 
   // camera to sun
@@ -455,7 +455,7 @@ static void Game_Iterate()
 
   Game_AnimateObjects();
 
-  Object *marker = OBJ_Get(APP.pathing_marker, ObjStorage_Local);
+  Object *marker = OBJ_Get(APP.pathing_marker, OBJ_Offline);
   if (!OBJ_IsNil(marker))
   {
     if (!APP.debug.noclip_camera &&
@@ -515,13 +515,7 @@ static void Game_Iterate()
 static void Game_Init()
 {
   // init debug options
-  {
-    //APP.debug.fixed_dt = 0.1f;
-    //APP.debug.single_tick_stepping = true;
-    //APP.debug.noclip_camera = true;
-    APP.debug.draw_model_collision = true;
-    APP.log_filter &= ~(Log_NetDatagram);
-  }
+  APP.log_filter &= ~(Log_NetDatagram);
 
 #if TESTS_ENABLED
   TEST_RunOnce();
@@ -570,14 +564,14 @@ static void Game_Init()
     }
 
     {
-      Object *ground = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
+      Object *ground = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
       ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
       Collision_RecalculateNormals(&ground->s.collision);
       ground->s.texture = TEX_Grass004;
     }
 
     {
-      Object *flying_cube = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
+      Object *flying_cube = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
       flying_cube->s.p = (V3){40, 40, 80};
       flying_cube->s.texture = TEX_Tiles101;
       flying_cube->s.texture_texels_per_cm = 0.018f;
@@ -587,7 +581,7 @@ static void Game_Init()
     }
 
     {
-      Object *sun = OBJ_Create(ObjStorage_Local, ObjFlag_DrawCollision);
+      Object *sun = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
       sun->s.texture = TEX_Leather011;
       sun->s.collision_height = 50;
       sun->s.collision.verts = CollisionVertices_FromRectDim((V2){50, 50});
@@ -598,6 +592,38 @@ static void Game_Init()
 
   // pathing marker
   {
-    APP.pathing_marker = OBJ_Create(ObjStorage_Local, ObjFlag_AnimatePosition)->s.key;
+    APP.pathing_marker = OBJ_Create(OBJ_Offline, ObjFlag_AnimatePosition)->s.key;
+  }
+
+  // Add trees
+  {
+    U32 x_count = 16;
+    U32 y_count = 16;
+
+    ForU32(y, y_count)
+    {
+      ForU32(x, x_count)
+      {
+        U32 x_half_count = x_count/2;
+        U32 y_half_count = y_count/2;
+
+        V3 pos = {};
+        if ((x^y)&1) pos.x = 270.f;
+        else         pos.y = 290.f;
+
+        pos.x += 170.f*(x % x_half_count);
+        pos.y += 140.f*(y % y_half_count);
+
+        pos.x *= (x < x_half_count ? -1.f : 1.f);
+        pos.y *= (y < y_half_count ? -1.f : 1.f);
+
+        Object *tree = OBJ_Create(OBJ_Offline, ObjFlag_DrawModel);
+        if (!OBJ_IsNil(tree))
+        {
+          tree->s.p = pos;
+          tree->s.model = MODEL_Tree;
+        }
+      }
+    }
   }
 }

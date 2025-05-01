@@ -14,7 +14,7 @@ static void TICK_AdvanceSimulation()
   ForArray32(player_index, APP.server.player_keys)
   {
     OBJ_Key player_key = APP.server.player_keys[player_index];
-    Object *player = OBJ_Get(player_key, ObjStorage_Net);
+    Object *player = OBJ_Get(player_key, OBJ_Network);
     if (OBJ_IsNil(player))
       continue;
 

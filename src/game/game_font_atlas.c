@@ -278,7 +278,7 @@ static void FONT_ProcessWindowResize(bool init)
 {
   if (APP.window_resized || init)
   {
-    float scale = Max(2.f, FRound(APP.window_height / 256.f) - 2.f);
+    float scale = Max(1.5f, FRound(APP.window_height / 128.f)*0.5f - 2.f);
     if (scale != APP.font.scale || init)
       APP.font.scale_changed = true;
 
@@ -287,8 +287,8 @@ static void FONT_ProcessWindowResize(bool init)
 
   if (APP.font.scale_changed)
   {
-    APP.font.sizes[FONT_Regular] = APP.font.scale * 14.f;
-    APP.font.sizes[FONT_Header] = APP.font.scale * 14.f * 1.5f;
+    APP.font.sizes[FONT_Regular] = FRound(APP.font.scale * 14.f);
+    APP.font.sizes[FONT_Header] = FRound(APP.font.scale * 14.f * 1.5f);
 
     ForU32(i, FONT_COUNT)
     {
