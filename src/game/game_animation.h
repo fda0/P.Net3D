@@ -48,6 +48,6 @@ typedef struct
 
 typedef struct
 {
-  Mat4 *matrices;
-  U32 matrices_count;
+  Mat4 *mats;
+  U32 mats_count;
 } AN_Pose;

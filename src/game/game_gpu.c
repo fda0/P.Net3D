@@ -743,38 +743,32 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   {
     ForU32(tex_index, TEX_COUNT)
     {
-      GPU_MemoryTarget gpu_target =
+      GPU_MemoryBundle *gpu_bundle =
+        GPU_MemoryTargetToBundle((GPU_MemoryTarget){.type = GPU_MemoryMeshVertices,
+                                                    .tex = tex_index});
+      if (!gpu_bundle->element_count)
+        continue;
+
+      // bind vertex buffer
+      SDL_BindGPUVertexBuffers(pass, 0, &(SDL_GPUBufferBinding){.buffer = gpu_bundle->buffer->handle}, 1);
+
+      Asset *tex_asset = AST_GetTexture(tex_index);
+      APP.gpu.world_uniform.tex_loaded_t = tex_asset->loaded_t;
+      GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+
+      // bind fragment color texture sampler
+      SDL_GPUTextureSamplerBinding binding_sampl =
       {
-        .type = GPU_MemoryMeshVertices,
-        .tex = tex_index
+        .texture = tex_asset->Tex.handle,
+        .sampler = APP.gpu.mesh_tex_sampler,
       };
-      GPU_MemoryEntry *entry = GPU_MemoryTargetToEntry(gpu_target);
-      if (entry->element_count)
-      {
-        // bind vertex buffer
-        SDL_GPUBufferBinding binding_vrt = { .buffer = entry->buffer->handle };
-        SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
+      SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
 
-        Asset *tex_asset = AST_GetTexture(tex_index);
-        APP.gpu.world_uniform.tex_loaded_t = tex_asset->loaded_t;
-        GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+      if (!is_depth_prepass)
+        APP.gpu.world_uniform.tex_shininess = tex_asset->Tex.shininess;
 
-        // bind fragment color texture sampler
-        SDL_GPUTextureSamplerBinding binding_sampl =
-        {
-          .texture = tex_asset->Tex.handle,
-          .sampler = APP.gpu.mesh_tex_sampler,
-        };
-        SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
-
-        if (!is_depth_prepass)
-        {
-          APP.gpu.world_uniform.tex_shininess = tex_asset->Tex.shininess;
-        }
-
-        GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
-        SDL_DrawGPUPrimitives(pass, entry->element_count, 1, 0, 0);
-      }
+      GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+      SDL_DrawGPUPrimitives(pass, gpu_bundle->element_count, 1, 0, 0);
     }
   }
 
@@ -795,18 +789,18 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     if (geo_asset->Geo.is_skinned)
       continue;
 
-    GPU_MemoryEntry *instance_entry = GPU_MemoryTargetToEntry((GPU_MemoryTarget)
-                                                              {.type = GPU_MemoryModelInstances,
-                                                               .model = model_type});
-    if (!instance_entry->element_count)
+    GPU_MemoryBundle *gpu_bundle =
+      GPU_MemoryTargetToBundle((GPU_MemoryTarget){.type = GPU_MemoryModelInstances, .model = model_type});
+
+    if (!gpu_bundle->element_count)
       continue;
 
     // bind instance storage buffer
-    SDL_GPUBuffer *storage_bufs[1] = { instance_entry->buffer->handle };
+    SDL_GPUBuffer *storage_bufs[1] = { gpu_bundle->buffer->handle };
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
     GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
-    SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, instance_entry->element_count,
+    SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, gpu_bundle->element_count,
                                  geo_asset->Geo.indices_start_index, geo_asset->Geo.vertices_start_index, 0);
   }
 
@@ -815,12 +809,11 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   //
   SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].skinned);
 
-  // bind skinned vertex buffer
+  // Bind skinned vertex buffer
   SDL_BindGPUVertexBuffers(pass, 0, &(SDL_GPUBufferBinding){.buffer = APP.ast.skinned_vertices}, 1);
 
-  GPU_MemoryEntry *joints_entry =
-    GPU_MemoryTargetToEntry((GPU_MemoryTarget)
-                            {.type = GPU_MemoryJointTransforms});
+  // Get joint transform buffer
+  GPU_MemoryBundle *joints = GPU_MemoryTargetToBundle((GPU_MemoryTarget){.type = GPU_MemoryJointTransforms});
 
   ForU32(model_type, MODEL_COUNT)
   {
@@ -828,22 +821,22 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     if (!geo_asset->Geo.is_skinned)
       continue;
 
-    GPU_MemoryEntry *instance_entry = GPU_MemoryTargetToEntry((GPU_MemoryTarget)
-                                                              {.type = GPU_MemoryModelInstances,
-                                                               .model = model_type});
-    if (!instance_entry->element_count)
+    GPU_MemoryBundle *gpu_bundle =
+      GPU_MemoryTargetToBundle((GPU_MemoryTarget){.type = GPU_MemoryModelInstances, .model = model_type});
+
+    if (!gpu_bundle->element_count)
       continue;
 
     // bind instance storage buffer
     SDL_GPUBuffer *storage_bufs[2] =
     {
-      instance_entry->buffer->handle,
-      joints_entry->buffer->handle
+      gpu_bundle->buffer->handle,
+      joints->buffer->handle
     };
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
     GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
-    SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, instance_entry->element_count,
+    SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, gpu_bundle->element_count,
                                  geo_asset->Geo.indices_start_index, geo_asset->Geo.vertices_start_index, 0);
   }
 
@@ -867,7 +860,7 @@ static void GPU_Iterate()
     return;
   }
 
-  GPU_MemoryTransferToBuffers(cmd);
+  GPU_TransfersToBuffers(cmd);
 
   SDL_GPUDepthStencilTargetInfo depth_target =
   {

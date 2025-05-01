@@ -41,8 +41,8 @@ static float AN_WrapAnimationTime(AN_Skeleton *skeleton, U32 animation_index, fl
 static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, float time)
 {
   AN_Pose res = {};
-  res.matrices = Alloc(APP.a_frame, Mat4, skeleton->joints_count);
-  res.matrices_count = skeleton->joints_count;
+  res.mats = Alloc(APP.a_frame, Mat4, skeleton->joints_count);
+  res.mats_count = skeleton->joints_count;
 
   // mix default rest pose + animation channels using temporary memory
   {
@@ -119,7 +119,7 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
       }
     }
 
-    ForU32(i, res.matrices_count)
+    ForU32(i, res.mats_count)
     {
       Mat4 scale = Mat4_Scale(scales[i]); // @optimization skip scale matrices if they are always 1,1,1 ?
       Mat4 rot = Mat4_Rotation_Quat(rotations[i]);
@@ -127,16 +127,16 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
 
       Mat4 combined = Mat4_Mul(rot, scale);
       combined = Mat4_Mul(trans, combined);
-      res.matrices[i] = combined;
+      res.mats[i] = combined;
     }
 
     Arena_PopScope(scratch);
   }
 
-  AN_WaterfallTransformsToChildren(skeleton, res.matrices, 0, skeleton->root_transform);
+  AN_WaterfallTransformsToChildren(skeleton, res.mats, 0, skeleton->root_transform);
 
-  ForU32(i, res.matrices_count)
-    res.matrices[i] = Mat4_Mul(res.matrices[i], skeleton->inverse_bind_matrices[i]);
+  ForU32(i, res.mats_count)
+    res.mats[i] = Mat4_Mul(res.mats[i], skeleton->inverse_bind_matrices[i]);
 
   return res;
 }
