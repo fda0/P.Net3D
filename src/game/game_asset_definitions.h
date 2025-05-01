@@ -74,7 +74,7 @@ static MDL_Category MDL_GetCategory(MDL_Kind model_kind)
   Assert(model_kind < MDL_COUNT);
   return MDL_Categories[model_kind];
 }
-static MDL_Category MDL_IsSkinned(MDL_Kind model_kind)
+static MDL_Category MDL_IsSkinned(MDL_Kind model_kind) // @todo remove this, this is a property of asset loaded from file
 {
   return MDL_GetCategory(model_kind) == MDL_Skinned;
 }

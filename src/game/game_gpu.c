@@ -793,8 +793,45 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     }
   }
 
-  bool skinned_pipeline_bound = false;
+  //
+  // Draw rigid models
+  //
   SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].rigid);
+
+  // bind rigid vertex buffer
+  SDL_BindGPUVertexBuffers(pass, 0, &(SDL_GPUBufferBinding){.buffer = APP.ast.rigid_vertices}, 1);
+
+  // bind index buffer for all models
+  SDL_BindGPUIndexBuffer(pass, &(SDL_GPUBufferBinding){.buffer = APP.ast.indices}, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+
+  ForU32(model_index, MDL_COUNT)
+  {
+    Asset *geo_asset = AST_GetGeometry(model_index);
+    if (geo_asset->Geo.is_skinned)
+      continue;
+
+    GPU_MemoryEntry *instance_entry = GPU_MemoryTargetToEntry((GPU_MemoryTarget)
+                                                              {.type = GPU_MemoryModelInstances,
+                                                               .model = model_index});
+    if (!instance_entry->element_count)
+      continue;
+
+    // bind instance storage buffer
+    SDL_GPUBuffer *storage_bufs[1] = { instance_entry->buffer->handle };
+    SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
+
+    GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+    SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, instance_entry->element_count,
+                                 geo_asset->Geo.indices_start_index, geo_asset->Geo.vertices_start_index, 0);
+  }
+
+  //
+  // Draw skinned models
+  //
+  SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].skinned);
+
+  // bind skinned vertex buffer
+  SDL_BindGPUVertexBuffers(pass, 0, &(SDL_GPUBufferBinding){.buffer = APP.ast.skinned_vertices}, 1);
 
   GPU_MemoryEntry *joints_entry =
     GPU_MemoryTargetToEntry((GPU_MemoryTarget)
@@ -802,50 +839,30 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
 
   ForU32(model_index, MDL_COUNT)
   {
-    GPU_MemoryEntry *instance_entry =
-      GPU_MemoryTargetToEntry((GPU_MemoryTarget)
-                              {.type = GPU_MemoryModelInstances,
-                               .model = model_index});
-    if (!instance_entry->element_count)
+    Asset *geo_asset = AST_GetGeometry(model_index);
+    if (!geo_asset->Geo.is_skinned)
       continue;
 
-    bool is_skinned = MDL_IsSkinned(model_index); // @todo This should be property of loaded model. Simply do two passes over model entries - one for rigid and one for skinned.
-
-    // Select pipeline (skinned vs rigid)
-    if (is_skinned != skinned_pipeline_bound)
-    {
-      Assert(!skinned_pipeline_bound); // assert that models are sorted from rigid to skinned
-
-      if (is_skinned)
-        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].skinned);
-      else
-        SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].rigid);
-
-      skinned_pipeline_bound = is_skinned;
-    }
-
-    Asset *geo_asset = AST_GetGeometry(model_index);
-
-    // bind vertex buffer
-    SDL_GPUBufferBinding binding_vrt = { .buffer = geo_asset->Geo.vertices };
-    SDL_BindGPUVertexBuffers(pass, 0, &binding_vrt, 1);
-
-    // bind index buffer
-    SDL_GPUBufferBinding binding_ind = { .buffer = geo_asset->Geo.indices };
-    SDL_BindGPUIndexBuffer(pass, &binding_ind, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+    GPU_MemoryEntry *instance_entry = GPU_MemoryTargetToEntry((GPU_MemoryTarget)
+                                                              {.type = GPU_MemoryModelInstances,
+                                                               .model = model_index});
+    if (!instance_entry->element_count)
+      continue;
 
     // bind instance storage buffer
     SDL_GPUBuffer *storage_bufs[2] =
     {
       instance_entry->buffer->handle,
-      joints_entry->buffer->handle,
+      joints_entry->buffer->handle
     };
-    U32 storage_bufs_count = (is_skinned ? 2 : 1);
-    SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, storage_bufs_count);
+    SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
     GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
-    SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, instance_entry->element_count, 0, 0, 0);
+    SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, instance_entry->element_count,
+                                 geo_asset->Geo.indices_start_index, geo_asset->Geo.vertices_start_index, 0);
   }
+
+
 }
 
 static void GPU_Iterate()

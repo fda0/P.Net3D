@@ -91,8 +91,7 @@ static void AST_Init()
   // Geometry
   {
     // @todo Stream these resources in the future.
-    ForI32(model_kind, MDL_COUNT)
-      BREAD_LoadModel(model_kind);
+    BREAD_LoadModels();
   }
 }
 

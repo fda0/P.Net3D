@@ -22,9 +22,9 @@ static S8 BREAD_FileOffset(U64 offset, U64 size)
   return result;
 }
 
-static S8 BREAD_FileRange(BREAD_Range range, U64 type_size)
+static S8 BREAD_FileRange(BREAD_Range range)
 {
-  return BREAD_FileOffset(range.offset, range.count * type_size);
+  return BREAD_FileOffset(range.offset, range.size);
 }
 
 static void *BREAD_CastToPtr(S8 string, U64 check_size, U64 check_align)
@@ -56,10 +56,10 @@ static void BREAD_InitFile()
   }
   // Models
   {
-    bread->models_count = bread->contents->models.count;
+    bread->models_count = bread->contents->models.list.elem_count;
     Assert(bread->models_count == MDL_COUNT);
 
-    S8 model_array_string = BREAD_FileRange(bread->contents->models, sizeof(BREAD_Model));
+    S8 model_array_string = BREAD_FileRange(bread->contents->models.list);
     bread->models = BREAD_AsType(model_array_string, BREAD_Model, bread->models_count);
   }
 }
@@ -67,30 +67,37 @@ static void BREAD_InitFile()
 //
 // Post init
 //
-static void BREAD_LoadModel(MDL_Kind model_kind)
+static void BREAD_LoadModels()
 {
-  Assert(model_kind < MDL_COUNT);
   AST_BreadFile *bread = &APP.ast.bread;
 
-  BREAD_Model *bread_model = bread->models + model_kind;
-  Asset *asset = APP.ast.geo_assets + model_kind;
+  APP.ast.rigid_vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+                                            bread->contents->models.rigid_vertices.size,
+                                            "Rigid model vertices");
+  APP.ast.skinned_vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+                                              bread->contents->models.skinned_vertices.size,
+                                              "Skinned model vertices");
+  APP.ast.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX,
+                                     bread->contents->models.indices.size,
+                                     "Model indices");
 
-  U64 vert_size = (bread_model->is_skinned ? sizeof(MDL_GpuSkinnedVertex) : sizeof(MDL_GpuRigidVertex));
-  U64 vert_align = (bread_model->is_skinned ? _Alignof(MDL_GpuSkinnedVertex) : _Alignof(MDL_GpuRigidVertex));
+  S8 rigid_string = BREAD_FileRange(bread->contents->models.rigid_vertices);
+  S8 skinned_string = BREAD_FileRange(bread->contents->models.skinned_vertices);
+  S8 indices_string = BREAD_FileRange(bread->contents->models.indices);
 
-  S8 vertices_string = BREAD_FileRange(bread_model->vertices, vert_size);
-  S8 indices_string = BREAD_FileRange(bread_model->indices, sizeof(U16));
-  // Just for checking alignmnets:
-  void *vertices = BREAD_CastToPtr(vertices_string, bread_model->vertices.count*vert_size, vert_align);
-  U16 *indices = BREAD_AsType(indices_string, U16, bread_model->indices.count);
-  (void)vertices;
-  (void)indices;
+  GPU_TransferBuffer(APP.ast.rigid_vertices, rigid_string.str, rigid_string.size);
+  GPU_TransferBuffer(APP.ast.skinned_vertices, skinned_string.str, skinned_string.size);
+  GPU_TransferBuffer(APP.ast.indices, indices_string.str, indices_string.size);
 
-  asset->loaded = true;
-  asset->Geo.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, vertices_string.size, 0);
-  asset->Geo.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, indices_string.size, 0);
-  asset->Geo.indices_count = bread_model->indices.count;
+  ForU32(model_kind, MDL_COUNT)
+  {
+    BREAD_Model *bread_model = bread->models + model_kind;
+    Asset *asset = APP.ast.geo_assets + model_kind;
 
-  GPU_TransferBuffer(asset->Geo.vertices, vertices_string.str, vertices_string.size);
-  GPU_TransferBuffer(asset->Geo.indices, indices_string.str, indices_string.size);
+    asset->loaded = true;
+    asset->Geo.is_skinned = bread_model->is_skinned;
+    asset->Geo.vertices_start_index = bread_model->vertices_start_index;
+    asset->Geo.indices_start_index = bread_model->indices_start_index;
+    asset->Geo.indices_count = bread_model->indices.elem_count;
+  }
 }

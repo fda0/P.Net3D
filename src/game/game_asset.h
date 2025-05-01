@@ -14,8 +14,9 @@ typedef struct
 
     struct
     {
-      SDL_GPUBuffer *vertices;
-      SDL_GPUBuffer *indices;
+      bool is_skinned;
+      U32 vertices_start_index;
+      U32 indices_start_index;
       U32 indices_count;
     } Geo;
 
@@ -29,8 +30,9 @@ typedef struct
   S8 file;
   BREAD_Header *header;
   BREAD_Contents *contents;
-  U32 models_count;
+
   BREAD_Model *models;
+  U32 models_count;
 } AST_BreadFile;
 
 typedef struct
@@ -45,6 +47,9 @@ typedef struct
   AST_BreadFile bread;
 
   // geometry
+  SDL_GPUBuffer *rigid_vertices;
+  SDL_GPUBuffer *skinned_vertices;
+  SDL_GPUBuffer *indices;
   Asset geo_assets[MDL_COUNT];
 
   U64 serialize_last_check_timestamp;
@@ -52,4 +57,4 @@ typedef struct
 } AST_State;
 
 static void BREAD_InitFile();
-static void BREAD_LoadModel(MDL_Kind model_kind);
+static void BREAD_LoadModels();

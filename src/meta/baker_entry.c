@@ -9,7 +9,7 @@
 #include "game_animation.h"
 #include "game_asset_definitions.h"
 
-#include "baker_bread_file_format.h"
+#include "bread_file_format.h"
 #include "baker_number_buffer.h"
 #include "baker_gltf_loader.h"
 #include "baker_entry.h"

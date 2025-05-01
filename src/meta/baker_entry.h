@@ -1,6 +1,9 @@
 typedef struct
 {
-  Printer p;
+  Printer file;
+  Printer rigid_vertices;
+  Printer skinned_vertices;
+  Printer indices;
 
   BREAD_Model models[MDL_COUNT];
   MDL_Kind selected_model;
