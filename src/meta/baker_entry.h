@@ -9,7 +9,7 @@ typedef struct
   BREAD_Model models[MODEL_COUNT];
   MODEL_Type selected_model;
 
-  BREAD_Skeleton skeletons[1024];
+  Printer skeletons;
   U32 skeletons_count;
 } BREAD_Builder;
 

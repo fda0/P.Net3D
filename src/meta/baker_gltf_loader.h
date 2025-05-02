@@ -3,10 +3,12 @@ typedef struct
   float scale;
   Quat rot;
   V3 move;
-} BK_GLTF_Config;
+} BK_GLTF_ModelConfig;
 
 typedef struct
 {
+  BK_GLTF_ModelConfig config;
+
   BK_Buffer indices;
   BK_Buffer positions;
   BK_Buffer normals;
@@ -20,4 +22,7 @@ typedef struct
   bool is_skinned;
   U32 verts_count;
   U32 joints_count;
+
+  bool has_skeleton;
+  U32 skeleton_index;
 } BK_GLTF_ModelData;

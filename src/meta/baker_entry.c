@@ -5,11 +5,12 @@
 #include "base_printer.h"
 #include "base_parse.h"
 #include "base_hash.h"
+
+#include "bread_file_format.h"
 #include "game_render.h"
 #include "game_animation.h"
 #include "game_asset_definitions.h"
 
-#include "bread_file_format.h"
 #include "baker_number_buffer.h"
 #include "baker_gltf_loader.h"
 #include "baker_entry.h"
@@ -51,9 +52,10 @@ int main()
     (void)rot_y;
 
     float scale = 40;
-    BK_GLTF_Config config = {.scale = scale, .rot = rot_xz};
+    BK_GLTF_ModelConfig config = {.scale = scale, .rot = rot_xz};
 
-    BK_GLTF_Load(MODEL_Flag, "flag", "../res/models/Flag.glb", &pr_out, &pr_anim, &bb, (BK_GLTF_Config){1.f, rot_x, (V3){0,0,-4.5f}});
+    BK_GLTF_Load(MODEL_Flag, "flag", "../res/models/Flag.glb", &pr_out, &pr_anim, &bb,
+                 (BK_GLTF_ModelConfig){1.f, rot_x, (V3){0,0,-4.5f}});
     BK_GLTF_Load(MODEL_Worker, "", "../res/models/Worker.gltf", &pr_out, &pr_anim, &bb, config);
     BK_GLTF_Load(MODEL_Formal, "", "../res/models/Formal.gltf", &pr_out, &pr_anim, &bb, config);
     BK_GLTF_Load(MODEL_Casual, "", "../res/models/Casual.gltf", &pr_out, &pr_anim, &bb, config);

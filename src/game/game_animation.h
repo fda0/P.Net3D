@@ -1,10 +1,3 @@
-typedef enum
-{
-  AN_Translation,
-  AN_Rotation,
-  AN_Scale,
-} AN_TransformType;
-
 typedef struct
 {
   U32 joint_index : 30;

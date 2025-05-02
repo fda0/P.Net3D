@@ -11,11 +11,32 @@ typedef struct
   U32 elem_count;
 } BREAD_Range;
 
+typedef enum
+{
+  AN_Translation,
+  AN_Rotation,
+  AN_Scale,
+} AN_TransformType;
+
+typedef struct
+{
+  U32 joint_index : 30;
+  AN_TransformType type : 2;
+  BREAD_Range inputs;  // [float] * count
+  BREAD_Range outputs; // [float] * count
+} BREAD_AnimChannel;
+
+typedef struct
+{
+  BREAD_Range name_string; // [U8]
+  BREAD_Range channels; // [BREAD_AnimChannel]
+  float t_min, t_max;
+} BREAD_Animation;
+
 typedef struct
 {
   BREAD_Range root_transform; // [Mat4]
 
-  U32 joints_count;
   BREAD_Range inv_bind_mats;      // [Mat4] * joints_count
   BREAD_Range child_index_buf;    // [U32] * joints_count
   BREAD_Range child_index_ranges; // [RngU32] * joints_count
@@ -23,17 +44,6 @@ typedef struct
   BREAD_Range rotations;          // [Quat] * joints_count
   BREAD_Range scales;             // [V3] * joints_count
   BREAD_Range name_ranges;        // [RngU32] * joints_count - offset of min & max char* - can be transformed to S8
-
-  // struct
-  // {
-  //   Mat4 inverse_bind_matrices[joints_count];
-  //   U32 child_index_buf[joints_count];
-  //   RngU32 child_index_ranges[joints_count];
-  //   V3 translations[joints_count];
-  //   Quat rotations[joints_count];
-  //   V3 scales[joints_count];
-  //   BREAD_Range names[joints_count]; // can be converted directly into S8 type
-  // } joints_data;
 
   BREAD_Range animations; // [@todo]
 } BREAD_Skeleton;

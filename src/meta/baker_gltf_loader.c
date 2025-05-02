@@ -26,27 +26,29 @@ static U64 BK_GLTF_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
 }
 
 
-static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, cgltf_data *data, BK_GLTF_Config config)
+static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, BK_GLTF_ModelData *model, cgltf_data *data)
 {
-  U32 skeleton_index = bb->skeletons_count;
-  M_Check(skeleton_index < ArrayCount(bb->skeletons));
+  if (model->has_skeleton)
+    return;
+
+  model->has_skeleton = true;
+  model->skeleton_index = bb->skeletons_count;
   bb->skeletons_count += 1;
-  BREAD_Skeleton *skeleton = bb->skeletons + skeleton_index;
+
+  BREAD_Skeleton *br_skel = BREAD_Reserve(&bb->skeletons, BREAD_Skeleton, 1);
 
   // Root transform
   {
-    BREAD_RangeStart(&bb->file, &skeleton->root_transform);
-    Mat4 root_transform = Mat4_Scale((V3){config.scale, config.scale, config.scale});
-    root_transform = Mat4_Mul(Mat4_Rotation_Quat(config.rot), root_transform);
+    BREAD_RangeStart(&bb->file, &br_skel->root_transform);
+    Mat4 root_transform = Mat4_Scale((V3){model->config.scale, model->config.scale, model->config.scale});
+    root_transform = Mat4_Mul(Mat4_Rotation_Quat(model->config.rot), root_transform);
     *BREAD_Reserve(&bb->file, Mat4, 1) = root_transform;
-    BREAD_RangeEnd(&bb->file, &skeleton->root_transform, 1);
+    BREAD_RangeEnd(&bb->file, &br_skel->root_transform, 1);
   }
 
   M_Check(data->skins_count == 1);
   cgltf_skin *skin = data->skins;
-
   const U32 joints_count = (U32)skin->joints_count;
-  skeleton->joints_count = joints_count;
 
   // Joints data
   {
@@ -61,15 +63,15 @@ static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, cgltf_data *data, B
       U64 comp_count = cgltf_num_components(inv_bind->type);
       U64 number_count = comp_count * inv_bind->count;
 
-      float *numbers = BREAD_ReserveToRange(&bb->file, &skeleton->inv_bind_mats, float, number_count);
+      float *numbers = BREAD_ReserveToRange(&bb->file, &br_skel->inv_bind_mats, float, number_count);
       U64 unpacked = cgltf_accessor_unpack_floats(inv_bind, numbers, number_count);
       M_Check(unpacked == number_count);
     }
 
     // child hierarchy indices
     {
-      U32 *indices = BREAD_ReserveToRange(&bb->file, &skeleton->child_index_buf, U32, joints_count);
-      RngU32 *ranges = BREAD_ReserveToRange(&bb->file, &skeleton->child_index_ranges, RngU32, joints_count);
+      U32 *indices = BREAD_ReserveToRange(&bb->file, &br_skel->child_index_buf, U32, joints_count);
+      RngU32 *ranges = BREAD_ReserveToRange(&bb->file, &br_skel->child_index_ranges, RngU32, joints_count);
 
       U32 indices_count = 0;
       ForU64(joint_index, joints_count)
@@ -96,37 +98,37 @@ static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, cgltf_data *data, B
     // rest pose transformations
     {
       // Translations
-      BREAD_RangeStart(&bb->file, &skeleton->translations);
+      BREAD_RangeStart(&bb->file, &br_skel->translations);
       ForU64(joint_index, joints_count)
       {
         cgltf_node *joint = skin->joints[joint_index];
         ForArray(i, joint->translation)
           *BREAD_Reserve(&bb->file, float, 1) = joint->translation[i];
       }
-      BREAD_RangeEnd(&bb->file, &skeleton->translations, joints_count);
-      M_Check(skeleton->translations.size == skeleton->translations.elem_count*sizeof(V3));
+      BREAD_RangeEnd(&bb->file, &br_skel->translations, joints_count);
+      M_Check(br_skel->translations.size == br_skel->translations.elem_count*sizeof(V3));
 
       // Rotations
-      BREAD_RangeStart(&bb->file, &skeleton->rotations);
+      BREAD_RangeStart(&bb->file, &br_skel->rotations);
       ForU64(joint_index, joints_count)
       {
         cgltf_node *joint = skin->joints[joint_index];
         ForArray(i, joint->rotation)
           *BREAD_Reserve(&bb->file, float, 1) = joint->rotation[i];
       }
-      BREAD_RangeEnd(&bb->file, &skeleton->rotations, joints_count);
-      M_Check(skeleton->rotations.size == skeleton->rotations.elem_count*sizeof(Quat));
+      BREAD_RangeEnd(&bb->file, &br_skel->rotations, joints_count);
+      M_Check(br_skel->rotations.size == br_skel->rotations.elem_count*sizeof(Quat));
 
       // Scales
-      BREAD_RangeStart(&bb->file, &skeleton->scales);
+      BREAD_RangeStart(&bb->file, &br_skel->scales);
       ForU64(joint_index, joints_count)
       {
         cgltf_node *joint = skin->joints[joint_index];
         ForArray(i, joint->scale)
           *BREAD_Reserve(&bb->file, float, 1) = joint->scale[i];
       }
-      BREAD_RangeEnd(&bb->file, &skeleton->scales, joints_count);
-      M_Check(skeleton->scales.size == skeleton->scales.elem_count*sizeof(V3));
+      BREAD_RangeEnd(&bb->file, &br_skel->scales, joints_count);
+      M_Check(br_skel->scales.size == br_skel->scales.elem_count*sizeof(V3));
     }
 
     // First allocate all strings in one continuous chunk.
@@ -145,142 +147,104 @@ static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, cgltf_data *data, B
 
     // Memcpy name strign ranges into the file
     {
-      RngU32 *dst_name_ranges = BREAD_ReserveToRange(&bb->file, &skeleton->name_ranges, RngU32, joints_count);
-      Memcpy(dst_name_ranges, name_ranges, skeleton->name_ranges.size);
+      RngU32 *dst_name_ranges = BREAD_ReserveToRange(&bb->file, &br_skel->name_ranges, RngU32, joints_count);
+      Memcpy(dst_name_ranges, name_ranges, br_skel->name_ranges.size);
     }
   }
 
-#if 0
+  // Animations
   if (data->animations_count)
   {
-    Pr_S8(p, S8Lit(".animations =(AN_Animation []) {\n"));
+    U32 anims_count = (U32)data->animations_count;
+    BREAD_Animation *br_animations = BREAD_ReserveToRange(&bb->file, &br_skel->animations, BREAD_Animation, anims_count);
 
-    ForU64(animation_index, data->animations_count)
+    ForU32(animation_index, anims_count)
     {
-      cgltf_animation *animation = data->animations + animation_index;
-
-      // Animation
+      BREAD_Animation *br_anim = br_animations + animation_index;
+      cgltf_animation *gltf_anim = data->animations + animation_index;
       float t_min = FLT_MAX;
       float t_max = -FLT_MAX;
 
-      Pr_S8(p, S8Lit("// animation: "));
-      Pr_U64(p, animation_index);
-      Pr_S8(p, S8Lit("\n"));
-      Pr_S8(p, S8Lit("{\n"));
+      // Name string
+      S8 anim_name_string = S8_FromCstr(gltf_anim->name);
+      BREAD_RangeStart(&bb->file, &br_anim->name_string);
+      Pr_S8(&bb->file, anim_name_string);
+      BREAD_RangeEnd(&bb->file, &br_anim->name_string, anim_name_string.size);
 
-      Pr_S8(p, S8Lit(".name = \""));
-      Pr_Cstr(p, animation->name);
-      Pr_S8(p, S8Lit("\",\n"));
+      // Ensure memory alignment after copying strings
+      BREAD_Aling(&bb->file, _Alignof(BREAD_AnimChannel));
 
-      Pr_S8(p, S8Lit(".channels = (AN_Channel[]) {\n"));
-      ForU64(channel_index, animation->channels_count)
+      // Channels
+      U32 channels_count = (U32)gltf_anim->channels_count;
+      BREAD_AnimChannel *br_channels = BREAD_ReserveToRange(&bb->file, &br_anim->channels,
+                                                            BREAD_AnimChannel, channels_count);
+
+      ForU32(channel_index, channels_count)
       {
-        cgltf_animation_channel *channel = animation->channels + channel_index;
-        cgltf_animation_sampler *sampler = channel->sampler;
-        M_Check(sampler->interpolation == cgltf_interpolation_type_linear);
-        M_Check(sampler->input->count == sampler->output->count);
-        U64 sample_count = sampler->input->count;
+        BREAD_AnimChannel *br_chan = br_channels + channel_index;
+        cgltf_animation_channel *gltf_chan = gltf_anim->channels + channel_index;
+        cgltf_animation_sampler *gltf_sampler = gltf_chan->sampler;
+        M_Check(gltf_sampler->interpolation == cgltf_interpolation_type_linear);
+        M_Check(gltf_sampler->input->count == gltf_sampler->output->count);
 
-        Pr_S8(p, S8Lit("// channel: "));
-        Pr_U64(p, channel_index);
-        Pr_S8(p, S8Lit(" (animation "));
-        Pr_U64(p, animation_index);
-        Pr_S8(p, S8Lit(")\n"));
-        Pr_S8(p, S8Lit("{\n"));
+        U32 sample_count = (U32)gltf_sampler->input->count;
+        br_chan->joint_index = BK_GLTF_FindJointIndex(skin, gltf_chan->target_node);
 
-        U64 target_joint_index = BK_GLTF_FindJointIndex(skin, channel->target_node);
-        Pr_S8(p, S8Lit(".joint_index = "));
-        Pr_U64(p, target_joint_index);
-        Pr_S8(p, S8Lit(",\n"));
+        switch (gltf_chan->target_path)
+        {
+          default:
+          M_Check(false && "Unsupported channel target"); break;
 
-        Pr_S8(p, S8Lit(".type = AN_"));
-        if (channel->target_path == cgltf_animation_path_type_translation) Pr_S8(p, S8Lit("Translation"));
-        if (channel->target_path == cgltf_animation_path_type_rotation)    Pr_S8(p, S8Lit("Rotation"));
-        if (channel->target_path == cgltf_animation_path_type_scale)       Pr_S8(p, S8Lit("Scale"));
-        Pr_S8(p, S8Lit(",\n"));
+          case cgltf_animation_path_type_translation:
+          br_chan->type = AN_Translation; break;
 
-        Pr_S8(p, S8Lit(".count = "));
-        Pr_U64(p, sampler->input->count);
-        Pr_S8(p, S8Lit(",\n"));
+          case cgltf_animation_path_type_rotation:
+          br_chan->type = AN_Rotation; break;
+
+          case cgltf_animation_path_type_scale:
+          br_chan->type = AN_Scale; break;
+        }
 
         // inputs
+        U32 in_count = sample_count;
+        float *in_nums = BREAD_ReserveToRange(&bb->file, &br_chan->inputs, float, in_count);
+        U64 in_unpacked = cgltf_accessor_unpack_floats(gltf_sampler->input, in_nums, in_count);
+        M_Check(in_unpacked == in_count);
+
+        ForU32(i, in_count)
         {
-          Pr_S8(p, S8Lit(".inputs = (float[]) {\n"));
-
-          U64 number_count = sample_count;
-
-          float *numbers = Alloc(BAKER.tmp, float, number_count);
-          U64 unpacked = cgltf_accessor_unpack_floats(sampler->input, numbers, number_count);
-          M_Check(unpacked == number_count);
-          Pr_FloatArray(p, numbers, unpacked);
-
-          // update t_min, t_max
-          ForU64(i, unpacked)
-          {
-            float n = numbers[i];
-            if (n > t_max) t_max = n;
-            if (n < t_min) t_min = n;
-          }
-
-          Pr_S8(p, S8Lit("\n},\n"));
+          float n = in_nums[i];
+          if (n > t_max) t_max = n;
+          if (n < t_min) t_min = n;
         }
 
         // outputs
-        {
-          Pr_S8(p, S8Lit(".outputs = (float[]) {\n"));
-
-          U64 comp_count = cgltf_num_components(sampler->output->type);
-          U64 number_count = sample_count * comp_count;
-
-          float *numbers = Alloc(BAKER.tmp, float, number_count);
-          U64 unpacked = cgltf_accessor_unpack_floats(sampler->output, numbers, number_count);
-          M_Check(unpacked == number_count);
-          Pr_FloatArray(p, numbers, unpacked);
-
-          Pr_S8(p, S8Lit("\n},\n"));
-        }
-
-        Pr_S8(p, S8Lit("},\n"));
+        U32 out_comp_count = (U32)cgltf_num_components(gltf_sampler->output->type);
+        U32 out_count = out_comp_count * sample_count;
+        float *out_nums = BREAD_ReserveToRange(&bb->file, &br_chan->outputs, float, out_count);
+        U64 out_unpacked = cgltf_accessor_unpack_floats(gltf_sampler->output, out_nums, out_count);
+        M_Check(out_unpacked == out_count);
       }
-      Pr_S8(p, S8Lit("},\n"));
 
-      Pr_S8(p, S8Lit(".channels_count = "));
-      Pr_U64(p, animation->channels_count);
-      Pr_S8(p, S8Lit(",\n"));
-
-      Pr_S8(p, S8Lit(".t_min = "));
-      Pr_Float(p, t_min);
-      Pr_S8(p, S8Lit("f,\n"));
-
-      Pr_S8(p, S8Lit(".t_max = "));
-      Pr_Float(p, t_max);
-      Pr_S8(p, S8Lit("f,\n"));
-
-      Pr_S8(p, S8Lit("},\n"));
+      br_anim->t_min = t_min;
+      br_anim->t_max = t_max;
     }
-
-    Pr_S8(p, S8Lit("},\n"));
   }
-
-  Pr_S8(p, S8Lit(".animations_count = "));
-  Pr_U64(p, data->animations_count);
-  Pr_S8(p, S8Lit(",\n"));
-#endif
 }
 
 
-static void BK_GLTF_ExportSkeletonToPrinter(Printer *p, cgltf_data *data, S8 model_name, BK_GLTF_Config config)
+static void BK_GLTF_ExportSkeletonToPrinter(Printer *p, BK_GLTF_ModelData *model, cgltf_data *data)
 {
   M_Check(data->skins_count == 1);
   cgltf_skin *skin = data->skins;
 
   Pr_S8(p, S8Lit("static AN_Skeleton "));
-  Pr_S8(p, model_name);
+  Pr_S8(p, model->name);
   Pr_S8(p, S8Lit("_Skeleton = {\n"));
 
   {
-    Mat4 root_transform = Mat4_Scale((V3){config.scale, config.scale, config.scale});
-    root_transform = Mat4_Mul(Mat4_Rotation_Quat(config.rot), root_transform);
+    Mat4 root_transform = Mat4_Scale((V3){model->config.scale, model->config.scale, model->config.scale});
+    root_transform = Mat4_Mul(Mat4_Rotation_Quat(model->config.rot), root_transform);
     Pr_S8(p, S8Lit(".root_transform = {\n"));
     Pr_FloatArray(p, root_transform.flat, ArrayCount(root_transform.flat));
     Pr_S8(p, S8Lit("\n},\n"));
@@ -809,7 +773,7 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
 }
 
 static void BK_GLTF_Load(MODEL_Type model_type, const char *name, const char *path,
-                         Printer *out, Printer *out_a, BREAD_Builder *bb, BK_GLTF_Config config)
+                         Printer *out, Printer *out_a, BREAD_Builder *bb, BK_GLTF_ModelConfig config)
 {
   // normalize config
   if (!config.scale) config.scale = 1.f;
@@ -857,6 +821,7 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *name, const char *pa
   U64 max_verts = 1024*128;
 
   BK_GLTF_ModelData model = {};
+  model.config = config;
   model.type = model_type;
   model.indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
   model.positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
@@ -1012,8 +977,8 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *name, const char *pa
   // Sekeleton export
   if (model.is_skinned)
   {
-    BK_GLTF_ExportSkeletonToPrinter(out_a, data, model.name, config);
-    BK_GLTF_ExportSkeletonToBread(bb, data, config);
+    BK_GLTF_ExportSkeletonToPrinter(out_a, &model, data);
+    BK_GLTF_ExportSkeletonToBread(bb, &model, data);
   }
 
   if (!model.is_skinned) // apply transformations directly to rigid mesh
