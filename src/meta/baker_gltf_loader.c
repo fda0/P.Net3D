@@ -25,7 +25,251 @@ static U64 BK_GLTF_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
   return result;
 }
 
-static void BK_GLTF_ExportSkeleton(Printer *p, cgltf_data *data, S8 model_name, BK_GLTF_Config config)
+
+static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, cgltf_data *data, BK_GLTF_Config config)
+{
+  U32 skeleton_index = bb->skeletons_count;
+  M_Check(skeleton_index < ArrayCount(bb->skeletons));
+  bb->skeletons_count += 1;
+  BREAD_Skeleton *skeleton = bb->skeletons + skeleton_index;
+
+  // Root transform
+  {
+    BREAD_RangeStart(&bb->file, &skeleton->root_transform);
+    Mat4 root_transform = Mat4_Scale((V3){config.scale, config.scale, config.scale});
+    root_transform = Mat4_Mul(Mat4_Rotation_Quat(config.rot), root_transform);
+    *BREAD_Reserve(&bb->file, Mat4, 1) = root_transform;
+    BREAD_RangeEnd(&bb->file, &skeleton->root_transform, 1);
+  }
+
+  M_Check(data->skins_count == 1);
+  cgltf_skin *skin = data->skins;
+
+  const U32 joints_count = (U32)skin->joints_count;
+  skeleton->joints_count = joints_count;
+
+  // Joints data
+  {
+    // unpack inverse bind matrices
+    {
+      cgltf_accessor *inv_bind = skin->inverse_bind_matrices;
+      M_Check(inv_bind);
+      M_Check(inv_bind->count == joints_count);
+      M_Check(inv_bind->component_type == cgltf_component_type_r_32f);
+      M_Check(inv_bind->type == cgltf_type_mat4);
+
+      U64 comp_count = cgltf_num_components(inv_bind->type);
+      U64 number_count = comp_count * inv_bind->count;
+
+      float *numbers = BREAD_ReserveToRange(&bb->file, &skeleton->inv_bind_mats, float, number_count);
+      U64 unpacked = cgltf_accessor_unpack_floats(inv_bind, numbers, number_count);
+      M_Check(unpacked == number_count);
+    }
+
+    // child hierarchy indices
+    {
+      U32 *indices = BREAD_ReserveToRange(&bb->file, &skeleton->child_index_buf, U32, joints_count);
+      RngU32 *ranges = BREAD_ReserveToRange(&bb->file, &skeleton->child_index_ranges, RngU32, joints_count);
+
+      U32 indices_count = 0;
+      ForU64(joint_index, joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+
+        ForU64(child_index, joint->children_count)
+        {
+          cgltf_node *child = joint->children[child_index];
+          U64 child_joint_index = BK_GLTF_FindJointIndex(skin, child);
+
+          if (child_index == 0)
+            ranges[joint_index].min = indices_count;
+
+          M_Check(indices_count < joints_count);
+          indices[indices_count] = child_joint_index;
+          indices_count += 1;
+
+          ranges[joint_index].max = indices_count;
+        }
+      }
+    }
+
+    // rest pose transformations
+    {
+      // Translations
+      BREAD_RangeStart(&bb->file, &skeleton->translations);
+      ForU64(joint_index, joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+        ForArray(i, joint->translation)
+          *BREAD_Reserve(&bb->file, float, 1) = joint->translation[i];
+      }
+      BREAD_RangeEnd(&bb->file, &skeleton->translations, joints_count);
+      M_Check(skeleton->translations.size == skeleton->translations.elem_count*sizeof(V3));
+
+      // Rotations
+      BREAD_RangeStart(&bb->file, &skeleton->rotations);
+      ForU64(joint_index, joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+        ForArray(i, joint->rotation)
+          *BREAD_Reserve(&bb->file, float, 1) = joint->rotation[i];
+      }
+      BREAD_RangeEnd(&bb->file, &skeleton->rotations, joints_count);
+      M_Check(skeleton->rotations.size == skeleton->rotations.elem_count*sizeof(Quat));
+
+      // Scales
+      BREAD_RangeStart(&bb->file, &skeleton->scales);
+      ForU64(joint_index, joints_count)
+      {
+        cgltf_node *joint = skin->joints[joint_index];
+        ForArray(i, joint->scale)
+          *BREAD_Reserve(&bb->file, float, 1) = joint->scale[i];
+      }
+      BREAD_RangeEnd(&bb->file, &skeleton->scales, joints_count);
+      M_Check(skeleton->scales.size == skeleton->scales.elem_count*sizeof(V3));
+    }
+
+    // First allocate all strings in one continuous chunk.
+    // Track min&max paris of each string.
+    RngU32 *name_ranges = AllocZeroed(BAKER.tmp, RngU32, joints_count);
+    ForU64(joint_index, joints_count)
+    {
+      cgltf_node *joint = skin->joints[joint_index];
+      name_ranges[joint_index].min = bb->file.used;
+      Pr_Cstr(&bb->file, joint->name);
+      name_ranges[joint_index].max = bb->file.used;
+    }
+
+    // Ensure memory alignment after copying strings
+    BREAD_Aling(&bb->file, _Alignof(RngU32));
+
+    // Memcpy name strign ranges into the file
+    {
+      RngU32 *dst_name_ranges = BREAD_ReserveToRange(&bb->file, &skeleton->name_ranges, RngU32, joints_count);
+      Memcpy(dst_name_ranges, name_ranges, skeleton->name_ranges.size);
+    }
+  }
+
+#if 0
+  if (data->animations_count)
+  {
+    Pr_S8(p, S8Lit(".animations =(AN_Animation []) {\n"));
+
+    ForU64(animation_index, data->animations_count)
+    {
+      cgltf_animation *animation = data->animations + animation_index;
+
+      // Animation
+      float t_min = FLT_MAX;
+      float t_max = -FLT_MAX;
+
+      Pr_S8(p, S8Lit("// animation: "));
+      Pr_U64(p, animation_index);
+      Pr_S8(p, S8Lit("\n"));
+      Pr_S8(p, S8Lit("{\n"));
+
+      Pr_S8(p, S8Lit(".name = \""));
+      Pr_Cstr(p, animation->name);
+      Pr_S8(p, S8Lit("\",\n"));
+
+      Pr_S8(p, S8Lit(".channels = (AN_Channel[]) {\n"));
+      ForU64(channel_index, animation->channels_count)
+      {
+        cgltf_animation_channel *channel = animation->channels + channel_index;
+        cgltf_animation_sampler *sampler = channel->sampler;
+        M_Check(sampler->interpolation == cgltf_interpolation_type_linear);
+        M_Check(sampler->input->count == sampler->output->count);
+        U64 sample_count = sampler->input->count;
+
+        Pr_S8(p, S8Lit("// channel: "));
+        Pr_U64(p, channel_index);
+        Pr_S8(p, S8Lit(" (animation "));
+        Pr_U64(p, animation_index);
+        Pr_S8(p, S8Lit(")\n"));
+        Pr_S8(p, S8Lit("{\n"));
+
+        U64 target_joint_index = BK_GLTF_FindJointIndex(skin, channel->target_node);
+        Pr_S8(p, S8Lit(".joint_index = "));
+        Pr_U64(p, target_joint_index);
+        Pr_S8(p, S8Lit(",\n"));
+
+        Pr_S8(p, S8Lit(".type = AN_"));
+        if (channel->target_path == cgltf_animation_path_type_translation) Pr_S8(p, S8Lit("Translation"));
+        if (channel->target_path == cgltf_animation_path_type_rotation)    Pr_S8(p, S8Lit("Rotation"));
+        if (channel->target_path == cgltf_animation_path_type_scale)       Pr_S8(p, S8Lit("Scale"));
+        Pr_S8(p, S8Lit(",\n"));
+
+        Pr_S8(p, S8Lit(".count = "));
+        Pr_U64(p, sampler->input->count);
+        Pr_S8(p, S8Lit(",\n"));
+
+        // inputs
+        {
+          Pr_S8(p, S8Lit(".inputs = (float[]) {\n"));
+
+          U64 number_count = sample_count;
+
+          float *numbers = Alloc(BAKER.tmp, float, number_count);
+          U64 unpacked = cgltf_accessor_unpack_floats(sampler->input, numbers, number_count);
+          M_Check(unpacked == number_count);
+          Pr_FloatArray(p, numbers, unpacked);
+
+          // update t_min, t_max
+          ForU64(i, unpacked)
+          {
+            float n = numbers[i];
+            if (n > t_max) t_max = n;
+            if (n < t_min) t_min = n;
+          }
+
+          Pr_S8(p, S8Lit("\n},\n"));
+        }
+
+        // outputs
+        {
+          Pr_S8(p, S8Lit(".outputs = (float[]) {\n"));
+
+          U64 comp_count = cgltf_num_components(sampler->output->type);
+          U64 number_count = sample_count * comp_count;
+
+          float *numbers = Alloc(BAKER.tmp, float, number_count);
+          U64 unpacked = cgltf_accessor_unpack_floats(sampler->output, numbers, number_count);
+          M_Check(unpacked == number_count);
+          Pr_FloatArray(p, numbers, unpacked);
+
+          Pr_S8(p, S8Lit("\n},\n"));
+        }
+
+        Pr_S8(p, S8Lit("},\n"));
+      }
+      Pr_S8(p, S8Lit("},\n"));
+
+      Pr_S8(p, S8Lit(".channels_count = "));
+      Pr_U64(p, animation->channels_count);
+      Pr_S8(p, S8Lit(",\n"));
+
+      Pr_S8(p, S8Lit(".t_min = "));
+      Pr_Float(p, t_min);
+      Pr_S8(p, S8Lit("f,\n"));
+
+      Pr_S8(p, S8Lit(".t_max = "));
+      Pr_Float(p, t_max);
+      Pr_S8(p, S8Lit("f,\n"));
+
+      Pr_S8(p, S8Lit("},\n"));
+    }
+
+    Pr_S8(p, S8Lit("},\n"));
+  }
+
+  Pr_S8(p, S8Lit(".animations_count = "));
+  Pr_U64(p, data->animations_count);
+  Pr_S8(p, S8Lit(",\n"));
+#endif
+}
+
+
+static void BK_GLTF_ExportSkeletonToPrinter(Printer *p, cgltf_data *data, S8 model_name, BK_GLTF_Config config)
 {
   M_Check(data->skins_count == 1);
   cgltf_skin *skin = data->skins;
@@ -767,7 +1011,10 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *name, const char *pa
 
   // Sekeleton export
   if (model.is_skinned)
-    BK_GLTF_ExportSkeleton(out_a, data, model.name, config);
+  {
+    BK_GLTF_ExportSkeletonToPrinter(out_a, data, model.name, config);
+    BK_GLTF_ExportSkeletonToBread(bb, data, config);
+  }
 
   if (!model.is_skinned) // apply transformations directly to rigid mesh
   {

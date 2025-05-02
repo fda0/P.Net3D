@@ -1,3 +1,6 @@
+//
+// Allocating bytes in printer
+//
 static void *BREAD_ReserveBytes(Printer *p, U64 size, U64 alignment)
 {
   M_Check(p->used % alignment == 0);
@@ -8,6 +11,43 @@ static void *BREAD_ReserveBytes(Printer *p, U64 size, U64 alignment)
 }
 #define BREAD_Reserve(P, Type, Count) (Type *)BREAD_ReserveBytes(P, sizeof(Type)*(Count), _Alignof(Type))
 
+static void BREAD_Aling(Printer *p, U64 alignment)
+{
+  U64 missaligned_bytes = p->used % alignment;
+  if (missaligned_bytes)
+  {
+    U64 to_align = alignment - missaligned_bytes;
+    void *data = Pr_ReserveBytes(p, to_align);
+    M_Check(data);
+    Memclear(data, to_align);
+  }
+}
+
+//
+// Allocating bytes in printer & tracking the range
+//
+static void BREAD_RangeStart(Printer *printer_owner, BREAD_Range *range)
+{
+  range->offset = printer_owner->used;
+}
+static void BREAD_RangeEnd(Printer *printer_owner, BREAD_Range *range, U32 elem_count)
+{
+  M_Check(printer_owner->used >= range->offset);
+  range->size = printer_owner->used - range->offset;
+  range->elem_count = elem_count;
+}
+static void *BREAD_ReserveBytesToRange(Printer *p, BREAD_Range *range, U64 size, U64 alignment, U32 elem_count)
+{
+  BREAD_RangeStart(p, range);
+  void *result = BREAD_ReserveBytes(p, size, alignment);
+  BREAD_RangeEnd(p, range, elem_count);
+  return result;
+}
+#define BREAD_ReserveToRange(P, Range, Type, Count) (Type *)BREAD_ReserveBytesToRange(P, Range, sizeof(Type)*(Count), _Alignof(Type), (Count))
+
+//
+// Builder create and finalize
+//
 static BREAD_Builder BREAD_CreateBuilder(Arena *a, U32 max_file_size)
 {
   BREAD_Builder bb = {};
