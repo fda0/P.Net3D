@@ -28,8 +28,9 @@ typedef struct
   // all pointers point to arrays with
   // joints_count number of elements
   U32 joints_count;
-  const char **names;
-  Mat4 *inverse_bind_matrices;
+  const char **names; // @todo delete
+  S8 *names_s8;
+  Mat4 *inv_bind_mats;
   //
   U32 *child_index_buf;
   RngU32 *child_index_ranges;

@@ -1,132 +1,6 @@
-static void AST_Init()
-{
-  // Init textures, create fallback texture
-  {
-    I32 dim = 512;
-    I32 tex_size = dim*dim*sizeof(U32);
-    U32 and_mask = (1 << 6);
-
-    SDL_GPUTextureCreateInfo tex_info =
-    {
-      .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-      .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-      .width = dim,
-      .height = dim,
-      .layer_count_or_depth = 1,
-      .num_levels = CalculateMipMapCount(dim, dim),
-      .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
-    };
-    SDL_GPUTexture *texture = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
-    SDL_SetGPUTextureName(APP.gpu.device, texture, "Fallback texture");
-    APP.ast.tex_fallback = texture;
-
-    // Fill texture
-    {
-      SDL_GPUTransferBufferCreateInfo trans_desc =
-      {
-        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-        .size = tex_size
-      };
-      SDL_GPUTransferBuffer *trans_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
-      Assert(trans_buf);
-
-      // Fill GPU memory
-      {
-        U32 *map = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_buf, false);
-        U32 *pixel = map;
-        ForI32(y, dim)
-        {
-          ForI32(x, dim)
-          {
-            pixel[0] = (x & y & and_mask) ? 0xff000000 : 0xffFF00FF;
-            pixel += 1;
-          }
-        }
-        SDL_UnmapGPUTransferBuffer(APP.gpu.device, trans_buf);
-      }
-
-      // GPU memory -> GPU buffers
-      {
-        SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-        SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
-
-        SDL_GPUTextureTransferInfo trans_info = { .transfer_buffer = trans_buf };
-        SDL_GPUTextureRegion dst_region =
-        {
-          .texture = texture,
-          .w = dim,
-          .h = dim,
-          .d = 1,
-        };
-        SDL_UploadToGPUTexture(copy_pass, &trans_info, &dst_region, false);
-
-        SDL_EndGPUCopyPass(copy_pass);
-        SDL_SubmitGPUCommandBuffer(cmd);
-      }
-      SDL_ReleaseGPUTransferBuffer(APP.gpu.device, trans_buf);
-    }
-
-    // Generate texture mipmap
-    {
-      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-      SDL_GenerateMipmapsForGPUTexture(cmd, texture);
-      SDL_SubmitGPUCommandBuffer(cmd);
-    }
-
-    ForArray(i, APP.ast.tex_assets)
-    {
-      Asset *asset = APP.ast.tex_assets + i;
-      asset->Tex.handle = APP.ast.tex_fallback;
-      asset->Tex.shininess = 16.f;
-    }
-  }
-
-  // Load BREAD file - in the future as these files get huge we should probably stream them. Memory map it?
-  {
-    APP.ast.bread.file = OS_LoadFile(APP.ast.bread.arena, "data.bread");
-    Assert(APP.ast.bread.file.size); // @todo Handle lack of file gracefully in the future
-    BREAD_InitFile();
-  }
-
-  // Geometry
-  {
-    // @todo Stream these resources in the future.
-    BREAD_LoadModels();
-  }
-}
-
-static void AST_Deinit()
-{
-  // textures
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_fallback);
-  ForArray(i, APP.ast.tex_assets)
-    SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_assets[i].Tex.handle);
-
-  // geometry
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.rigid_vertices);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.skinned_vertices);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.indices);
-}
-
-static void AST_PostFrame()
-{
-  // Wake up texture asset loading thread
-  if (APP.ast.tex_load_needed)
-  {
-    SDL_SignalSemaphore(APP.ast.tex_sem);
-    APP.ast.tex_load_needed = false;
-  }
-
-  // Increment loaded_t
-  ForArray(i, APP.ast.tex_assets)
-  {
-    Asset *asset = APP.ast.tex_assets + i;
-    float speed = 10.f;
-    asset->loaded_t += (float)asset->loaded * APP.dt * speed;
-    asset->loaded_t = Min(1.f, asset->loaded_t);
-  }
-}
-
+//
+// Texture
+//
 static Asset *AST_GetTexture(TEX_Kind tex_kind)
 {
   Assert(tex_kind < TEX_COUNT);
@@ -145,9 +19,6 @@ static void AST_PrefetchTexture(TEX_Kind tex_kind)
   AST_GetTexture(tex_kind);
 }
 
-//
-// Thread
-//
 static void AST_LoadTextureFromFile(TEX_Kind tex_kind, U64 min_frame)
 {
   Assert(tex_kind < TEX_COUNT);
@@ -354,6 +225,57 @@ static void AST_InitTextureThread()
 }
 
 //
+// Skeleton
+//
+static Asset *AST_GetSkeleton(U32 skel_index)
+{
+  Assert(skel_index < APP.ast.skeletons_count);
+  Asset *asset = APP.ast.skeletons + skel_index;
+  asset->last_touched_frame = APP.frame_id;
+  return asset;
+}
+
+static void AST_LoadSkeletons()
+{
+  AST_BreadFile *br = &APP.ast.bread;
+
+  Assert(br->links->skeletons.elem_count <= ArrayCount(APP.ast.skeletons));
+  U32 skeletons_count = Min(br->links->skeletons.elem_count, ArrayCount(APP.ast.skeletons));
+  APP.ast.skeletons_count = skeletons_count;
+
+  BREAD_Skeleton *skeletons = BREAD_FileRangeAsType(br->links->skeletons, BREAD_Skeleton);
+  ForU32(skeleton_index, skeletons_count)
+  {
+    BREAD_Skeleton *br_skel = skeletons + skeleton_index;
+    Asset *ast_skel = APP.ast.skeletons + skeleton_index;
+    ast_skel->loaded = true;
+    ast_skel->loaded_t = 1.f;
+    ast_skel->Skel.root_transform = *BREAD_FileRangeAsType(br_skel->root_transform, Mat4);
+
+    AN_Skeleton *skel = &ast_skel->Skel;
+    skel->joints_count = br_skel->inv_bind_mats.elem_count;
+    Assert(skel->joints_count == br_skel->inv_bind_mats.elem_count);
+    Assert(skel->joints_count == br_skel->child_index_buf.elem_count);
+    Assert(skel->joints_count == br_skel->child_index_ranges.elem_count);
+    Assert(skel->joints_count == br_skel->translations.elem_count);
+    Assert(skel->joints_count == br_skel->rotations.elem_count);
+    Assert(skel->joints_count == br_skel->scales.elem_count);
+    Assert(skel->joints_count == br_skel->name_ranges.elem_count);
+
+    skel->inv_bind_mats      = BREAD_FileRangeAsType(br_skel->inv_bind_mats, Mat4);
+    skel->child_index_buf    = BREAD_FileRangeAsType(br_skel->child_index_buf, U32);
+    skel->child_index_ranges = BREAD_FileRangeAsType(br_skel->child_index_ranges, RngU32);
+    skel->translations       = BREAD_FileRangeAsType(br_skel->translations, V3);
+    skel->rotations          = BREAD_FileRangeAsType(br_skel->rotations, Quat);
+    skel->scales             = BREAD_FileRangeAsType(br_skel->scales, V3);
+
+    RngU32 *name_ranges = BREAD_FileRangeAsType(br_skel->name_ranges, RngU32);
+    ForU32(i, skel->joints_count)
+      skel->names_s8[i] = S8_Substring(BREAD_File(), name_ranges[i].min, name_ranges[i].max);
+  }
+}
+
+//
 // Geometry
 //
 static Asset *AST_GetGeometry(MODEL_Type model_type)
@@ -363,4 +285,161 @@ static Asset *AST_GetGeometry(MODEL_Type model_type)
   Asset *asset = APP.ast.geo_assets + model_type;
   asset->last_touched_frame = APP.frame_id;
   return asset;
+}
+
+static void AST_LoadGeometry()
+{
+  AST_BreadFile *br = &APP.ast.bread;
+
+  APP.ast.rigid_vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+                                            br->links->models.rigid_vertices.size,
+                                            "Rigid model vertices");
+  APP.ast.skinned_vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+                                              br->links->models.skinned_vertices.size,
+                                              "Skinned model vertices");
+  APP.ast.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX,
+                                     br->links->models.indices.size,
+                                     "Model indices");
+
+  S8 rigid_string = BREAD_FileRangeToS8(br->links->models.rigid_vertices);
+  S8 skinned_string = BREAD_FileRangeToS8(br->links->models.skinned_vertices);
+  S8 indices_string = BREAD_FileRangeToS8(br->links->models.indices);
+
+  GPU_TransferBuffer(APP.ast.rigid_vertices, rigid_string.str, rigid_string.size);
+  GPU_TransferBuffer(APP.ast.skinned_vertices, skinned_string.str, skinned_string.size);
+  GPU_TransferBuffer(APP.ast.indices, indices_string.str, indices_string.size);
+
+  ForU32(model_kind, MODEL_COUNT)
+  {
+    BREAD_Model *br_model = br->models + model_kind;
+    Asset *asset = APP.ast.geo_assets + model_kind;
+
+    asset->loaded = true;
+    asset->Geo.is_skinned = br_model->is_skinned;
+    asset->Geo.vertices_start_index = br_model->vertices_start_index;
+    asset->Geo.indices_start_index = br_model->indices_start_index;
+    asset->Geo.indices_count = br_model->indices_count;
+  }
+}
+
+//
+//
+//
+static void AST_PostFrame()
+{
+  // Wake up texture asset loading thread
+  if (APP.ast.tex_load_needed)
+  {
+    SDL_SignalSemaphore(APP.ast.tex_sem);
+    APP.ast.tex_load_needed = false;
+  }
+
+  // Increment loaded_t
+  ForArray(i, APP.ast.tex_assets)
+  {
+    Asset *asset = APP.ast.tex_assets + i;
+    float speed = 10.f;
+    asset->loaded_t += (float)asset->loaded * APP.dt * speed;
+    asset->loaded_t = Min(1.f, asset->loaded_t);
+  }
+}
+
+static void AST_Init()
+{
+  BREAD_LoadFile("data.bread");
+  AST_LoadGeometry();
+
+  // Init textures, create fallback texture
+  {
+    I32 dim = 512;
+    I32 tex_size = dim*dim*sizeof(U32);
+    U32 and_mask = (1 << 6);
+
+    SDL_GPUTextureCreateInfo tex_info =
+    {
+      .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
+      .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+      .width = dim,
+      .height = dim,
+      .layer_count_or_depth = 1,
+      .num_levels = CalculateMipMapCount(dim, dim),
+      .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
+    };
+    SDL_GPUTexture *texture = SDL_CreateGPUTexture(APP.gpu.device, &tex_info);
+    SDL_SetGPUTextureName(APP.gpu.device, texture, "Fallback texture");
+    APP.ast.tex_fallback = texture;
+
+    // Fill texture
+    {
+      SDL_GPUTransferBufferCreateInfo trans_desc =
+      {
+        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        .size = tex_size
+      };
+      SDL_GPUTransferBuffer *trans_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
+      Assert(trans_buf);
+
+      // Fill GPU memory
+      {
+        U32 *map = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_buf, false);
+        U32 *pixel = map;
+        ForI32(y, dim)
+        {
+          ForI32(x, dim)
+          {
+            pixel[0] = (x & y & and_mask) ? 0xff000000 : 0xffFF00FF;
+            pixel += 1;
+          }
+        }
+        SDL_UnmapGPUTransferBuffer(APP.gpu.device, trans_buf);
+      }
+
+      // GPU memory -> GPU buffers
+      {
+        SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+        SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+        SDL_GPUTextureTransferInfo trans_info = { .transfer_buffer = trans_buf };
+        SDL_GPUTextureRegion dst_region =
+        {
+          .texture = texture,
+          .w = dim,
+          .h = dim,
+          .d = 1,
+        };
+        SDL_UploadToGPUTexture(copy_pass, &trans_info, &dst_region, false);
+
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(cmd);
+      }
+      SDL_ReleaseGPUTransferBuffer(APP.gpu.device, trans_buf);
+    }
+
+    // Generate texture mipmap
+    {
+      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+      SDL_GenerateMipmapsForGPUTexture(cmd, texture);
+      SDL_SubmitGPUCommandBuffer(cmd);
+    }
+
+    ForArray(i, APP.ast.tex_assets)
+    {
+      Asset *asset = APP.ast.tex_assets + i;
+      asset->Tex.handle = APP.ast.tex_fallback;
+      asset->Tex.shininess = 16.f;
+    }
+  }
+}
+
+static void AST_Deinit()
+{
+  // textures
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_fallback);
+  ForArray(i, APP.ast.tex_assets)
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_assets[i].Tex.handle);
+
+  // geometry
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.rigid_vertices);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.skinned_vertices);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.indices);
 }

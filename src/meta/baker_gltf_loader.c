@@ -206,12 +206,11 @@ static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, BK_GLTF_ModelData *
         }
 
         // inputs
-        U32 in_count = sample_count;
-        float *in_nums = BREAD_ReserveToRange(&bb->file, &br_chan->inputs, float, in_count);
-        U64 in_unpacked = cgltf_accessor_unpack_floats(gltf_sampler->input, in_nums, in_count);
-        M_Check(in_unpacked == in_count);
+        float *in_nums = BREAD_ReserveToRange(&bb->file, &br_chan->inputs, float, sample_count);
+        U64 in_unpacked = cgltf_accessor_unpack_floats(gltf_sampler->input, in_nums, sample_count);
+        M_Check(in_unpacked == sample_count);
 
-        ForU32(i, in_count)
+        ForU32(i, sample_count)
         {
           float n = in_nums[i];
           if (n > t_max) t_max = n;
@@ -221,7 +220,8 @@ static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, BK_GLTF_ModelData *
         // outputs
         U32 out_comp_count = (U32)cgltf_num_components(gltf_sampler->output->type);
         U32 out_count = out_comp_count * sample_count;
-        float *out_nums = BREAD_ReserveToRange(&bb->file, &br_chan->outputs, float, out_count);
+        // sample_count as elem_count -> should be interpreted as V3, Quat or something
+        float *out_nums = BREAD_ReserveToRange(&bb->file, &br_chan->outputs, float, sample_count);
         U64 out_unpacked = cgltf_accessor_unpack_floats(gltf_sampler->output, out_nums, out_count);
         M_Check(out_unpacked == out_count);
       }
@@ -386,7 +386,7 @@ static void BK_GLTF_ExportSkeletonToPrinter(Printer *p, BK_GLTF_ModelData *model
 
     // unpack inverse bind matrices
     {
-      Pr_S8(p, S8Lit(".inverse_bind_matrices = (Mat4[]){\n"));
+      Pr_S8(p, S8Lit(".inv_bind_mats = (Mat4[]){\n"));
 
       cgltf_accessor *inv_bind = skin->inverse_bind_matrices;
       M_Check(inv_bind);

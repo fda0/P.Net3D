@@ -22,8 +22,8 @@ typedef struct
 {
   U32 joint_index : 30;
   AN_TransformType type : 2;
-  BREAD_Range inputs;  // [float] * count
-  BREAD_Range outputs; // [float] * count
+  BREAD_Range inputs;  // [V3 or Quat] * count
+  BREAD_Range outputs; // [V3 or Quat] * count
 } BREAD_AnimChannel;
 
 typedef struct
@@ -45,7 +45,7 @@ typedef struct
   BREAD_Range scales;             // [V3] * joints_count
   BREAD_Range name_ranges;        // [RngU32] * joints_count - offset of min & max char* - can be transformed to S8
 
-  BREAD_Range animations; // [@todo]
+  BREAD_Range animations; // [BREAD_Animation] array
 } BREAD_Skeleton;
 
 typedef struct
@@ -63,20 +63,20 @@ typedef struct
 {
   struct
   {
-    BREAD_Range rigid_vertices;
-    BREAD_Range skinned_vertices;
-    BREAD_Range indices;
-    BREAD_Range list; // [BREAD_Model]
+    BREAD_Range rigid_vertices; // [WORLD_GpuRigidVertex] array
+    BREAD_Range skinned_vertices; // [WORLD_GpuSkinnedVertex] array
+    BREAD_Range indices; // [U16] array
+    BREAD_Range list; // [BREAD_Model] array
   } models;
 
-  BREAD_Range skeletons_list; // [BREAD_Skeleton]
-} BREAD_Contents;
+  BREAD_Range skeletons; // [BREAD_Skeleton] array
+} BREAD_Links;
 
 typedef struct
 {
   U64 file_hash; // of everything after itself (the first 8 bytes) - seeded with BREAD_MAGIC_HASH_SEED
 #define BREAD_MAGIC_HASH_SEED (0xB5'EA'DC'0D + 0)
-  U32 contents_offset; // [BREAD_Contents]
+  BREAD_Range links; // [BREAD_Links]
 } BREAD_Header;
 
 //
@@ -88,5 +88,5 @@ typedef struct
 // all skinned vertices [MDL_GpuSkinnedVertex]
 // all indices [U16]
 // array of [BREAD_Model]
-// [BREAD_Contents]
+// [BREAD_Links]
 //

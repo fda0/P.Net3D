@@ -54,3 +54,6 @@ typedef struct
   SDL_PropertiesID clear_depth_props;
   SDL_PropertiesID clear_color_props;
 } GPU_State;
+
+static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, const char *name);
+static void GPU_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U32 data_size);

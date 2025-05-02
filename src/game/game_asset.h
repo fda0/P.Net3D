@@ -20,7 +20,7 @@ typedef struct
       U32 indices_count;
     } Geo;
 
-    //AN_Skeleton skeleton;
+    AN_Skeleton Skel;
   };
 } Asset;
 
@@ -29,7 +29,7 @@ typedef struct
   Arena *arena;
   S8 file;
   BREAD_Header *header;
-  BREAD_Contents *contents;
+  BREAD_Links *links;
 
   BREAD_Model *models;
   U32 models_count;
@@ -39,14 +39,18 @@ typedef struct
 {
   AST_BreadFile bread;
 
-  // textures
+  // Texture
   SDL_GPUTexture *tex_fallback;
   Asset tex_assets[TEX_COUNT];
-  // textures thread
+  // Texture thread
   bool tex_load_needed;
   SDL_Semaphore *tex_sem;
 
-  // geometry
+  // Skeleton
+  Asset skeletons[MODEL_COUNT];
+  U32 skeletons_count;
+
+  // Geometry
   SDL_GPUBuffer *rigid_vertices;
   SDL_GPUBuffer *skinned_vertices;
   SDL_GPUBuffer *indices;
@@ -56,5 +60,4 @@ typedef struct
   U64 serialize_hash;
 } AST_State;
 
-static void BREAD_InitFile();
-static void BREAD_LoadModels();
+static void BREAD_LoadFile(const char *bread_file_path);

@@ -136,7 +136,7 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
   AN_WaterfallTransformsToChildren(skeleton, res.mats, 0, skeleton->root_transform);
 
   ForU32(i, res.mats_count)
-    res.mats[i] = Mat4_Mul(res.mats[i], skeleton->inverse_bind_matrices[i]);
+    res.mats[i] = Mat4_Mul(res.mats[i], skeleton->inv_bind_mats[i]);
 
   return res;
 }

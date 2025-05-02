@@ -68,23 +68,23 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
   bb->selected_model = MODEL_COUNT;
 
   //
-  // Prepare BREAD_Contents and append it to memory
+  // Prepare BREAD_Links and append it to memory
   //
-  BREAD_Contents contents = {};
+  BREAD_Links links = {};
 
-  contents.models.rigid_vertices.offset = bb->file.used;
-  contents.models.rigid_vertices.size = bb->rigid_vertices.used;
-  contents.models.rigid_vertices.elem_count = bb->rigid_vertices.used / sizeof(WORLD_GpuRigidVertex);
+  links.models.rigid_vertices.offset = bb->file.used;
+  links.models.rigid_vertices.size = bb->rigid_vertices.used;
+  links.models.rigid_vertices.elem_count = bb->rigid_vertices.used / sizeof(WORLD_GpuRigidVertex);
   Pr_Printer(&bb->file, &bb->rigid_vertices);
 
-  contents.models.skinned_vertices.offset = bb->file.used;
-  contents.models.skinned_vertices.size = bb->skinned_vertices.used;
-  contents.models.skinned_vertices.elem_count = bb->skinned_vertices.used / sizeof(WORLD_GpuSkinnedVertex);
+  links.models.skinned_vertices.offset = bb->file.used;
+  links.models.skinned_vertices.size = bb->skinned_vertices.used;
+  links.models.skinned_vertices.elem_count = bb->skinned_vertices.used / sizeof(WORLD_GpuSkinnedVertex);
   Pr_Printer(&bb->file, &bb->skinned_vertices);
 
-  contents.models.indices.offset = bb->file.used;
-  contents.models.indices.size = bb->indices.used;
-  contents.models.indices.elem_count = bb->indices.used / sizeof(U16);
+  links.models.indices.offset = bb->file.used;
+  links.models.indices.size = bb->indices.used;
+  links.models.indices.elem_count = bb->indices.used / sizeof(U16);
   Pr_Printer(&bb->file, &bb->indices);
 
   ForArray(i, bb->models)
@@ -99,20 +99,23 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
   }
 
   // Models array - put in memory
-  contents.models.list.offset = bb->file.used;
-  contents.models.list.size = sizeof(bb->models);
-  contents.models.list.elem_count = ArrayCount(bb->models);
+  links.models.list.offset = bb->file.used;
+  links.models.list.size = sizeof(bb->models);
+  links.models.list.elem_count = ArrayCount(bb->models);
   {
     BREAD_Model *dst = BREAD_ReserveBytes(&bb->file, sizeof(bb->models), _Alignof(BREAD_Model));
     Memcpy(dst, bb->models, sizeof(bb->models));
   }
 
+  BREAD_RangeStart(&bb->file, &links.skeletons);
+  Pr_Printer(&bb->file, &bb->skeletons);
+  BREAD_RangeEnd(&bb->file, &links.skeletons, bb->skeletons_count);
+
   //
   // Prepare BREAD_Header
   //
   BREAD_Header *header = (BREAD_Header *)bb->file.buf;
-  header->contents_offset = bb->file.used;
-  *BREAD_Reserve(&bb->file, BREAD_Contents, 1) = contents;
+  *BREAD_ReserveToRange(&bb->file, &header->links, BREAD_Links, 1) = links;
 
   //
   // Calculate hash

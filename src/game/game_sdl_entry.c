@@ -28,6 +28,7 @@
 #include "bread_file_format.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
+#include "game_animation.h"
 #include "game_asset_definitions.h"
 #include "game_asset.h"
 #include "game_render.h"
@@ -36,7 +37,6 @@
 #include "game_network.h"
 #include "game_client.h"
 #include "game_server.h"
-#include "game_animation.h"
 #include "game_gpu_memory.h"
 #include "game_gpu.h"
 #include "game_font_atlas.h"
@@ -58,6 +58,7 @@
 
 static AppState APP;
 #include "game_util.c"
+#include "game_bread_loader.c"
 #include "game_asset.c"
 #include "game_key.c"
 #include "game_object.c"
@@ -68,7 +69,6 @@ static AppState APP;
 #include "game_animation.c"
 #include "game_gpu_memory.c"
 #include "game_gpu.c"
-#include "game_bread_loader.c"
 #include "game_render.c"
 #include "game_font_atlas.c"
 #include "game_ui.c"
