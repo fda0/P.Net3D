@@ -7,13 +7,15 @@ static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
     .color = color,
   };
 
-  if (AST_GetGeometry(model_type)->Geo.is_skinned)
+  Asset *geo = AST_GetGeometry(model_type);
+  if (geo->Geo.is_skinned)
   {
     GPU_MemoryTarget gpu_target = {.type = GPU_MemoryJointTransforms};
     GPU_MemoryBundle *gpu_bundle = GPU_MemoryTargetToBundle(gpu_target);
     instance.pose_offset = gpu_bundle->element_count;
 
-    AN_Pose pose = AN_PoseFromAnimation(&Worker_Skeleton, animation_index, animation_t);
+    Asset *skel = AST_GetSkeleton(geo->Geo.skeleton_index);
+    AN_Pose pose = AN_PoseFromAnimation(&skel->Skel, animation_index, animation_t);
     GPU_TransferUploadBytes(gpu_target, pose.mats,
                             pose.mats_count * sizeof(pose.mats[0]),
                             pose.mats_count);

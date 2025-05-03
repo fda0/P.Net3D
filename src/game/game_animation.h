@@ -10,10 +10,11 @@ typedef struct
 
 typedef struct
 {
-  char *name;
+  char *name; // @todo delete
+  S8 name_s8;
+  float t_min, t_max;
   AN_Channel *channels;
   U32 channels_count;
-  float t_min, t_max;
 } AN_Animation;
 
 typedef struct

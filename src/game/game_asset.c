@@ -270,8 +270,45 @@ static void AST_LoadSkeletons()
     skel->scales             = BREAD_FileRangeAsType(br_skel->scales, V3);
 
     RngU32 *name_ranges = BREAD_FileRangeAsType(br_skel->name_ranges, RngU32);
+    skel->names_s8 = Alloc(br->arena, S8, skel->joints_count);
     ForU32(i, skel->joints_count)
       skel->names_s8[i] = S8_Substring(BREAD_File(), name_ranges[i].min, name_ranges[i].max);
+
+    // Animations
+    skel->animations_count = br_skel->animations.elem_count;
+    BREAD_Animation *br_animations = BREAD_FileRangeAsType(br_skel->animations, BREAD_Animation);
+    skel->animations = Alloc(br->arena, AN_Animation, skel->animations_count);
+
+    ForU32(animation_index, skel->animations_count)
+    {
+      AN_Animation *anim = skel->animations + animation_index;
+      BREAD_Animation *br_anim = br_animations + animation_index;
+
+      anim->name_s8 = S8_Make(BREAD_FileRangeAsType(br_anim->name, U8), br_anim->name.size);
+
+      anim->t_min = br_anim->t_min;
+      anim->t_max = br_anim->t_max;
+
+      anim->channels_count = br_anim->channels.elem_count;
+      BREAD_AnimChannel *br_channels = BREAD_FileRangeAsType(br_anim->channels, BREAD_AnimChannel);
+      anim->channels = Alloc(br->arena, AN_Channel, anim->channels_count);
+
+      ForU32(channel_index, anim->channels_count)
+      {
+        AN_Channel *chan = anim->channels + channel_index;
+        BREAD_AnimChannel *br_chan = br_channels + channel_index;
+
+        chan->joint_index = br_chan->joint_index;
+        chan->type = br_chan->type;
+        chan->count = br_chan->inputs.elem_count;
+
+        U32 comp_count = (chan->type == AN_Rotation ? 4 : 3);
+        Assert(comp_count * chan->count == br_chan->outputs.elem_count);
+
+        chan->inputs = BREAD_FileRangeAsType(br_chan->inputs, float);
+        chan->outputs = BREAD_FileRangeAsType(br_chan->outputs, float);
+      }
+    }
   }
 }
 
@@ -319,6 +356,7 @@ static void AST_LoadGeometry()
     asset->Geo.vertices_start_index = br_model->vertices_start_index;
     asset->Geo.indices_start_index = br_model->indices_start_index;
     asset->Geo.indices_count = br_model->indices_count;
+    asset->Geo.skeleton_index = br_model->skeleton_index;
   }
 }
 
@@ -347,6 +385,7 @@ static void AST_PostFrame()
 static void AST_Init()
 {
   BREAD_LoadFile("data.bread");
+  AST_LoadSkeletons();
   AST_LoadGeometry();
 
   // Init textures, create fallback texture

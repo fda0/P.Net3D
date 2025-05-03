@@ -61,11 +61,13 @@ static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, BK_GLTF_ModelData *
       M_Check(inv_bind->type == cgltf_type_mat4);
 
       U64 comp_count = cgltf_num_components(inv_bind->type);
-      U64 number_count = comp_count * inv_bind->count;
+      M_Check(comp_count == 16);
 
-      float *numbers = BREAD_ReserveToRange(&bb->file, &br_skel->inv_bind_mats, float, number_count);
-      U64 unpacked = cgltf_accessor_unpack_floats(inv_bind, numbers, number_count);
-      M_Check(unpacked == number_count);
+      Mat4 *matrices = BREAD_ReserveToRange(&bb->file, &br_skel->inv_bind_mats, Mat4, (U32)inv_bind->count);
+
+      U64 float_count = comp_count * inv_bind->count;
+      U64 unpacked = cgltf_accessor_unpack_floats(inv_bind, matrices->flat, float_count);
+      M_Check(unpacked == float_count);
     }
 
     // child hierarchy indices
@@ -167,9 +169,9 @@ static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, BK_GLTF_ModelData *
 
       // Name string
       S8 anim_name_string = S8_FromCstr(gltf_anim->name);
-      BREAD_RangeStart(&bb->file, &br_anim->name_string);
+      BREAD_RangeStart(&bb->file, &br_anim->name);
       Pr_S8(&bb->file, anim_name_string);
-      BREAD_RangeEnd(&bb->file, &br_anim->name_string, anim_name_string.size);
+      BREAD_RangeEnd(&bb->file, &br_anim->name, anim_name_string.size);
 
       // Ensure memory alignment after copying strings
       BREAD_Aling(&bb->file, _Alignof(BREAD_AnimChannel));
@@ -220,8 +222,7 @@ static void BK_GLTF_ExportSkeletonToBread(BREAD_Builder *bb, BK_GLTF_ModelData *
         // outputs
         U32 out_comp_count = (U32)cgltf_num_components(gltf_sampler->output->type);
         U32 out_count = out_comp_count * sample_count;
-        // sample_count as elem_count -> should be interpreted as V3, Quat or something
-        float *out_nums = BREAD_ReserveToRange(&bb->file, &br_chan->outputs, float, sample_count);
+        float *out_nums = BREAD_ReserveToRange(&bb->file, &br_chan->outputs, float, out_count);
         U64 out_unpacked = cgltf_accessor_unpack_floats(gltf_sampler->output, out_nums, out_count);
         M_Check(out_unpacked == out_count);
       }

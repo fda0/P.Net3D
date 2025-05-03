@@ -28,9 +28,9 @@ typedef struct
 
 typedef struct
 {
-  BREAD_Range name_string; // [U8]
-  BREAD_Range channels; // [BREAD_AnimChannel]
+  BREAD_Range name; // [U8]
   float t_min, t_max;
+  BREAD_Range channels; // [BREAD_AnimChannel]
 } BREAD_Animation;
 
 typedef struct

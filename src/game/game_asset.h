@@ -18,6 +18,7 @@ typedef struct
       U32 vertices_start_index;
       U32 indices_start_index;
       U32 indices_count;
+      U32 skeleton_index;
     } Geo;
 
     AN_Skeleton Skel;
