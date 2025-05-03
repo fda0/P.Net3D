@@ -53,10 +53,13 @@ typedef struct
   U8 is_skinned : 1;
   U8 is_init_vertices : 1;
   U8 is_init_indices : 1;
+
   U32 vertices_start_index;
   U32 indices_start_index;
   U32 indices_count;
-  U32 skeleton_index; // [BREAD_Skeleton]; for skinned only; index to skeletons from BREAD_Contents
+  U32 skeleton_index; // for skinned only; index to skeletons from BREAD_Contents
+
+  // @todo add [U8] name field
 } BREAD_Model;
 
 typedef struct

@@ -42,9 +42,6 @@ int main()
     ArenaScope scratch = Arena_PushScope(BAKER.tmp);
     BREAD_Builder bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(64));
 
-    Printer pr_out = Pr_Alloc(scratch.a, Megabyte(32));
-    Printer pr_anim = Pr_Alloc(scratch.a, Megabyte(8));
-
     Quat rot_x = Quat_FromAxisAngle_RH(AxisV3_X(), 0.25f);
     Quat rot_y = Quat_FromAxisAngle_RH(AxisV3_Y(), 0.25f);
     Quat rot_z = Quat_FromAxisAngle_RH(AxisV3_Z(), 0.25f);
@@ -54,19 +51,15 @@ int main()
     float scale = 40;
     BK_GLTF_ModelConfig config = {.scale = scale, .rot = rot_xz};
 
-    BK_GLTF_Load(MODEL_Flag, "flag", "../res/models/Flag.glb", &pr_out, &pr_anim, &bb,
+    BK_GLTF_Load(MODEL_Flag, "flag", "../res/models/Flag.glb", &bb,
                  (BK_GLTF_ModelConfig){1.f, rot_x, (V3){0,0,-4.5f}});
-    BK_GLTF_Load(MODEL_Worker, "", "../res/models/Worker.gltf", &pr_out, &pr_anim, &bb, config);
-    BK_GLTF_Load(MODEL_Formal, "", "../res/models/Formal.gltf", &pr_out, &pr_anim, &bb, config);
-    BK_GLTF_Load(MODEL_Casual, "", "../res/models/Casual.gltf", &pr_out, &pr_anim, &bb, config);
+    BK_GLTF_Load(MODEL_Worker, "", "../res/models/Worker.gltf", &bb, config);
+    BK_GLTF_Load(MODEL_Formal, "", "../res/models/Formal.gltf", &bb, config);
+    BK_GLTF_Load(MODEL_Casual, "", "../res/models/Casual.gltf", &bb, config);
 
     config.scale = 4.f;
     config.rot = Quat_Identity();
-    BK_GLTF_Load(MODEL_Tree, "Tree", "../res/models/tree_low-poly/scene.gltf", &pr_out, &pr_anim, &bb, config);
-
-
-    M_SaveFile("../gen/gen_models_gltf.h", Pr_AsS8(&pr_out));
-    M_SaveFile("../gen/gen_animations.h", Pr_AsS8(&pr_anim));
+    BK_GLTF_Load(MODEL_Tree, "Tree", "../res/models/tree_low-poly/scene.gltf", &bb, config);
 
     BREAD_FinalizeBuilder(&bb);
     BREAD_SaveToFile(&bb, "data.bread");
