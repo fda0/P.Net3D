@@ -1,46 +1,50 @@
+// Base libraries
 #define M_LOG_HEADER "[BAKER] "
-// .h
 #include "meta_util.h"
 #include "base_math.h"
 #include "base_printer.h"
 #include "base_parse.h"
 #include "base_hash.h"
 
+// Headers shared across baker and game
 #include "bread_file_format.h"
 #include "game_render.h"
 #include "game_animation.h"
 #include "game_asset_definitions.h"
 
+// Baker headers
 #include "baker_number_buffer.h"
-#include "baker_gltf_loader.h"
 #include "baker_entry.h"
 
-// .c
-#include "baker_print_parse.c"
-
-#define CGLTF_IMPLEMENTATION
+// 3rd party libraries
 #pragma warning(push, 2)
+#define CGLTF_IMPLEMENTATION
 #include "cgltf.h"
+#include "bc7enc.h"
 #pragma warning(pop)
 
+// Baker implementations
 #include "baker_bread_builder.c"
 #include "baker_gltf_loader.c"
 
-//
+// Memory allocations
 static U8 tmp_arena_memory[Megabyte(256)];
 static U8 cgltf_arena_memory[Megabyte(64)];
 
 int main()
 {
-  // init
+  // Init
   BAKER.tmp = Arena_MakeInside(tmp_arena_memory, sizeof(tmp_arena_memory));
   BAKER.cgltf_arena = Arena_MakeInside(cgltf_arena_memory, sizeof(cgltf_arena_memory));
   M_LogState.reject_filter = M_LogObjDebug | M_LogGltfDebug;
 
-  // load .gltf models
+  bc7enc_compress_block_init();
+
+  BREAD_Builder bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(64));
+
+  // Load .gltf models
   {
     ArenaScope scratch = Arena_PushScope(BAKER.tmp);
-    BREAD_Builder bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(64));
 
     Quat rot_x = Quat_FromAxisAngle_RH(AxisV3_X(), 0.25f);
     Quat rot_y = Quat_FromAxisAngle_RH(AxisV3_Y(), 0.25f);
@@ -61,12 +65,11 @@ int main()
     config.rot = Quat_Identity();
     BK_GLTF_Load(MODEL_Tree, "Tree", "../res/models/tree_low-poly/scene.gltf", &bb, config);
 
-    BREAD_FinalizeBuilder(&bb);
-    BREAD_SaveToFile(&bb, "data.bread");
-
     Arena_PopScope(scratch);
   }
 
+  BREAD_FinalizeBuilder(&bb);
+  BREAD_SaveToFile(&bb, "data.bread");
 
   // exit
   M_LOG(M_LogIdk, "%s", (M_LogState.error_count > 0 ? "Fail" : "Success"));

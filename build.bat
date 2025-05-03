@@ -134,7 +134,7 @@ if "%baker%"=="1" (
     mkdir ..\gen\
 
     :: --- Metaprogram --------------------------------------------------------
-    %compile% ..\src\meta\baker_entry.c %compile_link% %out%baker.exe || exit /b 1
+    %compile% ..\src\meta\baker_entry.c ..\libs\bc7enc.c %compile_link% %out%baker.exe || exit /b 1
     baker.exe || exit /b 1
     set didbuild=1
 )
