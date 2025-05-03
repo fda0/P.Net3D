@@ -36,6 +36,8 @@ static void BREAD_RangeEnd(Printer *printer_owner, BREAD_Range *range, U32 elem_
   M_Check(printer_owner->used >= range->offset);
   range->size = printer_owner->used - range->offset;
   range->elem_count = elem_count;
+  M_Check(elem_count);
+  M_Check(range->elem_count <= range->size);
 }
 static void *BREAD_ReserveBytesToRange(Printer *p, BREAD_Range *range, U64 size, U64 alignment, U32 elem_count)
 {

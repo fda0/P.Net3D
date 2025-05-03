@@ -19,8 +19,102 @@ static void AST_PrefetchTexture(TEX_Kind tex_kind)
   AST_GetTexture(tex_kind);
 }
 
-static void AST_LoadTextureFromFile(TEX_Kind tex_kind, U64 min_frame)
+static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
 {
+  Assert(tex_kind < TEX_COUNT);
+  Asset *asset = APP.ast.tex_assets + tex_kind;
+
+  if (asset->loaded || asset->last_touched_frame < min_frame)
+    return;
+
+  AST_BreadFile *br = &APP.ast.bread;
+  Assert(tex_kind < (I32)br->materials_count);
+  BREAD_Material *br_material = br->materials + tex_kind;
+
+  U32 gpu_layer_size = br_material->width * br_material->height; // * (128 bits / (4*4 block size) - cancels out
+  U32 gpu_total_size = gpu_layer_size * br_material->layers;
+
+  Assert(br_material->bc7_blocks.size == gpu_total_size);
+  U64 *br_pixels = BREAD_FileRangeAsType(br_material->bc7_blocks, U64);
+
+  SDL_GPUTexture *texture = 0;
+  // Create texture and transfer CPU memory -> GPU memory -> GPU texture
+  {
+    SDL_GPUTransferBufferCreateInfo transfer_create_info =
+    {
+      .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+      .size = gpu_total_size
+    };
+    SDL_GPUTransferBuffer *transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &transfer_create_info);
+
+    // CPU -> GPU
+    {
+      U8 *gpu_mapped = SDL_MapGPUTransferBuffer(APP.gpu.device, transfer, false);
+      Memcpy(gpu_mapped, br_pixels, gpu_total_size);
+      SDL_UnmapGPUTransferBuffer(APP.gpu.device, transfer);
+    }
+
+    // Create texture
+    {
+      SDL_GPUTextureCreateInfo texture_info =
+      {
+        .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
+         //.format = SDL_GPU_TEXTUREFORMAT_BC7_RGBA_UNORM_SRGB,
+        .format = SDL_GPU_TEXTUREFORMAT_BC7_RGBA_UNORM,
+        .width = br_material->width,
+        .height = br_material->height,
+        .layer_count_or_depth = br_material->layers,
+        .num_levels = 1,
+        //.num_levels = CalculateMipMapCount(br_material->width, br_material->height),
+        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
+      };
+      texture = SDL_CreateGPUTexture(APP.gpu.device, &texture_info);
+      SDL_SetGPUTextureName(APP.gpu.device, texture, "Texture from bread");
+    }
+
+    // GPU memory -> GPU texture
+    {
+      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
+
+      SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+      ForU32(layer_index, br_material->layers)
+      {
+        SDL_GPUTextureTransferInfo source =
+        {
+          .transfer_buffer = transfer,
+          .offset = layer_index * gpu_layer_size,
+        };
+        SDL_GPUTextureRegion destination =
+        {
+          .texture = texture,
+          .layer = layer_index,
+          .w = br_material->width,
+          .h = br_material->height,
+          .d = 1,
+        };
+        SDL_UploadToGPUTexture(copy_pass, &source, &destination, false);
+      }
+      SDL_EndGPUCopyPass(copy_pass);
+
+      //SDL_GenerateMipmapsForGPUTexture(cmd, texture); // @todo CAN'T DO THAT WITH BC7 texture! Generate them offline?
+      SDL_SubmitGPUCommandBuffer(cmd);
+    }
+
+    SDL_ReleaseGPUTransferBuffer(APP.gpu.device, transfer);
+  }
+
+  asset->Tex.handle = texture;
+  asset->loaded = true;
+}
+
+static void AST_LoadTextureFromOnDiskFile(TEX_Kind tex_kind, U64 min_frame)
+{
+  if (tex_kind == TEX_Bricks071)
+  {
+    AST_LoadTextureFromBreadFile(tex_kind, min_frame);
+    return;
+  }
+
   Assert(tex_kind < TEX_COUNT);
   Asset *asset = APP.ast.tex_assets + tex_kind;
 
@@ -157,7 +251,7 @@ static void AST_LoadTextureFromFile(TEX_Kind tex_kind, U64 min_frame)
         .height = height,
         .layer_count_or_depth = layer_count,
         .num_levels = CalculateMipMapCount(width, height),
-        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
+        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
       };
       texture = SDL_CreateGPUTexture(APP.gpu.device, &texture_info);
     }
@@ -209,7 +303,7 @@ static int SDLCALL AST_TextureThread(void *data)
     else                           min_frame = 0;
 
     ForU32(tex_kind, TEX_COUNT)
-      AST_LoadTextureFromFile(tex_kind, min_frame);
+      AST_LoadTextureFromOnDiskFile(tex_kind, min_frame);
 
     SDL_WaitSemaphore(APP.ast.tex_sem);
     if (APP.in_shutdown)

@@ -67,7 +67,7 @@ typedef struct
   U32 width;
   U32 height;
   U32 layers;
-  BREAD_Range bc7_buffer; // [U64] - array of size width*height*layers*2
+  BREAD_Range bc7_blocks; // [U64] - array of size width*height*layers*2
 } BREAD_Material;
 
 typedef struct

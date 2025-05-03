@@ -34,6 +34,9 @@ typedef struct
 
   BREAD_Model *models;
   U32 models_count;
+
+  BREAD_Material *materials;
+  U32 materials_count;
 } AST_BreadFile;
 
 typedef struct

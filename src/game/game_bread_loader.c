@@ -64,11 +64,11 @@ static void BREAD_LoadFile(const char *bread_file_path)
   br->links = BREAD_FileRangeAsType(br->header->links, BREAD_Links);
 
   // Models
-  {
-    br->models_count = br->links->models.list.elem_count;
-    Assert(br->models_count == MODEL_COUNT);
+  br->models_count = br->links->models.list.elem_count;
+  Assert(br->models_count == MODEL_COUNT);
+  br->models = BREAD_FileRangeAsType(br->links->models.list, BREAD_Model);
 
-    S8 model_array_string = BREAD_FileRangeToS8(br->links->models.list);
-    br->models = BREAD_S8AsType(model_array_string, BREAD_Model, br->models_count);
-  }
+  // Materials
+  br->materials_count = br->links->materials.elem_count;
+  br->materials = BREAD_FileRangeAsType(br->links->materials, BREAD_Material);
 }

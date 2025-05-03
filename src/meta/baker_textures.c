@@ -52,14 +52,16 @@ static void BAKER_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
             files[i].surface->h == height);
   }
 
-  //
+  // Allocate and prepare BREAD_Material
   BREAD_Material *br_material = BREAD_Reserve(&bb->materials, BREAD_Material, 1);
+  bb->materials_count += 1;
+
   br_material->width = width;
   br_material->height = height;
   br_material->layers = ArrayCount(files);
 
   // Iterate over chunks and compress them
-#define M_TEX_CHUNK_DIM 16
+#define M_TEX_CHUNK_DIM 4
 #define M_TEX_CHUNK_PITCH (M_TEX_CHUNK_DIM * 4)
   M_Check(width % M_TEX_CHUNK_DIM == 0);
   M_Check(height % M_TEX_CHUNK_DIM == 0);
@@ -67,7 +69,7 @@ static void BAKER_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
   I32 chunks_count_y = height / M_TEX_CHUNK_DIM;
   I32 chunks_total_count = chunks_count_x * chunks_count_y;
 
-  BREAD_RangeStart(&bb->file, &br_material->bc7_buffer);
+  BREAD_RangeStart(&bb->file, &br_material->bc7_blocks);
 
   ForArray(file_index, files)
   {
@@ -88,7 +90,7 @@ static void BAKER_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
       {
         M_Check(chunk_start < file_end);
 
-        // Copy chunk into temporary 16x16 continuous buffer
+        // Copy chunk into temporary 4x4 continuous buffer
         {
           U8 rgba_block[M_TEX_CHUNK_PITCH * M_TEX_CHUNK_PITCH];
           U8 *rgba_block_end = rgba_block + sizeof(rgba_block);
@@ -116,6 +118,6 @@ static void BAKER_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
     }
   }
 
-  U32 bc7_total_block_count = br_material->width * br_material->height * br_material->layers * 2;
-  BREAD_RangeEnd(&bb->file, &br_material->bc7_buffer, bc7_total_block_count);
+  U32 bc7_total_block_count = chunks_count_x * chunks_count_y * br_material->layers * 2;
+  BREAD_RangeEnd(&bb->file, &br_material->bc7_blocks, bc7_total_block_count);
 }
