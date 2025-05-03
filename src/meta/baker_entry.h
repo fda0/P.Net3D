@@ -44,7 +44,14 @@ typedef struct
 
 typedef struct
 {
+  bc7enc_compress_block_params params;
+} BAKER_TexState;
+
+typedef struct
+{
   Arena *tmp;
   Arena *cgltf_arena;
+
+  BAKER_TexState tex;
 } BAKER_State;
 static BAKER_State BAKER;

@@ -386,8 +386,7 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
   BREAD_CopyIndices(bb, model->indices.vals, model->indices.used);
 }
 
-static void BK_GLTF_Load(MODEL_Type model_type, const char *name, const char *path,
-                         BREAD_Builder *bb, BK_GLTF_ModelConfig config)
+static void BK_GLTF_Load(BREAD_Builder *bb, MODEL_Type model_type, const char *path, BK_GLTF_ModelConfig config)
 {
   // normalize config
   if (!config.scale) config.scale = 1.f;
@@ -562,10 +561,7 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *name, const char *pa
   //
   //
   //
-  model.name = S8_FromCstr(name);
-  if (!model.name.size)
-    model.name = M_NameFromPath(S8_FromCstr(path));
-
+  model.name = MODEL_GetName(model_type);
   model.is_skinned = (data->animations_count > 0);
 
   // Validate buffer counts

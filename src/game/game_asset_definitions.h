@@ -56,9 +56,20 @@ READ_ONLY static const char *MODEL_CstrNames[] =
 #define MODEL_DEF_CSTR_NAMES(a) #a
   MODEL_LIST(MODEL_DEF_CSTR_NAMES)
 };
+READ_ONLY static S8 MODEL_Names[] =
+{
+#define MODEL_DEF_NAMES(a) {(U8 *)#a, sizeof(#a)-1},
+  MODEL_LIST(MODEL_DEF_NAMES)
+};
 
 static const char *MODEL_GetCstrName(MODEL_Type model)
 {
   Assert(model < MODEL_COUNT);
   return MODEL_CstrNames[model];
+}
+
+static S8 MODEL_GetName(MODEL_Type model)
+{
+  Assert(model < MODEL_COUNT);
+  return MODEL_Names[model];
 }

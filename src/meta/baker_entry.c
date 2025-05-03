@@ -12,16 +12,16 @@
 #include "game_animation.h"
 #include "game_asset_definitions.h"
 
-// Baker headers
-#include "baker_number_buffer.h"
-#include "baker_entry.h"
-
 // 3rd party libraries
 #pragma warning(push, 2)
 #define CGLTF_IMPLEMENTATION
 #include "cgltf.h"
 #include "bc7enc.h"
 #pragma warning(pop)
+
+// Baker headers
+#include "baker_number_buffer.h"
+#include "baker_entry.h"
 
 // Baker implementations
 #include "baker_bread_builder.c"
@@ -39,6 +39,8 @@ int main()
   M_LogState.reject_filter = M_LogObjDebug | M_LogGltfDebug;
 
   bc7enc_compress_block_init();
+  BAKER.tex.params = (bc7enc_compress_block_params){};
+
 
   BREAD_Builder bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(64));
 
@@ -55,15 +57,15 @@ int main()
     float scale = 40;
     BK_GLTF_ModelConfig config = {.scale = scale, .rot = rot_xz};
 
-    BK_GLTF_Load(MODEL_Flag, "flag", "../res/models/Flag.glb", &bb,
+    BK_GLTF_Load(&bb, MODEL_Flag, "../res/models/Flag.glb",
                  (BK_GLTF_ModelConfig){1.f, rot_x, (V3){0,0,-4.5f}});
-    BK_GLTF_Load(MODEL_Worker, "", "../res/models/Worker.gltf", &bb, config);
-    BK_GLTF_Load(MODEL_Formal, "", "../res/models/Formal.gltf", &bb, config);
-    BK_GLTF_Load(MODEL_Casual, "", "../res/models/Casual.gltf", &bb, config);
+    BK_GLTF_Load(&bb, MODEL_Worker, "../res/models/Worker.gltf", config);
+    BK_GLTF_Load(&bb, MODEL_Formal, "../res/models/Formal.gltf", config);
+    BK_GLTF_Load(&bb, MODEL_Casual, "../res/models/Casual.gltf", config);
 
     config.scale = 4.f;
     config.rot = Quat_Identity();
-    BK_GLTF_Load(MODEL_Tree, "Tree", "../res/models/tree_low-poly/scene.gltf", &bb, config);
+    BK_GLTF_Load(&bb, MODEL_Tree, "../res/models/tree_low-poly/scene.gltf", config);
 
     Arena_PopScope(scratch);
   }
