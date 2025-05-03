@@ -64,6 +64,14 @@ typedef struct
 
 typedef struct
 {
+  U32 width;
+  U32 height;
+  U32 layers;
+  BREAD_Range bc7_buffer; // [U64] - array of size width*height*layers*2
+} BREAD_Material;
+
+typedef struct
+{
   struct
   {
     BREAD_Range rigid_vertices; // [WORLD_GpuRigidVertex] array
@@ -73,6 +81,7 @@ typedef struct
   } models;
 
   BREAD_Range skeletons; // [BREAD_Skeleton] array
+  BREAD_Range materials; // [BREAD_Material] array
 } BREAD_Links;
 
 typedef struct

@@ -49,10 +49,6 @@ static V4POST V4POST_Clamp(V4POST min, V4POST max, V4POST val) {
   return (V4POST){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
 }
 
-static V2POST V2POST_Reverse(V2POST a) { return (V2POST){-a.x, -a.y}; }
-static V3POST V3POST_Reverse(V3POST a) { return (V3POST){-a.x, -a.y, -a.z}; }
-static V4POST V4POST_Reverse(V4POST a) { return (V4POST){-a.x, -a.y, -a.z, -a.w}; }
-
 static SCALAR V2POST_Dot(V2POST a, V2POST b) { return a.x*b.x + a.y*b.y; }
 static SCALAR V3POST_Dot(V3POST a, V3POST b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 static SCALAR V4POST_Dot(V4POST a, V4POST b) { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
@@ -60,3 +56,8 @@ static SCALAR V4POST_Dot(V4POST a, V4POST b) { return a.x*b.x + a.y*b.y + a.z*b.
 static bool V2POST_HasLength(V2POST a) { return a.x || a.y; }
 static bool V3POST_HasLength(V3POST a) { return a.x || a.y || a.z; }
 static bool V4POST_HasLength(V4POST a) { return a.x || a.y || a.z || a.w; }
+
+// [SIGNED_ONLY]
+static V2POST V2POST_Reverse(V2POST a) { return (V2POST){-a.x, -a.y}; }
+static V3POST V3POST_Reverse(V3POST a) { return (V3POST){-a.x, -a.y, -a.z}; }
+static V4POST V4POST_Reverse(V4POST a) { return (V4POST){-a.x, -a.y, -a.z, -a.w}; }

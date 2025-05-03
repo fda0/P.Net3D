@@ -11,6 +11,9 @@ typedef struct
 
   Printer skeletons;
   U32 skeletons_count;
+
+  Printer materials;
+  U32 materials_count;
 } BREAD_Builder;
 
 typedef struct

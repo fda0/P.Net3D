@@ -17,21 +17,30 @@ int main()
     struct
     {
       S8 scalar;
-      S8 vec_postfix;
+      bool no_postfix;
+      bool is_unsigned;
       S8 result;
     } vectors[] =
     {
-      {S8Lit("float")},
-      {S8Lit("I32"), S8Lit("I32")},
-      {S8Lit("I16"), S8Lit("I16")},
+      {S8Lit("float"), .no_postfix = true},
+      {S8Lit("I32")},
+      {S8Lit("I16")},
+      {S8Lit("U64"), .is_unsigned = true},
     };
 
     U64 vectors_total_size = 0;
     ForArray(i, vectors)
     {
+      S8 scalar = vectors[i].scalar;
+      S8 postfix = (vectors[i].no_postfix ? (S8){} : scalar);
+
       vectors[i].result = templ_vectors;
-      vectors[i].result = S8_ReplaceAll(tmp, vectors[i].result, S8Lit("SCALAR"), vectors[i].scalar, 0);
-      vectors[i].result = S8_ReplaceAll(tmp, vectors[i].result, S8Lit("POST"), vectors[i].vec_postfix, 0);
+      if (vectors[i].is_unsigned)
+        S8_ConsumeUntilBack(&vectors[i].result, S8Lit("// [SIGNED_ONLY]"), 0);
+
+      vectors[i].result = S8_ReplaceAll(tmp, vectors[i].result, S8Lit("SCALAR"), scalar, 0);
+      vectors[i].result = S8_ReplaceAll(tmp, vectors[i].result, S8Lit("POST"), postfix, 0);
+
       vectors_total_size += vectors[i].result.size;
     }
 

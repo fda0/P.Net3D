@@ -7,6 +7,7 @@ static void *BREAD_ReserveBytes(Printer *p, U64 size, U64 alignment)
   void *result = Pr_ReserveBytes(p, size);
   M_Check(result);
   M_Check(!p->err);
+  Memclear(result, size);
   return result;
 }
 #define BREAD_Reserve(P, Type, Count) (Type *)BREAD_ReserveBytes(P, sizeof(Type)*(Count), _Alignof(Type))
@@ -57,6 +58,7 @@ static BREAD_Builder BREAD_CreateBuilder(Arena *a, U32 max_file_size)
   bb.skinned_vertices = Pr_Alloc(a, half_size);
   bb.indices = Pr_Alloc(a, half_size);
   bb.skeletons = Pr_Alloc(a, half_size);
+  bb.materials = Pr_Alloc(a, half_size);
 
   Pr_ReserveBytes(&bb.file, sizeof(BREAD_Header)); // reserve space for header
   bb.selected_model = MODEL_COUNT;
@@ -98,18 +100,23 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
     }
   }
 
-  // Models array - put in memory
-  links.models.list.offset = bb->file.used;
-  links.models.list.size = sizeof(bb->models);
-  links.models.list.elem_count = ArrayCount(bb->models);
+  // Models
+  BREAD_RangeStart(&bb->file, &links.models.list);
   {
     BREAD_Model *dst = BREAD_ReserveBytes(&bb->file, sizeof(bb->models), _Alignof(BREAD_Model));
     Memcpy(dst, bb->models, sizeof(bb->models));
   }
+  BREAD_RangeEnd(&bb->file, &links.models.list, ArrayCount(bb->models));
 
+  // Skeletons
   BREAD_RangeStart(&bb->file, &links.skeletons);
   Pr_Printer(&bb->file, &bb->skeletons);
   BREAD_RangeEnd(&bb->file, &links.skeletons, bb->skeletons_count);
+
+  // Materials
+  BREAD_RangeStart(&bb->file, &links.materials);
+  Pr_Printer(&bb->file, &bb->materials);
+  BREAD_RangeEnd(&bb->file, &links.materials, bb->materials_count);
 
   //
   // Prepare BREAD_Header
