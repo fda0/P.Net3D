@@ -346,7 +346,7 @@ static void Game_Iterate()
   {
     if (KEY_Held(KEY_MouseLeft) && !APP.debug.click_id)
     {
-      float rot_speed = 0.05f * APP.dt;
+      float rot_speed = 0.0005f;
       APP.camera_angles.z += rot_speed * APP.mouse_delta.x;
       APP.camera_angles.y += rot_speed * APP.mouse_delta.y * (-2.f / 3.f);
       APP.camera_angles.z = FWrap(-0.5f, 0.5f, APP.camera_angles.z);
