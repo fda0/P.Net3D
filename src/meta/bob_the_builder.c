@@ -91,8 +91,107 @@ static void BOB_CheckError(I32 error_code)
   }
 }
 
-static void BOB_Build(BOB_Compilation comp, const char *name)
+typedef struct
 {
+  bool release;
+  bool clang;
+  bool asan;
+  bool gui;
+  bool sdl3;
+  bool sdl3_net;
+  bool sdl3_ttf;
+  bool sdl3_image;
+} BOB_BuildConfig;
+
+static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
+{
+  // Compile/Link definitions
+  const char *include_paths =
+    "-I../src/base/ -I../src/game/ -I../src/meta/ -I../gen/ -I../libs/ "
+    "-I../libs/SDL/include/ -I../libs/SDL_ttf/include/ -I../libs/SDL_net/include/ -I../libs/SDL_image/include/";
+
+  const char *sdl_path_debug = "build/win/Debug/";
+  const char *sdl_path_release = "build/win/Release/";
+
+  const char *enable_asan  = "-fsanitize=address ";
+
+  // Compile/Link definitions per compiler
+  const char *msvc_exe       = "cl ";
+  const char *msvc_debug     = "/DBUILD_DEBUG=0 /Od /Ob1 /MDd ";
+  const char *msvc_release   = "/DBUILD_DEBUG=1 /O2 /MD ";
+  const char *msvc_common    = "/nologo /FC /Z7 /W4 /wd4244 /wd4201 /wd4324 /std:c17 ";
+  const char *msvc_link      = "/link /MANIFEST:EMBED /INCREMENTAL:NO /pdbaltpath:%_PDB% ";
+  const char *msvc_link_libs = "User32.lib Advapi32.lib Shell32.lib Gdi32.lib Version.lib OleAut32.lib Imm32.lib Ole32.lib Cfgmgr32.lib Setupapi.lib Winmm.lib Ws2_32.lib Iphlpapi.lib ";
+  const char *msvc_link_gui  = "/SUBSYSTEM:WINDOWS ";
+  const char *msvc_out       = "/out: ";
+
+  const char *clang_exe       = "clang ";
+  const char *clang_debug     = "-DBUILD_DEBUG=0 -g -O0 ";
+  const char *clang_release   = "-DBUILD_DEBUG=1 -g -O2 ";
+  const char *clang_common    = "-fdiagnostics-absolute-paths -Wall -Wno-missing-braces -Wno-unused-function -Wno-microsoft-static-assert -Wno-c2x-extensions ";
+  const char *clang_link      = "-fuse-ld=lld -Xlinker /MANIFEST:EMBED -Xlinker /pdbaltpath:%_PDB% ";
+  const char *clang_link_libs = "-lUser32.lib -lAdvapi32.lib -lShell32.lib -lGdi32.lib -lVersion.lib -lOleAut32.lib -lImm32.lib -lOle32.lib -lCfgmgr32.lib -lSetupapi.lib -lWinmm.lib -lWs2_32.lib -lIphlpapi.lib ";
+  const char *clang_link_gui  = "-Xlinker /SUBSYSTEM:WINDOWS ";
+  const char *clang_out       = "-o ";
+
+  // Select compiler
+  const char *exe = config.clang ? clang_exe : msvc_exe;
+  const char *debug = config.clang ? clang_debug : msvc_debug;
+  const char *release = config.clang ? clang_release : msvc_release;
+  const char *common = config.clang ? clang_common : msvc_common;
+  const char *link = config.clang ? clang_link : msvc_link;
+  const char *link_libs = config.clang ? clang_link_libs : msvc_link_libs;
+  const char *link_gui = config.clang ? clang_link_gui : msvc_link_gui;
+  const char *out = config.clang ? clang_out : msvc_out;
+
+  // Select optimizations
+  const char *opt_mode = config.release ? release : debug;
+  const char *sdl_path = config.release ? sdl_path_release : sdl_path_debug;
+
+  // Build command string
+  Pr_Cstr(cmd, exe);
+  Pr_Cstr(cmd, opt_mode);
+  Pr_Cstr(cmd, common);
+
+  // @todo Inject git hash predefine
+  // for /f %%i in ('call git describe --always --dirty') do set compile=%compile% -DBUILD_GIT_HASH=\"%%i\"
+
+  if (config.asan)
+    Pr_Cstr(cmd, enable_asan);
+
+  Pr_Cstr(cmd, link);
+
+  if (config.gui)
+    Pr_Cstr(cmd, link_gui);
+
+  Pr_Cstr(cmd, link_libs);
+
+  if (config.sdl3)
+  {
+    Pr_Cstr(cmd, "../libs/SDL/");
+    Pr_Cstr(cmd, sdl_path);
+    Pr_Cstr(cmd, "SDL3-static.lib");
+  }
+  if (config.sdl3_net)
+  {
+    Pr_Cstr(cmd, "../libs/SDL_net/");
+    Pr_Cstr(cmd, sdl_path);
+    Pr_Cstr(cmd, "SDL3_net-static.lib");
+  }
+  if (config.sdl3_ttf)
+  {
+    Pr_Cstr(cmd, "../libs/SDL_ttf/");
+    Pr_Cstr(cmd, sdl_path);
+    Pr_Cstr(cmd, "SDL3_ttf-static.lib");
+  }
+  if (config.sdl3_image)
+  {
+    Pr_Cstr(cmd, "../libs/SDL_image/");
+    Pr_Cstr(cmd, sdl_path);
+    Pr_Cstr(cmd, "SDL3_image-static.lib");
+  }
+
+  Pr_Cstr(cmd, out);
 }
 
 //
@@ -234,18 +333,31 @@ int main(I32 args_count, char **args)
   {
     bool release = BOB.justgame.release == BOB_TRUE;
     bool clang = BOB.justgame.compiler == BOB_CC_CLANG;
-    fprintf(stdout, "[BOB] Target justgame; %s; %s\n",
+    bool asan = BOB.justgame.asan == BOB_TRUE;
+    fprintf(stdout, "[BOB] Target justgame; %s; %s; %s\n",
             release ? "release" : "debug",
-            clang ? "clang" : "msvc");
+            clang ? "clang" : "msvc",
+            asan ? "asan-on" : "asan-off");
 
+    // Produce icon file
     BOB_PrinterOnStack(cmd);
     Pr_Cstr(&cmd, clang ? "llvm-rc" : "rc");
     Pr_Cstr(&cmd, " /nologo /fo icon.res ../res/ico/icon.rc");
     I32 r = BOB_SystemPrinter(&cmd);
     BOB_CheckError(r);
 
+    // Compile game
     Pr_Reset(&cmd);
-
+    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.release = release,
+                                             .clang = clang,
+                                             .asan = asan,
+                                             .gui = true,
+                                             .sdl3 = true,
+                                             .sdl3_net = true,
+                                             .sdl3_ttf = true,
+                                             .sdl3_image = true});
+    r = BOB_SystemPrinter(&cmd);
+    BOB_CheckError(r);
 
     BOB.did_build = true;
   }
