@@ -93,6 +93,8 @@ static void BOB_CheckError(I32 error_code)
 
 typedef struct
 {
+  const char *input;
+  const char *output;
   bool release;
   bool clang;
   bool asan;
@@ -106,13 +108,11 @@ typedef struct
 static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
 {
   // Compile/Link definitions
-  const char *include_paths =
-    "-I../src/base/ -I../src/game/ -I../src/meta/ -I../gen/ -I../libs/ "
-    "-I../libs/SDL/include/ -I../libs/SDL_ttf/include/ -I../libs/SDL_net/include/ -I../libs/SDL_image/include/";
-
   const char *sdl_path_debug = "build/win/Debug/";
   const char *sdl_path_release = "build/win/Release/";
-
+  const char *include_paths =
+    "-I../src/base/ -I../src/game/ -I../src/meta/ -I../gen/ -I../libs/ "
+    "-I../libs/SDL/include/ -I../libs/SDL_ttf/include/ -I../libs/SDL_net/include/ -I../libs/SDL_image/include/ ";
   const char *enable_asan  = "-fsanitize=address ";
 
   // Compile/Link definitions per compiler
@@ -123,7 +123,7 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   const char *msvc_link      = "/link /MANIFEST:EMBED /INCREMENTAL:NO /pdbaltpath:%_PDB% ";
   const char *msvc_link_libs = "User32.lib Advapi32.lib Shell32.lib Gdi32.lib Version.lib OleAut32.lib Imm32.lib Ole32.lib Cfgmgr32.lib Setupapi.lib Winmm.lib Ws2_32.lib Iphlpapi.lib ";
   const char *msvc_link_gui  = "/SUBSYSTEM:WINDOWS ";
-  const char *msvc_out       = "/out: ";
+  const char *msvc_out       = "/out:";
 
   const char *clang_exe       = "clang ";
   const char *clang_debug     = "-DBUILD_DEBUG=0 -g -O0 ";
@@ -150,8 +150,11 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
 
   // Build command string
   Pr_Cstr(cmd, exe);
+  Pr_Cstr(cmd, config.input);
+  Pr_Cstr(cmd, " ");
   Pr_Cstr(cmd, opt_mode);
   Pr_Cstr(cmd, common);
+  Pr_Cstr(cmd, include_paths);
 
   // @todo Inject git hash predefine
   // for /f %%i in ('call git describe --always --dirty') do set compile=%compile% -DBUILD_GIT_HASH=\"%%i\"
@@ -170,28 +173,32 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   {
     Pr_Cstr(cmd, "../libs/SDL/");
     Pr_Cstr(cmd, sdl_path);
-    Pr_Cstr(cmd, "SDL3-static.lib");
+    Pr_Cstr(cmd, "SDL3-static.lib ");
   }
   if (config.sdl3_net)
   {
     Pr_Cstr(cmd, "../libs/SDL_net/");
     Pr_Cstr(cmd, sdl_path);
-    Pr_Cstr(cmd, "SDL3_net-static.lib");
+    Pr_Cstr(cmd, "SDL3_net-static.lib ");
   }
   if (config.sdl3_ttf)
   {
     Pr_Cstr(cmd, "../libs/SDL_ttf/");
     Pr_Cstr(cmd, sdl_path);
-    Pr_Cstr(cmd, "SDL3_ttf-static.lib");
+    Pr_Cstr(cmd, "SDL3_ttf-static.lib ");
   }
   if (config.sdl3_image)
   {
     Pr_Cstr(cmd, "../libs/SDL_image/");
     Pr_Cstr(cmd, sdl_path);
-    Pr_Cstr(cmd, "SDL3_image-static.lib");
+    Pr_Cstr(cmd, "SDL3_image-static.lib ");
   }
 
-  Pr_Cstr(cmd, out);
+  if (config.output)
+  {
+    Pr_Cstr(cmd, out);
+    Pr_Cstr(cmd, config.output);
+  }
 }
 
 //
@@ -348,7 +355,9 @@ int main(I32 args_count, char **args)
 
     // Compile game
     Pr_Reset(&cmd);
-    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.release = release,
+    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/game/game_sdl_entry.c",
+                                             .output = "p.exe",
+                                             .release = release,
                                              .clang = clang,
                                              .asan = asan,
                                              .gui = true,
