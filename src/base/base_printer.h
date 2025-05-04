@@ -56,11 +56,13 @@ static Printer Pr_Make(U8 *buffer, U64 capacity)
   return res;
 }
 
+#ifndef PRINTER_SKIP_ARENA
 static Printer Pr_Alloc(Arena *a, U64 capacity)
 {
   Printer res = Pr_Make(Alloc(a, U8, capacity), capacity);
   return res;
 }
+#endif
 
 #define Pr_MakeOnStack(PrinterName, Size) \
 U8 PrinterName##_buffer[Size]; \
@@ -161,6 +163,7 @@ static void Pr_Float(Printer *p, float value)
   Pr_Cstr(p, buf);
 }
 
+#ifndef PRINTER_SKIP_MATH
 static void Pr_V2(Printer *p, V2 value)
 {
   char buf[128];
@@ -181,3 +184,4 @@ static void Pr_V4(Printer *p, V4 value)
   snprintf(buf, sizeof(buf), "{%f, %f, %f, %f}", value.x, value.y, value.z, value.w);
   Pr_Cstr(p, buf);
 }
+#endif
