@@ -16,12 +16,12 @@ typedef enum
   AN_Translation,
   AN_Rotation,
   AN_Scale,
-} AN_TransformType;
+} BREAD_TransformType;
 
 typedef struct
 {
   U32 joint_index : 30;
-  AN_TransformType type : 2;
+  U32 type : 2; // [BREAD_TransformType]
   BREAD_Range inputs;  // [V3 or Quat] * count
   BREAD_Range outputs; // [V3 or Quat] * count
 } BREAD_AnimChannel;

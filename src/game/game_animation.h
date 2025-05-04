@@ -1,7 +1,7 @@
 typedef struct
 {
   U32 joint_index : 30;
-  AN_TransformType type : 2;
+  U32 type : 2; // BREAD_TransformType
   U32 count;
   float *inputs; // 1 * count
   float *outputs; // (type == Rotation ? 4 : 3) * count

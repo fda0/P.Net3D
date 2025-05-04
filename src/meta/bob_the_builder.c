@@ -11,6 +11,8 @@
 #define PRINTER_SKIP_MATH
 #include "base_printer.h"
 #define BOB_PrinterOnStack(p) Pr_MakeOnStack(p, Kilobyte(32))
+#define BOB_out stderr
+#define BOB_err stderr
 
 typedef enum
 {
@@ -73,7 +75,7 @@ static void BOB_CompInherit(BOB_Compilation *parent, BOB_Compilation *child)
 static int BOB_System(const char *command)
 {
   if (BOB.verbose)
-    fprintf(stdout, "[BOB] RUNNING: %s\n", command);
+    fprintf(BOB_out, "[BOB] RUNNING: %s\n", command);
   return system(command);
 }
 static int BOB_SystemPrinter(Printer *p)
@@ -81,7 +83,7 @@ static int BOB_SystemPrinter(Printer *p)
   const char *command = Pr_AsCstr(p);
   if (p->err)
   {
-    fprintf(stderr, "[BOB] ERROR: Internal printer error\n");
+    fprintf(BOB_err, "[BOB] ERROR: Internal printer error\n");
     exit(1);
   }
   return BOB_System(command);
@@ -91,7 +93,7 @@ static void BOB_CheckError(I32 error_code)
 {
   if (error_code)
   {
-    fprintf(stderr, "[BOB] ERROR: Exiting with code %d\n", error_code);
+    fprintf(BOB_err, "[BOB] ERROR: Exiting with code %d\n", error_code);
     exit(error_code);
   }
 }
@@ -243,7 +245,7 @@ int main(I32 args_count, char **args)
 
     // Unknown
     else
-      fprintf(stderr, "[BOB] WARNING: Skipping unknown command line option: %.*s\n", S8Print(arg));
+      fprintf(BOB_err, "[BOB] WARNING: Skipping unknown command line option: %.*s\n", S8Print(arg));
   }
 
   // Transfer options from target groups to targets
@@ -263,7 +265,7 @@ int main(I32 args_count, char **args)
     BOB_Compilation *comp = &BOB.sdl;
     BOB.verbose = comp->verbose;
     bool release = comp->release == BOB_TRUE;
-    fprintf(stdout, "[BOB] Target SDL; %s; %s\n",
+    fprintf(BOB_out, "[BOB] Target SDL; %s; %s\n",
             release ? "release" : "debug",
             BOB.verbose ? "verbose" : "silent");
 
@@ -322,7 +324,7 @@ int main(I32 args_count, char **args)
   if (BOB.shaders.enabled)
   {
     BOB.verbose = BOB.sdl.verbose;
-    fprintf(stdout, "[BOB] Target shaders; %s\n",
+    fprintf(BOB_out, "[BOB] Target shaders; %s\n",
             BOB.verbose ? "verbose" : "silent");
 
     const char *cmd =
@@ -352,7 +354,7 @@ int main(I32 args_count, char **args)
     bool clang = comp->compiler == BOB_CC_CLANG;
     bool asan = comp->asan == BOB_TRUE;
     bool run = comp->run != BOB_FALSE;
-    fprintf(stdout, "[BOB] Target math; %s; %s; %s; %s; %s\n",
+    fprintf(BOB_out, "[BOB] Target math; %s; %s; %s; %s; %s\n",
             run ? "run-on" : "run-off",
             release ? "release" : "debug",
             clang ? "clang" : "msvc",
@@ -386,7 +388,7 @@ int main(I32 args_count, char **args)
     bool clang = comp->compiler == BOB_CC_CLANG;
     bool asan = comp->asan == BOB_TRUE;
     bool run = comp->run != BOB_FALSE;
-    fprintf(stdout, "[BOB] Target baker; %s, %s; %s; %s; %s\n",
+    fprintf(BOB_out, "[BOB] Target baker; %s, %s; %s; %s; %s\n",
             run ? "run-on" : "run-off",
             release ? "release" : "debug",
             clang ? "clang" : "msvc",
@@ -420,7 +422,7 @@ int main(I32 args_count, char **args)
     bool release = comp->release == BOB_TRUE;
     bool clang = comp->compiler == BOB_CC_CLANG;
     bool asan = comp->asan == BOB_TRUE;
-    fprintf(stdout, "[BOB] Target justgame; %s; %s; %s; %s\n",
+    fprintf(BOB_out, "[BOB] Target justgame; %s; %s; %s; %s\n",
             release ? "release" : "debug",
             clang ? "clang" : "msvc",
             asan ? "asan-on" : "asan-off",
@@ -453,10 +455,10 @@ int main(I32 args_count, char **args)
 
   if (!BOB.did_build)
   {
-    fprintf(stderr, "[BOB] No build target was provided. To build everything use: build.bat release all\n");
+    fprintf(BOB_err, "[BOB] No build target was provided. To build everything use: build.bat release all\n");
     BOB_CheckError(1);
   }
 
-  fprintf(stdout, "[BOB] Success\n");
+  fprintf(BOB_out, "[BOB] Success\n");
   return 0;
 }
