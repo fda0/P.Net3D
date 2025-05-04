@@ -1,8 +1,9 @@
 // Simple build program custom built for this project.
 // Features:
 // - Flexible command-line interface that does exactly what the author (me) wants.
-// - Measures build times.
-// - Caches asset preprocessor (baker) output.
+// - @todo Measures build times.
+// - @todo Caches asset preprocessor (baker) output.
+// - @todo Hides spam.
 #include <stdio.h>
 #include "base_types.h"
 #include "base_string.h"
