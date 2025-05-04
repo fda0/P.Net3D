@@ -27,7 +27,7 @@
 // Baker implementations
 #include "baker_bread_builder.c"
 #include "baker_textures.c"
-#include "baker_gltf_loader.c"
+#include "baker_gltf_models.c"
 
 // Memory allocations
 static U8 tmp_arena_memory[Megabyte(256)];

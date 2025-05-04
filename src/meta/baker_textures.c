@@ -1,3 +1,7 @@
+// @todo:
+// - Mipmapping
+// - Explore other texture compression formats (BC5 for normal maps?)
+
 static void BAKER_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
 {
   Assert(tex_kind < TEX_COUNT);
@@ -116,6 +120,8 @@ static void BAKER_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
 
       row += pitch * M_TEX_CHUNK_DIM;
     }
+
+    SDL_DestroySurface(files[file_index].surface);
   }
 
   U32 bc7_total_block_count = chunks_count_x * chunks_count_y * br_material->layers * 2;
