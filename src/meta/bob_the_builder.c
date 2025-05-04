@@ -1,13 +1,15 @@
-// Simple custom build program.
+// Simple build program custom built for this project.
 // Features:
-// - measures build time
-// - caches some stages like asset preprocessor (baker) output
+// - Flexible command-line interface that does exactly what the author (me) wants.
+// - Measures build times.
+// - Caches asset preprocessor (baker) output.
 #include <stdio.h>
 #include "base_types.h"
 #include "base_string.h"
 #define PRINTER_SKIP_ARENA
 #define PRINTER_SKIP_MATH
 #include "base_printer.h"
+#define BOB_PrinterOnStack(p) Pr_MakeOnStack(p, Kilobyte(32))
 
 typedef enum
 {
@@ -29,6 +31,8 @@ typedef struct
   BOB_Compiler compiler;
   BOB_B3 release;
   BOB_B3 asan;
+  BOB_B3 norun;
+  BOB_B3 nocache;
 } BOB_Compilation;
 
 typedef struct
@@ -38,13 +42,17 @@ typedef struct
 
   // Compilation targets
   BOB_Compilation sdl;
-  BOB_Compilation baker;
   BOB_Compilation shaders;
+  BOB_Compilation math;
+  BOB_Compilation baker;
   BOB_Compilation justgame;
 
   // Target groups
-  BOB_Compilation game; // baker, shaders, justgame
+  BOB_Compilation game; // shaders, baker, justgame
   BOB_Compilation all; // everything
+
+  // Other
+  bool did_build;
 } BOB_State;
 static BOB_State BOB;
 
@@ -54,6 +62,8 @@ static void BOB_CompInherit(BOB_Compilation *parent, BOB_Compilation *child)
   if (child->compiler == BOB_CC_DEFAULT) child->compiler = parent->compiler;
   if (child->release == BOB_DEFAULT)     child->release = parent->release;
   if (child->asan == BOB_DEFAULT)        child->asan = parent->asan;
+  if (child->norun == BOB_DEFAULT)       child->norun = parent->norun;
+  if (child->nocache == BOB_DEFAULT)     child->nocache = parent->nocache;
 }
 
 static int BOB_System(const char *command)
@@ -66,7 +76,7 @@ static int BOB_SystemPrinter(Printer *p)
   const char *command = Pr_AsCstr(p);
   if (p->err)
   {
-    fprintf(stderr, "[BOB] Internal printer error\n");
+    fprintf(stderr, "[BOB] ERROR: Internal printer error\n");
     exit(1);
   }
   return BOB_System(command);
@@ -76,7 +86,7 @@ static void BOB_CheckError(I32 error_code)
 {
   if (error_code)
   {
-    fprintf(stderr, "[BOB] Exiting with error %d\n", error_code);
+    fprintf(stderr, "[BOB] ERROR: Exiting with code %d\n", error_code);
     exit(error_code);
   }
 }
@@ -103,8 +113,9 @@ int main(I32 args_count, char **args)
 
     // Targets
     else if (S8_Match(arg, S8Lit("sdl"), f))      BOB.sdl = BOB.comp;
-    else if (S8_Match(arg, S8Lit("baker"), f))    BOB.baker = BOB.comp;
     else if (S8_Match(arg, S8Lit("shaders"), f))  BOB.shaders = BOB.comp;
+    else if (S8_Match(arg, S8Lit("math"), f))     BOB.math = BOB.comp;
+    else if (S8_Match(arg, S8Lit("baker"), f))    BOB.baker = BOB.comp;
     else if (S8_Match(arg, S8Lit("justgame"), f)) BOB.justgame = BOB.comp;
 
     // Target groups
@@ -113,7 +124,7 @@ int main(I32 args_count, char **args)
 
     // Unknown
     else
-      fprintf(stderr, "[BOB] Skipping unknown option: %.*s\n", S8Print(arg));
+      fprintf(stderr, "[BOB] WARNING: Skipping unknown command line option: %.*s\n", S8Print(arg));
   }
 
   // Transfer options from target groups to targets
@@ -122,6 +133,7 @@ int main(I32 args_count, char **args)
   BOB_CompInherit(&BOB.game, &BOB.justgame);
 
   BOB_CompInherit(&BOB.all, &BOB.sdl);
+  BOB_CompInherit(&BOB.all, &BOB.math);
   BOB_CompInherit(&BOB.all, &BOB.baker);
   BOB_CompInherit(&BOB.all, &BOB.shaders);
   BOB_CompInherit(&BOB.all, &BOB.justgame);
@@ -129,21 +141,25 @@ int main(I32 args_count, char **args)
   //
   if (BOB.sdl.enabled == BOB_TRUE)
   {
+    bool release = BOB.sdl.release == BOB_TRUE;
+    fprintf(stdout, "[BOB] Target SDL; %s\n",
+            release ? "release" : "debug");
+
     // SDL build docs: https://github.com/libsdl-org/SDL/blob/main/docs/README-cmake.md
     // @todo(mg): pass gcc/clang flag to SDL (is that even possible?)
 
-    Pr_MakeOnStack(stage1, Kilobyte(1));
+    BOB_PrinterOnStack(stage1);
     Pr_Cstr(&stage1, "cmake -S . -B build/win");
-    if (BOB.sdl.release == BOB_TRUE)
+    if (release)
       Pr_Cstr(&stage1, " -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=\"/arch:AVX2\" -DCMAKE_CXX_FLAGS=\"/arch:AVX2\"");
 
-    Pr_MakeOnStack(stage2, Kilobyte(1));
+    BOB_PrinterOnStack(stage2);
     Pr_Cstr(&stage2, "cmake --build build/win");
-    if (BOB.sdl.release == BOB_TRUE)
+    if (release)
       Pr_Cstr(&stage2, " --config Release");
 
     // Compile main SDL3 target
-    Pr_MakeOnStack(cmd, Kilobyte(1));
+    BOB_PrinterOnStack(cmd);
     Pr_Cstr(&cmd, "cd ../libs/SDL && ");
     Pr_Printer(&cmd, &stage1);
     Pr_Cstr(&cmd, " -DSDL_STATIC=ON && ");
@@ -177,7 +193,69 @@ int main(I32 args_count, char **args)
     Pr_Printer(&cmd, &stage2);
     r = BOB_SystemPrinter(&cmd);
     BOB_CheckError(r);
+
+    BOB.did_build = true;
+  }
+
+  if (BOB.shaders.enabled)
+  {
+    fprintf(stdout, "[BOB] Target shaders\n");
+
+    const char *cmd =
+      // Clean gen directory
+      "(if exist ..\\gen\\ rmdir /q /s ..\\gen\\) && "
+      "mkdir ..\\gen\\ && "
+
+      // Precompile shaders
+      "dxc ../src/game/shader_world.hlsl /E World_DxShaderRigidVS   /T vs_6_0 /D IS_RIGID=1    /Fh ../gen/gen_shader_rigid.vert.h && "
+      "dxc ../src/game/shader_world.hlsl /E World_DxShaderRigidPS   /T ps_6_0 /D IS_RIGID=1    /Fh ../gen/gen_shader_rigid.frag.h && "
+      "dxc ../src/game/shader_world.hlsl /E World_DxShaderSkinnedVS /T vs_6_0 /D IS_SKINNED=1  /Fh ../gen/gen_shader_skinned.vert.h && "
+      "dxc ../src/game/shader_world.hlsl /E World_DxShaderSkinnedPS /T ps_6_0 /D IS_SKINNED=1  /Fh ../gen/gen_shader_skinned.frag.h && "
+      "dxc ../src/game/shader_world.hlsl /E World_DxShaderMeshVS    /T vs_6_0 /D IS_TEXTURED=1 /Fh ../gen/gen_shader_mesh.vert.h && "
+      "dxc ../src/game/shader_world.hlsl /E World_DxShaderMeshPS    /T ps_6_0 /D IS_TEXTURED=1 /Fh ../gen/gen_shader_mesh.frag.h && "
+      "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderVS           /T vs_6_0                  /Fh ../gen/gen_shader_ui.vert.h && "
+      "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderPS           /T ps_6_0                  /Fh ../gen/gen_shader_ui.frag.h";
+    BOB_System(cmd);
+
+    BOB.did_build = true;
+  }
+
+  if (BOB.math.enabled)
+  {
+    // @todo
+  }
+
+  if (BOB.baker.enabled)
+  {
+    // @todo
+  }
+
+  if (BOB.justgame.enabled)
+  {
+    bool release = BOB.justgame.release == BOB_TRUE;
+    bool clang = BOB.justgame.compiler == BOB_CC_CLANG;
+    fprintf(stdout, "[BOB] Target justgame; %s; %s\n",
+            release ? "release" : "debug",
+            clang ? "clang" : "msvc");
+
+    BOB_PrinterOnStack(cmd);
+    Pr_Cstr(&cmd, clang ? "llvm-rc" : "rc");
+    Pr_Cstr(&cmd, " /nologo /fo icon.res ../res/ico/icon.rc");
+    I32 r = BOB_SystemPrinter(&cmd);
+    BOB_CheckError(r);
+
+    Pr_Reset(&cmd);
+
+
+    BOB.did_build = true;
+  }
+
+  if (!BOB.did_build)
+  {
+    fprintf(stderr, "[BOB] No build target was provided. To build everything use: build.bat release all\n");
+    BOB_CheckError(1);
   }
 
   fprintf(stdout, "[BOB] Success\n");
+  return 0;
 }

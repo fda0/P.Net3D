@@ -128,18 +128,11 @@ if "%math%"=="1" (
     set didbuild=1
 )
 
-if "%baker%"=="1" (
+if "%shaders%"=="1" (
     :: --- Clean gen directory ------------------------------------------------
     if exist ..\gen\ rmdir /q /s ..\gen\
     mkdir ..\gen\
 
-    :: --- Metaprogram --------------------------------------------------------
-    %compile% ..\src\meta\baker_entry.c ..\libs\bc7enc.c %compile_link% %out%baker.exe || exit /b 1
-    baker.exe || exit /b 1
-    set didbuild=1
-)
-
-if "%shaders%"=="1" (
     :: --- Precompile shaders -------------------------------------------------
     dxc ..\src\game\shader_world.hlsl /E World_DxShaderRigidVS   /T vs_6_0 /D IS_RIGID=1    /Fh ..\gen\gen_shader_rigid.vert.h || exit /b 1
     dxc ..\src\game\shader_world.hlsl /E World_DxShaderRigidPS   /T ps_6_0 /D IS_RIGID=1    /Fh ..\gen\gen_shader_rigid.frag.h || exit /b 1
@@ -149,6 +142,13 @@ if "%shaders%"=="1" (
     dxc ..\src\game\shader_world.hlsl /E World_DxShaderMeshPS    /T ps_6_0 /D IS_TEXTURED=1 /Fh ..\gen\gen_shader_mesh.frag.h || exit /b 1
     dxc ..\src\game\shader_ui.hlsl    /E UI_DxShaderVS           /T vs_6_0                  /Fh ..\gen\gen_shader_ui.vert.h || exit /b 1
     dxc ..\src\game\shader_ui.hlsl    /E UI_DxShaderPS           /T ps_6_0                  /Fh ..\gen\gen_shader_ui.frag.h || exit /b 1
+    set didbuild=1
+)
+
+if "%baker%"=="1" (
+    :: --- Metaprogram --------------------------------------------------------
+    %compile% ..\src\meta\baker_entry.c ..\libs\bc7enc.c %compile_link% %out%baker.exe || exit /b 1
+    baker.exe || exit /b 1
     set didbuild=1
 )
 
