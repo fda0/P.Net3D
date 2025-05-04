@@ -87,7 +87,7 @@ typedef struct
 typedef struct
 {
   U64 file_hash; // of everything after itself (the first 8 bytes) - seeded with BREAD_MAGIC_HASH_SEED
-#define BREAD_MAGIC_HASH_SEED (0xB5'EA'DC'0D + 0)
+#define BREAD_MAGIC_HASH_SEED (0xB5EADC0D + 0)
   BREAD_Range links; // [BREAD_Links]
 } BREAD_Header;
 

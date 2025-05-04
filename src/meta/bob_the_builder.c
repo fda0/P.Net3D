@@ -31,8 +31,9 @@ typedef struct
   BOB_Compiler compiler;
   BOB_B3 release;
   BOB_B3 asan;
-  BOB_B3 norun;
-  BOB_B3 nocache;
+  BOB_B3 run;
+  BOB_B3 cache;
+  BOB_B3 verbose;
 } BOB_Compilation;
 
 typedef struct
@@ -52,6 +53,7 @@ typedef struct
   BOB_Compilation all; // everything
 
   // Other
+  bool verbose;
   bool did_build;
 } BOB_State;
 static BOB_State BOB;
@@ -62,13 +64,15 @@ static void BOB_CompInherit(BOB_Compilation *parent, BOB_Compilation *child)
   if (child->compiler == BOB_CC_DEFAULT) child->compiler = parent->compiler;
   if (child->release == BOB_DEFAULT)     child->release = parent->release;
   if (child->asan == BOB_DEFAULT)        child->asan = parent->asan;
-  if (child->norun == BOB_DEFAULT)       child->norun = parent->norun;
-  if (child->nocache == BOB_DEFAULT)     child->nocache = parent->nocache;
+  if (child->run == BOB_DEFAULT)         child->run = parent->run;
+  if (child->cache == BOB_DEFAULT)       child->cache = parent->cache;
+  if (child->verbose == BOB_DEFAULT)     child->verbose = parent->verbose;
 }
 
 static int BOB_System(const char *command)
 {
-  fprintf(stdout, "[BOB] RUNNING: %s\n", command);
+  if (BOB.verbose)
+    fprintf(stdout, "[BOB] RUNNING: %s\n", command);
   return system(command);
 }
 static int BOB_SystemPrinter(Printer *p)
@@ -216,6 +220,14 @@ int main(I32 args_count, char **args)
     else if (S8_Match(arg, S8Lit("debug"), f))   BOB.comp.release = BOB_FALSE;
     else if (S8_Match(arg, S8Lit("msvc"), f))    BOB.comp.compiler = BOB_CC_MSVC;
     else if (S8_Match(arg, S8Lit("clang"), f))   BOB.comp.compiler = BOB_CC_CLANG;
+    else if (S8_Match(arg, S8Lit("asan"), f))    BOB.comp.asan = BOB_TRUE;
+    else if (S8_Match(arg, S8Lit("noasan"), f))  BOB.comp.asan = BOB_FALSE;
+    else if (S8_Match(arg, S8Lit("run"), f))     BOB.comp.run = BOB_TRUE;
+    else if (S8_Match(arg, S8Lit("norun"), f))   BOB.comp.run = BOB_FALSE;
+    else if (S8_Match(arg, S8Lit("cache"), f))   BOB.comp.cache = BOB_TRUE;
+    else if (S8_Match(arg, S8Lit("nocache"), f)) BOB.comp.cache = BOB_FALSE;
+    else if (S8_Match(arg, S8Lit("verbose"), f)) BOB.comp.verbose = BOB_TRUE;
+    else if (S8_Match(arg, S8Lit("silent"), f))  BOB.comp.verbose = BOB_FALSE;
 
     // Targets
     else if (S8_Match(arg, S8Lit("sdl"), f))      BOB.sdl = BOB.comp;
@@ -247,9 +259,12 @@ int main(I32 args_count, char **args)
   //
   if (BOB.sdl.enabled == BOB_TRUE)
   {
-    bool release = BOB.sdl.release == BOB_TRUE;
-    fprintf(stdout, "[BOB] Target SDL; %s\n",
-            release ? "release" : "debug");
+    BOB_Compilation *comp = &BOB.sdl;
+    BOB.verbose = comp->verbose;
+    bool release = comp->release == BOB_TRUE;
+    fprintf(stdout, "[BOB] Target SDL; %s; %s\n",
+            release ? "release" : "debug",
+            BOB.verbose ? "verbose" : "silent");
 
     // SDL build docs: https://github.com/libsdl-org/SDL/blob/main/docs/README-cmake.md
     // @todo(mg): pass gcc/clang flag to SDL (is that even possible?)
@@ -305,7 +320,9 @@ int main(I32 args_count, char **args)
 
   if (BOB.shaders.enabled)
   {
-    fprintf(stdout, "[BOB] Target shaders\n");
+    BOB.verbose = BOB.sdl.verbose;
+    fprintf(stdout, "[BOB] Target shaders; %s\n",
+            BOB.verbose ? "verbose" : "silent");
 
     const char *cmd =
       // Clean gen directory
@@ -328,23 +345,85 @@ int main(I32 args_count, char **args)
 
   if (BOB.math.enabled)
   {
-    // @todo
+    BOB_Compilation *comp = &BOB.baker;
+    BOB.verbose = comp->verbose;
+    bool release = comp->release == BOB_TRUE;
+    bool clang = comp->compiler == BOB_CC_CLANG;
+    bool asan = comp->asan == BOB_TRUE;
+    bool run = comp->run != BOB_FALSE;
+    fprintf(stdout, "[BOB] Target math; %s; %s; %s; %s; %s\n",
+            run ? "run-on" : "run-off",
+            release ? "release" : "debug",
+            clang ? "clang" : "msvc",
+            asan ? "asan-on" : "asan-off",
+            BOB.verbose ? "verbose" : "silent");
+
+    BOB_PrinterOnStack(cmd);
+    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/codegen_math.c",
+                                             .output = "codegen_math.exe",
+                                             .release = release,
+                                             .clang = clang,
+                                             .asan = asan,
+                                             .sdl3 = true});
+    I32 r = BOB_SystemPrinter(&cmd);
+    BOB_CheckError(r);
+
+    if (run)
+    {
+      r = BOB_System("codegen_math.exe");
+      BOB_CheckError(r);
+    }
+
+    BOB.did_build = true;
   }
 
   if (BOB.baker.enabled)
   {
-    // @todo
+    BOB_Compilation *comp = &BOB.baker;
+    BOB.verbose = comp->verbose;
+    bool release = comp->release != BOB_FALSE; // default to release for baker
+    bool clang = comp->compiler == BOB_CC_CLANG;
+    bool asan = comp->asan == BOB_TRUE;
+    bool run = comp->run != BOB_FALSE;
+    fprintf(stdout, "[BOB] Target baker; %s, %s; %s; %s; %s\n",
+            run ? "run-on" : "run-off",
+            release ? "release" : "debug",
+            clang ? "clang" : "msvc",
+            asan ? "asan-on" : "asan-off",
+            BOB.verbose ? "verbose" : "silent");
+
+    BOB_PrinterOnStack(cmd);
+    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/baker_entry.c ../libs/bc7enc.c",
+                                             .output = "baker.exe",
+                                             .release = release,
+                                             .clang = clang,
+                                             .asan = asan,
+                                             .sdl3 = true,
+                                             .sdl3_image = true});
+    I32 r = BOB_SystemPrinter(&cmd);
+    BOB_CheckError(r);
+
+    if (run)
+    {
+      r = BOB_System("baker.exe");
+      BOB_CheckError(r);
+    }
+
+    BOB.did_build = true;
   }
 
   if (BOB.justgame.enabled)
   {
-    bool release = BOB.justgame.release == BOB_TRUE;
-    bool clang = BOB.justgame.compiler == BOB_CC_CLANG;
-    bool asan = BOB.justgame.asan == BOB_TRUE;
-    fprintf(stdout, "[BOB] Target justgame; %s; %s; %s\n",
+    BOB_Compilation *comp = &BOB.justgame;
+    BOB.verbose = comp->verbose;
+    bool release = comp->release == BOB_TRUE;
+    bool clang = comp->compiler == BOB_CC_CLANG;
+    bool asan = comp->asan == BOB_TRUE;
+    fprintf(stdout, "[BOB] Target justgame; %s; %s; %s; %s\n",
             release ? "release" : "debug",
             clang ? "clang" : "msvc",
-            asan ? "asan-on" : "asan-off");
+            asan ? "asan-on" : "asan-off",
+            BOB.verbose ? "verbose" : "silent");
 
     // Produce icon file
     BOB_PrinterOnStack(cmd);
