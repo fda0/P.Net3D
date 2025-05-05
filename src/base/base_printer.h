@@ -162,6 +162,12 @@ static void Pr_Float(Printer *p, float value)
   snprintf(buf, sizeof(buf), "%f", value);
   Pr_Cstr(p, buf);
 }
+static void Pr_Float3(Printer *p, float value) // @todo allow to specify these things via some config
+{
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%.3f", value);
+  Pr_Cstr(p, buf);
+}
 
 #ifndef PRINTER_SKIP_MATH
 static void Pr_V2(Printer *p, V2 value)

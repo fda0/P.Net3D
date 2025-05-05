@@ -1,10 +1,11 @@
 // Simple build program custom built for this project.
 // Features:
 // - Flexible command-line interface that does exactly what the author (me) wants.
-// - @todo Measures build times.
+// - Measures build times.
 // - @todo Caches asset preprocessor (baker) output.
 // - @todo Hides spam.
 #include <stdio.h>
+#include <time.h>
 #include "base_types.h"
 #include "base_string.h"
 #define PRINTER_SKIP_ARENA
@@ -41,6 +42,18 @@ typedef struct
 
 typedef struct
 {
+  const char *input;
+  const char *output;
+  BOB_Compilation comp;
+  bool gui;
+  bool sdl3;
+  bool sdl3_net;
+  bool sdl3_ttf;
+  bool sdl3_image;
+} BOB_BuildConfig;
+
+typedef struct
+{
   // Tracks currently set options
   BOB_Compilation comp;
 
@@ -58,6 +71,9 @@ typedef struct
   // Other
   bool verbose;
   bool did_build;
+  clock_t time;
+  clock_t start_time;
+  Printer log;
 } BOB_State;
 static BOB_State BOB;
 
@@ -98,22 +114,12 @@ static void BOB_CheckError(I32 error_code)
   }
 }
 
-typedef struct
-{
-  const char *input;
-  const char *output;
-  bool release;
-  bool clang;
-  bool asan;
-  bool gui;
-  bool sdl3;
-  bool sdl3_net;
-  bool sdl3_ttf;
-  bool sdl3_image;
-} BOB_BuildConfig;
-
 static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
 {
+  bool release = config.comp.release == BOB_TRUE;
+  bool clang = config.comp.compiler == BOB_CC_CLANG;
+  bool asan = config.comp.asan == BOB_TRUE;
+
   // Compile/Link definitions
   const char *sdl_path_debug = "build/win/Debug/";
   const char *sdl_path_release = "build/win/Release/";
@@ -142,18 +148,18 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   const char *clang_out       = "-o ";
 
   // Select compiler
-  const char *exe = config.clang ? clang_exe : msvc_exe;
-  const char *debug = config.clang ? clang_debug : msvc_debug;
-  const char *release = config.clang ? clang_release : msvc_release;
-  const char *common = config.clang ? clang_common : msvc_common;
-  const char *link = config.clang ? clang_link : msvc_link;
-  const char *link_libs = config.clang ? clang_link_libs : msvc_link_libs;
-  const char *link_gui = config.clang ? clang_link_gui : msvc_link_gui;
-  const char *out = config.clang ? clang_out : msvc_out;
+  const char *exe = clang ? clang_exe : msvc_exe;
+  const char *opt_debug = clang ? clang_debug : msvc_debug;
+  const char *opt_release = clang ? clang_release : msvc_release;
+  const char *common = clang ? clang_common : msvc_common;
+  const char *link = clang ? clang_link : msvc_link;
+  const char *link_libs = clang ? clang_link_libs : msvc_link_libs;
+  const char *link_gui = clang ? clang_link_gui : msvc_link_gui;
+  const char *out = clang ? clang_out : msvc_out;
 
   // Select optimizations
-  const char *opt_mode = config.release ? release : debug;
-  const char *sdl_path = config.release ? sdl_path_release : sdl_path_debug;
+  const char *opt_mode = release ? opt_release : opt_debug;
+  const char *sdl_path = release ? sdl_path_release : sdl_path_debug;
 
   // Build command string
   Pr_Cstr(cmd, exe);
@@ -166,7 +172,7 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   // @todo Inject git hash predefine
   // for /f %%i in ('call git describe --always --dirty') do set compile=%compile% -DBUILD_GIT_HASH=\"%%i\"
 
-  if (config.asan)
+  if (asan)
     Pr_Cstr(cmd, enable_asan);
 
   Pr_Cstr(cmd, link);
@@ -208,10 +214,47 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   }
 }
 
+static void BOB_MarkSection(const char *name, BOB_Compilation comp)
+{
+  BOB.verbose = comp.verbose == BOB_TRUE;
+
+  clock_t new_time = clock();
+  if (BOB.did_build)
+  {
+    float delta_seconds = (float)(new_time - BOB.time) / CLOCKS_PER_SEC;
+    Pr_Cstr(&BOB.log, " ");
+    Pr_Float3(&BOB.log, delta_seconds);
+    Pr_Cstr(&BOB.log, "s; ");
+  }
+
+  BOB.did_build = true;
+  BOB.time = new_time;
+
+  if (name)
+  {
+    Pr_Cstr(&BOB.log, name);
+    if (comp.compiler == BOB_CC_CLANG) Pr_Cstr(&BOB.log, ".ll");
+    if (comp.release == BOB_TRUE) Pr_Cstr(&BOB.log, ".R");
+    if (comp.asan == BOB_TRUE) Pr_Cstr(&BOB.log, ".asan");
+    if (comp.cache == BOB_FALSE) Pr_Cstr(&BOB.log, ".uc");
+    if (comp.verbose == BOB_TRUE) Pr_Cstr(&BOB.log, ".v");
+  }
+  else
+  {
+    float delta_seconds = (float)(new_time - BOB.start_time) / CLOCKS_PER_SEC;
+    Pr_Cstr(&BOB.log, "Total ");
+    Pr_Float3(&BOB.log, delta_seconds);
+    Pr_Cstr(&BOB.log, "s; ");
+  }
+}
+
 //
 int main(I32 args_count, char **args)
 {
   BOB.comp.enabled = BOB_TRUE;
+  BOB.start_time = clock();
+  U8 log_buffer[Kilobyte(8)];
+  BOB.log = Pr_Make(log_buffer, sizeof(log_buffer));
 
   for (I32 i = 1; i < args_count; i += 1)
   {
@@ -262,12 +305,9 @@ int main(I32 args_count, char **args)
   //
   if (BOB.sdl.enabled == BOB_TRUE)
   {
-    BOB_Compilation *comp = &BOB.sdl;
-    BOB.verbose = comp->verbose;
-    bool release = comp->release == BOB_TRUE;
-    fprintf(BOB_out, "[BOB] Target SDL; %s; %s\n",
-            release ? "release" : "debug",
-            BOB.verbose ? "verbose" : "silent");
+    BOB_Compilation comp = BOB.sdl;
+    BOB_MarkSection("SDL", comp);
+    bool release = comp.release == BOB_TRUE;
 
     // SDL build docs: https://github.com/libsdl-org/SDL/blob/main/docs/README-cmake.md
     // @todo(mg): pass gcc/clang flag to SDL (is that even possible?)
@@ -323,9 +363,7 @@ int main(I32 args_count, char **args)
 
   if (BOB.shaders.enabled)
   {
-    BOB.verbose = BOB.sdl.verbose;
-    fprintf(BOB_out, "[BOB] Target shaders; %s\n",
-            BOB.verbose ? "verbose" : "silent");
+    BOB_MarkSection("Shaders", (BOB_Compilation){});
 
     const char *cmd =
       // Clean gen directory
@@ -348,31 +386,20 @@ int main(I32 args_count, char **args)
 
   if (BOB.math.enabled)
   {
-    BOB_Compilation *comp = &BOB.baker;
-    BOB.verbose = comp->verbose;
-    bool release = comp->release == BOB_TRUE;
-    bool clang = comp->compiler == BOB_CC_CLANG;
-    bool asan = comp->asan == BOB_TRUE;
-    bool run = comp->run != BOB_FALSE;
-    fprintf(BOB_out, "[BOB] Target math; %s; %s; %s; %s; %s\n",
-            run ? "run-on" : "run-off",
-            release ? "release" : "debug",
-            clang ? "clang" : "msvc",
-            asan ? "asan-on" : "asan-off",
-            BOB.verbose ? "verbose" : "silent");
+    BOB_Compilation comp = BOB.math;
+    BOB_MarkSection("Math", comp);
 
     BOB_PrinterOnStack(cmd);
     BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/codegen_math.c",
                                              .output = "codegen_math.exe",
-                                             .release = release,
-                                             .clang = clang,
-                                             .asan = asan,
+                                             .comp = comp,
                                              .sdl3 = true});
     I32 r = BOB_SystemPrinter(&cmd);
     BOB_CheckError(r);
 
-    if (run)
+    if (comp.run != BOB_FALSE)
     {
+      BOB_MarkSection("Math-run", (BOB_Compilation){});
       r = BOB_System("codegen_math.exe");
       BOB_CheckError(r);
     }
@@ -382,32 +409,23 @@ int main(I32 args_count, char **args)
 
   if (BOB.baker.enabled)
   {
-    BOB_Compilation *comp = &BOB.baker;
-    BOB.verbose = comp->verbose;
-    bool release = comp->release != BOB_FALSE; // default to release for baker
-    bool clang = comp->compiler == BOB_CC_CLANG;
-    bool asan = comp->asan == BOB_TRUE;
-    bool run = comp->run != BOB_FALSE;
-    fprintf(BOB_out, "[BOB] Target baker; %s, %s; %s; %s; %s\n",
-            run ? "run-on" : "run-off",
-            release ? "release" : "debug",
-            clang ? "clang" : "msvc",
-            asan ? "asan-on" : "asan-off",
-            BOB.verbose ? "verbose" : "silent");
+    BOB_Compilation comp = BOB.baker;
+    if (comp.release == BOB_DEFAULT) // Default for baker is release mode
+      comp.release = BOB_TRUE;
+    BOB_MarkSection("Baker", comp);
 
     BOB_PrinterOnStack(cmd);
     BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/baker_entry.c ../libs/bc7enc.c",
                                              .output = "baker.exe",
-                                             .release = release,
-                                             .clang = clang,
-                                             .asan = asan,
+                                             .comp = comp,
                                              .sdl3 = true,
                                              .sdl3_image = true});
     I32 r = BOB_SystemPrinter(&cmd);
     BOB_CheckError(r);
 
-    if (run)
+    if (comp.run != BOB_FALSE)
     {
+      BOB_MarkSection("Baker-run", (BOB_Compilation){});
       r = BOB_System("baker.exe");
       BOB_CheckError(r);
     }
@@ -417,20 +435,12 @@ int main(I32 args_count, char **args)
 
   if (BOB.justgame.enabled)
   {
-    BOB_Compilation *comp = &BOB.justgame;
-    BOB.verbose = comp->verbose;
-    bool release = comp->release == BOB_TRUE;
-    bool clang = comp->compiler == BOB_CC_CLANG;
-    bool asan = comp->asan == BOB_TRUE;
-    fprintf(BOB_out, "[BOB] Target justgame; %s; %s; %s; %s\n",
-            release ? "release" : "debug",
-            clang ? "clang" : "msvc",
-            asan ? "asan-on" : "asan-off",
-            BOB.verbose ? "verbose" : "silent");
+    BOB_Compilation comp = BOB.justgame;
+    BOB_MarkSection("P", comp);
 
     // Produce icon file
     BOB_PrinterOnStack(cmd);
-    Pr_Cstr(&cmd, clang ? "llvm-rc" : "rc");
+    Pr_Cstr(&cmd, comp.compiler == BOB_CC_CLANG ? "llvm-rc" : "rc");
     Pr_Cstr(&cmd, " /nologo /fo icon.res ../res/ico/icon.rc");
     I32 r = BOB_SystemPrinter(&cmd);
     BOB_CheckError(r);
@@ -439,9 +449,7 @@ int main(I32 args_count, char **args)
     Pr_Reset(&cmd);
     BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/game/game_sdl_entry.c",
                                              .output = "p.exe",
-                                             .release = release,
-                                             .clang = clang,
-                                             .asan = asan,
+                                             .comp = comp,
                                              .gui = true,
                                              .sdl3 = true,
                                              .sdl3_net = true,
@@ -459,6 +467,7 @@ int main(I32 args_count, char **args)
     BOB_CheckError(1);
   }
 
-  fprintf(BOB_out, "[BOB] Success\n");
+  BOB_MarkSection(0, (BOB_Compilation){});
+  fprintf(BOB_out, "[BOB] Success. %s\n", Pr_AsCstr(&BOB.log));
   return 0;
 }
