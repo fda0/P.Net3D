@@ -7,10 +7,10 @@ typedef struct
 #define S8Lit(CStrLiteral) S8_Make((U8 *)CStrLiteral, sizeof(CStrLiteral)-1)
 
 typedef enum {
-  S8Match_FindLast         = (1 << 0),
-  S8Match_CaseInsensitive  = (1 << 1),
-  S8Match_RightSideSloppy  = (1 << 2),
-  S8Match_SlashInsensitive = (1 << 3),
+  S8_FindLast         = (1 << 0),
+  S8_CaseInsensitive  = (1 << 1),
+  S8_RightSideSloppy  = (1 << 2),
+  S8_SlashInsensitive = (1 << 3),
 } S8_MatchFlags;
 
 typedef struct {
@@ -162,17 +162,17 @@ static U8 ByteToForwardSlash(U8 c)
 static bool S8_Match(S8 a, S8 b, S8_MatchFlags flags)
 {
   bool result = false;
-  if (a.size == b.size || flags & S8Match_RightSideSloppy)
+  if (a.size == b.size || flags & S8_RightSideSloppy)
   {
     result = true;
     for (U64 i = 0; i < a.size && i < b.size; i += 1)
     {
       bool match = (a.str[i] == b.str[i]);
 
-      if (flags & S8Match_CaseInsensitive)
+      if (flags & S8_CaseInsensitive)
         match |= (ByteToLower(a.str[i]) == ByteToLower(b.str[i]));
 
-      if (flags & S8Match_SlashInsensitive)
+      if (flags & S8_SlashInsensitive)
         match |= (ByteToForwardSlash(a.str[i]) == ByteToForwardSlash(b.str[i]));
 
       if (!match)
@@ -211,7 +211,7 @@ static S8_FindResult S8_Find(S8 str, S8 substring, U64 start_pos, S8_MatchFlags 
       {
         result.index = i;
         result.found = 1;
-        if (!(flags & S8Match_FindLast))
+        if (!(flags & S8_FindLast))
         {
           // @speed faster implementation that searches in reverse!
           break;
@@ -224,7 +224,7 @@ static S8_FindResult S8_Find(S8 str, S8 substring, U64 start_pos, S8_MatchFlags 
 
 static U64 S8_Count(S8 str, S8 substring, U64 start_pos, S8_MatchFlags flags)
 {
-  flags &= ~S8Match_FindLast; // clear FindLast flag, doesn't work here
+  flags &= ~S8_FindLast; // clear FindLast flag, doesn't work here
 
   U64 counter = 0;
   for (;;)

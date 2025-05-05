@@ -4,14 +4,19 @@
 // - Measures build times.
 // - @todo Caches asset preprocessor (baker) output.
 // - @todo Hides spam.
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #include <stdio.h>
 #include <time.h>
-#include "base_types.h"
-#include "base_string.h"
+
 #define PRINTER_SKIP_ARENA
 #define PRINTER_SKIP_MATH
+#include "base_types.h"
+#include "base_string.h"
+#include "base_hash.h"
 #include "base_printer.h"
-#define BOB_PrinterOnStack(p) Pr_MakeOnStack(p, Kilobyte(32))
+#define BOB_TMP_SIZE Kilobyte(32)
+#define BOB_PrinterOnStack(p) Pr_MakeOnStack(p, BOB_TMP_SIZE)
 #define BOB_out stderr
 #define BOB_err stderr
 
@@ -73,7 +78,7 @@ typedef struct
   bool did_build;
   clock_t time;
   clock_t start_time;
-  U8 log_buffer[Kilobyte(8)];
+  U8 log_buffer[BOB_TMP_SIZE];
   Printer log;
 } BOB_State;
 static BOB_State BOB;
@@ -85,6 +90,7 @@ static int BOB_SystemPrinter(Printer *p);
 static void BOB_CheckError(I32 error_code);
 static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config);
 static void BOB_MarkSection(const char *name, BOB_Compilation comp);
+static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths);
 
 //
 int main(I32 args_count, char **args)
@@ -202,6 +208,14 @@ int main(I32 args_count, char **args)
       comp.release = BOB_TRUE;
     BOB_MarkSection("Baker", comp);
 
+    const char *cache_paths[] =
+    {
+      "../src/base",
+      "../src/meta",
+    };
+    U64 hash = BOB_ModTimePathsHash(0, ArrayCount(cache_paths), cache_paths);
+    fprintf(BOB_out, "baker hash: %llu\n", hash);
+
     BOB_PrinterOnStack(cmd);
     BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/baker_entry.c ../libs/bc7enc.c",
                                              .output = "baker.exe",
@@ -272,7 +286,7 @@ static void BOB_Init(I32 args_count, char **args)
   for (I32 i = 1; i < args_count; i += 1)
   {
     S8 arg = S8_FromCstr(args[i]);
-    S8_MatchFlags f = S8Match_CaseInsensitive;
+    S8_MatchFlags f = S8_CaseInsensitive;
 
     // Options
     if      (S8_Match(arg, S8Lit("release"), f)) BOB.comp.release = BOB_TRUE;
@@ -485,4 +499,52 @@ static void BOB_MarkSection(const char *name, BOB_Compilation comp)
     Pr_Float3(&BOB.log, delta_seconds);
     Pr_Cstr(&BOB.log, "s; ");
   }
+}
+
+static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths)
+{
+  ForI32(path_index, paths_count)
+  {
+    // Prepare wildcard path
+    BOB_PrinterOnStack(p);
+    Pr_Cstr(&p, paths[path_index]);
+    if (!S8_EndsWith(Pr_AsS8(&p), S8Lit("/"), S8_SlashInsensitive))
+      Pr_Cstr(&p, "/");
+    Pr_Cstr(&p, "*");
+
+    WIN32_FIND_DATAA data = {};
+    HANDLE handle = FindFirstFileA(Pr_AsCstr(&p), &data);
+    if (handle != INVALID_HANDLE_VALUE)
+    {
+      do
+      {
+        if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+          // Is directory
+          S8 dir_name = S8_FromCstr(data.cFileName);
+          if (!S8_StartsWith(dir_name, S8Lit("."), 0)) // skips ".", ".." and directories starting with "."
+          {
+            seed = S8_Hash(seed, dir_name);
+            seed = U64_Hash(seed, &data.ftLastWriteTime, sizeof(data.ftLastWriteTime));
+
+            Pr_Reset(&p);
+            Pr_S8(&p, dir_name);
+            Pr_Cstr(&p, "/*");
+            const char *wildcard_dir = Pr_AsCstr(&p);
+            seed = BOB_ModTimePathsHash(seed, 1, &wildcard_dir);
+          }
+        }
+        else
+        {
+          // Is file
+          S8 file_name = S8_FromCstr(data.cFileName);
+          seed = S8_Hash(seed, file_name);
+          seed = U64_Hash(seed, &data.ftLastWriteTime, sizeof(data.ftLastWriteTime));
+        }
+      } while (FindNextFileA(handle, &data) != 0);
+
+      FindClose(handle);
+    }
+  }
+  return seed;
 }

@@ -74,7 +74,7 @@ static S8 M_NameFromPath(S8 path)
 {
   S8 model_name = path;
   {
-    S8_FindResult slash = S8_Find(model_name, S8Lit("/"), 0, S8Match_FindLast|S8Match_SlashInsensitive);
+    S8_FindResult slash = S8_Find(model_name, S8Lit("/"), 0, S8_FindLast|S8_SlashInsensitive);
     if (slash.found)
     {
       model_name = S8_Skip(model_name, slash.index + 1);

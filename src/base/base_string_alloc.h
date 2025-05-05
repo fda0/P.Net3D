@@ -96,7 +96,7 @@ static S8 S8_ToLower(Arena *a, S8 source)
 
 static S8 S8_ReplaceAll(Arena *a, S8 original, S8 substring, S8 new_substring, S8_MatchFlags flags)
 {
-  flags &= ~S8Match_FindLast; // clear FindLast flag, it doesn't work here
+  flags &= ~S8_FindLast; // clear FindLast flag, it doesn't work here
 
   I64 replace_delta = (I64)new_substring.size - (I64)substring.size;
   U64 replace_count = S8_Count(original, substring, 0, flags);
