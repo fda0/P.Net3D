@@ -19,7 +19,6 @@
 #define BOB_PrinterOnStack(p) Pr_MakeOnStack(p, BOB_TMP_SIZE)
 #define BOB_out stderr
 #define BOB_err stderr
-#define BOB_BakerHashPath "baker.bob_hash"
 
 typedef enum
 {
@@ -61,8 +60,13 @@ typedef struct
 
 typedef struct
 {
-  U64 baker;
-} BOB_Cache;
+  bool is_compilation;
+
+  bool *check_if_cached;
+  I32 cache_paths_count;
+  const char **cache_paths;
+  bool force_invalidate_cache;
+} BOB_SectionConfig;
 
 typedef struct
 {
@@ -86,10 +90,11 @@ typedef struct
   bool did_build;
   clock_t time;
   clock_t start_time;
+
   U8 log_buffer[BOB_TMP_SIZE];
   Printer log;
-  U64 baker_cache_loaded;
-  U64 baker_cache_current;
+
+
 } BOB_State;
 static BOB_State BOB;
 
@@ -99,10 +104,10 @@ static int BOB_Run(const char *command);
 static int BOB_RunPrinter(Printer *p);
 static void BOB_CheckError(I32 error_code);
 static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config);
-static void BOB_MarkSection(const char *name, BOB_Compilation comp, bool is_compiler_task);
+static void BOB_MarkSection(const char *name, BOB_Compilation comp, BOB_SectionConfig config);
 static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths);
-static U64 BOB_LoadCache(const char *file_path);
-static void BOB_SaveCache(const char *file_path, U64 cache_value);
+static U64 BOB_LoadCacheHash(const char *file_name);
+static void BOB_SaveCacheHash(const char *file_name, U64 cache_value);
 static bool BOB_FileExists(const char *file_path);
 
 //
@@ -113,7 +118,7 @@ int main(I32 args_count, char **args)
   if (BOB.sdl.enabled == BOB_TRUE)
   {
     BOB_Compilation comp = BOB.sdl;
-    BOB_MarkSection("SDL", comp, true);
+    BOB_MarkSection("SDL", comp, (BOB_SectionConfig){.is_compilation = true});
     bool release = comp.release == BOB_TRUE;
 
     // SDL build docs: https://github.com/libsdl-org/SDL/blob/main/docs/README-cmake.md
@@ -168,29 +173,41 @@ int main(I32 args_count, char **args)
 
   if (BOB.shaders.enabled)
   {
-    BOB_MarkSection("Shaders", BOB.shaders, false);
+    // cache check
+    bool rebuild = true;
 
-    const char *cmd =
-      // Clean gen directory
-      "(if exist ..\\gen\\ rmdir /q /s ..\\gen\\) && "
-      "mkdir ..\\gen\\ && "
+    bool is_cached = false;
+    const char *cache_paths[] = { "../src/game/shader*" };
+    BOB_MarkSection("Shaders", BOB.shaders, (BOB_SectionConfig){.check_if_cached = &is_cached,
+                                                                .cache_paths_count = ArrayCount(cache_paths),
+                                                                .cache_paths = cache_paths});
 
-      // Precompile shaders
-      "dxc ../src/game/shader_world.hlsl /E World_DxShaderRigidVS   /T vs_6_0 /D IS_RIGID=1    /Fh ../gen/gen_shader_rigid.vert.h && "
-      "dxc ../src/game/shader_world.hlsl /E World_DxShaderRigidPS   /T ps_6_0 /D IS_RIGID=1    /Fh ../gen/gen_shader_rigid.frag.h && "
-      "dxc ../src/game/shader_world.hlsl /E World_DxShaderSkinnedVS /T vs_6_0 /D IS_SKINNED=1  /Fh ../gen/gen_shader_skinned.vert.h && "
-      "dxc ../src/game/shader_world.hlsl /E World_DxShaderSkinnedPS /T ps_6_0 /D IS_SKINNED=1  /Fh ../gen/gen_shader_skinned.frag.h && "
-      "dxc ../src/game/shader_world.hlsl /E World_DxShaderMeshVS    /T vs_6_0 /D IS_TEXTURED=1 /Fh ../gen/gen_shader_mesh.vert.h && "
-      "dxc ../src/game/shader_world.hlsl /E World_DxShaderMeshPS    /T ps_6_0 /D IS_TEXTURED=1 /Fh ../gen/gen_shader_mesh.frag.h && "
-      "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderVS           /T vs_6_0                  /Fh ../gen/gen_shader_ui.vert.h && "
-      "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderPS           /T ps_6_0                  /Fh ../gen/gen_shader_ui.frag.h";
-    BOB_Run(cmd);
+    if (!is_cached)
+    {
+      const char *cmd =
+        // Clean gen directory
+        "(if exist ..\\gen\\ rmdir /q /s ..\\gen\\) && "
+        "mkdir ..\\gen\\ && "
+
+        // Precompile shaders
+        "dxc ../src/game/shader_world.hlsl /E World_DxShaderRigidVS   /T vs_6_0 /D IS_RIGID=1    /Fh ../gen/gen_shader_rigid.vert.h && "
+        "dxc ../src/game/shader_world.hlsl /E World_DxShaderRigidPS   /T ps_6_0 /D IS_RIGID=1    /Fh ../gen/gen_shader_rigid.frag.h && "
+        "dxc ../src/game/shader_world.hlsl /E World_DxShaderSkinnedVS /T vs_6_0 /D IS_SKINNED=1  /Fh ../gen/gen_shader_skinned.vert.h && "
+        "dxc ../src/game/shader_world.hlsl /E World_DxShaderSkinnedPS /T ps_6_0 /D IS_SKINNED=1  /Fh ../gen/gen_shader_skinned.frag.h && "
+        "dxc ../src/game/shader_world.hlsl /E World_DxShaderMeshVS    /T vs_6_0 /D IS_TEXTURED=1 /Fh ../gen/gen_shader_mesh.vert.h && "
+        "dxc ../src/game/shader_world.hlsl /E World_DxShaderMeshPS    /T ps_6_0 /D IS_TEXTURED=1 /Fh ../gen/gen_shader_mesh.frag.h && "
+        "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderVS           /T vs_6_0                  /Fh ../gen/gen_shader_ui.vert.h && "
+        "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderPS           /T ps_6_0                  /Fh ../gen/gen_shader_ui.frag.h";
+      I32 r = BOB_Run(cmd);
+      if (r) BOB_SaveCacheHash("Shaders", 0);
+      BOB_CheckError(r);
+    }
   }
 
   if (BOB.math.enabled)
   {
     BOB_Compilation comp = BOB.math;
-    BOB_MarkSection("Math", comp, true);
+    BOB_MarkSection("Math", comp, (BOB_SectionConfig){.is_compilation = true});
 
     BOB_PrinterOnStack(cmd);
     BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/codegen_math.c",
@@ -202,7 +219,7 @@ int main(I32 args_count, char **args)
 
     if (comp.run != BOB_FALSE)
     {
-      BOB_MarkSection("Math-run", comp, false);
+      BOB_MarkSection("Math-run", comp, (BOB_SectionConfig){});
       r = BOB_Run("codegen_math.exe");
       BOB_CheckError(r);
     }
@@ -214,36 +231,25 @@ int main(I32 args_count, char **args)
     if (comp.release == BOB_DEFAULT) // Default for baker is release mode
       comp.release = BOB_TRUE;
 
+    bool run_baker = comp.run != BOB_FALSE;
+
     // cache check
-    bool rebuild = true;
+    bool is_cached = false;
+    bool invalidate_cache = !run_baker || !BOB_FileExists("data.bread");
+    const char *cache_paths[] =
     {
-      U64 from_file_hash = 0;
-      if (comp.cache != BOB_FALSE)
-        from_file_hash = BOB_LoadCache(BOB_BakerHashPath);
+      "../src/base",
+      "../src/meta",
+    };
 
-      U64 current_hash = 0;
-      if (BOB_FileExists("data.bread"))
-      {
-        const char *cache_paths[] =
-        {
-          "../src/base",
-          "../src/meta",
-        };
-        current_hash = BOB_ModTimePathsHash(0, ArrayCount(cache_paths), cache_paths);
-        BOB_SaveCache(BOB_BakerHashPath, current_hash);
-      }
+    BOB_MarkSection("Baker", comp, (BOB_SectionConfig){.is_compilation = true,
+                                                       .check_if_cached = &is_cached,
+                                                       .cache_paths_count = ArrayCount(cache_paths),
+                                                       .cache_paths = cache_paths,
+                                                       .force_invalidate_cache = invalidate_cache});
 
-      rebuild = (!from_file_hash || from_file_hash != current_hash);
-
-      fprintf(BOB_out, "[BOB] Baker hash. prev: %llx, curr: %llx - %s\n",
-              from_file_hash, current_hash,
-              from_file_hash == current_hash ? "the same" : "different");
-    }
-
-    if (rebuild)
+    if (!is_cached)
     {
-      BOB_MarkSection("Baker", comp, true);
-
       BOB_PrinterOnStack(cmd);
       BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/baker_entry.c ../libs/bc7enc.c",
                                                .output = "baker.exe",
@@ -253,11 +259,11 @@ int main(I32 args_count, char **args)
       I32 r = BOB_RunPrinter(&cmd);
       BOB_CheckError(r);
 
-      if (comp.run != BOB_FALSE)
+      if (run_baker)
       {
-        BOB_MarkSection("Baker-run", comp, false);
+        BOB_MarkSection("Baker-run", comp, (BOB_SectionConfig){});
         r = BOB_Run("baker.exe");
-        if (r) BOB_SaveCache(BOB_BakerHashPath, 0);
+        if (r) BOB_SaveCacheHash("Baker", 0);
         BOB_CheckError(r);
       }
     }
@@ -267,7 +273,7 @@ int main(I32 args_count, char **args)
   {
     BOB_Compilation comp = BOB.justgame;
     if (comp.show_out == BOB_DEFAULT) comp.show_out = BOB_TRUE; // default to showing output for game target
-    BOB_MarkSection("P", comp, true);
+    BOB_MarkSection("P", comp, (BOB_SectionConfig){.is_compilation = true});
 
     // Produce icon file
     BOB_PrinterOnStack(cmd);
@@ -296,7 +302,7 @@ int main(I32 args_count, char **args)
     exit(1);
   }
 
-  BOB_MarkSection(0, (BOB_Compilation){}, false);
+  BOB_MarkSection(0, (BOB_Compilation){}, (BOB_SectionConfig){});
   fprintf(BOB_out, "[BOB] Success. %s\n", Pr_AsCstr(&BOB.log));
   return 0;
 }
@@ -581,7 +587,7 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   }
 }
 
-static void BOB_MarkSection(const char *name, BOB_Compilation comp, bool is_compiler_task)
+static void BOB_MarkSection(const char *name, BOB_Compilation comp, BOB_SectionConfig config)
 {
   BOB.show_output = comp.show_out == BOB_TRUE;
   BOB.show_input = comp.show_in == BOB_TRUE;
@@ -601,15 +607,45 @@ static void BOB_MarkSection(const char *name, BOB_Compilation comp, bool is_comp
   if (name)
   {
     Pr_Cstr(&BOB.log, name);
-    if (is_compiler_task)
-    {
-      if (comp.compiler == BOB_CC_CLANG) Pr_Cstr(&BOB.log, ".ll");
-      if (comp.release == BOB_TRUE) Pr_Cstr(&BOB.log, ".R");
-      if (comp.asan == BOB_TRUE) Pr_Cstr(&BOB.log, ".asan");
-    }
-    if (comp.cache == BOB_FALSE) Pr_Cstr(&BOB.log, ".uc");
   }
-  else
+
+  if (config.check_if_cached)
+  {
+    U64 from_file_hash = 0;
+    if (comp.cache != BOB_FALSE)
+      from_file_hash = BOB_LoadCacheHash(name);
+
+    U64 current_hash = 0;
+    if (!config.force_invalidate_cache)
+      current_hash = BOB_ModTimePathsHash(0, config.cache_paths_count, config.cache_paths);
+    BOB_SaveCacheHash(name, current_hash);
+
+    bool is_cached = (from_file_hash && from_file_hash == current_hash);
+    *config.check_if_cached = is_cached;
+
+    Pr_Cstr(&BOB.log, is_cached ? ".C" : ".UC");
+
+    if (BOB.show_output || BOB.show_input)
+    {
+      Pr_Cstr(&BOB.log, "(");
+      Pr_U32Hex(&BOB.log, from_file_hash);
+      if (!is_cached)
+      {
+        Pr_Cstr(&BOB.log, " -> ");
+        Pr_U32Hex(&BOB.log, current_hash);
+      }
+      Pr_Cstr(&BOB.log, ")");
+    }
+  }
+
+  if (config.is_compilation)
+  {
+    if (comp.compiler == BOB_CC_CLANG) Pr_Cstr(&BOB.log, ".ll");
+    if (comp.release == BOB_TRUE) Pr_Cstr(&BOB.log, ".R");
+    if (comp.asan == BOB_TRUE) Pr_Cstr(&BOB.log, ".asan");
+  }
+
+  if (!name)
   {
     float delta_seconds = (float)(new_time - BOB.start_time) / CLOCKS_PER_SEC;
     Pr_Cstr(&BOB.log, "Total ");
@@ -625,9 +661,14 @@ static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths)
     // Prepare wildcard path
     BOB_PrinterOnStack(p);
     Pr_Cstr(&p, paths[path_index]);
+
+    if (!S8_EndsWith(Pr_AsS8(&p), S8Lit("*"), 0))
+    {
       if (!S8_EndsWith(Pr_AsS8(&p), S8Lit("/"), S8_SlashInsensitive))
         Pr_Cstr(&p, "/");
+
       Pr_Cstr(&p, "*");
+    }
 
     WIN32_FIND_DATAA data = {};
     HANDLE handle = FindFirstFileA(Pr_AsCstr(&p), &data);
@@ -681,8 +722,13 @@ static bool BOB_FileExists(const char *file_path)
   return result;
 }
 
-static U64 BOB_LoadCache(const char *file_path)
+static U64 BOB_LoadCacheHash(const char *file_name)
 {
+  BOB_PrinterOnStack(path_p);
+  Pr_Cstr(&path_p, file_name);
+  Pr_Cstr(&path_p, ".bob_hash");
+  char *file_path = Pr_AsCstr(&path_p);
+
   U64 result = 0;
   U32 read_bytes = 0;
 
@@ -700,8 +746,13 @@ static U64 BOB_LoadCache(const char *file_path)
   return result;
 }
 
-static void BOB_SaveCache(const char *file_path, U64 cache_value)
+static void BOB_SaveCacheHash(const char *file_name, U64 cache_value)
 {
+  BOB_PrinterOnStack(path_p);
+  Pr_Cstr(&path_p, file_name);
+  Pr_Cstr(&path_p, ".bob_hash");
+  char *file_path = Pr_AsCstr(&path_p);
+
   U32 share_flags = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
   HANDLE handle = CreateFileA(file_path, GENERIC_WRITE, share_flags, 0, CREATE_ALWAYS, 0, 0);
   if (handle != INVALID_HANDLE_VALUE)
