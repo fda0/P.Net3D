@@ -93,8 +93,6 @@ typedef struct
 
   U8 log_buffer[BOB_TMP_SIZE];
   Printer log;
-
-
 } BOB_State;
 static BOB_State BOB;
 
@@ -235,7 +233,6 @@ int main(I32 args_count, char **args)
 
     // cache check
     bool is_cached = false;
-    bool invalidate_cache = !run_baker || !BOB_FileExists("data.bread");
     const char *cache_paths[] =
     {
       "../src/base",
@@ -246,9 +243,9 @@ int main(I32 args_count, char **args)
                                                        .check_if_cached = &is_cached,
                                                        .cache_paths_count = ArrayCount(cache_paths),
                                                        .cache_paths = cache_paths,
-                                                       .force_invalidate_cache = invalidate_cache});
+                                                       .force_invalidate_cache = !run_baker});
 
-    if (!is_cached)
+    if (!is_cached || !BOB_FileExists("data.bread"))
     {
       BOB_PrinterOnStack(cmd);
       BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/baker_entry.c ../libs/bc7enc.c",
