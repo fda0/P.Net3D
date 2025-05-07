@@ -59,6 +59,11 @@ typedef struct
 
 typedef struct
 {
+  U64 baker;
+} BOB_Cache;
+
+typedef struct
+{
   // Tracks currently set options
   BOB_Compilation comp;
 
@@ -80,6 +85,8 @@ typedef struct
   clock_t start_time;
   U8 log_buffer[BOB_TMP_SIZE];
   Printer log;
+  BOB_Cache cache_loaded;
+  BOB_Cache cache_current;
 } BOB_State;
 static BOB_State BOB;
 
@@ -547,4 +554,9 @@ static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths)
     }
   }
   return seed;
+}
+
+static BOB_Cache BOB_LoadCache(const char *file_path)
+{
+  
 }
