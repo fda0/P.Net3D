@@ -19,6 +19,7 @@
 #define BOB_PrinterOnStack(p) Pr_MakeOnStack(p, BOB_TMP_SIZE)
 #define BOB_out stderr
 #define BOB_err stderr
+#define BOB_BakerHashPath "baker.bob_hash"
 
 typedef enum
 {
@@ -85,8 +86,8 @@ typedef struct
   clock_t start_time;
   U8 log_buffer[BOB_TMP_SIZE];
   Printer log;
-  BOB_Cache cache_loaded;
-  BOB_Cache cache_current;
+  U64 baker_cache_loaded;
+  U64 baker_cache_current;
 } BOB_State;
 static BOB_State BOB;
 
@@ -98,6 +99,9 @@ static void BOB_CheckError(I32 error_code);
 static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config);
 static void BOB_MarkSection(const char *name, BOB_Compilation comp);
 static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths);
+static U64 BOB_LoadCache(const char *file_path);
+static void BOB_SaveCache(const char *file_path, U64 cache_value);
+static bool BOB_FileExists(const char *file_path);
 
 //
 int main(I32 args_count, char **args)
@@ -158,8 +162,6 @@ int main(I32 args_count, char **args)
     Pr_Printer(&cmd, &stage2);
     r = BOB_SystemPrinter(&cmd);
     BOB_CheckError(r);
-
-    BOB.did_build = true;
   }
 
   if (BOB.shaders.enabled)
@@ -181,8 +183,6 @@ int main(I32 args_count, char **args)
       "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderVS           /T vs_6_0                  /Fh ../gen/gen_shader_ui.vert.h && "
       "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderPS           /T ps_6_0                  /Fh ../gen/gen_shader_ui.frag.h";
     BOB_System(cmd);
-
-    BOB.did_build = true;
   }
 
   if (BOB.math.enabled)
@@ -204,8 +204,6 @@ int main(I32 args_count, char **args)
       r = BOB_System("codegen_math.exe");
       BOB_CheckError(r);
     }
-
-    BOB.did_build = true;
   }
 
   if (BOB.baker.enabled)
@@ -213,33 +211,54 @@ int main(I32 args_count, char **args)
     BOB_Compilation comp = BOB.baker;
     if (comp.release == BOB_DEFAULT) // Default for baker is release mode
       comp.release = BOB_TRUE;
-    BOB_MarkSection("Baker", comp);
 
-    const char *cache_paths[] =
+    // cache check
+    bool rebuild = true;
     {
-      "../src/base",
-      "../src/meta",
-    };
-    U64 hash = BOB_ModTimePathsHash(0, ArrayCount(cache_paths), cache_paths);
-    fprintf(BOB_out, "baker hash: %llu\n", hash);
+      U64 from_file_hash = 0;
+      if (comp.cache != BOB_FALSE)
+        from_file_hash = BOB_LoadCache(BOB_BakerHashPath);
 
-    BOB_PrinterOnStack(cmd);
-    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/baker_entry.c ../libs/bc7enc.c",
-                                             .output = "baker.exe",
-                                             .comp = comp,
-                                             .sdl3 = true,
-                                             .sdl3_image = true});
-    I32 r = BOB_SystemPrinter(&cmd);
-    BOB_CheckError(r);
+      U64 current_hash = 0;
+      if (BOB_FileExists("data.bread"))
+      {
+        const char *cache_paths[] =
+        {
+          "../src/base",
+          "../src/meta",
+        };
+        current_hash = BOB_ModTimePathsHash(0, ArrayCount(cache_paths), cache_paths);
+        BOB_SaveCache(BOB_BakerHashPath, current_hash);
+      }
 
-    if (comp.run != BOB_FALSE)
-    {
-      BOB_MarkSection("Baker-run", (BOB_Compilation){});
-      r = BOB_System("baker.exe");
-      BOB_CheckError(r);
+      rebuild = (!from_file_hash || from_file_hash != current_hash);
+
+      fprintf(BOB_out, "[BOB] Baker hash. prev: %llx, curr: %llx - %s\n",
+              from_file_hash, current_hash,
+              from_file_hash == current_hash ? "the same" : "different");
     }
 
-    BOB.did_build = true;
+    if (rebuild)
+    {
+      BOB_MarkSection("Baker", comp);
+
+      BOB_PrinterOnStack(cmd);
+      BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/baker_entry.c ../libs/bc7enc.c",
+                                               .output = "baker.exe",
+                                               .comp = comp,
+                                               .sdl3 = true,
+                                               .sdl3_image = true});
+      I32 r = BOB_SystemPrinter(&cmd);
+      BOB_CheckError(r);
+
+      if (comp.run != BOB_FALSE)
+      {
+        BOB_MarkSection("Baker-run", (BOB_Compilation){});
+        r = BOB_System("baker.exe");
+        if (r) BOB_SaveCache(BOB_BakerHashPath, 0);
+        BOB_CheckError(r);
+      }
+    }
   }
 
   if (BOB.justgame.enabled)
@@ -266,8 +285,6 @@ int main(I32 args_count, char **args)
                                              .sdl3_image = true});
     r = BOB_SystemPrinter(&cmd);
     BOB_CheckError(r);
-
-    BOB.did_build = true;
   }
 
   if (!BOB.did_build)
@@ -515,9 +532,9 @@ static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths)
     // Prepare wildcard path
     BOB_PrinterOnStack(p);
     Pr_Cstr(&p, paths[path_index]);
-    if (!S8_EndsWith(Pr_AsS8(&p), S8Lit("/"), S8_SlashInsensitive))
-      Pr_Cstr(&p, "/");
-    Pr_Cstr(&p, "*");
+      if (!S8_EndsWith(Pr_AsS8(&p), S8Lit("/"), S8_SlashInsensitive))
+        Pr_Cstr(&p, "/");
+      Pr_Cstr(&p, "*");
 
     WIN32_FIND_DATAA data = {};
     HANDLE handle = FindFirstFileA(Pr_AsCstr(&p), &data);
@@ -556,7 +573,48 @@ static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths)
   return seed;
 }
 
-static BOB_Cache BOB_LoadCache(const char *file_path)
+static bool BOB_FileExists(const char *file_path)
 {
-  
+  bool result = 0;
+
+  WIN32_FIND_DATAA data = {};
+  HANDLE handle = FindFirstFileA(file_path, &data);
+  if (handle != INVALID_HANDLE_VALUE)
+  {
+    result = true;
+    FindClose(handle);
+  }
+
+  return result;
+}
+
+static U64 BOB_LoadCache(const char *file_path)
+{
+  U64 result = 0;
+  U32 to_read_bytes = sizeof(result);
+  U32 did_read_bytes = 0;
+
+  U32 share_flags = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
+  HANDLE handle = CreateFileA(file_path, GENERIC_READ, share_flags, 0, OPEN_EXISTING, 0, 0);
+  if (handle != INVALID_HANDLE_VALUE)
+  {
+    U32 success = ReadFile(handle, &result, to_read_bytes, &did_read_bytes, 0);
+    if (!success || to_read_bytes != did_read_bytes)
+      result = 0;
+
+    CloseHandle(handle);
+  }
+
+  return result;
+}
+
+static void BOB_SaveCache(const char *file_path, U64 cache_value)
+{
+  U32 share_flags = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
+  HANDLE handle = CreateFileA(file_path, GENERIC_WRITE, share_flags, 0, CREATE_ALWAYS, 0, 0);
+  if (handle != INVALID_HANDLE_VALUE)
+  {
+    WriteFile(handle, &cache_value, sizeof(cache_value), 0, 0);
+    CloseHandle(handle);
+  }
 }
