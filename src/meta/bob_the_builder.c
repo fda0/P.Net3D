@@ -43,7 +43,8 @@ typedef struct
   BOB_B3 asan;
   BOB_B3 run;
   BOB_B3 cache;
-  BOB_B3 verbose;
+  BOB_B3 show_out;
+  BOB_B3 show_in;
 } BOB_Compilation;
 
 typedef struct
@@ -80,7 +81,8 @@ typedef struct
   BOB_Compilation all; // everything
 
   // Other
-  bool verbose;
+  bool show_output;
+  bool show_input;
   bool did_build;
   clock_t time;
   clock_t start_time;
@@ -93,11 +95,11 @@ static BOB_State BOB;
 
 static void BOB_Init(I32 args_count, char **args);
 static void BOB_CompInherit(BOB_Compilation *parent, BOB_Compilation *child);
-static int BOB_System(const char *command);
-static int BOB_SystemPrinter(Printer *p);
+static int BOB_Run(const char *command);
+static int BOB_RunPrinter(Printer *p);
 static void BOB_CheckError(I32 error_code);
 static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config);
-static void BOB_MarkSection(const char *name, BOB_Compilation comp);
+static void BOB_MarkSection(const char *name, BOB_Compilation comp, bool is_compiler_task);
 static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths);
 static U64 BOB_LoadCache(const char *file_path);
 static void BOB_SaveCache(const char *file_path, U64 cache_value);
@@ -111,7 +113,7 @@ int main(I32 args_count, char **args)
   if (BOB.sdl.enabled == BOB_TRUE)
   {
     BOB_Compilation comp = BOB.sdl;
-    BOB_MarkSection("SDL", comp);
+    BOB_MarkSection("SDL", comp, true);
     bool release = comp.release == BOB_TRUE;
 
     // SDL build docs: https://github.com/libsdl-org/SDL/blob/main/docs/README-cmake.md
@@ -133,7 +135,7 @@ int main(I32 args_count, char **args)
     Pr_Printer(&cmd, &stage1);
     Pr_Cstr(&cmd, " -DSDL_STATIC=ON && ");
     Pr_Printer(&cmd, &stage2);
-    I32 r = BOB_SystemPrinter(&cmd);
+    I32 r = BOB_RunPrinter(&cmd);
     BOB_CheckError(r);
 
     // Compile SDL3 additional libs
@@ -144,7 +146,7 @@ int main(I32 args_count, char **args)
     Pr_Printer(&cmd, &stage1);
     Pr_Cstr(&cmd, " && ");
     Pr_Printer(&cmd, &stage2);
-    r = BOB_SystemPrinter(&cmd);
+    r = BOB_RunPrinter(&cmd);
     BOB_CheckError(r);
 
     Pr_Reset(&cmd);
@@ -152,7 +154,7 @@ int main(I32 args_count, char **args)
     Pr_Printer(&cmd, &stage1);
     Pr_Cstr(&cmd, " && ");
     Pr_Printer(&cmd, &stage2);
-    r = BOB_SystemPrinter(&cmd);
+    r = BOB_RunPrinter(&cmd);
     BOB_CheckError(r);
 
     Pr_Reset(&cmd);
@@ -160,13 +162,13 @@ int main(I32 args_count, char **args)
     Pr_Printer(&cmd, &stage1);
     Pr_Cstr(&cmd, " -DSDLIMAGE_VENDORED=OFF && ");
     Pr_Printer(&cmd, &stage2);
-    r = BOB_SystemPrinter(&cmd);
+    r = BOB_RunPrinter(&cmd);
     BOB_CheckError(r);
   }
 
   if (BOB.shaders.enabled)
   {
-    BOB_MarkSection("Shaders", (BOB_Compilation){});
+    BOB_MarkSection("Shaders", BOB.shaders, false);
 
     const char *cmd =
       // Clean gen directory
@@ -182,26 +184,26 @@ int main(I32 args_count, char **args)
       "dxc ../src/game/shader_world.hlsl /E World_DxShaderMeshPS    /T ps_6_0 /D IS_TEXTURED=1 /Fh ../gen/gen_shader_mesh.frag.h && "
       "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderVS           /T vs_6_0                  /Fh ../gen/gen_shader_ui.vert.h && "
       "dxc ../src/game/shader_ui.hlsl    /E UI_DxShaderPS           /T ps_6_0                  /Fh ../gen/gen_shader_ui.frag.h";
-    BOB_System(cmd);
+    BOB_Run(cmd);
   }
 
   if (BOB.math.enabled)
   {
     BOB_Compilation comp = BOB.math;
-    BOB_MarkSection("Math", comp);
+    BOB_MarkSection("Math", comp, true);
 
     BOB_PrinterOnStack(cmd);
     BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/codegen_math.c",
                                              .output = "codegen_math.exe",
                                              .comp = comp,
                                              .sdl3 = true});
-    I32 r = BOB_SystemPrinter(&cmd);
+    I32 r = BOB_RunPrinter(&cmd);
     BOB_CheckError(r);
 
     if (comp.run != BOB_FALSE)
     {
-      BOB_MarkSection("Math-run", (BOB_Compilation){});
-      r = BOB_System("codegen_math.exe");
+      BOB_MarkSection("Math-run", comp, false);
+      r = BOB_Run("codegen_math.exe");
       BOB_CheckError(r);
     }
   }
@@ -240,7 +242,7 @@ int main(I32 args_count, char **args)
 
     if (rebuild)
     {
-      BOB_MarkSection("Baker", comp);
+      BOB_MarkSection("Baker", comp, true);
 
       BOB_PrinterOnStack(cmd);
       BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/baker_entry.c ../libs/bc7enc.c",
@@ -248,13 +250,13 @@ int main(I32 args_count, char **args)
                                                .comp = comp,
                                                .sdl3 = true,
                                                .sdl3_image = true});
-      I32 r = BOB_SystemPrinter(&cmd);
+      I32 r = BOB_RunPrinter(&cmd);
       BOB_CheckError(r);
 
       if (comp.run != BOB_FALSE)
       {
-        BOB_MarkSection("Baker-run", (BOB_Compilation){});
-        r = BOB_System("baker.exe");
+        BOB_MarkSection("Baker-run", comp, false);
+        r = BOB_Run("baker.exe");
         if (r) BOB_SaveCache(BOB_BakerHashPath, 0);
         BOB_CheckError(r);
       }
@@ -264,13 +266,14 @@ int main(I32 args_count, char **args)
   if (BOB.justgame.enabled)
   {
     BOB_Compilation comp = BOB.justgame;
-    BOB_MarkSection("P", comp);
+    if (comp.show_out == BOB_DEFAULT) comp.show_out = BOB_TRUE; // default to showing output for game target
+    BOB_MarkSection("P", comp, true);
 
     // Produce icon file
     BOB_PrinterOnStack(cmd);
     Pr_Cstr(&cmd, comp.compiler == BOB_CC_CLANG ? "llvm-rc" : "rc");
     Pr_Cstr(&cmd, " /nologo /fo icon.res ../res/ico/icon.rc");
-    I32 r = BOB_SystemPrinter(&cmd);
+    I32 r = BOB_RunPrinter(&cmd);
     BOB_CheckError(r);
 
     // Compile game
@@ -283,17 +286,17 @@ int main(I32 args_count, char **args)
                                              .sdl3_net = true,
                                              .sdl3_ttf = true,
                                              .sdl3_image = true});
-    r = BOB_SystemPrinter(&cmd);
+    r = BOB_RunPrinter(&cmd);
     BOB_CheckError(r);
   }
 
   if (!BOB.did_build)
   {
     fprintf(BOB_err, "[BOB] No build target was provided. To build everything use: build.bat release all\n");
-    BOB_CheckError(1);
+    exit(1);
   }
 
-  BOB_MarkSection(0, (BOB_Compilation){});
+  BOB_MarkSection(0, (BOB_Compilation){}, false);
   fprintf(BOB_out, "[BOB] Success. %s\n", Pr_AsCstr(&BOB.log));
   return 0;
 }
@@ -323,8 +326,10 @@ static void BOB_Init(I32 args_count, char **args)
     else if (S8_Match(arg, S8Lit("norun"), f))   BOB.comp.run = BOB_FALSE;
     else if (S8_Match(arg, S8Lit("cache"), f))   BOB.comp.cache = BOB_TRUE;
     else if (S8_Match(arg, S8Lit("nocache"), f)) BOB.comp.cache = BOB_FALSE;
-    else if (S8_Match(arg, S8Lit("verbose"), f)) BOB.comp.verbose = BOB_TRUE;
-    else if (S8_Match(arg, S8Lit("silent"), f))  BOB.comp.verbose = BOB_FALSE;
+    else if (S8_Match(arg, S8Lit("out"), f))     BOB.comp.show_out = BOB_TRUE;
+    else if (S8_Match(arg, S8Lit("noout"), f))   BOB.comp.show_out = BOB_FALSE;
+    else if (S8_Match(arg, S8Lit("in"), f))      BOB.comp.show_in = BOB_TRUE;
+    else if (S8_Match(arg, S8Lit("noin"), f))    BOB.comp.show_in = BOB_FALSE;
 
     // Targets
     else if (S8_Match(arg, S8Lit("sdl"), f))      BOB.sdl = BOB.comp;
@@ -362,16 +367,101 @@ static void BOB_CompInherit(BOB_Compilation *parent, BOB_Compilation *child)
   if (child->asan == BOB_DEFAULT)        child->asan = parent->asan;
   if (child->run == BOB_DEFAULT)         child->run = parent->run;
   if (child->cache == BOB_DEFAULT)       child->cache = parent->cache;
-  if (child->verbose == BOB_DEFAULT)     child->verbose = parent->verbose;
+  if (child->show_out == BOB_DEFAULT)     child->show_out = parent->show_out;
+  if (child->show_in == BOB_DEFAULT)     child->show_in = parent->show_in;
 }
 
-static int BOB_System(const char *command)
+static int BOB_Run(const char *command)
 {
-  if (BOB.verbose)
+  if (BOB.show_input)
     fprintf(BOB_out, "[BOB] RUNNING: %s\n", command);
-  return system(command);
+
+  // This is what's needed to create and save output of a process in Win32
+  // @todo put this in base_os.h in the future
+
+  BOB_PrinterOnStack(cmd);
+  Pr_Cstr(&cmd, "/c ");
+  Pr_Cstr(&cmd, command);
+  char *cmd_cstr = Pr_AsCstr(&cmd);
+
+
+  SECURITY_ATTRIBUTES security =
+  {
+    .nLength = sizeof(security),
+    .bInheritHandle = true,
+  };
+
+  HANDLE read_pipe = 0;
+  HANDLE write_pipe = 0;
+  bool pipe_result = CreatePipe(&read_pipe, &write_pipe, &security, 0);
+  if (!pipe_result)
+  {
+    fprintf(BOB_err, "[BOB] CRITICAL: Failed at CreatePipe\n");
+    exit(1);
+  }
+  if (!SetHandleInformation(read_pipe, HANDLE_FLAG_INHERIT, 0))
+  {
+    fprintf(BOB_err, "[BOB] CRITICAL: Failed at SetHandleInformation\n");
+    exit(1);
+  }
+
+  STARTUPINFOA startup =
+  {
+    .cb = sizeof(startup),
+    .dwFlags = STARTF_USESTDHANDLES,
+    .hStdError = write_pipe,
+    .hStdOutput = write_pipe,
+  };
+
+  PROCESS_INFORMATION process = {};
+
+  const char *cmd_exe = "C:\\Windows\\System32\\cmd.exe";
+  U32 process_result =
+    CreateProcessA(cmd_exe, cmd_cstr, 0, 0, true,
+                   CREATE_NO_WINDOW | CREATE_SUSPENDED,
+                   0, 0/*cwd*/, &startup, &process);
+
+  if (!process_result)
+  {
+    fprintf(BOB_err, "[BOB] CRITICAL: Failed at CreateProcessA\n");
+    exit(1);
+  }
+
+  // Attach kill job here?
+  ResumeThread(process.hThread);
+
+  WaitForSingleObject(process.hProcess, INFINITE);
+  CloseHandle(write_pipe);
+  CloseHandle(process.hThread);
+
+  DWORD exit_code = 0;
+  bool exit_result = GetExitCodeProcess(process.hProcess, &exit_code);
+  if (!exit_result)
+  {
+    fprintf(BOB_err, "[BOB] CRITICAL: Failed at GetExitCodeProcess\n");
+    exit(1);
+  }
+
+  if (exit_code || BOB.show_output)
+  {
+    for (;;)
+    {
+      char output_buffer[BOB_TMP_SIZE];
+      U32 read_bytes = 0;
+      U32 read_result = ReadFile(read_pipe, output_buffer, sizeof(output_buffer), &read_bytes, 0);
+      U32 err = GetLastError();
+      if (!read_result) break;
+      if (read_bytes == 0) break;
+      fprintf(BOB_out, "%.*s", read_bytes, output_buffer);
+    }
+  }
+
+  CloseHandle(read_pipe);
+  CloseHandle(process.hProcess);
+
+  return exit_code;
 }
-static int BOB_SystemPrinter(Printer *p)
+static int BOB_RunPrinter(Printer *p)
 {
   const char *command = Pr_AsCstr(p);
   if (p->err)
@@ -379,7 +469,7 @@ static int BOB_SystemPrinter(Printer *p)
     fprintf(BOB_err, "[BOB] ERROR: Internal printer error\n");
     exit(1);
   }
-  return BOB_System(command);
+  return BOB_Run(command);
 }
 
 static void BOB_CheckError(I32 error_code)
@@ -491,9 +581,10 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   }
 }
 
-static void BOB_MarkSection(const char *name, BOB_Compilation comp)
+static void BOB_MarkSection(const char *name, BOB_Compilation comp, bool is_compiler_task)
 {
-  BOB.verbose = comp.verbose == BOB_TRUE;
+  BOB.show_output = comp.show_out == BOB_TRUE;
+  BOB.show_input = comp.show_in == BOB_TRUE;
 
   clock_t new_time = clock();
   if (BOB.did_build)
@@ -510,11 +601,13 @@ static void BOB_MarkSection(const char *name, BOB_Compilation comp)
   if (name)
   {
     Pr_Cstr(&BOB.log, name);
-    if (comp.compiler == BOB_CC_CLANG) Pr_Cstr(&BOB.log, ".ll");
-    if (comp.release == BOB_TRUE) Pr_Cstr(&BOB.log, ".R");
-    if (comp.asan == BOB_TRUE) Pr_Cstr(&BOB.log, ".asan");
+    if (is_compiler_task)
+    {
+      if (comp.compiler == BOB_CC_CLANG) Pr_Cstr(&BOB.log, ".ll");
+      if (comp.release == BOB_TRUE) Pr_Cstr(&BOB.log, ".R");
+      if (comp.asan == BOB_TRUE) Pr_Cstr(&BOB.log, ".asan");
+    }
     if (comp.cache == BOB_FALSE) Pr_Cstr(&BOB.log, ".uc");
-    if (comp.verbose == BOB_TRUE) Pr_Cstr(&BOB.log, ".v");
   }
   else
   {
@@ -591,15 +684,14 @@ static bool BOB_FileExists(const char *file_path)
 static U64 BOB_LoadCache(const char *file_path)
 {
   U64 result = 0;
-  U32 to_read_bytes = sizeof(result);
-  U32 did_read_bytes = 0;
+  U32 read_bytes = 0;
 
   U32 share_flags = FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE;
   HANDLE handle = CreateFileA(file_path, GENERIC_READ, share_flags, 0, OPEN_EXISTING, 0, 0);
   if (handle != INVALID_HANDLE_VALUE)
   {
-    U32 success = ReadFile(handle, &result, to_read_bytes, &did_read_bytes, 0);
-    if (!success || to_read_bytes != did_read_bytes)
+    U32 success = ReadFile(handle, &result, sizeof(result), &read_bytes, 0);
+    if (!success || sizeof(result) != read_bytes)
       result = 0;
 
     CloseHandle(handle);
