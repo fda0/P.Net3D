@@ -26,6 +26,7 @@ int main()
       {S8Lit("I32")},
       {S8Lit("I16")},
       {S8Lit("U64"), .is_unsigned = true},
+      {S8Lit("U32"), .is_unsigned = true},
     };
 
     U64 vectors_total_size = 0;

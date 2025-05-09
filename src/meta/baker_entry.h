@@ -48,6 +48,7 @@ typedef struct
 typedef struct
 {
   bc7enc_compress_block_params params;
+  SDL_Surface *bc7_block_surf;
 } BAKER_TexState;
 
 typedef struct

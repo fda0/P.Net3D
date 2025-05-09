@@ -12,6 +12,7 @@
 #include "game_render.h"
 #include "game_animation.h"
 #include "game_asset_definitions.h"
+#include "game_type_info.h"
 
 // 3rd party libraries
 #pragma warning(push, 2)
@@ -40,17 +41,24 @@ int main()
   BAKER.cgltf_arena = Arena_MakeInside(cgltf_arena_memory, sizeof(cgltf_arena_memory));
   M_LogState.reject_filter = M_LogObjDebug | M_LogGltfDebug;
 
-  // Init bc7enc texture compressor
+  // Tex state
   {
-    bc7enc_compress_block_init();
-    bc7enc_compress_block_params_init(&BAKER.tex.params);
-    // There are params fields that we might want modify like m_uber_level.
+    // Init bc7enc texture compressor
+    {
+      bc7enc_compress_block_init();
+      bc7enc_compress_block_params_init(&BAKER.tex.params);
+      // There are params fields that we might want modify like m_uber_level.
 
-    // Learn which one should be picked.
-    // Perhaps diffuse needs perpecetual and data linear? Idk
-    bc7enc_compress_block_params_init_linear_weights(&BAKER.tex.params);
-    //bc7enc_compress_block_params_init_perceptual_weights(&BAKER.tex.params);
+      // Learn which one should be picked.
+      // Perhaps diffuse needs perpecetual and data linear? Idk
+      bc7enc_compress_block_params_init_linear_weights(&BAKER.tex.params);
+      //bc7enc_compress_block_params_init_perceptual_weights(&BAKER.tex.params);
+    }
+
+    BAKER.tex.bc7_block_surf = SDL_CreateSurface(M_TEX_CHUNK_DIM, M_TEX_CHUNK_DIM, SDL_PIXELFORMAT_RGBA32);
   }
+
+
 
   BREAD_Builder bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(64));
 
@@ -60,12 +68,11 @@ int main()
 
     // Load texture files
     {
-      BAKER_CompressTexture(&bb, TEX_Bricks071);
+      BK_CompressTexture(&bb, TEX_Bricks071);
     }
 
     // Load .gltf models
     {
-
       Quat rot_x = Quat_FromAxisAngle_RH(AxisV3_X(), 0.25f);
       Quat rot_y = Quat_FromAxisAngle_RH(AxisV3_Y(), 0.25f);
       Quat rot_z = Quat_FromAxisAngle_RH(AxisV3_Z(), 0.25f);

@@ -44,6 +44,10 @@ static V2 V2_Div(V2 a, V2 b) { return (V2){a.x / b.x, a.y / b.y}; }
 static V3 V3_Div(V3 a, V3 b) { return (V3){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4 V4_Div(V4 a, V4 b) { return (V4){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
+static V2 V2_DivScalar(V2 a, float b) { return (V2){a.x / b, a.y / b}; }
+static V3 V3_DivScalar(V3 a, float b) { return (V3){a.x / b, a.y / b, a.z / b}; }
+static V4 V4_DivScalar(V4 a, float b) { return (V4){a.x / b, a.y / b, a.z / b, a.w / b}; }
+
 static V2 V2_Clamp(V2 min, V2 max, V2 val) {
   return (V2){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
 }
@@ -106,6 +110,10 @@ static V4I32 V4I32_Mul(V4I32 a, V4I32 b) { return (V4I32){a.x * b.x, a.y * b.y, 
 static V2I32 V2I32_Div(V2I32 a, V2I32 b) { return (V2I32){a.x / b.x, a.y / b.y}; }
 static V3I32 V3I32_Div(V3I32 a, V3I32 b) { return (V3I32){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4I32 V4I32_Div(V4I32 a, V4I32 b) { return (V4I32){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
+
+static V2I32 V2I32_DivScalar(V2I32 a, I32 b) { return (V2I32){a.x / b, a.y / b}; }
+static V3I32 V3I32_DivScalar(V3I32 a, I32 b) { return (V3I32){a.x / b, a.y / b, a.z / b}; }
+static V4I32 V4I32_DivScalar(V4I32 a, I32 b) { return (V4I32){a.x / b, a.y / b, a.z / b, a.w / b}; }
 
 static V2I32 V2I32_Clamp(V2I32 min, V2I32 max, V2I32 val) {
   return (V2I32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
@@ -170,6 +178,10 @@ static V2I16 V2I16_Div(V2I16 a, V2I16 b) { return (V2I16){a.x / b.x, a.y / b.y};
 static V3I16 V3I16_Div(V3I16 a, V3I16 b) { return (V3I16){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4I16 V4I16_Div(V4I16 a, V4I16 b) { return (V4I16){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
+static V2I16 V2I16_DivScalar(V2I16 a, I16 b) { return (V2I16){a.x / b, a.y / b}; }
+static V3I16 V3I16_DivScalar(V3I16 a, I16 b) { return (V3I16){a.x / b, a.y / b, a.z / b}; }
+static V4I16 V4I16_DivScalar(V4I16 a, I16 b) { return (V4I16){a.x / b, a.y / b, a.z / b, a.w / b}; }
+
 static V2I16 V2I16_Clamp(V2I16 min, V2I16 max, V2I16 val) {
   return (V2I16){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
 }
@@ -233,6 +245,10 @@ static V2U64 V2U64_Div(V2U64 a, V2U64 b) { return (V2U64){a.x / b.x, a.y / b.y};
 static V3U64 V3U64_Div(V3U64 a, V3U64 b) { return (V3U64){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4U64 V4U64_Div(V4U64 a, V4U64 b) { return (V4U64){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
+static V2U64 V2U64_DivScalar(V2U64 a, U64 b) { return (V2U64){a.x / b, a.y / b}; }
+static V3U64 V3U64_DivScalar(V3U64 a, U64 b) { return (V3U64){a.x / b, a.y / b, a.z / b}; }
+static V4U64 V4U64_DivScalar(V4U64 a, U64 b) { return (V4U64){a.x / b, a.y / b, a.z / b, a.w / b}; }
+
 static V2U64 V2U64_Clamp(V2U64 min, V2U64 max, V2U64 val) {
   return (V2U64){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
 }
@@ -250,4 +266,67 @@ static U64 V4U64_Dot(V4U64 a, V4U64 b) { return a.x*b.x + a.y*b.y + a.z*b.z + a.
 static bool V2U64_HasLength(V2U64 a) { return a.x || a.y; }
 static bool V3U64_HasLength(V3U64 a) { return a.x || a.y || a.z; }
 static bool V4U64_HasLength(V4U64 a) { return a.x || a.y || a.z || a.w; }
+
+// --- --- --- --- --- --- ---
+// --- Vector math for U32 ---
+// --- --- --- --- --- --- ---
+typedef union
+{
+  struct { U32 x, y; };
+  U32 E[2];
+} V2U32;
+
+typedef union
+{
+  struct { U32 x, y, z; };
+  U32 E[3];
+} V3U32;
+
+typedef union
+{
+  struct { U32 x, y, z, w; };
+  U32 E[4];
+} V4U32;
+
+static V2U32 V2U32_Scale(V2U32 a, U32 scale) { return (V2U32){a.x*scale, a.y*scale}; }
+static V3U32 V3U32_Scale(V3U32 a, U32 scale) { return (V3U32){a.x*scale, a.y*scale, a.z*scale}; }
+static V4U32 V4U32_Scale(V4U32 a, U32 scale) { return (V4U32){a.x*scale, a.y*scale, a.z*scale, a.w*scale}; }
+
+static V2U32 V2U32_Add(V2U32 a, V2U32 b) { return (V2U32){a.x + b.x, a.y + b.y}; }
+static V3U32 V3U32_Add(V3U32 a, V3U32 b) { return (V3U32){a.x + b.x, a.y + b.y, a.z + b.z}; }
+static V4U32 V4U32_Add(V4U32 a, V4U32 b) { return (V4U32){a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w}; }
+
+static V2U32 V2U32_Sub(V2U32 a, V2U32 b) { return (V2U32){a.x - b.x, a.y - b.y}; }
+static V3U32 V3U32_Sub(V3U32 a, V3U32 b) { return (V3U32){a.x - b.x, a.y - b.y, a.z - b.z}; }
+static V4U32 V4U32_Sub(V4U32 a, V4U32 b) { return (V4U32){a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w}; }
+
+static V2U32 V2U32_Mul(V2U32 a, V2U32 b) { return (V2U32){a.x * b.x, a.y * b.y}; }
+static V3U32 V3U32_Mul(V3U32 a, V3U32 b) { return (V3U32){a.x * b.x, a.y * b.y, a.z * b.z}; }
+static V4U32 V4U32_Mul(V4U32 a, V4U32 b) { return (V4U32){a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w}; }
+
+static V2U32 V2U32_Div(V2U32 a, V2U32 b) { return (V2U32){a.x / b.x, a.y / b.y}; }
+static V3U32 V3U32_Div(V3U32 a, V3U32 b) { return (V3U32){a.x / b.x, a.y / b.y, a.z / b.z}; }
+static V4U32 V4U32_Div(V4U32 a, V4U32 b) { return (V4U32){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
+
+static V2U32 V2U32_DivScalar(V2U32 a, U32 b) { return (V2U32){a.x / b, a.y / b}; }
+static V3U32 V3U32_DivScalar(V3U32 a, U32 b) { return (V3U32){a.x / b, a.y / b, a.z / b}; }
+static V4U32 V4U32_DivScalar(V4U32 a, U32 b) { return (V4U32){a.x / b, a.y / b, a.z / b, a.w / b}; }
+
+static V2U32 V2U32_Clamp(V2U32 min, V2U32 max, V2U32 val) {
+  return (V2U32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
+}
+static V3U32 V3U32_Clamp(V3U32 min, V3U32 max, V3U32 val) {
+  return (V3U32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z)};
+}
+static V4U32 V4U32_Clamp(V4U32 min, V4U32 max, V4U32 val) {
+  return (V4U32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
+
+static U32 V2U32_Dot(V2U32 a, V2U32 b) { return a.x*b.x + a.y*b.y; }
+static U32 V3U32_Dot(V3U32 a, V3U32 b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+static U32 V4U32_Dot(V4U32 a, V4U32 b) { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
+
+static bool V2U32_HasLength(V2U32 a) { return a.x || a.y; }
+static bool V3U32_HasLength(V3U32 a) { return a.x || a.y || a.z; }
+static bool V4U32_HasLength(V4U32 a) { return a.x || a.y || a.z || a.w; }
 

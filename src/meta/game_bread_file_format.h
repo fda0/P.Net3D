@@ -3,13 +3,19 @@
 //
 // _offset -> offsets are like pointers but are relative to the first byte of the file
 //
+// @todo increase typesafety of this program
+//
 
 typedef struct
 {
+  U32 type;
+  U32 count;
+
   U32 offset;
   U32 size;
-  U32 elem_count;
-} BREAD_Range;
+} BREAD_List;
+
+#define BREAD_ListT(TYPE) BREAD_List
 
 typedef enum
 {
@@ -22,30 +28,30 @@ typedef struct
 {
   U32 joint_index : 30;
   U32 type : 2; // [BREAD_TransformType]
-  BREAD_Range inputs;  // [V3 or Quat] * count
-  BREAD_Range outputs; // [V3 or Quat] * count
-} BREAD_AnimChannel;
+  BREAD_ListT(float) inputs;  // float * count
+  BREAD_ListT(float) outputs; // float * (3 or 4 [V3 or Quat]) * count
+} BREAD_AnimationChannel;
 
 typedef struct
 {
-  BREAD_Range name; // [U8]
+  BREAD_ListT(U8) name;
   float t_min, t_max;
-  BREAD_Range channels; // [BREAD_AnimChannel]
+  BREAD_ListT(BREAD_AnimationChannel) channels;
 } BREAD_Animation;
 
 typedef struct
 {
-  BREAD_Range root_transform; // [Mat4]
+  // each of these has the same count of elements (joints_count)
+  BREAD_ListT(Mat4)   inv_bind_mats;
+  BREAD_ListT(U32)    child_index_buf;
+  BREAD_ListT(RngU32) child_index_ranges;
+  BREAD_ListT(V3)     translations;
+  BREAD_ListT(Quat)   rotations;
+  BREAD_ListT(V3)     scales;
+  BREAD_ListT(RngU32) name_ranges; // offset of min & max char* - can be transformed to S8
 
-  BREAD_Range inv_bind_mats;      // [Mat4] * joints_count
-  BREAD_Range child_index_buf;    // [U32] * joints_count
-  BREAD_Range child_index_ranges; // [RngU32] * joints_count
-  BREAD_Range translations;       // [V3] * joints_count
-  BREAD_Range rotations;          // [Quat] * joints_count
-  BREAD_Range scales;             // [V3] * joints_count
-  BREAD_Range name_ranges;        // [RngU32] * joints_count - offset of min & max char* - can be transformed to S8
-
-  BREAD_Range animations; // [BREAD_Animation] array
+  BREAD_ListT(BREAD_Animation) anims;
+  Mat4 root_transform;
 } BREAD_Skeleton;
 
 typedef struct
@@ -66,29 +72,38 @@ typedef struct
 {
   U32 width;
   U32 height;
-  U32 layers;
-  BREAD_Range bc7_blocks; // [U64] - array of size width*height*layers*2
+  BREAD_ListT(U8) data;
+} BREAD_TextureLod;
+
+typedef struct
+{
+  BREAD_ListT(BREAD_TextureLod) lods;
+} BREAD_Texture;
+
+typedef struct
+{
+  BREAD_ListT(BREAD_Texture) textures;
 } BREAD_Material;
 
 typedef struct
 {
   struct
   {
-    BREAD_Range rigid_vertices; // [WORLD_GpuRigidVertex] array
-    BREAD_Range skinned_vertices; // [WORLD_GpuSkinnedVertex] array
-    BREAD_Range indices; // [U16] array
-    BREAD_Range list; // [BREAD_Model] array
+    BREAD_ListT(WORLD_GpuRigidVertex) rigid_vertices;
+    BREAD_ListT(WORLD_GpuSkinnedVertex) skinned_vertices;
+    BREAD_ListT(U16) indices;
+    BREAD_ListT(BREAD_Model) list;
   } models;
 
-  BREAD_Range skeletons; // [BREAD_Skeleton] array
-  BREAD_Range materials; // [BREAD_Material] array
+  BREAD_ListT(BREAD_Skeleton) skeletons;
+  BREAD_ListT(BREAD_Material) materials;
 } BREAD_Links;
 
 typedef struct
 {
   U64 file_hash; // of everything after itself (the first 8 bytes) - seeded with BREAD_MAGIC_HASH_SEED
 #define BREAD_MAGIC_HASH_SEED (0xB5EADC0D + 0)
-  BREAD_Range links; // [BREAD_Links]
+  BREAD_List links;
 } BREAD_Header;
 
 //

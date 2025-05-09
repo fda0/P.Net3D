@@ -39,6 +39,10 @@ static V2POST V2POST_Div(V2POST a, V2POST b) { return (V2POST){a.x / b.x, a.y / 
 static V3POST V3POST_Div(V3POST a, V3POST b) { return (V3POST){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4POST V4POST_Div(V4POST a, V4POST b) { return (V4POST){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
+static V2POST V2POST_DivScalar(V2POST a, SCALAR b) { return (V2POST){a.x / b, a.y / b}; }
+static V3POST V3POST_DivScalar(V3POST a, SCALAR b) { return (V3POST){a.x / b, a.y / b, a.z / b}; }
+static V4POST V4POST_DivScalar(V4POST a, SCALAR b) { return (V4POST){a.x / b, a.y / b, a.z / b, a.w / b}; }
+
 static V2POST V2POST_Clamp(V2POST min, V2POST max, V2POST val) {
   return (V2POST){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
 }

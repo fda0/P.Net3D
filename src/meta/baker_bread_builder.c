@@ -27,26 +27,30 @@ static void BREAD_Aling(Printer *p, U64 alignment)
 //
 // Allocating bytes in printer & tracking the range
 //
-static void BREAD_RangeStart(Printer *printer_owner, BREAD_Range *range)
+static void BREAD_ListStart(Printer *printer_owner, BREAD_List *list, TYPE_ENUM type)
 {
-  range->offset = printer_owner->used;
+  list->type = type;
+  list->offset = printer_owner->used;
 }
-static void BREAD_RangeEnd(Printer *printer_owner, BREAD_Range *range, U32 elem_count)
+static void BREAD_ListEnd(Printer *printer_owner, BREAD_List *list)
 {
-  M_Check(printer_owner->used >= range->offset);
-  range->size = printer_owner->used - range->offset;
-  range->elem_count = elem_count;
-  M_Check(elem_count);
-  M_Check(range->elem_count <= range->size);
+  M_Check(list->type && !list->count && !list->size);
+
+  M_Check(printer_owner->used >= list->offset);
+  list->size = printer_owner->used - list->offset;
+
+  U32 type_size = TYPE_GetSize(list->type);
+  M_Check(list->size % type_size == 0);
+  list->count = list->size / type_size;
 }
-static void *BREAD_ReserveBytesToRange(Printer *p, BREAD_Range *range, U64 size, U64 alignment, U32 elem_count)
+static void *BREAD_ListReserveBytes(Printer *p, BREAD_List *list, TYPE_ENUM type, U32 count)
 {
-  BREAD_RangeStart(p, range);
-  void *result = BREAD_ReserveBytes(p, size, alignment);
-  BREAD_RangeEnd(p, range, elem_count);
+  BREAD_ListStart(p, list, type);
+  void *result = BREAD_ReserveBytes(p, TYPE_GetSize(type)*count, TYPE_GetAlign(type));
+  BREAD_ListEnd(p, list);
   return result;
 }
-#define BREAD_ReserveToRange(P, Range, Type, Count) (Type *)BREAD_ReserveBytesToRange(P, Range, sizeof(Type)*(Count), _Alignof(Type), (Count))
+#define BREAD_ListReserve(P, List, Type, Count) (Type *)BREAD_ListReserveBytes(P, List, TYPE_##Type, Count)
 
 //
 // Builder create and finalize
@@ -76,20 +80,17 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
   //
   BREAD_Links links = {};
 
-  links.models.rigid_vertices.offset = bb->file.used;
-  links.models.rigid_vertices.size = bb->rigid_vertices.used;
-  links.models.rigid_vertices.elem_count = bb->rigid_vertices.used / sizeof(WORLD_GpuRigidVertex);
+  BREAD_ListStart(&bb->file, &links.models.rigid_vertices, TYPE_WORLD_GpuRigidVertex);
   Pr_Printer(&bb->file, &bb->rigid_vertices);
+  BREAD_ListEnd(&bb->file, &links.models.rigid_vertices);
 
-  links.models.skinned_vertices.offset = bb->file.used;
-  links.models.skinned_vertices.size = bb->skinned_vertices.used;
-  links.models.skinned_vertices.elem_count = bb->skinned_vertices.used / sizeof(WORLD_GpuSkinnedVertex);
+  BREAD_ListStart(&bb->file, &links.models.skinned_vertices, TYPE_WORLD_GpuSkinnedVertex);
   Pr_Printer(&bb->file, &bb->skinned_vertices);
+  BREAD_ListEnd(&bb->file, &links.models.skinned_vertices);
 
-  links.models.indices.offset = bb->file.used;
-  links.models.indices.size = bb->indices.used;
-  links.models.indices.elem_count = bb->indices.used / sizeof(U16);
+  BREAD_ListStart(&bb->file, &links.models.indices, TYPE_U16);
   Pr_Printer(&bb->file, &bb->indices);
+  BREAD_ListEnd(&bb->file, &links.models.indices);
 
   ForArray(i, bb->models)
   {
@@ -103,28 +104,28 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
   }
 
   // Models
-  BREAD_RangeStart(&bb->file, &links.models.list);
+  BREAD_ListStart(&bb->file, &links.models.list, TYPE_BREAD_Model);
   {
     BREAD_Model *dst = BREAD_ReserveBytes(&bb->file, sizeof(bb->models), _Alignof(BREAD_Model));
     Memcpy(dst, bb->models, sizeof(bb->models));
   }
-  BREAD_RangeEnd(&bb->file, &links.models.list, ArrayCount(bb->models));
+  BREAD_ListEnd(&bb->file, &links.models.list);
 
   // Skeletons
-  BREAD_RangeStart(&bb->file, &links.skeletons);
+  BREAD_ListStart(&bb->file, &links.skeletons, TYPE_BREAD_Skeleton);
   Pr_Printer(&bb->file, &bb->skeletons);
-  BREAD_RangeEnd(&bb->file, &links.skeletons, bb->skeletons_count);
+  BREAD_ListEnd(&bb->file, &links.skeletons);
 
   // Materials
-  BREAD_RangeStart(&bb->file, &links.materials);
+  BREAD_ListStart(&bb->file, &links.materials, TYPE_BREAD_Material);
   Pr_Printer(&bb->file, &bb->materials);
-  BREAD_RangeEnd(&bb->file, &links.materials, bb->materials_count);
+  BREAD_ListEnd(&bb->file, &links.materials);
 
   //
   // Prepare BREAD_Header
   //
   BREAD_Header *header = (BREAD_Header *)bb->file.buf;
-  *BREAD_ReserveToRange(&bb->file, &header->links, BREAD_Links, 1) = links;
+  *BREAD_ListReserve(&bb->file, &header->links, BREAD_Links, 1) = links;
 
   //
   // Calculate hash

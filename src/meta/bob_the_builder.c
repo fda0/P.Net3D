@@ -433,9 +433,9 @@ static int BOB_Run(const char *command)
   // Attach kill job here?
   ResumeThread(process.hThread);
 
-  WaitForSingleObject(process.hProcess, INFINITE);
   CloseHandle(write_pipe);
   CloseHandle(process.hThread);
+  WaitForSingleObject(process.hProcess, INFINITE);
 
   DWORD exit_code = 0;
   bool exit_result = GetExitCodeProcess(process.hProcess, &exit_code);
@@ -593,9 +593,16 @@ static void BOB_MarkSection(const char *name, BOB_Compilation comp, BOB_SectionC
   if (BOB.did_build)
   {
     float delta_seconds = (float)(new_time - BOB.time) / CLOCKS_PER_SEC;
-    Pr_Cstr(&BOB.log, " ");
-    Pr_Float3(&BOB.log, delta_seconds);
-    Pr_Cstr(&BOB.log, "s; ");
+    if (delta_seconds < 0.0001f)
+    {
+      Pr_Cstr(&BOB.log, "; ");
+    }
+    else
+    {
+      Pr_Cstr(&BOB.log, " ");
+      Pr_Float3(&BOB.log, delta_seconds);
+      Pr_Cstr(&BOB.log, "s; ");
+    }
   }
 
   BOB.did_build = true;
