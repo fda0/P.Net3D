@@ -74,8 +74,12 @@ static void BK_TEX_Load(BREAD_Builder *bb, TEX_Kind tex_kind, BREAD_TexFormat fo
   }
 
   // Prepare mipmap sufraces
-  U32 lods_count = BK_TEX_CalculateMipMapCount(orig_width, orig_height);
-  M_Check(BK_MIPMAPS_MAX >= lods_count);
+  U32 lods_count = 1;
+  if (format == BREAD_Tex_BC7_RGBA)
+  {
+    lods_count = BK_TEX_CalculateMipMapCount(orig_width, orig_height);
+    M_Check(BK_MIPMAPS_MAX >= lods_count);
+  }
 
   ForArray(file_index, files)
   {
@@ -98,8 +102,6 @@ static void BK_TEX_Load(BREAD_Builder *bb, TEX_Kind tex_kind, BREAD_TexFormat fo
   //
   //
   //
-  SDL_Surface *block_surf = BAKER.tex.bc7_block_surf;
-
   // Allocate and prepare BREAD_Material & array of BREAD_Texture
   bb->materials_count += 1;
   BREAD_Material *br_material = BREAD_Reserve(&bb->materials, BREAD_Material, 1);
@@ -218,6 +220,8 @@ static void BK_TEX_Load(BREAD_Builder *bb, TEX_Kind tex_kind, BREAD_TexFormat fo
               .x = 0, .y = 0,
               .w = copy_w, .h = copy_h,
             };
+
+            SDL_Surface *block_surf = BAKER.tex.bc7_block_surf;
             SDL_BlitSurfaceTiled(surf, &src_rect, block_surf, &dst_rect);
 
             bc7enc_compress_block(br_pixels, block_surf->pixels, &BAKER.tex.params);

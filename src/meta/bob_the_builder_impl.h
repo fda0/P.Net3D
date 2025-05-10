@@ -42,7 +42,8 @@ typedef struct
 
 typedef struct
 {
-  const char *input;
+  const char *inputs;
+  const char *link_inputs;
   const char *output;
   BOB_Compilation comp;
   bool gui;
@@ -324,7 +325,7 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
 
   // Build command string
   Pr_Cstr(cmd, exe);
-  Pr_Cstr(cmd, config.input);
+  Pr_Cstr(cmd, config.inputs);
   Pr_Cstr(cmd, " ");
   Pr_Cstr(cmd, opt_mode);
   Pr_Cstr(cmd, common);
@@ -333,14 +334,17 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   // @todo Inject git hash predefine
   // for /f %%i in ('call git describe --always --dirty') do set compile=%compile% -DBUILD_GIT_HASH=\"%%i\"
 
-  if (asan)
-    Pr_Cstr(cmd, enable_asan);
+  if (asan) Pr_Cstr(cmd, enable_asan);
 
   Pr_Cstr(cmd, link);
+  if (config.link_inputs)
+  {
+    Pr_Cstr(cmd, " ");
+    Pr_Cstr(cmd, config.link_inputs);
+    Pr_Cstr(cmd, " ");
+  }
 
-  if (config.gui)
-    Pr_Cstr(cmd, link_gui);
-
+  if (config.gui) Pr_Cstr(cmd, link_gui);
   Pr_Cstr(cmd, link_libs);
 
   if (config.sdl3)

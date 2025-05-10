@@ -2,8 +2,8 @@
 // Features:
 // - Flexible command-line interface that does exactly what the author (me) wants.
 // - Measures build times.
-// - @todo Caches asset preprocessor (baker) output.
-// - @todo Hides spam.
+// - Caches asset preprocessor (baker) output.
+// - Hides output spam.
 #include "bob_the_builder_impl.h"
 
 int main(I32 args_count, char **args)
@@ -105,7 +105,7 @@ int main(I32 args_count, char **args)
     BOB_MarkSection("Math", comp, (BOB_SectionConfig){.is_compilation = true});
 
     BOB_PrinterOnStack(cmd);
-    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/codegen_math.c",
+    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.inputs = "../src/meta/codegen_math.c",
                                              .output = "codegen_math.exe",
                                              .comp = comp,
                                              .sdl3 = true});
@@ -145,7 +145,7 @@ int main(I32 args_count, char **args)
     if (!is_cached || !BOB_FileExists("data.bread"))
     {
       BOB_PrinterOnStack(cmd);
-      BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/meta/baker_entry.c ../libs/bc7enc.c",
+      BOB_BuildCommand(&cmd, (BOB_BuildConfig){.inputs = "../src/meta/baker_entry.c ../libs/bc7enc.c",
                                                .output = "baker.exe",
                                                .comp = comp,
                                                .sdl3 = true,
@@ -178,7 +178,8 @@ int main(I32 args_count, char **args)
 
     // Compile game
     Pr_Reset(&cmd);
-    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.input = "../src/game/game_sdl_entry.c",
+    BOB_BuildCommand(&cmd, (BOB_BuildConfig){.inputs = "../src/game/game_sdl_entry.c",
+                                             .link_inputs = "icon.res",
                                              .output = "p.exe",
                                              .comp = comp,
                                              .gui = true,

@@ -44,6 +44,15 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
   U32 br_sections_count = br_material->sections.count;
   BREAD_MaterialSection *br_sections = BREAD_ListAsType(br_material->sections, BREAD_MaterialSection);
 
+  U32 lods_count = br_material->lods;
+  bool generate_lods = false;
+  if (lods_count == 1 && br_material->format != BREAD_Tex_BC7_RGBA)
+  {
+    lods_count = CalculateMipMapCount(br_material->width, br_material->height);
+    generate_lods = true;
+  }
+
+
   // Create texture and transfer CPU memory -> GPU memory -> GPU texture
   SDL_GPUTexture *texture = 0;
   {
@@ -74,9 +83,13 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
         .width = br_material->width,
         .height = br_material->height,
         .layer_count_or_depth = br_material->layers,
-        .num_levels = br_material->lods,
-        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        .num_levels = lods_count,
+        .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
       };
+
+      if (generate_lods)
+        texture_info.usage |= SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+
       texture = SDL_CreateGPUTexture(APP.gpu.device, &texture_info);
       SDL_SetGPUTextureName(APP.gpu.device, texture, "Texture from bread");
     }
@@ -109,6 +122,10 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
       }
 
       SDL_EndGPUCopyPass(copy_pass);
+
+      if (generate_lods)
+        SDL_GenerateMipmapsForGPUTexture(cmd, texture);
+
       SDL_SubmitGPUCommandBuffer(cmd);
     }
 
@@ -121,7 +138,7 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
 
 static void AST_LoadTextureFromOnDiskFile(TEX_Kind tex_kind, U64 min_frame)
 {
-  if (tex_kind == TEX_Bricks071)
+  if (1)
   {
     AST_LoadTextureFromBreadFile(tex_kind, min_frame);
     return;
