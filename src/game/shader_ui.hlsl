@@ -1,17 +1,17 @@
 #include "shader_util.hlsl"
 
-struct UI_VertexInput
+struct UI_DX_Vertex
 {
   U32 vertex_index : SV_VertexID;
 };
 
-struct UI_DxUniform
+struct UI_DX_Uniform
 {
   V2 window_dim;
   V2 texture_dim;
 };
 
-struct UI_DxShape
+struct UI_DX_Shape
 {
   V2 p_min;
   V2 p_max;
@@ -24,13 +24,13 @@ struct UI_DxShape
   U32 color; // @todo array4
 };
 
-struct UI_DxClip
+struct UI_DX_Clip
 {
   V2 p_min;
   V2 p_max;
 };
 
-struct UI_Fragment
+struct UI_DX_Fragment
 {
   V4 color               : TEXCOORD0;
   V3 tex_uv              : TEXCOORD1;
@@ -44,22 +44,22 @@ struct UI_Fragment
 };
 
 // Dx resources
-cbuffer VertexUniformBuf : register(b0, space1) { UI_DxUniform UniV; };
+cbuffer VertexUniformBuf : register(b0, space1) { UI_DX_Uniform UniV; };
 
-StructuredBuffer<UI_DxShape> ShapeBuf : register(t0);
-StructuredBuffer<UI_DxClip>  ClipBuf  : register(t1);
+StructuredBuffer<UI_DX_Shape> ShapeBuf : register(t0);
+StructuredBuffer<UI_DX_Clip>  ClipBuf  : register(t1);
 
 Texture2DArray<V4> AtlasTexture : register(t0, space2);
 SamplerState AtlasSampler : register(s0, space2);
 
 // Shaders
-UI_Fragment UI_DxShaderVS(UI_VertexInput input)
+UI_DX_Fragment UI_DxShaderVS(UI_DX_Vertex input)
 {
   U32 corner_index = input.vertex_index & 3u; // 2 bits; [0:1]
   U32 shape_index = (input.vertex_index >> 2u) & 0xFFFFu; // 16 bits; [2:17]
   U32 clip_index = (input.vertex_index >> 18u) & 0x3FFFu; // 14 bits; [18:31]
-  UI_DxClip clip = ClipBuf[clip_index];
-  UI_DxShape shape = ShapeBuf[shape_index];
+  UI_DX_Clip clip = ClipBuf[clip_index];
+  UI_DX_Shape shape = ShapeBuf[shape_index];
 
   // position
   V2 pos = shape.p_min;
@@ -102,7 +102,7 @@ UI_Fragment UI_DxShaderVS(UI_VertexInput input)
   tex_uv /= UniV.texture_dim;
 
   //
-  UI_Fragment frag;
+  UI_DX_Fragment frag;
   frag.color = UnpackColor32(shape.color);
   frag.tex_uv = V3(tex_uv, shape.tex_layer);
   frag.pos = pos;
@@ -116,7 +116,7 @@ UI_Fragment UI_DxShaderVS(UI_VertexInput input)
   return frag;
 }
 
-V4 UI_DxShaderPS(UI_Fragment frag) : SV_Target0
+V4 UI_DxShaderPS(UI_DX_Fragment frag) : SV_Target0
 {
   V4 color = frag.color;
   if (frag.tex_uv.z >= 0.f)
