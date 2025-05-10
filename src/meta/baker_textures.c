@@ -1,8 +1,9 @@
 // @todo:
 // - Mipmapping
 // - Explore other texture compression formats (BC5 for normal maps?)
+#define M_TEX_BC7_BLOCK_DIM 4
 
-static U32 BK_CalculateMipMapCount(U32 width, U32 height)
+static U32 BK_TEX_CalculateMipMapCount(U32 width, U32 height)
 {
   U32 max_dim = Max(width, height);
   I32 msb = MostSignificantBitU32(max_dim);
@@ -10,7 +11,7 @@ static U32 BK_CalculateMipMapCount(U32 width, U32 height)
   return msb;
 }
 
-static void BK_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
+static void BK_TEX_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
 {
   Assert(tex_kind < TEX_COUNT);
   S8 tex_name = TEX_GetName(tex_kind);
@@ -73,19 +74,23 @@ static void BK_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
   }
 
   // Prepare mipmap sufraces
-  U32 lods_count = BK_CalculateMipMapCount(orig_width, orig_height);
+  U32 lods_count = BK_TEX_CalculateMipMapCount(orig_width, orig_height);
   M_Check(BK_MIPMAPS_MAX >= lods_count);
 
   ForArray(file_index, files)
   {
     BK_MaterialFile *file = files + file_index;
 
-    V2U32 lod_dim = (V2U32){orig_width, orig_height};
+    V2I32 lod_dim = (V2I32){orig_width, orig_height};
     for (U32 lod_index = 1; lod_index < lods_count; lod_index += 1)
     {
-      lod_dim = V2U32_DivScalar(lod_dim, 2);
+      lod_dim = V2I32_DivScalar(lod_dim, 2);
       M_Check(lod_dim.x >= 1 && lod_dim.y >= 1);
+
       file->surfs[lod_index] = SDL_CreateSurface(lod_dim.x, lod_dim.y, target_format);
+      M_Check(file->surfs[lod_index]->w == lod_dim.x);
+      M_Check(file->surfs[lod_index]->h == lod_dim.y);
+
       SDL_BlitSurfaceScaled(file->surfs[0], 0, file->surfs[lod_index], 0, SDL_SCALEMODE_LINEAR);
     }
   }
@@ -93,8 +98,6 @@ static void BK_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
   //
   //
   //
-#define M_TEX_CHUNK_DIM 4
-#define M_TEX_CHUNK_PITCH (M_TEX_CHUNK_DIM * 4)
 
   // Allocate and prepare BREAD_Material & array of BREAD_Texture
   BREAD_Material *br_material = BREAD_Reserve(&bb->materials, BREAD_Material, 1);
@@ -119,57 +122,64 @@ static void BK_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
       br_lod->width = surf->w;
       br_lod->height = surf->h;
 
-      // Shrink constants
-      I32 shrink_factor = orig_width / surf->w;
-      M_Check(shrink_factor == orig_height / surf->h);
-      I32 orig_sample_dim = M_TEX_CHUNK_DIM * shrink_factor;
-      float shrink_scale = 1.f / (float)shrink_factor;
-
       // Alloc output data buf
-      I32 lod_chunks_per_w = (surf->w + M_TEX_CHUNK_DIM - 1) / M_TEX_CHUNK_DIM;
-      I32 lod_chunks_per_h = (surf->h + M_TEX_CHUNK_DIM - 1) / M_TEX_CHUNK_DIM;
+      I32 lod_chunks_per_w = (surf->w + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
+      I32 lod_chunks_per_h = (surf->h + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
       I32 block_data_size = lod_chunks_per_w*lod_chunks_per_h * sizeof(U64)*2;
       U8 *br_data = BREAD_ListReserve(&bb->file, &br_lod->data, U8, block_data_size);
+      U8 *br_data_end = br_data + block_data_size;
       U8 *br_pixels = br_data;
 
-      // Iterate over chunks of the current lod
+      // Iterate over chunks of the current lod.
+      // Fetch 4x4 chunks and compress them into memory allocated in .bread file.
       ForI32(chunk_y, lod_chunks_per_h)
       {
-        I32 lod_y = chunk_y * M_TEX_CHUNK_DIM;
-        I32 orig_y = lod_y * shrink_factor;
+        I32 lod_y = chunk_y * M_TEX_BC7_BLOCK_DIM;
         I32 lod_h_left = surf->h - lod_y;
+        I32 copy_h = Min(M_TEX_BC7_BLOCK_DIM, lod_h_left);
 
         ForI32(chunk_x, lod_chunks_per_w)
         {
-          I32 lod_x = chunk_x * M_TEX_CHUNK_DIM;
-          I32 orig_x = lod_x * shrink_factor;
+          I32 lod_x = chunk_x * M_TEX_BC7_BLOCK_DIM;
           I32 lod_w_left = surf->w - lod_x;
+          I32 copy_w = Min(M_TEX_BC7_BLOCK_DIM, lod_w_left);
 
           SDL_Rect src_rect =
           {
-            .x = orig_x, .y = orig_y,
-            .w = orig_sample_dim,
-            .h = orig_sample_dim,
+            .x = lod_x, .y = lod_y,
+            .w = copy_w, .h = copy_h,
           };
           SDL_Rect dst_rect =
           {
             .x = 0, .y = 0,
-            .w = Min(lod_w_left, M_TEX_CHUNK_DIM),
-            .h = Min(lod_h_left, M_TEX_CHUNK_DIM),
+            .w = copy_w, .h = copy_h,
           };
-          bool res = SDL_BlitSurfaceTiledWithScale(surf, &src_rect, // @TODO I SHOULD NOT BE SCALING ANYTHING HERE; IM HALF ASLEEP AND DUMB
-                                                   shrink_scale, SDL_SCALEMODE_LINEAR,
-                                                   block_surf, &dst_rect);
-          M_Check(res);
+          SDL_BlitSurfaceTiled(surf, &src_rect, block_surf, &dst_rect);
 
-          M_Check(br_pixels < br_data + block_data_size);
-          bc7enc_bool has_alpha = bc7enc_compress_block(br_pixels, block_surf->pixels, &BAKER.tex.params);
-          (void)has_alpha;
+          bc7enc_compress_block(br_pixels, block_surf->pixels, &BAKER.tex.params);
           br_pixels += sizeof(U64)*2;
         }
       }
 
+      M_Check(br_pixels == br_data_end);
       SDL_DestroySurface(surf);
     }
   }
+}
+
+static void BK_TEX_Init()
+{
+  // Init bc7enc texture compressor
+  {
+    bc7enc_compress_block_init();
+    bc7enc_compress_block_params_init(&BAKER.tex.params);
+    // There are params fields that we might want modify like m_uber_level.
+
+    // Learn which one should be picked.
+    // Perhaps diffuse needs perpecetual and data linear? Idk
+    bc7enc_compress_block_params_init_linear_weights(&BAKER.tex.params);
+    //bc7enc_compress_block_params_init_perceptual_weights(&BAKER.tex.params);
+  }
+
+  BAKER.tex.bc7_block_surf = SDL_CreateSurface(M_TEX_BC7_BLOCK_DIM, M_TEX_BC7_BLOCK_DIM, SDL_PIXELFORMAT_RGBA32);
 }

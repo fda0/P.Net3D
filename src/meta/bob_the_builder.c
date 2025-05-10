@@ -435,7 +435,18 @@ static int BOB_Run(const char *command)
 
   CloseHandle(write_pipe);
   CloseHandle(process.hThread);
-  WaitForSingleObject(process.hProcess, INFINITE);
+
+  BOB_PrinterOnStack(cmd_output);
+  for (;;)
+  {
+    char output_buffer[BOB_TMP_SIZE];
+    U32 read_bytes = 0;
+    U32 read_result = ReadFile(read_pipe, output_buffer, sizeof(output_buffer), &read_bytes, 0);
+    if (!read_result || read_bytes == 0)
+      break;
+
+    Pr_S8(&cmd_output, S8_Make(output_buffer, read_bytes));
+  }
 
   DWORD exit_code = 0;
   bool exit_result = GetExitCodeProcess(process.hProcess, &exit_code);
@@ -446,18 +457,7 @@ static int BOB_Run(const char *command)
   }
 
   if (exit_code || BOB.show_output)
-  {
-    for (;;)
-    {
-      char output_buffer[BOB_TMP_SIZE];
-      U32 read_bytes = 0;
-      U32 read_result = ReadFile(read_pipe, output_buffer, sizeof(output_buffer), &read_bytes, 0);
-      U32 err = GetLastError();
-      if (!read_result) break;
-      if (read_bytes == 0) break;
-      fprintf(BOB_out, "%.*s", read_bytes, output_buffer);
-    }
-  }
+    fprintf(BOB_out, "%s", Pr_AsCstr(&cmd_output));
 
   CloseHandle(read_pipe);
   CloseHandle(process.hProcess);
@@ -479,6 +479,7 @@ static void BOB_CheckError(I32 error_code)
 {
   if (error_code)
   {
+    fprintf(BOB_err, "[BOB] %s...\n", Pr_AsCstr(&BOB.log));
     fprintf(BOB_err, "[BOB] ERROR: Exiting with code %d\n", error_code);
     exit(error_code);
   }

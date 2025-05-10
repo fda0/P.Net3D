@@ -41,23 +41,7 @@ int main()
   BAKER.cgltf_arena = Arena_MakeInside(cgltf_arena_memory, sizeof(cgltf_arena_memory));
   M_LogState.reject_filter = M_LogObjDebug | M_LogGltfDebug;
 
-  // Tex state
-  {
-    // Init bc7enc texture compressor
-    {
-      bc7enc_compress_block_init();
-      bc7enc_compress_block_params_init(&BAKER.tex.params);
-      // There are params fields that we might want modify like m_uber_level.
-
-      // Learn which one should be picked.
-      // Perhaps diffuse needs perpecetual and data linear? Idk
-      bc7enc_compress_block_params_init_linear_weights(&BAKER.tex.params);
-      //bc7enc_compress_block_params_init_perceptual_weights(&BAKER.tex.params);
-    }
-
-    BAKER.tex.bc7_block_surf = SDL_CreateSurface(M_TEX_CHUNK_DIM, M_TEX_CHUNK_DIM, SDL_PIXELFORMAT_RGBA32);
-  }
-
+  BK_TEX_Init();
 
 
   BREAD_Builder bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(64));
@@ -68,7 +52,7 @@ int main()
 
     // Load texture files
     {
-      BK_CompressTexture(&bb, TEX_Bricks071);
+      BK_TEX_CompressTexture(&bb, TEX_Bricks071);
     }
 
     // Load .gltf models
