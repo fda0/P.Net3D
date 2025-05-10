@@ -26,7 +26,6 @@
 #include "base_parse.h"
 #include "game_constants.h"
 #include "game_bread_file_format.h"
-#include "game_type_info.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
 #include "game_animation.h"
@@ -42,6 +41,7 @@
 #include "game_gpu.h"
 #include "game_font_atlas.h"
 #include "game_core.h"
+#include "game_type_info.h"
 
 #include "gen_shader_rigid.vert.h"
 #include "gen_shader_rigid.frag.h"

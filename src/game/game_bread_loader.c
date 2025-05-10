@@ -13,15 +13,15 @@ static S8 BREAD_File()
 {
   return APP.ast.bread.file;
 }
-static S8 BREAD_OffsetSizeToS8(U64 offset, U64 size)
+static S8 BREAD_FileOffsetToS8(U64 offset, U64 size)
 {
   S8 result = S8_Substring(BREAD_File(), offset, offset+size);
   Assert(result.size == size);
   return result;
 }
-static S8 BREAD_FileRangeToS8(BREAD_Range range)
+static S8 BREAD_ListToS8(BREAD_List list)
 {
-  return BREAD_OffsetSizeToS8(range.offset, range.size);
+  return BREAD_FileOffsetToS8(list.offset, list.size);
 }
 
 // ---
@@ -33,14 +33,17 @@ static void *BREAD_S8CastToPtr(S8 string, U64 check_size, U64 check_align)
 }
 #define BREAD_S8AsType(String, Type, Count) (Type *)BREAD_S8CastToPtr(String, sizeof(Type)*Count, _Alignof(Type))
 
-static void *BREAD_FileRangeToPtr(BREAD_Range range, U64 check_type_size, U64 check_type_align)
+static void *BREAD_ListToPtr(BREAD_List list, TYPE_ENUM type)
 {
-  Assert(range.size == range.elem_count * check_type_size);
-  S8 string = BREAD_FileRangeToS8(range);
-  Assert(IsPointerAligned(string.str, check_type_align));
+  Assert(list.type == type);
+  U32 type_size = TYPE_GetSize(type);
+  U32 type_align = TYPE_GetAlign(type);
+  Assert(list.size == list.count * type_size);
+  S8 string = BREAD_ListToS8(list);
+  Assert(IsPointerAligned(string.str, type_align));
   return string.str;
 }
-#define BREAD_FileRangeAsType(Range, Type) (Type *)BREAD_FileRangeToPtr(Range, sizeof(Type), _Alignof(Type))
+#define BREAD_ListAsType(Range, Type) (Type *)BREAD_ListToPtr(Range, TYPE_##Type)
 
 // ---
 static void BREAD_LoadFile(const char *bread_file_path)
@@ -51,7 +54,7 @@ static void BREAD_LoadFile(const char *bread_file_path)
 
   // Header
   {
-    S8 header_string = BREAD_OffsetSizeToS8(0, sizeof(BREAD_Header));
+    S8 header_string = BREAD_FileOffsetToS8(0, sizeof(BREAD_Header));
     br->header = BREAD_S8AsType(header_string, BREAD_Header, 1);
   }
   // Validate hash
@@ -61,14 +64,14 @@ static void BREAD_LoadFile(const char *bread_file_path)
     Assert(br->header->file_hash == calculated_hash);
   }
   // Links
-  br->links = BREAD_FileRangeAsType(br->header->links, BREAD_Links);
+  br->links = BREAD_ListAsType(br->header->links, BREAD_Links);
 
   // Models
-  br->models_count = br->links->models.list.elem_count;
+  br->models_count = br->links->models.list.count;
   Assert(br->models_count == MODEL_COUNT);
-  br->models = BREAD_FileRangeAsType(br->links->models.list, BREAD_Model);
+  br->models = BREAD_ListAsType(br->links->models.list, BREAD_Model);
 
   // Materials
-  br->materials_count = br->links->materials.elem_count;
-  br->materials = BREAD_FileRangeAsType(br->links->materials, BREAD_Material);
+  br->materials_count = br->links->materials.count;
+  br->materials = BREAD_ListAsType(br->links->materials, BREAD_Material);
 }

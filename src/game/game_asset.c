@@ -30,15 +30,23 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
   AST_BreadFile *br = &APP.ast.bread;
   Assert(tex_kind < (I32)br->materials_count);
   BREAD_Material *br_material = br->materials + tex_kind;
+  BREAD_Texture *br_textures = BREAD_ListAsType(br_material->textures, BREAD_Texture);
 
-  U32 gpu_layer_size = br_material->width * br_material->height; // * (128 bits / (4*4 block size) - cancels out
-  U32 gpu_total_size = gpu_layer_size * br_material->layers;
+  // Measure total gpu size for this material
+  U32 gpu_total_size = 0;
+  ForU32(tex_i, br_material->textures.count)
+  {
+    BREAD_Texture *br_tex = br_textures + tex_i;
+    BREAD_TextureLod *br_lods = BREAD_ListAsType(br_tex->lods, BREAD_TextureLod);
+    ForU32(lod_i, br_tex->lods.count)
+    {
+      BREAD_TextureLod *br_lod = br_lods + lod_i;
+      gpu_total_size += br_lod->data.size;
+    }
+  }
 
-  Assert(br_material->bc7_blocks.size == gpu_total_size);
-  U64 *br_pixels = BREAD_FileRangeAsType(br_material->bc7_blocks, U64);
-
-  SDL_GPUTexture *texture = 0;
   // Create texture and transfer CPU memory -> GPU memory -> GPU texture
+  SDL_GPUTexture *texture = 0;
   {
     SDL_GPUTransferBufferCreateInfo transfer_create_info =
     {

@@ -35,12 +35,13 @@ X(BREAD_Links) \
 X(WORLD_GpuRigidVertex) \
 X(WORLD_GpuSkinnedVertex)
 
-typedef enum
+typedef U32 TYPE_ENUM;
+enum
 {
 #define TYPE_DEF_ENUM(a) TYPE_##a,
   TYPE_LIST(TYPE_DEF_ENUM)
     TYPE_COUNT
-} TYPE_ENUM;
+};
 
 READ_ONLY static U32 TYPE_Sizes[] =
 {
