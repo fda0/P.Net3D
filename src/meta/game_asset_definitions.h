@@ -13,12 +13,13 @@ X(TestPBR001)
 //
 // Textures
 //
-typedef enum
+typedef U32 TEX_Kind;
+enum
 {
 #define TEX_DEF_ENUM(a) TEX_##a,
   TEX_LIST(TEX_DEF_ENUM)
   TEX_COUNT
-} TEX_Kind;
+};
 
 READ_ONLY static S8 TEX_Names[] =
 {
@@ -44,12 +45,13 @@ X(Worker) \
 X(Formal) \
 X(Casual)
 
-typedef enum
+typedef U32 MODEL_Type;
+enum
 {
 #define MODEL_DEF_ENUM(a) MODEL_##a,
   MODEL_LIST(MODEL_DEF_ENUM)
   MODEL_COUNT
-} MODEL_Type;
+};
 
 READ_ONLY static const char *MODEL_CstrNames[] =
 {

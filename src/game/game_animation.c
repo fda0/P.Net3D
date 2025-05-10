@@ -24,11 +24,11 @@ static void AN_WaterfallTransformsToChildren(AN_Skeleton *skeleton, Mat4 *mats, 
   }
 }
 
-static float AN_WrapAnimationTime(AN_Skeleton *skeleton, U32 animation_index, float time)
+static float AN_WrapAnimationTime(AN_Skeleton *skeleton, U32 anim_index, float time)
 {
-  if (animation_index < skeleton->animations_count)
+  if (anim_index < skeleton->anims_count)
   {
-    AN_Animation *anim = skeleton->animations + animation_index;
+    AN_Animation *anim = skeleton->anims + anim_index;
     time = FWrap(anim->t_min, anim->t_max, time);
   }
   else
@@ -38,7 +38,7 @@ static float AN_WrapAnimationTime(AN_Skeleton *skeleton, U32 animation_index, fl
   return time;
 }
 
-static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, float time)
+static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 anim_index, float time)
 {
   AN_Pose res = {};
   res.mats = Alloc(APP.a_frame, Mat4, skeleton->joints_count);
@@ -56,9 +56,9 @@ static AN_Pose AN_PoseFromAnimation(AN_Skeleton *skeleton, U32 animation_index, 
     memcpy(scales, skeleton->scales, sizeof(*scales)*skeleton->joints_count);
 
     // Overwrite translations, rotations, scales with values from animation
-    if (animation_index < skeleton->animations_count)
+    if (anim_index < skeleton->anims_count)
     {
-      AN_Animation *anim = skeleton->animations + animation_index;
+      AN_Animation *anim = skeleton->anims + anim_index;
       time = Clamp(anim->t_min, anim->t_max, time);
 
       ForU32(channel_index, anim->channels_count)

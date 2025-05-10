@@ -22,8 +22,8 @@ typedef struct
   Mat4 root_transform;
 
   // --- animations ---
-  AN_Animation *animations;
-  U32 animations_count;
+  AN_Animation *anims;
+  U32 anims_count;
 
   // --- joints section ---
   // all pointers point to arrays with

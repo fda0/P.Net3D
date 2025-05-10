@@ -24,10 +24,10 @@ X(Quat) \
 /* no Printer/Parser impl below */ \
 X(RngU32) \
 X(Mat4) \
+X(BREAD_List) \
 X(BREAD_Animation) \
 X(BREAD_AnimationChannel) \
-X(BREAD_TextureLod) \
-X(BREAD_Texture) \
+X(BREAD_MaterialSection) \
 X(BREAD_Material) \
 X(BREAD_Model) \
 X(BREAD_Skeleton) \

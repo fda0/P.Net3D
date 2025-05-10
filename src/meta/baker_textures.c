@@ -98,35 +98,52 @@ static void BK_TEX_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
   //
   //
   //
-
-  // Allocate and prepare BREAD_Material & array of BREAD_Texture
-  BREAD_Material *br_material = BREAD_Reserve(&bb->materials, BREAD_Material, 1);
-  bb->materials_count += 1;
-  BREAD_Texture *br_textures = BREAD_ListReserve(&bb->file, &br_material->textures, BREAD_Texture, ArrayCount(files));
-
   SDL_Surface *block_surf = BAKER.tex.bc7_block_surf;
 
+  // Allocate and prepare BREAD_Material & array of BREAD_Texture
+  bb->materials_count += 1;
+  BREAD_Material *br_material = BREAD_Reserve(&bb->materials, BREAD_Material, 1);
+  br_material->width = orig_width;
+  br_material->height = orig_height;
+  br_material->lods = lods_count;
+  br_material->layers = ArrayCount(files);
+  
+  U32 br_sections_count = br_material->lods * br_material->layers;
+  BREAD_MaterialSection *br_sections = BREAD_ListReserve(&bb->file, &br_material->sections,
+                                                         BREAD_MaterialSection, br_sections_count);
+  
+  BREAD_ListStart(&bb->file, &br_material->full_data, TYPE_U8);
+
   // Iterate over fliles
+  U32 br_section_index = 0;
   ForArray(file_index, files)
   {
     BK_MaterialFile *file = files + file_index;
-    BREAD_Texture *br_tex = br_textures + file_index;
-
-    // Alloc lods
-    BREAD_TextureLod *br_lods = BREAD_ListReserve(&bb->file, &br_tex->lods, BREAD_TextureLod, lods_count);
+    
     // Iterate over lods
     ForU32(lod_index, lods_count)
     {
       SDL_Surface *surf = file->surfs[lod_index];
-      BREAD_TextureLod *br_lod = br_lods + lod_index;
-      br_lod->width = surf->w;
-      br_lod->height = surf->h;
-
-      // Alloc output data buf
+      
+      M_Check(br_section_index < br_sections_count);
+      BREAD_MaterialSection *br_sect = br_sections + br_section_index;
+      br_section_index += 1;
+      
+      // Calculate data buffer dimensions
       I32 lod_chunks_per_w = (surf->w + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
       I32 lod_chunks_per_h = (surf->h + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
       I32 block_data_size = lod_chunks_per_w*lod_chunks_per_h * sizeof(U64)*2;
-      U8 *br_data = BREAD_ListReserve(&bb->file, &br_lod->data, U8, block_data_size);
+      
+      // Fill section data
+      br_sect->width = surf->w;
+      br_sect->height = surf->h;
+      br_sect->lod = lod_index;
+      br_sect->layer = file_index;
+      br_sect->data_offset = bb->file.used - br_material->full_data.offset;
+      br_sect->data_size = block_data_size;
+      
+      // Alloc data buffer
+      U8 *br_data = BREAD_Reserve(&bb->file,U8, block_data_size);
       U8 *br_data_end = br_data + block_data_size;
       U8 *br_pixels = br_data;
 

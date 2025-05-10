@@ -28,37 +28,30 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
     return;
 
   AST_BreadFile *br = &APP.ast.bread;
+  
+  // Material from .bread - it contains a big buffer that needs to uploaded to GPU
   Assert(tex_kind < (I32)br->materials_count);
   BREAD_Material *br_material = br->materials + tex_kind;
-  BREAD_Texture *br_textures = BREAD_ListAsType(br_material->textures, BREAD_Texture);
+  S8 gpu_full_data = BREAD_ListToS8(br_material->full_data);
 
-  // Measure total gpu size for this material
-  U32 gpu_total_size = 0;
-  ForU32(tex_i, br_material->textures.count)
-  {
-    BREAD_Texture *br_tex = br_textures + tex_i;
-    BREAD_TextureLod *br_lods = BREAD_ListAsType(br_tex->lods, BREAD_TextureLod);
-    ForU32(lod_i, br_tex->lods.count)
-    {
-      BREAD_TextureLod *br_lod = br_lods + lod_i;
-      gpu_total_size += br_lod->data.size;
-    }
-  }
-
+  // MaterialSections - it contains a mapping from big buffer to individual pieces of texture layers and lods
+  U32 br_sections_count = br_material->sections.count;
+  BREAD_MaterialSection *br_sections = BREAD_ListAsType(br_material->sections, BREAD_MaterialSection);
+  
   // Create texture and transfer CPU memory -> GPU memory -> GPU texture
   SDL_GPUTexture *texture = 0;
   {
     SDL_GPUTransferBufferCreateInfo transfer_create_info =
     {
       .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-      .size = gpu_total_size
+      .size = gpu_full_data.size
     };
     SDL_GPUTransferBuffer *transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &transfer_create_info);
 
     // CPU -> GPU
     {
       U8 *gpu_mapped = SDL_MapGPUTransferBuffer(APP.gpu.device, transfer, false);
-      Memcpy(gpu_mapped, br_pixels, gpu_total_size);
+      Memcpy(gpu_mapped, gpu_full_data.str, gpu_full_data.size);
       SDL_UnmapGPUTransferBuffer(APP.gpu.device, transfer);
     }
 
@@ -83,28 +76,30 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
     // GPU memory -> GPU texture
     {
       SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-
       SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
-      ForU32(layer_index, br_material->layers)
+      
+      ForU32(br_section_index, br_sections_count)
       {
+        BREAD_MaterialSection *br_sect = br_sections + br_section_index;
+        
         SDL_GPUTextureTransferInfo source =
         {
           .transfer_buffer = transfer,
-          .offset = layer_index * gpu_layer_size,
+          .offset = br_sect->data_offset,
         };
         SDL_GPUTextureRegion destination =
         {
           .texture = texture,
-          .layer = layer_index,
-          .w = br_material->width,
-          .h = br_material->height,
+          .mip_level = br_sect->lod,
+          .layer = br_sect->layer,
+          .w = br_sect->width,
+          .h = br_sect->height,
           .d = 1,
         };
         SDL_UploadToGPUTexture(copy_pass, &source, &destination, false);
       }
+      
       SDL_EndGPUCopyPass(copy_pass);
-
-      //SDL_GenerateMipmapsForGPUTexture(cmd, texture); // @todo CAN'T DO THAT WITH BC7 texture! Generate them offline?
       SDL_SubmitGPUCommandBuffer(cmd);
     }
 
@@ -341,74 +336,75 @@ static void AST_LoadSkeletons()
 {
   AST_BreadFile *br = &APP.ast.bread;
 
-  Assert(br->links->skeletons.elem_count <= ArrayCount(APP.ast.skeletons));
-  U32 skeletons_count = Min(br->links->skeletons.elem_count, ArrayCount(APP.ast.skeletons));
+  U32 br_skeletons_count = br->links->skeletons.count;
+  BREAD_Skeleton *br_skeletons = BREAD_ListAsType(br->links->skeletons, BREAD_Skeleton);
+  
+  U32 skeletons_count = Min(br_skeletons_count, ArrayCount(APP.ast.skeletons));
   APP.ast.skeletons_count = skeletons_count;
 
-  BREAD_Skeleton *skeletons = BREAD_FileRangeAsType(br->links->skeletons, BREAD_Skeleton);
   ForU32(skeleton_index, skeletons_count)
   {
-    BREAD_Skeleton *br_skel = skeletons + skeleton_index;
+    BREAD_Skeleton *br_skel = br_skeletons + skeleton_index;
     Asset *ast_skel = APP.ast.skeletons + skeleton_index;
     ast_skel->loaded = true;
     ast_skel->loaded_t = 1.f;
-    ast_skel->Skel.root_transform = *BREAD_FileRangeAsType(br_skel->root_transform, Mat4);
+    ast_skel->Skel.root_transform = br_skel->root_transform;
 
     AN_Skeleton *skel = &ast_skel->Skel;
-    skel->joints_count = br_skel->inv_bind_mats.elem_count;
-    Assert(skel->joints_count == br_skel->inv_bind_mats.elem_count);
-    Assert(skel->joints_count == br_skel->child_index_buf.elem_count);
-    Assert(skel->joints_count == br_skel->child_index_ranges.elem_count);
-    Assert(skel->joints_count == br_skel->translations.elem_count);
-    Assert(skel->joints_count == br_skel->rotations.elem_count);
-    Assert(skel->joints_count == br_skel->scales.elem_count);
-    Assert(skel->joints_count == br_skel->name_ranges.elem_count);
+    skel->joints_count = br_skel->inv_bind_mats.count;
+    Assert(skel->joints_count == br_skel->inv_bind_mats.count);
+    Assert(skel->joints_count == br_skel->child_index_buf.count);
+    Assert(skel->joints_count == br_skel->child_index_ranges.count);
+    Assert(skel->joints_count == br_skel->translations.count);
+    Assert(skel->joints_count == br_skel->rotations.count);
+    Assert(skel->joints_count == br_skel->scales.count);
+    Assert(skel->joints_count == br_skel->name_ranges.count);
 
-    skel->inv_bind_mats      = BREAD_FileRangeAsType(br_skel->inv_bind_mats, Mat4);
-    skel->child_index_buf    = BREAD_FileRangeAsType(br_skel->child_index_buf, U32);
-    skel->child_index_ranges = BREAD_FileRangeAsType(br_skel->child_index_ranges, RngU32);
-    skel->translations       = BREAD_FileRangeAsType(br_skel->translations, V3);
-    skel->rotations          = BREAD_FileRangeAsType(br_skel->rotations, Quat);
-    skel->scales             = BREAD_FileRangeAsType(br_skel->scales, V3);
+    skel->inv_bind_mats      = BREAD_ListAsType(br_skel->inv_bind_mats, Mat4);
+    skel->child_index_buf    = BREAD_ListAsType(br_skel->child_index_buf, U32);
+    skel->child_index_ranges = BREAD_ListAsType(br_skel->child_index_ranges, RngU32);
+    skel->translations       = BREAD_ListAsType(br_skel->translations, V3);
+    skel->rotations          = BREAD_ListAsType(br_skel->rotations, Quat);
+    skel->scales             = BREAD_ListAsType(br_skel->scales, V3);
 
-    RngU32 *name_ranges = BREAD_FileRangeAsType(br_skel->name_ranges, RngU32);
+    RngU32 *name_ranges = BREAD_ListAsType(br_skel->name_ranges, RngU32);
     skel->names_s8 = Alloc(br->arena, S8, skel->joints_count);
     ForU32(i, skel->joints_count)
       skel->names_s8[i] = S8_Substring(BREAD_File(), name_ranges[i].min, name_ranges[i].max);
 
     // Animations
-    skel->animations_count = br_skel->animations.elem_count;
-    BREAD_Animation *br_animations = BREAD_FileRangeAsType(br_skel->animations, BREAD_Animation);
-    skel->animations = Alloc(br->arena, AN_Animation, skel->animations_count);
+    skel->anims_count = br_skel->anims.count;
+    BREAD_Animation *br_anims = BREAD_ListAsType(br_skel->anims, BREAD_Animation);
+    skel->anims = Alloc(br->arena, AN_Animation, skel->anims_count);
 
-    ForU32(animation_index, skel->animations_count)
+    ForU32(anim_index, skel->anims_count)
     {
-      AN_Animation *anim = skel->animations + animation_index;
-      BREAD_Animation *br_anim = br_animations + animation_index;
+      AN_Animation *anim = skel->anims + anim_index;
+      BREAD_Animation *br_anim = br_anims + anim_index;
 
-      anim->name_s8 = S8_Make(BREAD_FileRangeAsType(br_anim->name, U8), br_anim->name.size);
+      anim->name_s8 = S8_Make(BREAD_ListAsType(br_anim->name, U8), br_anim->name.size);
 
       anim->t_min = br_anim->t_min;
       anim->t_max = br_anim->t_max;
 
-      anim->channels_count = br_anim->channels.elem_count;
-      BREAD_AnimChannel *br_channels = BREAD_FileRangeAsType(br_anim->channels, BREAD_AnimChannel);
+      anim->channels_count = br_anim->channels.count;
+      BREAD_AnimationChannel *br_channels = BREAD_ListAsType(br_anim->channels, BREAD_AnimationChannel);
       anim->channels = Alloc(br->arena, AN_Channel, anim->channels_count);
 
       ForU32(channel_index, anim->channels_count)
       {
         AN_Channel *chan = anim->channels + channel_index;
-        BREAD_AnimChannel *br_chan = br_channels + channel_index;
+        BREAD_AnimationChannel *br_chan = br_channels + channel_index;
 
         chan->joint_index = br_chan->joint_index;
         chan->type = br_chan->type;
-        chan->count = br_chan->inputs.elem_count;
+        chan->count = br_chan->inputs.count;
 
         U32 comp_count = (chan->type == AN_Rotation ? 4 : 3);
-        Assert(comp_count * chan->count == br_chan->outputs.elem_count);
+        Assert(comp_count * chan->count == br_chan->outputs.count);
 
-        chan->inputs = BREAD_FileRangeAsType(br_chan->inputs, float);
-        chan->outputs = BREAD_FileRangeAsType(br_chan->outputs, float);
+        chan->inputs = BREAD_ListAsType(br_chan->inputs, float);
+        chan->outputs = BREAD_ListAsType(br_chan->outputs, float);
       }
     }
   }
@@ -440,9 +436,9 @@ static void AST_LoadGeometry()
                                      br->links->models.indices.size,
                                      "Model indices");
 
-  S8 rigid_string = BREAD_FileRangeToS8(br->links->models.rigid_vertices);
-  S8 skinned_string = BREAD_FileRangeToS8(br->links->models.skinned_vertices);
-  S8 indices_string = BREAD_FileRangeToS8(br->links->models.indices);
+  S8 rigid_string = BREAD_ListToS8(br->links->models.rigid_vertices);
+  S8 skinned_string = BREAD_ListToS8(br->links->models.skinned_vertices);
+  S8 indices_string = BREAD_ListToS8(br->links->models.indices);
 
   GPU_TransferBuffer(APP.ast.rigid_vertices, rigid_string.str, rigid_string.size);
   GPU_TransferBuffer(APP.ast.skinned_vertices, skinned_string.str, skinned_string.size);

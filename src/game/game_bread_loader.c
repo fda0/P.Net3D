@@ -21,7 +21,14 @@ static S8 BREAD_FileOffsetToS8(U64 offset, U64 size)
 }
 static S8 BREAD_ListToS8(BREAD_List list)
 {
-  return BREAD_FileOffsetToS8(list.offset, list.size);
+  // validation
+  U32 type_size = TYPE_GetSize(list.type);
+  U32 type_align = TYPE_GetAlign(list.type);
+  Assert(list.size == list.count * type_size);
+  
+  S8 result = BREAD_FileOffsetToS8(list.offset, list.size);
+  Assert(IsPointerAligned(result.str, type_align)); // validation
+  return result;
 }
 
 // ---
@@ -35,13 +42,8 @@ static void *BREAD_S8CastToPtr(S8 string, U64 check_size, U64 check_align)
 
 static void *BREAD_ListToPtr(BREAD_List list, TYPE_ENUM type)
 {
-  Assert(list.type == type);
-  U32 type_size = TYPE_GetSize(type);
-  U32 type_align = TYPE_GetAlign(type);
-  Assert(list.size == list.count * type_size);
-  S8 string = BREAD_ListToS8(list);
-  Assert(IsPointerAligned(string.str, type_align));
-  return string.str;
+  Assert(list.type == type); // validation
+  return BREAD_ListToS8(list).str;
 }
 #define BREAD_ListAsType(Range, Type) (Type *)BREAD_ListToPtr(Range, TYPE_##Type)
 

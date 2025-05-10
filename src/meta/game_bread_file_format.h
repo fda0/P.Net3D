@@ -72,17 +72,21 @@ typedef struct
 {
   U32 width;
   U32 height;
-  BREAD_ListT(U8) data;
-} BREAD_TextureLod;
+  U32 lod;
+  U32 layer;
+  // relative to full_data of Material
+  U32 data_offset;
+  U32 data_size;
+} BREAD_MaterialSection;
 
 typedef struct
 {
-  BREAD_ListT(BREAD_TextureLod) lods;
-} BREAD_Texture;
-
-typedef struct
-{
-  BREAD_ListT(BREAD_Texture) textures;
+  U32 width;
+  U32 height;
+  U32 lods;
+  U32 layers;
+  BREAD_ListT(U8) full_data;
+  BREAD_ListT(BREAD_MaterialSection) sections;
 } BREAD_Material;
 
 typedef struct

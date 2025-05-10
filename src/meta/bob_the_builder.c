@@ -512,7 +512,7 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   const char *clang_exe       = "clang ";
   const char *clang_debug     = "-DBUILD_DEBUG=0 -g -O0 ";
   const char *clang_release   = "-DBUILD_DEBUG=1 -g -O2 ";
-  const char *clang_common    = "-fdiagnostics-absolute-paths -Wall -Wno-missing-braces -Wno-unused-function -Wno-microsoft-static-assert -Wno-c2x-extensions ";
+  const char *clang_common    = "-fdiagnostics-absolute-paths -Wall -Werror -Wno-missing-braces -Wno-unused-function -Wno-microsoft-static-assert -Wno-c2x-extensions ";
   const char *clang_link      = "-fuse-ld=lld -Xlinker /MANIFEST:EMBED -Xlinker /pdbaltpath:%_PDB% ";
   const char *clang_link_libs = "-lUser32.lib -lAdvapi32.lib -lShell32.lib -lGdi32.lib -lVersion.lib -lOleAut32.lib -lImm32.lib -lOle32.lib -lCfgmgr32.lib -lSetupapi.lib -lWinmm.lib -lWs2_32.lib -lIphlpapi.lib ";
   const char *clang_link_gui  = "-Xlinker /SUBSYSTEM:WINDOWS ";
