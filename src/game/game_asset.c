@@ -28,7 +28,7 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
     return;
 
   AST_BreadFile *br = &APP.ast.bread;
-  
+
   // Material from .bread - it contains a big buffer that needs to uploaded to GPU
   Assert(tex_kind < (I32)br->materials_count);
   BREAD_Material *br_material = br->materials + tex_kind;
@@ -37,7 +37,7 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
   // MaterialSections - it contains a mapping from big buffer to individual pieces of texture layers and lods
   U32 br_sections_count = br_material->sections.count;
   BREAD_MaterialSection *br_sections = BREAD_ListAsType(br_material->sections, BREAD_MaterialSection);
-  
+
   // Create texture and transfer CPU memory -> GPU memory -> GPU texture
   SDL_GPUTexture *texture = 0;
   {
@@ -65,8 +65,7 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
         .width = br_material->width,
         .height = br_material->height,
         .layer_count_or_depth = br_material->layers,
-        .num_levels = 1,
-        //.num_levels = CalculateMipMapCount(br_material->width, br_material->height),
+        .num_levels = br_material->lods,
         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER,
       };
       texture = SDL_CreateGPUTexture(APP.gpu.device, &texture_info);
@@ -77,11 +76,11 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
     {
       SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
       SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
-      
+
       ForU32(br_section_index, br_sections_count)
       {
         BREAD_MaterialSection *br_sect = br_sections + br_section_index;
-        
+
         SDL_GPUTextureTransferInfo source =
         {
           .transfer_buffer = transfer,
@@ -98,7 +97,7 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
         };
         SDL_UploadToGPUTexture(copy_pass, &source, &destination, false);
       }
-      
+
       SDL_EndGPUCopyPass(copy_pass);
       SDL_SubmitGPUCommandBuffer(cmd);
     }
@@ -338,7 +337,7 @@ static void AST_LoadSkeletons()
 
   U32 br_skeletons_count = br->links->skeletons.count;
   BREAD_Skeleton *br_skeletons = BREAD_ListAsType(br->links->skeletons, BREAD_Skeleton);
-  
+
   U32 skeletons_count = Min(br_skeletons_count, ArrayCount(APP.ast.skeletons));
   APP.ast.skeletons_count = skeletons_count;
 

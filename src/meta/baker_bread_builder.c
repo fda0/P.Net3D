@@ -98,8 +98,8 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
     if (!model->indices_count)
     {
       M_LOG(M_LogGltfWarning, "BREAD warning: When finalizing file "
-            "found model with index %d (%s) that wasn't initialized.",
-            i, MODEL_GetCstrName(i));
+            "found model with index %u (%s) that wasn't initialized.",
+            (U32)i, MODEL_GetCstrName(i));
     }
   }
 

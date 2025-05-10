@@ -166,6 +166,7 @@ static void Game_DrawObjects()
         V2 face_dim = {};
         switch (face_dir)
         {
+          default: break;
           case WorldDir_E: face_dim = (V2){w0, height}; break;
           case WorldDir_W: face_dim = (V2){w2, height}; break;
           case WorldDir_N: face_dim = (V2){w3, height}; break;
@@ -189,6 +190,7 @@ static void Game_DrawObjects()
         Quat normal_rot = Quat_Identity();
         switch (face_dir)
         {
+          default: break;
           case WorldDir_E:
           case WorldDir_W:
           case WorldDir_N:
@@ -197,6 +199,7 @@ static void Game_DrawObjects()
         }
         switch (face_dir)
         {
+          default: break;
           case WorldDir_E: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.5f)); break;
           case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), -0.25f)); break;
           case WorldDir_S: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.25f)); break;
@@ -216,6 +219,7 @@ static void Game_DrawObjects()
         Quat correction_S = Quat_FromNormalizedPair(ideal_S, obj_norm_S);
         switch (face_dir)
         {
+          default: break;
           case WorldDir_E: normal_rot = Quat_Mul(correction_E, normal_rot); break;
           case WorldDir_W: normal_rot = Quat_Mul(correction_W, normal_rot); break;
           case WorldDir_N: normal_rot = Quat_Mul(correction_N, normal_rot); break;

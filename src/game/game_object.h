@@ -77,5 +77,4 @@ typedef struct
 } Object;
 
 static OBJ_Sync OBJ_SyncLerp(OBJ_Sync prev, OBJ_Sync next, float t);
-static Object *OBJ_CreatePlayer();
 static void Collision_RecalculateNormals(Collision_Data *collision);

@@ -350,7 +350,7 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
       ForArray(i, joint_indices)
       {
         if (joint_indices[i] >= model->joints_count)
-          M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %llu",
+          M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %u",
                 joint_indices[i], model->joints_count);
       }
       U32 joints_packed4 = (joint_indices[0] |

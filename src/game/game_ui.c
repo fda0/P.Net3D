@@ -488,6 +488,7 @@ static void UI_FinishFrame()
     if (shape.corner_radius > 0.f)
       shape.edge_softness += APP.font.scale * 0.25f;
 
-    UI_DrawRaw(shape);
+    if (!skip_shape)
+      UI_DrawRaw(shape);
   }
 }

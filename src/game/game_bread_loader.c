@@ -25,7 +25,7 @@ static S8 BREAD_ListToS8(BREAD_List list)
   U32 type_size = TYPE_GetSize(list.type);
   U32 type_align = TYPE_GetAlign(list.type);
   Assert(list.size == list.count * type_size);
-  
+
   S8 result = BREAD_FileOffsetToS8(list.offset, list.size);
   Assert(IsPointerAligned(result.str, type_align)); // validation
   return result;
