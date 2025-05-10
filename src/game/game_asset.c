@@ -21,6 +21,12 @@ static void AST_PrefetchTexture(TEX_Kind tex_kind)
 
 static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
 {
+  // @todo
+  // - BC7 loading doesn't work fully. I think it's a bug in SDL but I'm not sure.
+  //   If I multiply memory allocated in transfer buffer by *4 it works.
+  //   SDL3 does a temporary "placement" copy to satisfy DX12 offset alignment constrains.
+  //   When doing this copy it does a SDL_memcpy call that copies too much memory I think (not sure).
+
   Assert(tex_kind < TEX_COUNT);
   Asset *asset = APP.ast.tex_assets + tex_kind;
 
@@ -44,7 +50,7 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
     SDL_GPUTransferBufferCreateInfo transfer_create_info =
     {
       .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-      .size = gpu_full_data.size
+      .size = gpu_full_data.size * 4
     };
     SDL_GPUTransferBuffer *transfer = SDL_CreateGPUTransferBuffer(APP.gpu.device, &transfer_create_info);
 
@@ -57,11 +63,14 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
 
     // Create texture
     {
+      SDL_GPUTextureFormat sdl_format = (br_material->format == BREAD_Tex_R8G8B8A8 ?
+                                         SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM :
+                                         SDL_GPU_TEXTUREFORMAT_BC7_RGBA_UNORM);
+
       SDL_GPUTextureCreateInfo texture_info =
       {
         .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-         //.format = SDL_GPU_TEXTUREFORMAT_BC7_RGBA_UNORM_SRGB,
-        .format = SDL_GPU_TEXTUREFORMAT_BC7_RGBA_UNORM,
+        .format = sdl_format,
         .width = br_material->width,
         .height = br_material->height,
         .layer_count_or_depth = br_material->layers,
@@ -85,7 +94,7 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
         {
           .transfer_buffer = transfer,
           .offset = br_sect->data_offset,
-          .pixels_per_row = br_sect->width / 4, // DIVIDE BY BC7 BLOCK SIZE - a bit unintuitive design by SDL!
+          .pixels_per_row = br_sect->width,
         };
         SDL_GPUTextureRegion destination =
         {

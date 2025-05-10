@@ -11,7 +11,7 @@ static U32 BK_TEX_CalculateMipMapCount(U32 width, U32 height)
   return msb;
 }
 
-static void BK_TEX_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
+static void BK_TEX_Load(BREAD_Builder *bb, TEX_Kind tex_kind, BREAD_TexFormat format)
 {
   Assert(tex_kind < TEX_COUNT);
   S8 tex_name = TEX_GetName(tex_kind);
@@ -103,6 +103,7 @@ static void BK_TEX_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
   // Allocate and prepare BREAD_Material & array of BREAD_Texture
   bb->materials_count += 1;
   BREAD_Material *br_material = BREAD_Reserve(&bb->materials, BREAD_Material, 1);
+  br_material->format = format;
   br_material->width = orig_width;
   br_material->height = orig_height;
   br_material->lods = lods_count;
@@ -115,71 +116,118 @@ static void BK_TEX_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
   BREAD_ListStart(&bb->file, &br_material->full_data, TYPE_U8);
 
   // Iterate over fliles
-  U32 br_section_index = 0;
-  ForArray(file_index, files)
+  if (format == BREAD_Tex_R8G8B8A8)
   {
-    BK_MaterialFile *file = files + file_index;
-
-    // Iterate over lods
-    ForU32(lod_index, lods_count)
+    U32 br_section_index = 0;
+    ForArray(file_index, files)
     {
-      SDL_Surface *surf = file->surfs[lod_index];
+      BK_MaterialFile *file = files + file_index;
 
-      M_Check(br_section_index < br_sections_count);
-      BREAD_MaterialSection *br_sect = br_sections + br_section_index;
-      br_section_index += 1;
-
-      // Calculate data buffer dimensions
-      I32 lod_chunks_per_w = (surf->w + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
-      I32 lod_chunks_per_h = (surf->h + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
-      I32 block_data_size = lod_chunks_per_w*lod_chunks_per_h * sizeof(U64)*2;
-
-      // Fill section data
-      br_sect->width = surf->w;
-      br_sect->height = surf->h;
-      br_sect->lod = lod_index;
-      br_sect->layer = file_index;
-      br_sect->data_offset = bb->file.used - br_material->full_data.offset;
-      br_sect->data_size = block_data_size;
-
-      // Alloc data buffer
-      U8 *br_data = BREAD_Reserve(&bb->file, U8, block_data_size);
-      U8 *br_data_end = br_data + block_data_size;
-      U8 *br_pixels = br_data;
-
-      // Iterate over chunks of the current lod.
-      // Fetch 4x4 chunks and compress them into memory allocated in .bread file.
-      ForI32(chunk_y, lod_chunks_per_h)
+      // Iterate over lods
+      ForU32(lod_index, lods_count)
       {
-        I32 lod_y = chunk_y * M_TEX_BC7_BLOCK_DIM;
-        I32 lod_h_left = surf->h - lod_y;
-        I32 copy_h = Min(M_TEX_BC7_BLOCK_DIM, lod_h_left);
+        SDL_Surface *surf = file->surfs[lod_index];
 
-        ForI32(chunk_x, lod_chunks_per_w)
+        M_Check(br_section_index < br_sections_count);
+        BREAD_MaterialSection *br_sect = br_sections + br_section_index;
+        br_section_index += 1;
+
+        // Calc
+        U32 br_data_size = surf->w * surf->h * sizeof(U32);
+
+        // Fill section data
+        br_sect->width = surf->w;
+        br_sect->height = surf->h;
+        br_sect->lod = lod_index;
+        br_sect->layer = file_index;
+        br_sect->data_offset = bb->file.used - br_material->full_data.offset;
+        br_sect->data_size = br_data_size;
+
+        // Alloc data buffer
+        U8 *br_data = BREAD_Reserve(&bb->file, U8, br_data_size);
+
+        // Copy data to .bread file buffer
+        if (surf->w * sizeof(U32) == surf->pitch)
         {
-          I32 lod_x = chunk_x * M_TEX_BC7_BLOCK_DIM;
-          I32 lod_w_left = surf->w - lod_x;
-          I32 copy_w = Min(M_TEX_BC7_BLOCK_DIM, lod_w_left);
-
-          SDL_Rect src_rect =
-          {
-            .x = lod_x, .y = lod_y,
-            .w = copy_w, .h = copy_h,
-          };
-          SDL_Rect dst_rect =
-          {
-            .x = 0, .y = 0,
-            .w = copy_w, .h = copy_h,
-          };
-          SDL_BlitSurfaceTiled(surf, &src_rect, block_surf, &dst_rect);
-
-          bc7enc_compress_block(br_pixels, block_surf->pixels, &BAKER.tex.params);
-          br_pixels += sizeof(U64)*2;
+          Memcpy(br_data, surf->pixels, br_data_size);
         }
-      }
+        else
+        {
+          M_Check(false && !"not implemnted");
+        }
 
-      M_Check(br_pixels == br_data_end);
-      SDL_DestroySurface(surf);
+        SDL_DestroySurface(surf);
+      }
+    }
+  }
+  else if (format == BREAD_Tex_BC7_RGBA)
+  {
+    U32 br_section_index = 0;
+    ForArray(file_index, files)
+    {
+      BK_MaterialFile *file = files + file_index;
+
+      // Iterate over lods
+      ForU32(lod_index, lods_count)
+      {
+        SDL_Surface *surf = file->surfs[lod_index];
+
+        M_Check(br_section_index < br_sections_count);
+        BREAD_MaterialSection *br_sect = br_sections + br_section_index;
+        br_section_index += 1;
+
+        // Calculate data buffer dimensions
+        I32 lod_chunks_per_w = (surf->w + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
+        I32 lod_chunks_per_h = (surf->h + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
+        I32 br_data_size = lod_chunks_per_w*lod_chunks_per_h * sizeof(U64)*2;
+
+        // Fill section data
+        br_sect->width = surf->w;
+        br_sect->height = surf->h;
+        br_sect->lod = lod_index;
+        br_sect->layer = file_index;
+        br_sect->data_offset = bb->file.used - br_material->full_data.offset;
+        br_sect->data_size = br_data_size;
+
+        // Alloc data buffer
+        U8 *br_data = BREAD_Reserve(&bb->file, U8, br_data_size);
+        U8 *br_data_end = br_data + br_data_size;
+        U8 *br_pixels = br_data;
+
+        // Iterate over chunks of the current lod.
+        // Fetch 4x4 chunks and compress them into memory allocated in .bread file.
+        ForI32(chunk_y, lod_chunks_per_h)
+        {
+          I32 lod_y = chunk_y * M_TEX_BC7_BLOCK_DIM;
+          I32 lod_h_left = surf->h - lod_y;
+          I32 copy_h = Min(M_TEX_BC7_BLOCK_DIM, lod_h_left);
+
+          ForI32(chunk_x, lod_chunks_per_w)
+          {
+            I32 lod_x = chunk_x * M_TEX_BC7_BLOCK_DIM;
+            I32 lod_w_left = surf->w - lod_x;
+            I32 copy_w = Min(M_TEX_BC7_BLOCK_DIM, lod_w_left);
+
+            SDL_Rect src_rect =
+            {
+              .x = lod_x, .y = lod_y,
+              .w = copy_w, .h = copy_h,
+            };
+            SDL_Rect dst_rect =
+            {
+              .x = 0, .y = 0,
+              .w = copy_w, .h = copy_h,
+            };
+            SDL_BlitSurfaceTiled(surf, &src_rect, block_surf, &dst_rect);
+
+            bc7enc_compress_block(br_pixels, block_surf->pixels, &BAKER.tex.params);
+            br_pixels += sizeof(U64)*2;
+          }
+        }
+
+        M_Check(br_pixels == br_data_end);
+        SDL_DestroySurface(surf);
+      }
     }
   }
 
@@ -201,4 +249,5 @@ static void BK_TEX_Init()
   }
 
   BAKER.tex.bc7_block_surf = SDL_CreateSurface(M_TEX_BC7_BLOCK_DIM, M_TEX_BC7_BLOCK_DIM, SDL_PIXELFORMAT_RGBA32);
+  M_Check(BAKER.tex.bc7_block_surf->w * sizeof(U32) == BAKER.tex.bc7_block_surf->pitch);
 }

@@ -252,7 +252,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   APP.tmp = Arena_Malloc(Megabyte(16));
   APP.a_frame = Arena_Malloc(Megabyte(1));
   APP.gpu.mem.arena = Arena_Malloc(Kilobyte(16));
-  APP.ast.bread.arena = Arena_Malloc(Megabyte(16));
+  APP.ast.bread.arena = Arena_Malloc(Megabyte(256));
 
   APP.log_filter = ~(U32)Log_NetAll;
   APP.init_window_width = WINDOW_WIDTH;

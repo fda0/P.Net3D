@@ -79,8 +79,16 @@ typedef struct
   U32 data_size;
 } BREAD_MaterialSection;
 
+typedef U32 BREAD_TexFormat;
+enum
+{
+  BREAD_Tex_R8G8B8A8,
+  BREAD_Tex_BC7_RGBA,
+};
+
 typedef struct
 {
+  BREAD_TexFormat format;
   U32 width;
   U32 height;
   U32 lods;

@@ -4,11 +4,11 @@
 static void *BREAD_ReserveBytes(Printer *p, U64 size, U64 alignment)
 {
   M_Check(p->used % alignment == 0);
-  void *result = Pr_ReserveBytes(p, size);
-  M_Check(result);
+  void *bread_reserve_result = Pr_ReserveBytes(p, size);
+  M_Check(bread_reserve_result);
   M_Check(!p->err);
-  Memclear(result, size);
-  return result;
+  Memclear(bread_reserve_result, size);
+  return bread_reserve_result;
 }
 #define BREAD_Reserve(P, Type, Count) (Type *)BREAD_ReserveBytes(P, sizeof(Type)*(Count), _Alignof(Type))
 

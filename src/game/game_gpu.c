@@ -564,6 +564,7 @@ static void GPU_Init()
   // Shadow map
   {
     APP.gpu.shadow_tex = GPU_CreateDepthTexture(GPU_SHADOW_MAP_DIM, GPU_SHADOW_MAP_DIM, true);
+    APP.gpu.dummy_shadow_tex = GPU_CreateDepthTexture(16, 16, true);
 
     SDL_GPUSamplerCreateInfo sampler_info =
     {
@@ -688,6 +689,7 @@ static void GPU_Deinit()
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
 
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.dummy_shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
   GPU_MemoryDeinit();
@@ -734,7 +736,7 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   {
     SDL_GPUTextureSamplerBinding binding_sampl =
     {
-      .texture = APP.gpu.shadow_tex,
+      .texture = is_depth_prepass ? APP.gpu.dummy_shadow_tex : APP.gpu.shadow_tex,
       .sampler = APP.gpu.shadow_sampler,
     };
     SDL_BindGPUFragmentSamplers(pass, 0, &binding_sampl, 1);
