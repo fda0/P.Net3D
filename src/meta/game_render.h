@@ -15,14 +15,14 @@ typedef struct
 // Vertices
 typedef struct
 {
-  Quat normal_rot;
+  V3 normal;
   V3 p;
   U32 color;
 } WORLD_VertexRigid;
 
 typedef struct
 {
-  Quat normal_rot;
+  V3 normal;
   V3 p;
   U32 color;
   U32 joints_packed4;
@@ -31,7 +31,7 @@ typedef struct
 
 typedef struct
 {
-  Quat normal_rot;
+  V3 normal;
   V3 p;
   V2 uv;
   U32 color;

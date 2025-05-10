@@ -336,12 +336,12 @@ static void GPU_Init()
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 1,
-          .offset = sizeof(float)*4,
+          .offset = offsetof(WORLD_VertexRigid, p),
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 2,
-          .offset = sizeof(float)*7,
+          .offset = offsetof(WORLD_VertexRigid, color),
         },
       },
     };
@@ -422,22 +422,22 @@ static void GPU_Init()
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 1,
-          .offset = sizeof(float)*4,
+          .offset = offsetof(WORLD_VertexSkinned, p),
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 2,
-          .offset = sizeof(float)*7,
+          .offset = offsetof(WORLD_VertexSkinned, color),
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 3,
-          .offset = sizeof(float)*7 + sizeof(U32),
+          .offset = offsetof(WORLD_VertexSkinned, joints_packed4),
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
           .location = 4,
-          .offset = sizeof(float)*7 + sizeof(U32)*2,
+          .offset = offsetof(WORLD_VertexSkinned, weights),
         },
       },
     };
@@ -534,17 +534,17 @@ static void GPU_Init()
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 1,
-          .offset = sizeof(float)*4,
+          .offset = offsetof(WORLD_VertexMesh, p),
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
           .location = 2,
-          .offset = sizeof(float)*7,
+          .offset = offsetof(WORLD_VertexMesh, uv),
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 3,
-          .offset = sizeof(float)*9,
+          .offset = offsetof(WORLD_VertexMesh, color),
         },
       },
     };

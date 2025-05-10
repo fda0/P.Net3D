@@ -44,8 +44,8 @@ cbuffer PixelUniformBuf  : register(b0, space3) { WORLD_DX_Uniform UniP; };
 
 struct WORLD_DX_Vertex
 {
-  Quat normal_rot : TEXCOORD0;
-  V3   position   : TEXCOORD1;
+  V3 normal : TEXCOORD0;
+  V3 position : TEXCOORD1;
 
 #if IS_RIGID
   U32 color : TEXCOORD2;
@@ -143,7 +143,9 @@ WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
   V4 world_p = mul(position_transform, float4(input.position, 1.0f));
   V4 vertex_p = mul(UniV.camera_transform, world_p);
 
-  Mat3 input_normal_mat = Mat3_Rotation_Quat(input.normal_rot);
+  Quat normal_rot = Quat_FromZupCrossV3(input.normal);
+  //Quat normal_rot = Quat(0,0,0,1);
+  Mat3 input_normal_mat = Mat3_Rotation_Quat(normal_rot);
   Mat3 position_rotation = Mat3_FromMat4(Mat4_RotationPart(position_transform));
   Mat3 normal_rotation = mul(position_rotation, input_normal_mat);
 

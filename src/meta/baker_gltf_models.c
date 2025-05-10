@@ -321,7 +321,6 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
       M_LOG(M_LogGltfWarning, "[GLTF LOADER] Normal wasn't normalized");
       normal = V3_Scale(normal, FInvSqrt(normal_lensq));
     }
-    Quat normal_rot = Quat_FromZupCrossV3(normal);
 
     V3 pos = {};
     pos.x = *BK_BufferAtFloat(&model->positions, vert_i*3 + 0);
@@ -333,7 +332,7 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
     if (!model->is_skinned) // it's rigid
     {
       WORLD_VertexRigid rigid = {};
-      rigid.normal_rot = normal_rot;
+      rigid.normal = normal;
       rigid.p = pos;
       rigid.color = color;
       *BREAD_AddModelRigidVertex(bb) = rigid;
@@ -368,7 +367,7 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
         M_LOG(M_LogGltfWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
 
       WORLD_VertexSkinned skinned = {};
-      skinned.normal_rot = normal_rot;
+      skinned.normal = normal;
       skinned.p = pos;
       skinned.color = color;
       skinned.joints_packed4 = joints_packed4;

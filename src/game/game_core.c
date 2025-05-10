@@ -186,51 +186,27 @@ static void Game_DrawObjects()
           (V2){face_dim.x, 0},
         };
 
-        // face normals @todo CLEAN THIS UP
-        Quat normal_rot = Quat_Identity();
-        switch (face_dir)
-        {
-          default: break;
-          case WorldDir_E:
-          case WorldDir_W:
-          case WorldDir_N:
-          case WorldDir_S: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), -0.25f); break;
-          case WorldDir_B: normal_rot = Quat_FromAxisAngle_RH(AxisV3_Y(), 0.5f); break;
-        }
-        switch (face_dir)
-        {
-          default: break;
-          case WorldDir_E: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.5f)); break;
-          case WorldDir_N: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), -0.25f)); break;
-          case WorldDir_S: normal_rot = Quat_Mul(normal_rot, Quat_FromAxisAngle_RH(AxisV3_X(), 0.25f)); break;
-        }
-
-        V3 ideal_E = (V3){1,0,0};
-        V3 ideal_W = (V3){-1,0,0};
-        V3 ideal_N = (V3){0,1,0};
-        V3 ideal_S = (V3){0,-1,0};
+        V3 normal = {};
         V3 obj_norm_E = V3_From_XY_Z(obj->s.collision.norms.arr[0], 0);
         V3 obj_norm_W = V3_From_XY_Z(obj->s.collision.norms.arr[2], 0);
         V3 obj_norm_N = V3_From_XY_Z(obj->s.collision.norms.arr[1], 0);
         V3 obj_norm_S = V3_From_XY_Z(obj->s.collision.norms.arr[3], 0);
-        Quat correction_E = Quat_FromNormalizedPair(ideal_E, obj_norm_E);
-        Quat correction_W = Quat_FromNormalizedPair(ideal_W, obj_norm_W);
-        Quat correction_N = Quat_FromNormalizedPair(ideal_N, obj_norm_N);
-        Quat correction_S = Quat_FromNormalizedPair(ideal_S, obj_norm_S);
         switch (face_dir)
         {
           default: break;
-          case WorldDir_E: normal_rot = Quat_Mul(correction_E, normal_rot); break;
-          case WorldDir_W: normal_rot = Quat_Mul(correction_W, normal_rot); break;
-          case WorldDir_N: normal_rot = Quat_Mul(correction_N, normal_rot); break;
-          case WorldDir_S: normal_rot = Quat_Mul(correction_S, normal_rot); break;
+          case WorldDir_E: normal = obj_norm_E; break;
+          case WorldDir_W: normal = obj_norm_W; break;
+          case WorldDir_N: normal = obj_norm_N; break;
+          case WorldDir_S: normal = obj_norm_S; break;
+          case WorldDir_T: normal = (V3){0,0,1}; break;
+          case WorldDir_B: normal = (V3){0,0,-1}; break;
         }
 
         ForU32(vert_i, vertices_per_face)
         {
           U32 i = (face_i * vertices_per_face) + vert_i;
           mesh_verts[i].uv = face_uvs[vert_i];
-          mesh_verts[i].normal_rot = normal_rot;
+          mesh_verts[i].normal = normal;
         }
       }
 

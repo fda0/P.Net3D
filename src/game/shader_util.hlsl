@@ -57,6 +57,25 @@ static Mat3 Mat3_FromMat4(float4x4 mat)
   return res;
 }
 
+static Quat Quat_FromNormalizedPair(V3 a, V3 b)
+{
+  V3 crs = cross(a, b);
+  Quat res =
+  {
+    crs.x,
+    crs.y,
+    crs.z,
+    1.f + dot(a, b),
+  };
+  return res;
+}
+
+static Quat Quat_FromZupCrossV3(V3 a)
+{
+  return Quat_FromNormalizedPair(V3(0,0,1), normalize(a));
+}
+
+
 static Mat3 Mat3_Rotation_Quat(Quat q)
 {
   Quat norm = normalize(q);
