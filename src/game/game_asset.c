@@ -85,6 +85,7 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
         {
           .transfer_buffer = transfer,
           .offset = br_sect->data_offset,
+          .pixels_per_row = br_sect->width / 4, // DIVIDE BY BC7 BLOCK SIZE - a bit unintuitive design by SDL!
         };
         SDL_GPUTextureRegion destination =
         {

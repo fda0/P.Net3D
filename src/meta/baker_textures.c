@@ -143,7 +143,7 @@ static void BK_TEX_CompressTexture(BREAD_Builder *bb, TEX_Kind tex_kind)
       br_sect->data_size = block_data_size;
 
       // Alloc data buffer
-      U8 *br_data = BREAD_Reserve(&bb->file,U8, block_data_size);
+      U8 *br_data = BREAD_Reserve(&bb->file, U8, block_data_size);
       U8 *br_data_end = br_data + block_data_size;
       U8 *br_pixels = br_data;
 

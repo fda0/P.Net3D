@@ -445,7 +445,11 @@ static int BOB_Run(const char *command)
     if (!read_result || read_bytes == 0)
       break;
 
-    Pr_S8(&cmd_output, S8_Make(output_buffer, read_bytes));
+    S8 read_string = S8_Make(output_buffer, read_bytes);
+    if (BOB.show_output)
+      fprintf(BOB_out, "%.*s", S8Print(read_string));
+    else
+      Pr_S8(&cmd_output, read_string);
   }
 
   DWORD exit_code = 0;
@@ -456,7 +460,7 @@ static int BOB_Run(const char *command)
     exit(1);
   }
 
-  if (exit_code || BOB.show_output)
+  if (exit_code)
     fprintf(BOB_out, "%s", Pr_AsCstr(&cmd_output));
 
   CloseHandle(read_pipe);
