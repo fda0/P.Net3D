@@ -1,6 +1,11 @@
 // @todo:
-// - Mipmapping
+// - Multithread texture loading
+// - Cache texture compression results
+//   path: baker_cache/<hash_of_compressor_config>/file_name.bc7
+//   This could work simply using OS timestamp.
+//   If bc7 file exists and has timestamp that's newer than asset file -> load it.
 // - Explore other texture compression formats (BC5 for normal maps?)
+
 #define M_TEX_BC7_BLOCK_DIM 4
 
 static U32 BK_TEX_CalculateMipMapCount(U32 width, U32 height)
@@ -95,7 +100,7 @@ static void BK_TEX_Load(BREAD_Builder *bb, TEX_Kind tex_kind, BREAD_TexFormat fo
       M_Check(file->surfs[lod_index]->w == lod_dim.x);
       M_Check(file->surfs[lod_index]->h == lod_dim.y);
 
-      SDL_BlitSurfaceScaled(file->surfs[0], 0, file->surfs[lod_index], 0, SDL_SCALEMODE_LINEAR);
+      SDL_BlitSurfaceScaled(file->surfs[lod_index-1], 0, file->surfs[lod_index], 0, SDL_SCALEMODE_LINEAR);
     }
   }
 
@@ -245,6 +250,9 @@ static void BK_TEX_Init()
     bc7enc_compress_block_init();
     bc7enc_compress_block_params_init(&BAKER.tex.params);
     // There are params fields that we might want modify like m_uber_level.
+
+    // comment out below to increase quality
+    BAKER.tex.params.m_max_partitions_mode = 0; // lowest quality - highest speed
 
     // Learn which one should be picked.
     // Perhaps diffuse needs perpecetual and data linear? Idk

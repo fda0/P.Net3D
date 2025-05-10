@@ -59,12 +59,15 @@ static BREAD_Builder BREAD_CreateBuilder(Arena *a, U32 max_file_size)
 {
   BREAD_Builder bb = {};
   bb.file = Pr_Alloc(a, max_file_size);
-  U32 half_size = max_file_size / 2;
-  bb.rigid_vertices = Pr_Alloc(a, half_size);
-  bb.skinned_vertices = Pr_Alloc(a, half_size);
-  bb.indices = Pr_Alloc(a, half_size);
-  bb.skeletons = Pr_Alloc(a, half_size);
-  bb.materials = Pr_Alloc(a, half_size);
+
+  U32 small_size = max_file_size / 16;
+  bb.rigid_vertices   = Pr_Alloc(a, small_size);
+  bb.skinned_vertices = Pr_Alloc(a, small_size);
+  bb.indices          = Pr_Alloc(a, small_size);
+
+  U32 tiny_size = Kilobyte(16);
+  bb.skeletons = Pr_Alloc(a, tiny_size);
+  bb.materials = Pr_Alloc(a, tiny_size);
 
   Pr_ReserveBytes(&bb.file, sizeof(BREAD_Header)); // reserve space for header
   bb.selected_model = MODEL_COUNT;

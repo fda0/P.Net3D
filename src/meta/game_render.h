@@ -31,18 +31,19 @@ typedef struct
 
 typedef struct
 {
-  Mat4 transform;
-  U32 color;
-  U32 pose_offset; // in indices; unused for rigid
-} WORLD_GpuModelInstance;
-
-typedef struct
-{
   Quat normal_rot;
   V3 p;
   V2 uv;
   U32 color;
 } WORLD_GpuMeshVertex;
+
+// Instances
+typedef struct
+{
+  Mat4 transform;
+  U32 color;
+  U32 pose_offset; // in indices; unused for rigid
+} WORLD_GpuModelInstance;
 
 // UI - User Interface
 typedef struct

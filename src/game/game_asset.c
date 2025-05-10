@@ -21,12 +21,6 @@ static void AST_PrefetchTexture(TEX_Kind tex_kind)
 
 static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
 {
-  // @todo
-  // - BC7 loading doesn't work fully. I think it's a bug in SDL but I'm not sure.
-  //   If I multiply memory allocated in transfer buffer by *4 it works.
-  //   SDL3 does a temporary "placement" copy to satisfy DX12 offset alignment constrains.
-  //   When doing this copy it does a SDL_memcpy call that copies too much memory I think (not sure).
-
   Assert(tex_kind < TEX_COUNT);
   Asset *asset = APP.ast.tex_assets + tex_kind;
 

@@ -174,10 +174,19 @@ static U32 CalculateMipMapCount(U32 width, U32 height)
 //
 //
 //
-static S8 OS_LoadFile(Arena *a, const char *file_path)
+static S8 OS_LoadFileLeakMemory(const char *file_path)
 {
   U64 size = 0;
   U8 *data = SDL_LoadFile(file_path, &size);
+  return S8_Make(data, size);
+}
+
+static S8 OS_LoadFile(Arena *a, const char *file_path)
+{
+  // @todo Going through malloc memory and copying it into arena is obviously stupid
+  //       Improve in the future.
+  U64 size = 0;
+  U8 *data = SDL_LoadFile(file_path, &size); // go through better api
   if (!data)
     LOG(Log_OS, "Failed to load file %s", file_path);
 
@@ -185,7 +194,7 @@ static S8 OS_LoadFile(Arena *a, const char *file_path)
   Memcpy(dest, data, size);
   S8 result = S8_Make(dest, size);
 
-  SDL_free(data); // @todo go through better api
+  SDL_free(data); // go through better api
   return result;
 }
 

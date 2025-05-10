@@ -186,7 +186,7 @@ int main(I32 args_count, char **args)
                                              .sdl3 = true,
                                              .sdl3_net = true,
                                              .sdl3_ttf = true,
-                                             .sdl3_image = true});
+                                             .sdl3_image = false});
     r = BOB_RunPrinter(&cmd);
     BOB_CheckError(r);
   }

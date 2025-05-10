@@ -31,8 +31,8 @@
 #include "baker_gltf_models.c"
 
 // Memory allocations
-static U8 tmp_arena_memory[Gigabyte(1)];
-static U8 cgltf_arena_memory[Megabyte(64)];
+static U8 tmp_arena_memory[Megabyte(512)];
+static U8 cgltf_arena_memory[Megabyte(32)];
 
 int main()
 {
@@ -43,7 +43,6 @@ int main()
 
   BK_TEX_Init();
 
-
   BREAD_Builder bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(256));
 
   // Process assets
@@ -52,7 +51,8 @@ int main()
 
     // Load texture files
     {
-      BREAD_TexFormat format = BREAD_Tex_R8G8B8A8;
+      //BREAD_TexFormat format = BREAD_Tex_R8G8B8A8;
+      BREAD_TexFormat format = BREAD_Tex_BC7_RGBA;
 #define TEX_DEF_LOAD(a) BK_TEX_Load(&bb, TEX_##a, format);
       TEX_LIST(TEX_DEF_LOAD);
     }
