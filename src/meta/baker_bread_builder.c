@@ -83,11 +83,11 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
   //
   BREAD_Links links = {};
 
-  BREAD_ListStart(&bb->file, &links.models.rigid_vertices, TYPE_WORLD_GpuRigidVertex);
+  BREAD_ListStart(&bb->file, &links.models.rigid_vertices, TYPE_WORLD_VertexRigid);
   Pr_Printer(&bb->file, &bb->rigid_vertices);
   BREAD_ListEnd(&bb->file, &links.models.rigid_vertices);
 
-  BREAD_ListStart(&bb->file, &links.models.skinned_vertices, TYPE_WORLD_GpuSkinnedVertex);
+  BREAD_ListStart(&bb->file, &links.models.skinned_vertices, TYPE_WORLD_VertexSkinned);
   Pr_Printer(&bb->file, &bb->skinned_vertices);
   BREAD_ListEnd(&bb->file, &links.models.skinned_vertices);
 
@@ -168,8 +168,8 @@ static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)
 {
   M_Check(!bb->finalized);
   Printer *vert_printer = is_skinned ? &bb->skinned_vertices : &bb->rigid_vertices;
-  U64 vert_align = is_skinned ? _Alignof(WORLD_GpuSkinnedVertex) : _Alignof(WORLD_GpuRigidVertex);
-  U64 vert_size = is_skinned ? sizeof(WORLD_GpuSkinnedVertex) : sizeof(WORLD_GpuRigidVertex);
+  U64 vert_align = is_skinned ? _Alignof(WORLD_VertexSkinned) : _Alignof(WORLD_VertexRigid);
+  U64 vert_size = is_skinned ? sizeof(WORLD_VertexSkinned) : sizeof(WORLD_VertexRigid);
 
   M_Check(bb->selected_model < MODEL_COUNT);
   BREAD_Model *model = bb->models + bb->selected_model;
@@ -185,8 +185,8 @@ static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)
   Memclear(result, vert_size);
   return result;
 }
-static WORLD_GpuSkinnedVertex *BREAD_AddModelSkinnedVertex(BREAD_Builder *bb) { return BREAD_AddModelVertex(bb, true); }
-static WORLD_GpuRigidVertex   *BREAD_AddModelRigidVertex(BREAD_Builder *bb)   { return BREAD_AddModelVertex(bb, false); }
+static WORLD_VertexSkinned *BREAD_AddModelSkinnedVertex(BREAD_Builder *bb) { return BREAD_AddModelVertex(bb, true); }
+static WORLD_VertexRigid   *BREAD_AddModelRigidVertex(BREAD_Builder *bb)   { return BREAD_AddModelVertex(bb, false); }
 
 static void BREAD_CopyIndices(BREAD_Builder *bb, U16 *src_indices, U32 src_indices_count)
 {

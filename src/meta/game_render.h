@@ -10,7 +10,7 @@ typedef struct
   _Alignas(16) V3 towards_sun_dir;
   float tex_loaded_t;
   float tex_shininess;
-} WORLD_GpuUniform;
+} WORLD_Uniform;
 
 // Vertices
 typedef struct
@@ -18,7 +18,7 @@ typedef struct
   Quat normal_rot;
   V3 p;
   U32 color;
-} WORLD_GpuRigidVertex;
+} WORLD_VertexRigid;
 
 typedef struct
 {
@@ -27,7 +27,7 @@ typedef struct
   U32 color;
   U32 joints_packed4;
   V4 weights;
-} WORLD_GpuSkinnedVertex;
+} WORLD_VertexSkinned;
 
 typedef struct
 {
@@ -35,7 +35,7 @@ typedef struct
   V3 p;
   V2 uv;
   U32 color;
-} WORLD_GpuMeshVertex;
+} WORLD_VertexMesh;
 
 // Instances
 typedef struct
@@ -43,14 +43,14 @@ typedef struct
   Mat4 transform;
   U32 color;
   U32 pose_offset; // in indices; unused for rigid
-} WORLD_GpuModelInstance;
+} WORLD_InstanceModel;
 
 // UI - User Interface
 typedef struct
 {
   V2 window_dim;
   V2 texture_dim;
-} UI_GpuUniform;
+} UI_Uniform;
 
 typedef struct
 {
@@ -63,12 +63,12 @@ typedef struct
   float edge_softness;
   float border_thickness;
   U32 color; // @todo array4
-} UI_GpuShape;
+} UI_Shape;
 
 typedef struct
 {
   V2 p_min;
   V2 p_max;
-} UI_GpuClip;
+} UI_Clip;
 
 static void GPU_PostFrameClear();

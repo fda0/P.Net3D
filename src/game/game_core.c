@@ -98,7 +98,7 @@ static void Game_DrawObjects()
       U32 vertices_per_face = 3*2;
       U32 mesh_verts_count = face_count * vertices_per_face;
 
-      WORLD_GpuMeshVertex mesh_verts[6 * 3 * 2]; // CPU side temporary buffer
+      WORLD_VertexMesh mesh_verts[6 * 3 * 2]; // CPU side temporary buffer
       Memclear(mesh_verts, sizeof(mesh_verts));
       Assert(ArrayCount(mesh_verts) >= mesh_verts_count);
 
@@ -248,7 +248,7 @@ static void Game_DrawObjects()
     ForU32(layer_index, 4)
     {
       float alpha = (layer_index == APP.font.active_layer ? 1.f : 0.6f);
-      UI_GpuShape shape =
+      UI_Shape shape =
       {
         .color = Color32_RGBAf(1, 1, 1, alpha),
         .tex_min = (V2){0.f, 0.f},

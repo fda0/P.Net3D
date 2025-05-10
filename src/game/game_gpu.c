@@ -320,7 +320,7 @@ static void GPU_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(WORLD_GpuRigidVertex),
+          .pitch = sizeof(WORLD_VertexRigid),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -406,7 +406,7 @@ static void GPU_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(WORLD_GpuSkinnedVertex),
+          .pitch = sizeof(WORLD_VertexSkinned),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -518,7 +518,7 @@ static void GPU_Init()
       {
         {
           .slot = 0,
-          .pitch = sizeof(WORLD_GpuMeshVertex),
+          .pitch = sizeof(WORLD_VertexMesh),
           .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
           .instance_step_rate = 0,
         },
@@ -705,7 +705,7 @@ static void GPU_Deinit()
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.ui.gpu.clip_buffer);
 }
 
-static void GPU_UpdateWorldUniform(SDL_GPUCommandBuffer *cmd, WORLD_GpuUniform uniform)
+static void GPU_UpdateWorldUniform(SDL_GPUCommandBuffer *cmd, WORLD_Uniform uniform)
 {
   U64 uniform_hash = U64_Hash(sizeof(uniform), &uniform, sizeof(uniform));
   if (APP.gpu.bound_uniform_hash != uniform_hash)
@@ -716,7 +716,7 @@ static void GPU_UpdateWorldUniform(SDL_GPUCommandBuffer *cmd, WORLD_GpuUniform u
   }
 }
 
-static void GPU_UpdateUIUniform(SDL_GPUCommandBuffer *cmd, UI_GpuUniform uniform)
+static void GPU_UpdateUIUniform(SDL_GPUCommandBuffer *cmd, UI_Uniform uniform)
 {
   U64 uniform_hash = U64_Hash(sizeof(uniform), &uniform, sizeof(uniform));
   if (APP.gpu.bound_uniform_hash != uniform_hash)
@@ -874,7 +874,7 @@ static void GPU_Iterate()
     .cycle = true,
   };
 
-  APP.gpu.world_uniform = (WORLD_GpuUniform)
+  APP.gpu.world_uniform = (WORLD_Uniform)
   {
     .camera_transform = APP.sun_camera_transform,
     .shadow_transform = APP.sun_camera_transform,
@@ -960,7 +960,7 @@ static void GPU_Iterate()
   if (APP.gpu.ui.indices_count)
   {
     // Upload uniform
-    UI_GpuUniform uniform =
+    UI_Uniform uniform =
     {
       .window_dim = APP.window_dim,
       .texture_dim = (V2){APP.font.texture_dim, APP.font.texture_dim},

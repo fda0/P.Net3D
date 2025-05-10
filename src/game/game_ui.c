@@ -401,7 +401,7 @@ static void UI_FinishFrame()
       box.y = FRound(box.y);
     }
 
-    UI_GpuShape shape =
+    UI_Shape shape =
     {
       .p_min = (V2){box.x, box.y},
       .p_max = (V2){box.x + box.width, box.y + box.height},
@@ -468,7 +468,7 @@ static void UI_FinishFrame()
       case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
       {
         skip_shape = true;
-        UI_GpuClip clip =
+        UI_Clip clip =
         {
           shape.p_min,
           shape.p_max

@@ -101,8 +101,8 @@ typedef struct
 {
   struct
   {
-    BREAD_ListT(WORLD_GpuRigidVertex) rigid_vertices;
-    BREAD_ListT(WORLD_GpuSkinnedVertex) skinned_vertices;
+    BREAD_ListT(WORLD_VertexRigid) rigid_vertices;
+    BREAD_ListT(WORLD_VertexSkinned) skinned_vertices;
     BREAD_ListT(U16) indices;
     BREAD_ListT(BREAD_Model) list;
   } models;

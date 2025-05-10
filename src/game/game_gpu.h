@@ -24,7 +24,7 @@ typedef struct
   SDL_GPUGraphicsPipeline *ui_pipeline;
 
   U64 bound_uniform_hash;
-  WORLD_GpuUniform world_uniform;
+  WORLD_Uniform world_uniform;
 
   SDL_GPUSampler *mesh_tex_sampler;
 
@@ -42,10 +42,10 @@ typedef struct
     I32 indices[1024 * 8];
     U32 indices_count;
 
-    UI_GpuShape shapes[1024 * 2];
+    UI_Shape shapes[1024 * 2];
     U32 shapes_count;
 
-    UI_GpuClip clips[1024];
+    UI_Clip clips[1024];
     U32 clips_count;
     U32 clip_stack[256];
     U32 clip_stack_index;

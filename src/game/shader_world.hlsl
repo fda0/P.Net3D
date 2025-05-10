@@ -28,7 +28,7 @@
 
 #include "shader_util.hlsl"
 
-struct World_DxUniform
+struct WORLD_DX_Uniform
 {
   Mat4 camera_transform;
   Mat4 shadow_transform;
@@ -39,10 +39,10 @@ struct World_DxUniform
   float tex_shininess;
 };
 
-cbuffer VertexUniformBuf : register(b0, space1) { World_DxUniform UniV; };
-cbuffer PixelUniformBuf  : register(b0, space3) { World_DxUniform UniP; };
+cbuffer VertexUniformBuf : register(b0, space1) { WORLD_DX_Uniform UniV; };
+cbuffer PixelUniformBuf  : register(b0, space3) { WORLD_DX_Uniform UniP; };
 
-struct World_Vertex
+struct WORLD_DX_Vertex
 {
   Quat normal_rot : TEXCOORD0;
   V3   position   : TEXCOORD1;
@@ -65,7 +65,7 @@ struct World_Vertex
   U32 instance_index : SV_InstanceID;
 };
 
-struct World_Fragment
+struct WORLD_DX_Fragment
 {
   V4 color      : TEXCOORD0;
   V4 shadow_p   : TEXCOORD1; // position in shadow space
@@ -80,13 +80,13 @@ struct World_Fragment
 };
 
 #if USES_INSTANCE_BUFFER
-struct MDL_DxInstance
+struct WORLD_DX_Instance
 {
   Mat4 transform;
   U32 color;
   U32 pose_offset; // in indices; unused for rigid
 };
-StructuredBuffer<MDL_DxInstance> InstanceBuf : register(t0);
+StructuredBuffer<WORLD_DX_Instance> InstanceBuf : register(t0);
 #endif
 
 #if IS_SKINNED
@@ -94,13 +94,13 @@ StructuredBuffer<Mat4> PoseBuf : register(t1);
 #endif
 
 
-World_Fragment World_DxShaderVS(World_Vertex input)
+WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
 {
   V4 input_color = UnpackColor32(input.color);
   V4 color = input_color;
 
 #if USES_INSTANCE_BUFFER
-  MDL_DxInstance instance = InstanceBuf[input.instance_index];
+  WORLD_DX_Instance instance = InstanceBuf[input.instance_index];
   V4 instance_color = UnpackColor32(instance.color);
 
   if (input.color == 0xff014b74) // @todo obviously temporary
@@ -148,7 +148,7 @@ World_Fragment World_DxShaderVS(World_Vertex input)
   Mat3 normal_rotation = mul(position_rotation, input_normal_mat);
 
   // Return
-  World_Fragment frag;
+  WORLD_DX_Fragment frag;
   frag.color = color;
   frag.shadow_p = mul(UniV.shadow_transform, world_p);
   frag.world_p = world_p.xyz;
@@ -167,7 +167,7 @@ Texture2DArray<float4> ColorTexture : register(t1, space2);
 SamplerState ColorSampler : register(s1, space2);
 #endif
 
-V4 World_DxShaderPS(World_Fragment frag) : SV_Target0
+V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
 {
   V4 color = frag.color;
   float shininess = UniP.tex_shininess;
@@ -253,20 +253,6 @@ V4 World_DxShaderPS(World_Fragment frag) : SV_Target0
     specular = pow(specular_angle, shininess);
   }
   color.xyz *= ambient + (diffuse + specular) * (1.f - shadow);
-
-  // temp - draw hexagon at world_p.xy
-#if 0
-  {
-    V2 coord = frag.world_p.xy;
-    float hexagon_radius = 30.f;
-
-    float border_thick = 1.f;
-    float dist = HexagonBoardSDF(coord, 15.f);
-    float border_color = smoothstep(-border_thick, border_thick, dist) * smoothstep(border_thick, -border_thick, dist);
-    border_color *= 0.5f;
-    color.rgb -= V3(border_color, border_color, border_color);
-  }
-#endif
 
   // Apply fog
   {

@@ -1,7 +1,7 @@
 static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
                               U32 animation_index, float animation_t)
 {
-  WORLD_GpuModelInstance instance =
+  WORLD_InstanceModel instance =
   {
     .transform = transform,
     .color = color,
@@ -25,7 +25,7 @@ static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
                           &instance, sizeof(instance), 1);
 }
 
-static void WORLD_RenderMeshVertices(TEX_Kind tex, WORLD_GpuMeshVertex *vertices, U32 vertices_count)
+static void WORLD_RenderMeshVertices(TEX_Kind tex, WORLD_VertexMesh *vertices, U32 vertices_count)
 {
   GPU_TransferUploadBytes((GPU_MemoryTarget){.type = GPU_MemoryMeshVertices, .tex = tex},
                           vertices,
@@ -41,19 +41,19 @@ static U32 UI_ActiveClipIndex()
   return clip_index;
 }
 
-static UI_GpuClip UI_ActiveClip()
+static UI_Clip UI_ActiveClip()
 {
   return APP.gpu.ui.clips[UI_ActiveClipIndex()];
 }
 
-static void UI_PushClip(UI_GpuClip clip)
+static void UI_PushClip(UI_Clip clip)
 {
   if (APP.gpu.ui.clip_stack_index + 1 >= ArrayCount(APP.gpu.ui.clip_stack))
     return;
   if (APP.gpu.ui.clips_count >= ArrayCount(APP.gpu.ui.clips))
     return;
 
-  UI_GpuClip current = UI_ActiveClip();
+  UI_Clip current = UI_ActiveClip();
   // intersection of clip & current
   if (current.p_min.x > clip.p_min.x) clip.p_min.x = current.p_min.x;
   if (current.p_min.y > clip.p_min.y) clip.p_min.y = current.p_min.y;
@@ -76,7 +76,7 @@ static void UI_PopClip()
   APP.gpu.ui.clip_stack_index -= 1;
 }
 
-static void UI_DrawRaw(UI_GpuShape shape)
+static void UI_DrawRaw(UI_Shape shape)
 {
   if (APP.gpu.ui.indices_count + 6 > ArrayCount(APP.gpu.ui.indices))
     return;
@@ -100,7 +100,7 @@ static void UI_DrawRaw(UI_GpuShape shape)
   APP.gpu.ui.indices[index_i + 5] = 3 | encoded;
 }
 
-static void UI_DrawRect(UI_GpuShape shape)
+static void UI_DrawRect(UI_Shape shape)
 {
   shape.tex_layer = -1.f;
   UI_DrawRaw(shape);
@@ -113,7 +113,7 @@ static void GPU_PostFrameClear()
   // ui
   APP.gpu.ui.indices_count = 0;
   APP.gpu.ui.shapes_count = 0;
-  APP.gpu.ui.clips[0] = (UI_GpuClip){0,0,FLT_MAX,FLT_MAX};
+  APP.gpu.ui.clips[0] = (UI_Clip){0,0,FLT_MAX,FLT_MAX};
   APP.gpu.ui.clips_count = 1;
   APP.gpu.ui.clip_stack[0] = 0;
   APP.gpu.ui.clip_stack_index = 0;

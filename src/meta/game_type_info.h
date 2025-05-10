@@ -32,8 +32,8 @@ X(BREAD_Material) \
 X(BREAD_Model) \
 X(BREAD_Skeleton) \
 X(BREAD_Links) \
-X(WORLD_GpuRigidVertex) \
-X(WORLD_GpuSkinnedVertex)
+X(WORLD_VertexRigid) \
+X(WORLD_VertexSkinned)
 
 typedef U32 TYPE_ENUM;
 enum

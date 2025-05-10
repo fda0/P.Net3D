@@ -332,7 +332,7 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
 
     if (!model->is_skinned) // it's rigid
     {
-      WORLD_GpuRigidVertex rigid = {};
+      WORLD_VertexRigid rigid = {};
       rigid.normal_rot = normal_rot;
       rigid.p = pos;
       rigid.color = color;
@@ -367,7 +367,7 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
       if (weight_sum < 0.9f || weight_sum > 1.1f)
         M_LOG(M_LogGltfWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
 
-      WORLD_GpuSkinnedVertex skinned = {};
+      WORLD_VertexSkinned skinned = {};
       skinned.normal_rot = normal_rot;
       skinned.p = pos;
       skinned.color = color;
