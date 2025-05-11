@@ -311,6 +311,9 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
   U64 vert_size = is_skinned ? sizeof(WORLD_VertexSkinned) : sizeof(WORLD_VertexRigid);
 
   PIE_Model *pie_model = bb->models + bk_model->type;
+  pie_model->is_skinned = is_skinned;
+  pie_model->skeleton_index = bk_model->skeleton_index;
+
   PIE_Geometry *pie_geometries = PIE_ListReserve(&bb->file, &pie_model->geometries, PIE_Geometry, bk_model->geos_count);
 
   ForU32(geo_index, bk_model->geos_count)
@@ -403,13 +406,14 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
 
     // indices
     {
-      U16 *indices_ptr = bk_geo->indices.vals;
-      U32 indices_count = bk_geo->indices.used;
+      U16 *src_indices = bk_geo->indices.vals;
+      U32 src_indices_count = bk_geo->indices.used;
 
       pie_geo->indices_start_index = bb->indices.used / sizeof(U16);
-      pie_geo->indices_count += indices_count;
-      U16 *dst = PIE_Reserve(&bb->indices, U16, indices_count);
-      Memcpy(dst, indices_ptr, sizeof(U16)*indices_count);
+      pie_geo->indices_count += src_indices_count;
+
+      U16 *dst = PIE_Reserve(&bb->indices, U16, src_indices_count);
+      Memcpy(dst, src_indices, sizeof(U16)*src_indices_count);
     }
   }
 }

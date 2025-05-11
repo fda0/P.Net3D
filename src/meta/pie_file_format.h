@@ -66,7 +66,6 @@ typedef struct
 typedef struct
 {
   U8 is_skinned : 1;
-
   // @todo add [U8] name field
   U32 skeleton_index; // for skinned only; index to skeletons from PIE_Contents
   PIE_ListT(PIE_Geometry) geometries;
