@@ -8,7 +8,7 @@
 #include "base_hash.h"
 
 // Headers shared across baker and game
-#include "bread_file_format.h"
+#include "pie_file_format.h"
 #include "game_render.h"
 #include "game_asset_definitions.h"
 #include "game_type_info.h"
@@ -29,8 +29,8 @@ static S8 BREAD_File()
 {
   return Pr_AsS8(&BAKER.bb.file);
 }
-#include "bread_loader.h"
-#include "bread_builder.c"
+#include "pie_loader.h"
+#include "pie_builder.c"
 
 // Baker implementations
 #include "baker_textures.c"

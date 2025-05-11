@@ -25,10 +25,9 @@
 #include "base_printer.h"
 #include "base_parse.h"
 #include "game_constants.h"
-#include "bread_file_format.h"
+#include "pie_file_format.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
-#include "game_animation.h"
 #include "game_asset_definitions.h"
 #include "game_asset.h"
 #include "game_render.h"
@@ -57,7 +56,7 @@
 
 static AppState APP;
 #include "game_util.c"
-#include "game_bread_loader.c"
+#include "game_pie_loader.c"
 #include "game_asset.c"
 #include "game_key.c"
 #include "game_object.c"
