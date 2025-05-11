@@ -142,7 +142,7 @@ int main(I32 args_count, char **args)
                                                        .cache_paths = cache_paths,
                                                        .force_invalidate_cache = !run_baker});
 
-    if (!is_cached || !BOB_FileExists("data.bread"))
+    if (!is_cached || !BOB_FileExists("data.pie"))
     {
       I32 r = BOB_RunIcon(comp, "cook");
       BOB_CheckError(r);

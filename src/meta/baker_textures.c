@@ -16,9 +16,9 @@ static U32 BK_TEX_CalculateMipMapCount(U32 width, U32 height)
   return msb;
 }
 
-static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
+static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
 {
-  BREAD_Builder *bb = &BAKER.bb;
+  PIE_Builder *bb = &BAKER.bb;
 
   Assert(tex_kind < TEX_COUNT);
   S8 tex_name = TEX_GetName(tex_kind);
@@ -82,7 +82,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
 
   // Prepare mipmap sufraces
   U32 lods_count = 1;
-  if (format == BREAD_Tex_BC7_RGBA)
+  if (format == PIE_Tex_BC7_RGBA)
   {
     lods_count = BK_TEX_CalculateMipMapCount(orig_width, orig_height);
     M_Check(BK_MIPMAPS_MAX >= lods_count);
@@ -109,9 +109,9 @@ static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
   //
   //
   //
-  // Allocate and prepare BREAD_Material & array of BREAD_Texture
+  // Allocate and prepare PIE_Material & array of PIE_Texture
   bb->materials_count += 1;
-  BREAD_Material *br_material = BREAD_Reserve(&bb->materials, BREAD_Material, 1);
+  PIE_Material *br_material = PIE_Reserve(&bb->materials, PIE_Material, 1);
   br_material->format = format;
   br_material->width = orig_width;
   br_material->height = orig_height;
@@ -119,13 +119,13 @@ static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
   br_material->layers = ArrayCount(files);
 
   U32 br_sections_count = br_material->lods * br_material->layers;
-  BREAD_MaterialSection *br_sections = BREAD_ListReserve(&bb->file, &br_material->sections,
-                                                         BREAD_MaterialSection, br_sections_count);
+  PIE_MaterialSection *br_sections = PIE_ListReserve(&bb->file, &br_material->sections,
+                                                         PIE_MaterialSection, br_sections_count);
 
-  BREAD_ListStart(&bb->file, &br_material->full_data, TYPE_U8);
+  PIE_ListStart(&bb->file, &br_material->full_data, TYPE_U8);
 
   // Iterate over fliles
-  if (format == BREAD_Tex_R8G8B8A8)
+  if (format == PIE_Tex_R8G8B8A8)
   {
     U32 br_section_index = 0;
     ForArray(file_index, files)
@@ -138,7 +138,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
         SDL_Surface *surf = file->surfs[lod_index];
 
         M_Check(br_section_index < br_sections_count);
-        BREAD_MaterialSection *br_sect = br_sections + br_section_index;
+        PIE_MaterialSection *br_sect = br_sections + br_section_index;
         br_section_index += 1;
 
         // Calc
@@ -153,9 +153,9 @@ static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
         br_sect->data_size = br_data_size;
 
         // Alloc data buffer
-        U8 *br_data = BREAD_Reserve(&bb->file, U8, br_data_size);
+        U8 *br_data = PIE_Reserve(&bb->file, U8, br_data_size);
 
-        // Copy data to .bread file buffer
+        // Copy data to .pie file buffer
         if (surf->w * sizeof(U32) == surf->pitch)
         {
           Memcpy(br_data, surf->pixels, br_data_size);
@@ -169,7 +169,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
       }
     }
   }
-  else if (format == BREAD_Tex_BC7_RGBA)
+  else if (format == PIE_Tex_BC7_RGBA)
   {
     U32 br_section_index = 0;
     ForArray(file_index, files)
@@ -182,7 +182,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
         SDL_Surface *surf = file->surfs[lod_index];
 
         M_Check(br_section_index < br_sections_count);
-        BREAD_MaterialSection *br_sect = br_sections + br_section_index;
+        PIE_MaterialSection *br_sect = br_sections + br_section_index;
         br_section_index += 1;
 
         // Calculate data buffer dimensions
@@ -199,12 +199,12 @@ static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
         br_sect->data_size = br_data_size;
 
         // Alloc data buffer
-        U8 *br_data = BREAD_Reserve(&bb->file, U8, br_data_size);
+        U8 *br_data = PIE_Reserve(&bb->file, U8, br_data_size);
         U8 *br_data_end = br_data + br_data_size;
         U8 *br_pixels = br_data;
 
         // Iterate over chunks of the current lod.
-        // Fetch 4x4 chunks and compress them into memory allocated in .bread file.
+        // Fetch 4x4 chunks and compress them into memory allocated in .pie file.
         ForI32(chunk_y, lod_chunks_per_h)
         {
           I32 lod_y = chunk_y * M_TEX_BC7_BLOCK_DIM;
@@ -242,7 +242,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, BREAD_TexFormat format)
     }
   }
 
-  BREAD_ListEnd(&bb->file, &br_material->full_data);
+  PIE_ListEnd(&bb->file, &br_material->full_data);
 }
 
 static void BK_TEX_Init()

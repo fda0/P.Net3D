@@ -24,8 +24,8 @@
 #include "baker_number_buffer.h"
 #include "baker_entry.h"
 
-// Bread
-static S8 BREAD_File()
+// Pie
+static S8 PIE_File()
 {
   return Pr_AsS8(&BAKER.bb.file);
 }
@@ -49,7 +49,7 @@ int main()
 
   BK_TEX_Init();
 
-  BAKER.bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(256));
+  BAKER.bb = PIE_CreateBuilder(BAKER.tmp, Megabyte(256));
 
   // Process assets
   {
@@ -57,8 +57,8 @@ int main()
 
     // Load texture files
     {
-      //BREAD_TexFormat format = BREAD_Tex_R8G8B8A8;
-      BREAD_TexFormat format = BREAD_Tex_BC7_RGBA;
+      //PIE_TexFormat format = PIE_Tex_R8G8B8A8;
+      PIE_TexFormat format = PIE_Tex_BC7_RGBA;
 #define TEX_DEF_LOAD(a) BK_TEX_Load(TEX_##a, format);
       TEX_LIST(TEX_DEF_LOAD);
     }
@@ -90,8 +90,8 @@ int main()
     Arena_PopScope(tmp_check);
   }
 
-  BREAD_FinalizeBuilder();
-  BREAD_SaveToFile("data.bread");
+  PIE_FinalizeBuilder();
+  PIE_SaveToFile("data.pie");
 
   // exit
   M_LOG(M_LogIdk, "%s", (M_LogState.error_count > 0 ? "Fail" : "Success"));

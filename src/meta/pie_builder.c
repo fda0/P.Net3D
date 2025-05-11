@@ -1,18 +1,18 @@
 //
 // Allocating bytes in printer
 //
-static void *BREAD_ReserveBytes(Printer *p, U64 size, U64 alignment)
+static void *PIE_ReserveBytes(Printer *p, U64 size, U64 alignment)
 {
   M_Check(p->used % alignment == 0);
-  void *bread_reserve_result = Pr_ReserveBytes(p, size);
-  M_Check(bread_reserve_result);
+  void *pie_reserve_result = Pr_ReserveBytes(p, size);
+  M_Check(pie_reserve_result);
   M_Check(!p->err);
-  Memclear(bread_reserve_result, size);
-  return bread_reserve_result;
+  Memclear(pie_reserve_result, size);
+  return pie_reserve_result;
 }
-#define BREAD_Reserve(P, Type, Count) (Type *)BREAD_ReserveBytes(P, sizeof(Type)*(Count), _Alignof(Type))
+#define PIE_Reserve(P, Type, Count) (Type *)PIE_ReserveBytes(P, sizeof(Type)*(Count), _Alignof(Type))
 
-static void BREAD_Aling(Printer *p, U64 alignment)
+static void PIE_Aling(Printer *p, U64 alignment)
 {
   U64 missaligned_bytes = p->used % alignment;
   if (missaligned_bytes)
@@ -27,12 +27,12 @@ static void BREAD_Aling(Printer *p, U64 alignment)
 //
 // Allocating bytes in printer & tracking the range
 //
-static void BREAD_ListStart(Printer *printer_owner, BREAD_List *list, TYPE_ENUM type)
+static void PIE_ListStart(Printer *printer_owner, PIE_List *list, TYPE_ENUM type)
 {
   list->type = type;
   list->offset = printer_owner->used;
 }
-static void BREAD_ListEnd(Printer *printer_owner, BREAD_List *list)
+static void PIE_ListEnd(Printer *printer_owner, PIE_List *list)
 {
   M_Check(list->type && !list->count && !list->size);
 
@@ -43,21 +43,21 @@ static void BREAD_ListEnd(Printer *printer_owner, BREAD_List *list)
   M_Check(list->size % type_size == 0);
   list->count = list->size / type_size;
 }
-static void *BREAD_ListReserveBytes(Printer *p, BREAD_List *list, TYPE_ENUM type, U32 count)
+static void *PIE_ListReserveBytes(Printer *p, PIE_List *list, TYPE_ENUM type, U32 count)
 {
-  BREAD_ListStart(p, list, type);
-  void *result = BREAD_ReserveBytes(p, TYPE_GetSize(type)*count, TYPE_GetAlign(type));
-  BREAD_ListEnd(p, list);
+  PIE_ListStart(p, list, type);
+  void *result = PIE_ReserveBytes(p, TYPE_GetSize(type)*count, TYPE_GetAlign(type));
+  PIE_ListEnd(p, list);
   return result;
 }
-#define BREAD_ListReserve(P, List, Type, Count) (Type *)BREAD_ListReserveBytes(P, List, TYPE_##Type, Count)
+#define PIE_ListReserve(P, List, Type, Count) (Type *)PIE_ListReserveBytes(P, List, TYPE_##Type, Count)
 
 //
 // Builder create and finalize
 //
-static BREAD_Builder BREAD_CreateBuilder(Arena *a, U32 max_file_size)
+static PIE_Builder PIE_CreateBuilder(Arena *a, U32 max_file_size)
 {
-  BREAD_Builder bb = {};
+  PIE_Builder bb = {};
   bb.file = Pr_Alloc(a, max_file_size);
 
   U32 small_size = max_file_size / 16;
@@ -69,42 +69,42 @@ static BREAD_Builder BREAD_CreateBuilder(Arena *a, U32 max_file_size)
   bb.skeletons = Pr_Alloc(a, tiny_size);
   bb.materials = Pr_Alloc(a, tiny_size);
 
-  Pr_ReserveBytes(&bb.file, sizeof(BREAD_Header)); // reserve space for header
+  Pr_ReserveBytes(&bb.file, sizeof(PIE_Header)); // reserve space for header
   bb.selected_model = MODEL_COUNT;
   return bb;
 }
 
-static void BREAD_FinalizeBuilder()
+static void PIE_FinalizeBuilder()
 {
-  BREAD_Builder *bb = &BAKER.bb;
+  PIE_Builder *bb = &BAKER.bb;
 
   //
-  // Prepare BREAD_Links and append it to memory
+  // Prepare PIE_Links and append it to memory
   //
-  BREAD_Links links = {};
+  PIE_Links links = {};
 
-  BREAD_ListStart(&bb->file, &links.models.rigid_vertices, TYPE_WORLD_VertexRigid);
+  PIE_ListStart(&bb->file, &links.models.rigid_vertices, TYPE_WORLD_VertexRigid);
   Pr_Printer(&bb->file, &bb->rigid_vertices);
-  BREAD_ListEnd(&bb->file, &links.models.rigid_vertices);
+  PIE_ListEnd(&bb->file, &links.models.rigid_vertices);
 
-  BREAD_ListStart(&bb->file, &links.models.skinned_vertices, TYPE_WORLD_VertexSkinned);
+  PIE_ListStart(&bb->file, &links.models.skinned_vertices, TYPE_WORLD_VertexSkinned);
   Pr_Printer(&bb->file, &bb->skinned_vertices);
-  BREAD_ListEnd(&bb->file, &links.models.skinned_vertices);
+  PIE_ListEnd(&bb->file, &links.models.skinned_vertices);
 
-  BREAD_ListStart(&bb->file, &links.models.indices, TYPE_U16);
+  PIE_ListStart(&bb->file, &links.models.indices, TYPE_U16);
   Pr_Printer(&bb->file, &bb->indices);
-  BREAD_ListEnd(&bb->file, &links.models.indices);
+  PIE_ListEnd(&bb->file, &links.models.indices);
 
   ForArray(model_index, bb->models)
   {
-    BREAD_Model *model = bb->models + model_index;
-    BREAD_Geometry *geomeries = BREAD_ListAsType(model->geometries, BREAD_Geometry);
+    PIE_Model *model = bb->models + model_index;
+    PIE_Geometry *geomeries = PIE_ListAsType(model->geometries, PIE_Geometry);
     ForU32(geo_index, model->geometries.count)
     {
-      BREAD_Geometry *geo = geomeries + geo_index;
+      PIE_Geometry *geo = geomeries + geo_index;
       if (!geo->indices_count)
       {
-        M_LOG(M_LogGltfWarning, "BREAD warning: Model %u (%s) "
+        M_LOG(M_LogGltfWarning, "PIE warning: Model %u (%s) "
               "contains uninitialized geometry (%u/%u)",
               (U32)model_index, MODEL_GetCstrName(model_index),
               geo_index, model->geometries.count);
@@ -113,42 +113,42 @@ static void BREAD_FinalizeBuilder()
   }
 
   // Models
-  BREAD_ListStart(&bb->file, &links.models.list, TYPE_BREAD_Model);
+  PIE_ListStart(&bb->file, &links.models.list, TYPE_PIE_Model);
   {
-    BREAD_Model *dst = BREAD_ReserveBytes(&bb->file, sizeof(bb->models), _Alignof(BREAD_Model));
+    PIE_Model *dst = PIE_ReserveBytes(&bb->file, sizeof(bb->models), _Alignof(PIE_Model));
     Memcpy(dst, bb->models, sizeof(bb->models));
   }
-  BREAD_ListEnd(&bb->file, &links.models.list);
+  PIE_ListEnd(&bb->file, &links.models.list);
 
   // Skeletons
-  BREAD_ListStart(&bb->file, &links.skeletons, TYPE_BREAD_Skeleton);
+  PIE_ListStart(&bb->file, &links.skeletons, TYPE_PIE_Skeleton);
   Pr_Printer(&bb->file, &bb->skeletons);
-  BREAD_ListEnd(&bb->file, &links.skeletons);
+  PIE_ListEnd(&bb->file, &links.skeletons);
 
   // Materials
-  BREAD_ListStart(&bb->file, &links.materials, TYPE_BREAD_Material);
+  PIE_ListStart(&bb->file, &links.materials, TYPE_PIE_Material);
   Pr_Printer(&bb->file, &bb->materials);
-  BREAD_ListEnd(&bb->file, &links.materials);
+  PIE_ListEnd(&bb->file, &links.materials);
 
   //
-  // Prepare BREAD_Header
+  // Prepare PIE_Header
   //
-  BREAD_Header *header = (BREAD_Header *)bb->file.buf;
-  *BREAD_ListReserve(&bb->file, &header->links, BREAD_Links, 1) = links;
+  PIE_Header *header = (PIE_Header *)bb->file.buf;
+  *PIE_ListReserve(&bb->file, &header->links, PIE_Links, 1) = links;
 
   //
   // Calculate hash
   //
   S8 whole_file = Pr_AsS8(&bb->file);
   S8 hashable_file = S8_Skip(whole_file, sizeof(header->file_hash));
-  header->file_hash = S8_Hash(BREAD_MAGIC_HASH_SEED, hashable_file);
+  header->file_hash = S8_Hash(PIE_MAGIC_HASH_SEED, hashable_file);
 
   bb->finalized = true;
 }
 
-static void BREAD_SaveToFile(const char *file_path)
+static void PIE_SaveToFile(const char *file_path)
 {
-  BREAD_Builder *bb = &BAKER.bb;
+  PIE_Builder *bb = &BAKER.bb;
   M_Check(bb->finalized);
   S8 content = Pr_AsS8(&bb->file);
   M_SaveFile(file_path, content);
@@ -157,46 +157,46 @@ static void BREAD_SaveToFile(const char *file_path)
 //
 // Helpers
 //
-static void BREAD_AddModel(BREAD_Builder *bb, MODEL_Type model_type, bool is_skinned, U32 geometry_count)
+static void PIE_AddModel(PIE_Builder *bb, MODEL_Type model_type, bool is_skinned, U32 geometry_count)
 {
   M_Check(!bb->finalized);
   M_Check(model_type < MODEL_COUNT);
   bb->selected_model = model_type;
 
-  BREAD_Model *model = bb->models + bb->selected_model;
+  PIE_Model *model = bb->models + bb->selected_model;
   model->is_skinned = is_skinned;
 
   M_Check(!model->geometries.type); // Check that model wasn't initialized already
-  bb->geos = BREAD_ListReserve(&bb->file, &model->geometries, BREAD_Geometry, geometry_count);
+  bb->geos = PIE_ListReserve(&bb->file, &model->geometries, PIE_Geometry, geometry_count);
   bb->geos_count = geometry_count;
   bb->geos_index = 0;
 }
 
-static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)
+static void *PIE_AddModelVertex(PIE_Builder *bb, bool is_skinned)
 {
   M_Check(!bb->finalized);
   Printer *vert_printer = is_skinned ? &bb->skinned_vertices : &bb->rigid_vertices;
   U64 vert_align = is_skinned ? _Alignof(WORLD_VertexSkinned) : _Alignof(WORLD_VertexRigid);
   U64 vert_size = is_skinned ? sizeof(WORLD_VertexSkinned) : sizeof(WORLD_VertexRigid);
 
-  BREAD_Geometry *geo = bb->geos + bb->geos_index;
+  PIE_Geometry *geo = bb->geos + bb->geos_index;
   if (!geo->is_init_vertices) // init vertices offset
   {
     geo->is_init_vertices = true;
     geo->vertices_start_index = vert_printer->used / vert_size;
   }
 
-  void *result = BREAD_ReserveBytes(vert_printer, vert_size, vert_align);
+  void *result = PIE_ReserveBytes(vert_printer, vert_size, vert_align);
   Memclear(result, vert_size);
   return result;
 }
-static WORLD_VertexSkinned *BREAD_AddModelSkinnedVertex(BREAD_Builder *bb) { return BREAD_AddModelVertex(bb, true); }
-static WORLD_VertexRigid   *BREAD_AddModelRigidVertex(BREAD_Builder *bb)   { return BREAD_AddModelVertex(bb, false); }
+static WORLD_VertexSkinned *PIE_AddModelSkinnedVertex(PIE_Builder *bb) { return PIE_AddModelVertex(bb, true); }
+static WORLD_VertexRigid   *PIE_AddModelRigidVertex(PIE_Builder *bb)   { return PIE_AddModelVertex(bb, false); }
 
-static void BREAD_CopyIndices(BREAD_Builder *bb, U16 *src_indices, U32 src_indices_count)
+static void PIE_CopyIndices(PIE_Builder *bb, U16 *src_indices, U32 src_indices_count)
 {
   M_Check(!bb->finalized);
-  BREAD_Geometry *geo = bb->geos + bb->geos_index;
+  PIE_Geometry *geo = bb->geos + bb->geos_index;
 
   if (!geo->is_init_indices)
   {
@@ -205,6 +205,6 @@ static void BREAD_CopyIndices(BREAD_Builder *bb, U16 *src_indices, U32 src_indic
   }
   geo->indices_count += src_indices_count;
 
-  U16 *dst = BREAD_Reserve(&bb->indices, U16, src_indices_count);
+  U16 *dst = PIE_Reserve(&bb->indices, U16, src_indices_count);
   Memcpy(dst, src_indices, sizeof(U16)*src_indices_count);
 }
