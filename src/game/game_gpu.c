@@ -329,7 +329,7 @@ static void GPU_Init()
       .vertex_attributes = (SDL_GPUVertexAttribute[])
       {
         {
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 0,
           .offset = 0,
         },
@@ -415,7 +415,7 @@ static void GPU_Init()
       .vertex_attributes = (SDL_GPUVertexAttribute[])
       {
         {
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 0,
           .offset = 0,
         },
@@ -523,11 +523,11 @@ static void GPU_Init()
           .instance_step_rate = 0,
         },
       },
-      .num_vertex_attributes = 4,
+      .num_vertex_attributes = 3,
       .vertex_attributes = (SDL_GPUVertexAttribute[])
       {
         {
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
+          .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 0,
           .offset = 0,
         },
@@ -540,11 +540,6 @@ static void GPU_Init()
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
           .location = 2,
           .offset = offsetof(WORLD_VertexMesh, uv),
-        },
-        {
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
-          .location = 3,
-          .offset = offsetof(WORLD_VertexMesh, color),
         },
       },
     };

@@ -102,9 +102,6 @@ static void Game_DrawObjects()
       Memclear(mesh_verts, sizeof(mesh_verts));
       Assert(ArrayCount(mesh_verts) >= mesh_verts_count);
 
-      ForU32(i, mesh_verts_count)
-        mesh_verts[i].color = obj->s.color; // @todo remove vert color?
-
       float bot_z = obj->s.p.z;
       float top_z = bot_z + height;
 

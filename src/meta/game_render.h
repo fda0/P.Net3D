@@ -34,7 +34,6 @@ typedef struct
   V3 normal;
   V3 p;
   V2 uv;
-  U32 color;
 } WORLD_VertexMesh;
 
 // Instances

@@ -24,7 +24,8 @@
 #define World_DxShaderPS World_DxShaderMeshPS
 #endif
 
-#define USES_INSTANCE_BUFFER (IS_RIGID || IS_SKINNED)
+#define HAS_INSTANCE_BUFFER (IS_RIGID || IS_SKINNED)
+#define HAS_COLOR (IS_RIGID || IS_SKINNED)
 
 #include "shader_util.hlsl"
 
@@ -59,7 +60,6 @@ struct WORLD_DX_Vertex
 
 #if IS_TEXTURED
   V2  uv    : TEXCOORD2;
-  U32 color : TEXCOORD3;
 #endif
 
   U32 instance_index : SV_InstanceID;
@@ -67,19 +67,20 @@ struct WORLD_DX_Vertex
 
 struct WORLD_DX_Fragment
 {
-  V4 color      : TEXCOORD0;
   V4 shadow_p   : TEXCOORD1; // position in shadow space
   V3 world_p    : TEXCOORD2;
 #if IS_TEXTURED
   V2 uv           : TEXCOORD3;
   Mat3 normal_rot : TEXCOORD4;
 #else
-  Mat3 normal_rot : TEXCOORD3;
+  V4 color      : TEXCOORD3;
+  Mat3 normal_rot : TEXCOORD4;
 #endif
+
   V4 vertex_p : SV_Position;
 };
 
-#if USES_INSTANCE_BUFFER
+#if HAS_INSTANCE_BUFFER
 struct WORLD_DX_Instance
 {
   Mat4 transform;
@@ -96,19 +97,21 @@ StructuredBuffer<Mat4> PoseBuf : register(t1);
 
 WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
 {
+#if HAS_COLOR
   V4 input_color = UnpackColor32(input.color);
   V4 color = input_color;
 
-#if USES_INSTANCE_BUFFER
+#if HAS_INSTANCE_BUFFER
   WORLD_DX_Instance instance = InstanceBuf[input.instance_index];
   V4 instance_color = UnpackColor32(instance.color);
 
   if (input.color == 0xff014b74) // @todo obviously temporary
     color = instance_color;
-#endif
+#endif // HAS_INSTANCE_BUFFER
+#endif // HAS_COLOR
 
   // Position
-#if USES_INSTANCE_BUFFER
+#if HAS_INSTANCE_BUFFER
   Mat4 position_transform = instance.transform;
 #else
   Mat4 position_transform = Mat4_Identity();
@@ -151,11 +154,13 @@ WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
 
   // Return
   WORLD_DX_Fragment frag;
-  frag.color = color;
   frag.shadow_p = mul(UniV.shadow_transform, world_p);
   frag.world_p = world_p.xyz;
 #if IS_TEXTURED
   frag.uv = input.uv;
+#endif
+#if HAS_COLOR
+  frag.color = color;
 #endif
   frag.normal_rot = normal_rotation;
   frag.vertex_p = vertex_p;
@@ -171,7 +176,6 @@ SamplerState ColorSampler : register(s1, space2);
 
 V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
 {
-  V4 color = frag.color;
   float shininess = UniP.tex_shininess;
   V3 face_normal = mul(frag.normal_rot, V3(0,0,1));
 
@@ -195,13 +199,14 @@ V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
   }
 
   // apply color
-  color *= V4(tex_color, 1.f);
+  V4 color = V4(tex_color, 1.f);
 
   V3 pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
 
   // Apply shininess
   shininess *= (1.f - tex_roughness);
 #else
+  V4 color = frag.color;
   V3 pixel_normal = face_normal;
 #endif
 
