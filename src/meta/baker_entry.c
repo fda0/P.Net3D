@@ -52,9 +52,9 @@ int main()
     // Load texture files
     {
       //BREAD_TexFormat format = BREAD_Tex_R8G8B8A8;
-      BREAD_TexFormat format = BREAD_Tex_BC7_RGBA;
-#define TEX_DEF_LOAD(a) BK_TEX_Load(&bb, TEX_##a, format);
-      TEX_LIST(TEX_DEF_LOAD);
+      //BREAD_TexFormat format = BREAD_Tex_BC7_RGBA;
+//#define TEX_DEF_LOAD(a) BK_TEX_Load(&bb, TEX_##a, format);
+      //TEX_LIST(TEX_DEF_LOAD);
     }
 
     // Load .gltf models
@@ -68,11 +68,11 @@ int main()
       float scale = 40;
       BK_GLTF_ModelConfig config = {.scale = scale, .rot = rot_xz};
 
-      BK_GLTF_Load(&bb, MODEL_Flag, "../res/models/Flag.glb",
-                   (BK_GLTF_ModelConfig){1.f, rot_x, (V3){0,0,-4.5f}});
-      BK_GLTF_Load(&bb, MODEL_Worker, "../res/models/Worker.gltf", config);
-      BK_GLTF_Load(&bb, MODEL_Formal, "../res/models/Formal.gltf", config);
-      BK_GLTF_Load(&bb, MODEL_Casual, "../res/models/Casual.gltf", config);
+      //BK_GLTF_Load(&bb, MODEL_Flag, "../res/models/Flag.glb",
+                   //(BK_GLTF_ModelConfig){1.f, rot_x, (V3){0,0,-4.5f}});
+      //BK_GLTF_Load(&bb, MODEL_Worker, "../res/models/Worker.gltf", config);
+      //BK_GLTF_Load(&bb, MODEL_Formal, "../res/models/Formal.gltf", config);
+      //BK_GLTF_Load(&bb, MODEL_Casual, "../res/models/Casual.gltf", config);
 
       config.scale = 4.f;
       config.rot = Quat_Identity();

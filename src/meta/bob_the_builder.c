@@ -144,12 +144,12 @@ int main(I32 args_count, char **args)
 
     if (!is_cached || !BOB_FileExists("data.bread"))
     {
-      I32 r = BOB_RunIcon(comp, "sandwich");
+      I32 r = BOB_RunIcon(comp, "cook");
       BOB_CheckError(r);
 
       BOB_PrinterOnStack(cmd);
       BOB_BuildCommand(&cmd, (BOB_BuildConfig){.inputs = "../src/meta/baker_entry.c ../libs/bc7enc.c",
-                                               .link_inputs = "sandwich.res",
+                                               .link_inputs = "cook.res",
                                                .output = "baker.exe",
                                                .comp = comp,
                                                .sdl3 = true,

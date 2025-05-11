@@ -55,7 +55,7 @@ enum
 
 READ_ONLY static const char *MODEL_CstrNames[] =
 {
-#define MODEL_DEF_CSTR_NAMES(a) #a
+#define MODEL_DEF_CSTR_NAMES(a) #a,
   MODEL_LIST(MODEL_DEF_CSTR_NAMES)
 };
 READ_ONLY static S8 MODEL_Names[] =
@@ -66,12 +66,14 @@ READ_ONLY static S8 MODEL_Names[] =
 
 static const char *MODEL_GetCstrName(MODEL_Type model)
 {
-  Assert(model < MODEL_COUNT);
-  return MODEL_CstrNames[model];
+  if (model < ArrayCount(MODEL_CstrNames))
+    return MODEL_CstrNames[model];
+  return "MODEL.MISSING.cstr";
 }
 
 static S8 MODEL_GetName(MODEL_Type model)
 {
-  Assert(model < MODEL_COUNT);
-  return MODEL_Names[model];
+  if (model < ArrayCount(MODEL_Names))
+    return MODEL_Names[model];
+  return S8Lit("MODEL.MISSING.S8");
 }
