@@ -299,7 +299,7 @@ static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
 
 static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *model)
 {
-  BREAD_AddModel(bb, model->type, model->is_skinned);
+  BREAD_AddModel(bb, model->type, model->is_skinned, 1); // @todo update hardcoded 1 in the future!
 
   // vertices
   ForU64(vert_i, model->verts_count)
@@ -379,8 +379,10 @@ static void BK_GLTF_ExportModelToBread(BREAD_Builder *bb, BK_GLTF_ModelData *mod
   BREAD_CopyIndices(bb, model->indices.vals, model->indices.used);
 }
 
-static void BK_GLTF_Load(BREAD_Builder *bb, MODEL_Type model_type, const char *path, BK_GLTF_ModelConfig config)
+static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelConfig config)
 {
+  BREAD_Builder *bb = &BAKER.bb;
+
   // normalize config
   if (!config.scale) config.scale = 1.f;
   if (Memeq(&config.rot, &(Quat){}, sizeof(Quat))) config.rot = Quat_Identity();

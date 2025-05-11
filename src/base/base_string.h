@@ -1,8 +1,9 @@
-typedef struct
+typedef struct String8 S8;
+struct String8
 {
   U8 *str;
   U64 size;
-} S8;
+};
 #define S8Print(s) (int)(s).size, (s).str // used with "%.*s"
 #define S8Lit(CStrLiteral) S8_Make((U8 *)CStrLiteral, sizeof(CStrLiteral)-1)
 

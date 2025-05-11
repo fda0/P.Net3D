@@ -8,7 +8,7 @@
 #include "base_hash.h"
 
 // Headers shared across baker and game
-#include "game_bread_file_format.h"
+#include "bread_file_format.h"
 #include "game_render.h"
 #include "game_animation.h"
 #include "game_asset_definitions.h"
@@ -25,8 +25,15 @@
 #include "baker_number_buffer.h"
 #include "baker_entry.h"
 
+// Bread
+static S8 BREAD_File()
+{
+  return Pr_AsS8(&BAKER.bb.file);
+}
+#include "bread_loader.h"
+#include "bread_builder.c"
+
 // Baker implementations
-#include "baker_bread_builder.c"
 #include "baker_textures.c"
 #include "baker_gltf_models.c"
 
@@ -43,7 +50,7 @@ int main()
 
   BK_TEX_Init();
 
-  BREAD_Builder bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(256));
+  BAKER.bb = BREAD_CreateBuilder(BAKER.tmp, Megabyte(256));
 
   // Process assets
   {
@@ -76,7 +83,7 @@ int main()
 
       config.scale = 4.f;
       config.rot = Quat_Identity();
-      BK_GLTF_Load(&bb, MODEL_Tree, "../res/models/tree_low-poly/scene.gltf", config);
+      BK_GLTF_Load(MODEL_Tree, "../res/models/tree_low-poly/scene.gltf", config);
     }
 
     // Check that all sub-functions didn't leak memory on tmp arena
@@ -84,8 +91,8 @@ int main()
     Arena_PopScope(tmp_check);
   }
 
-  BREAD_FinalizeBuilder(&bb);
-  BREAD_SaveToFile(&bb, "data.bread");
+  BREAD_FinalizeBuilder();
+  BREAD_SaveToFile("data.bread");
 
   // exit
   M_LOG(M_LogIdk, "%s", (M_LogState.error_count > 0 ? "Fail" : "Success"));

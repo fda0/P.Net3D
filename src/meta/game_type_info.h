@@ -29,11 +29,16 @@ X(BREAD_Animation) \
 X(BREAD_AnimationChannel) \
 X(BREAD_MaterialSection) \
 X(BREAD_Material) \
+X(BREAD_Geometry) \
 X(BREAD_Model) \
 X(BREAD_Skeleton) \
 X(BREAD_Links) \
 X(WORLD_VertexRigid) \
 X(WORLD_VertexSkinned)
+
+// @todo implement slices
+//#define TYPE_DEF_SLICE(T) typedef struct { T *arr; U64 count; } Slice_##T;
+//TYPE_LIST(TYPE_DEF_SLICE)
 
 typedef U32 TYPE_ENUM;
 enum

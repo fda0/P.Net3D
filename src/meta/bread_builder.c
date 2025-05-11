@@ -74,9 +74,9 @@ static BREAD_Builder BREAD_CreateBuilder(Arena *a, U32 max_file_size)
   return bb;
 }
 
-static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
+static void BREAD_FinalizeBuilder()
 {
-  bb->selected_model = MODEL_COUNT;
+  BREAD_Builder *bb = &BAKER.bb;
 
   //
   // Prepare BREAD_Links and append it to memory
@@ -95,14 +95,20 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
   Pr_Printer(&bb->file, &bb->indices);
   BREAD_ListEnd(&bb->file, &links.models.indices);
 
-  ForArray(i, bb->models)
+  ForArray(model_index, bb->models)
   {
-    BREAD_Model *model = bb->models + i;
-    if (!model->indices_count)
+    BREAD_Model *model = bb->models + model_index;
+    BREAD_Geometry *geomeries = BREAD_ListAsType(model->geometries, BREAD_Geometry);
+    ForU32(geo_index, model->geometries.count)
     {
-      M_LOG(M_LogGltfWarning, "BREAD warning: When finalizing file "
-            "found model with index %u (%s) that wasn't initialized.",
-            (U32)i, MODEL_GetCstrName(i));
+      BREAD_Geometry *geo = geomeries + geo_index;
+      if (!geo->indices_count)
+      {
+        M_LOG(M_LogGltfWarning, "BREAD warning: Model %u (%s) "
+              "contains uninitialized geometry (%u/%u)",
+              (U32)model_index, MODEL_GetCstrName(model_index),
+              geo_index, model->geometries.count);
+      }
     }
   }
 
@@ -140,8 +146,9 @@ static void BREAD_FinalizeBuilder(BREAD_Builder *bb)
   bb->finalized = true;
 }
 
-static void BREAD_SaveToFile(BREAD_Builder *bb, const char *file_path)
+static void BREAD_SaveToFile(const char *file_path)
 {
+  BREAD_Builder *bb = &BAKER.bb;
   M_Check(bb->finalized);
   S8 content = Pr_AsS8(&bb->file);
   M_SaveFile(file_path, content);
@@ -150,7 +157,7 @@ static void BREAD_SaveToFile(BREAD_Builder *bb, const char *file_path)
 //
 // Helpers
 //
-static void BREAD_AddModel(BREAD_Builder *bb, MODEL_Type model_type, bool is_skinned)
+static void BREAD_AddModel(BREAD_Builder *bb, MODEL_Type model_type, bool is_skinned, U32 geometry_count)
 {
   M_Check(!bb->finalized);
   M_Check(model_type < MODEL_COUNT);
@@ -158,10 +165,11 @@ static void BREAD_AddModel(BREAD_Builder *bb, MODEL_Type model_type, bool is_ski
 
   BREAD_Model *model = bb->models + bb->selected_model;
   model->is_skinned = is_skinned;
-  // Check that model wasn't initialized already
-  M_Check(!model->is_init_vertices &&
-          !model->is_init_indices &&
-          !model->indices_count);
+
+  M_Check(!model->geometries.type); // Check that model wasn't initialized already
+  bb->geos = BREAD_ListReserve(&bb->file, &model->geometries, BREAD_Geometry, geometry_count);
+  bb->geos_count = geometry_count;
+  bb->geos_index = 0;
 }
 
 static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)
@@ -171,14 +179,11 @@ static void *BREAD_AddModelVertex(BREAD_Builder *bb, bool is_skinned)
   U64 vert_align = is_skinned ? _Alignof(WORLD_VertexSkinned) : _Alignof(WORLD_VertexRigid);
   U64 vert_size = is_skinned ? sizeof(WORLD_VertexSkinned) : sizeof(WORLD_VertexRigid);
 
-  M_Check(bb->selected_model < MODEL_COUNT);
-  BREAD_Model *model = bb->models + bb->selected_model;
-
-  // init vertices offset
-  if (!model->is_init_vertices)
+  BREAD_Geometry *geo = bb->geos + bb->geos_index;
+  if (!geo->is_init_vertices) // init vertices offset
   {
-    model->is_init_vertices = true;
-    model->vertices_start_index = vert_printer->used / vert_size;
+    geo->is_init_vertices = true;
+    geo->vertices_start_index = vert_printer->used / vert_size;
   }
 
   void *result = BREAD_ReserveBytes(vert_printer, vert_size, vert_align);
@@ -191,15 +196,14 @@ static WORLD_VertexRigid   *BREAD_AddModelRigidVertex(BREAD_Builder *bb)   { ret
 static void BREAD_CopyIndices(BREAD_Builder *bb, U16 *src_indices, U32 src_indices_count)
 {
   M_Check(!bb->finalized);
-  M_Check(bb->selected_model < MODEL_COUNT);
-  BREAD_Model *model = bb->models + bb->selected_model;
+  BREAD_Geometry *geo = bb->geos + bb->geos_index;
 
-  if (!model->is_init_indices)
+  if (!geo->is_init_indices)
   {
-    model->is_init_indices = true;
-    model->indices_start_index = bb->indices.used / sizeof(U16);
+    geo->is_init_indices = true;
+    geo->indices_start_index = bb->indices.used / sizeof(U16);
   }
-  model->indices_count += src_indices_count;
+  geo->indices_count += src_indices_count;
 
   U16 *dst = BREAD_Reserve(&bb->indices, U16, src_indices_count);
   Memcpy(dst, src_indices, sizeof(U16)*src_indices_count);

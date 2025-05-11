@@ -1,9 +1,7 @@
 //
 // This file describes BREAD file format - which is produced by "baker" asset preprocessor.
 //
-// _offset -> offsets are like pointers but are relative to the first byte of the file
-//
-// @todo increase typesafety of this program
+// @todo Rename to 'pie'
 //
 
 typedef struct
@@ -56,16 +54,25 @@ typedef struct
 
 typedef struct
 {
-  U8 is_skinned : 1;
   U8 is_init_vertices : 1;
   U8 is_init_indices : 1;
+  U8 uses_texture : 1;
+
+  U32 texture_index;
+  U32 color;
 
   U32 vertices_start_index;
   U32 indices_start_index;
   U32 indices_count;
-  U32 skeleton_index; // for skinned only; index to skeletons from BREAD_Contents
+} BREAD_Geometry;
+
+typedef struct
+{
+  U8 is_skinned : 1;
 
   // @todo add [U8] name field
+  U32 skeleton_index; // for skinned only; index to skeletons from BREAD_Contents
+  BREAD_ListT(BREAD_Geometry) geometries;
 } BREAD_Model;
 
 typedef struct

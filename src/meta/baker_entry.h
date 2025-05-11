@@ -7,13 +7,18 @@ typedef struct
   Printer skinned_vertices;
   Printer indices;
   BREAD_Model models[MODEL_COUNT];
-  MODEL_Type selected_model;
 
   Printer skeletons;
   U32 skeletons_count;
 
   Printer materials;
   U32 materials_count;
+
+  // data for geometry that's currently under construction
+  MODEL_Type selected_model;
+  BREAD_Geometry *geos;
+  U32 geos_count;
+  U32 geos_index;
 } BREAD_Builder;
 
 typedef struct
@@ -55,6 +60,8 @@ typedef struct
 {
   Arena *tmp;
   Arena *cgltf_arena;
+
+  BREAD_Builder bb;
 
   BAKER_TexState tex;
 } BAKER_State;
