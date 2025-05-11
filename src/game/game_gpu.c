@@ -753,25 +753,27 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
       if (!gpu_bundle->element_count)
         continue;
 
-      // bind vertex buffer
+      // Bind vertex buffer
       SDL_BindGPUVertexBuffers(pass, 0, &(SDL_GPUBufferBinding){.buffer = gpu_bundle->buffer->handle}, 1);
 
-      Asset *tex_asset = AST_GetTexture(tex_index);
-      APP.gpu.world_uniform.tex_loaded_t = tex_asset->loaded_t;
-      GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+      ASSET_Texture *tex = ASSET_GetTexture(tex_index);
 
-      // bind fragment color texture sampler
+      // Update uniform
+      if (!is_depth_prepass)
+      {
+        APP.gpu.world_uniform.tex_loaded_t = tex->b.loaded_t;
+        APP.gpu.world_uniform.tex_shininess = tex->shininess;
+        GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+      }
+
+      // Bind fragment color texture sampler
       SDL_GPUTextureSamplerBinding binding_sampl =
       {
-        .texture = tex_asset->Tex.handle,
+        .texture = tex->handle,
         .sampler = APP.gpu.mesh_tex_sampler,
       };
       SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
 
-      if (!is_depth_prepass)
-        APP.gpu.world_uniform.tex_shininess = tex_asset->Tex.shininess;
-
-      GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
       SDL_DrawGPUPrimitives(pass, gpu_bundle->element_count, 1, 0, 0);
     }
   }
@@ -789,8 +791,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
 
   ForU32(model_type, MODEL_COUNT)
   {
-    Asset *model = AST_GetModel(model_type);
-    if (model->Model.is_skinned)
+    ASSET_Model *model = ASSET_GetModel(model_type);
+    if (model->is_skinned)
       continue;
 
     GPU_MemoryBundle *gpu_bundle =
@@ -805,9 +807,9 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
 
     GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
-    ForU32(geo_index, model->Model.geos_count)
+    ForU32(geo_index, model->geos_count)
     {
-      ASSET_Geometry *geo = model->Model.geos + geo_index;
+      ASSET_Geometry *geo = model->geos + geo_index;
       SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
                                    geo->indices_start_index, geo->vertices_start_index, 0);
     }
@@ -826,8 +828,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
 
   ForU32(model_type, MODEL_COUNT)
   {
-    Asset *model = AST_GetModel(model_type);
-    if (!model->Model.is_skinned)
+    ASSET_Model *model = ASSET_GetModel(model_type);
+    if (!model->is_skinned)
       continue;
 
     GPU_MemoryBundle *gpu_bundle =
@@ -846,9 +848,9 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
 
     GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
-    ForU32(geo_index, model->Model.geos_count)
+    ForU32(geo_index, model->geos_count)
     {
-      ASSET_Geometry *geo = model->Model.geos + geo_index;
+      ASSET_Geometry *geo = model->geos + geo_index;
       SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
                                    geo->indices_start_index, geo->vertices_start_index, 0);
     }

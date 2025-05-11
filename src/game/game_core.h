@@ -67,7 +67,7 @@ struct AppState
   bool headless; // no window mode
   GPU_State gpu;
   FONT_State font;
-  AST_State ast;
+  ASSET_State ast;
 
   Arena *tmp;
   Arena *a_frame;

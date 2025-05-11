@@ -280,7 +280,7 @@ static void SERIAL_AssetSettings(bool is_load)
 
   SERIAL_Item items[] =
   {
-#define SERIAL_DEF_TEXTURES(a) SERIAL_DEF(APP.ast.tex_assets, [TEX_##a].Tex.shininess, float),
+#define SERIAL_DEF_TEXTURES(a) SERIAL_DEF(APP.ast.textures, [TEX_##a].shininess, float),
     TEX_LIST(SERIAL_DEF_TEXTURES)
   };
 

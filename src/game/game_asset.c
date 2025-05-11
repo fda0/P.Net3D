@@ -1,38 +1,38 @@
 //
 // Texture
 //
-static Asset *AST_GetTexture(TEX_Kind tex_kind)
+static ASSET_Texture *ASSET_GetTexture(TEX_Kind tex_kind)
 {
   Assert(tex_kind < TEX_COUNT);
 
-  Asset *result = APP.ast.tex_assets + tex_kind;
-  result->last_touched_frame = APP.frame_id;
+  ASSET_Texture *result = APP.ast.textures + tex_kind;
+  result->b.last_touched_frame = APP.frame_id;
 
-  if (!result->loaded)
+  if (!result->b.loaded)
     APP.ast.tex_load_needed = true;
 
   return result;
 }
 
-static void AST_PrefetchTexture(TEX_Kind tex_kind)
+static void ASSET_PrefetchTexture(TEX_Kind tex_kind)
 {
-  AST_GetTexture(tex_kind);
+  ASSET_GetTexture(tex_kind);
 }
 
-static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
+static void ASSET_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
 {
   Assert(tex_kind < TEX_COUNT);
-  Asset *asset = APP.ast.tex_assets + tex_kind;
+  ASSET_Texture *asset = APP.ast.textures + tex_kind;
 
-  if (asset->loaded || asset->last_touched_frame < min_frame)
+  if (asset->b.loaded || asset->b.last_touched_frame < min_frame)
     return;
 
-  AST_BreadFile *br = &APP.ast.bread;
+  ASSET_BreadFile *br = &APP.ast.bread;
 
   if (tex_kind >= br->materials_count)
   {
-    asset->error = true;
-    asset->loaded = true;
+    asset->b.error = true;
+    asset->b.loaded = true;
     return;
   }
 
@@ -132,11 +132,11 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
     SDL_ReleaseGPUTransferBuffer(APP.gpu.device, transfer);
   }
 
-  asset->Tex.handle = texture;
-  asset->loaded = true;
+  asset->handle = texture;
+  asset->b.loaded = true;
 }
 
-static int SDLCALL AST_TextureThread(void *data)
+static int SDLCALL ASSET_TextureThread(void *data)
 {
   (void)data;
 
@@ -148,7 +148,7 @@ static int SDLCALL AST_TextureThread(void *data)
     else                           min_frame = 0;
 
     ForU32(tex_kind, TEX_COUNT)
-      AST_LoadTextureFromBreadFile(tex_kind, min_frame);
+      ASSET_LoadTextureFromBreadFile(tex_kind, min_frame);
 
     SDL_WaitSemaphore(APP.ast.tex_sem);
     if (APP.in_shutdown)
@@ -156,27 +156,25 @@ static int SDLCALL AST_TextureThread(void *data)
   }
 }
 
-static void AST_InitTextureThread()
+static void ASSET_InitTextureThread()
 {
   APP.ast.tex_sem = SDL_CreateSemaphore(0);
-  SDL_Thread *asset_tex_thread = SDL_CreateThread(AST_TextureThread, "Tex asset load thread", 0);
+  SDL_Thread *asset_tex_thread = SDL_CreateThread(ASSET_TextureThread, "Tex asset load thread", 0);
   SDL_DetachThread(asset_tex_thread);
 }
 
 //
 // Skeleton
 //
-static Asset *AST_GetSkeleton(U32 skel_index)
+static ASSET_Skeleton *ASSET_GetSkeleton(U32 skel_index)
 {
   Assert(skel_index < APP.ast.skeletons_count);
-  Asset *asset = APP.ast.skeletons + skel_index;
-  asset->last_touched_frame = APP.frame_id;
-  return asset;
+  return APP.ast.skeletons + skel_index;
 }
 
-static void AST_LoadSkeletons()
+static void ASSET_LoadSkeletons()
 {
-  AST_BreadFile *br = &APP.ast.bread;
+  ASSET_BreadFile *br = &APP.ast.bread;
 
   U32 br_skeletons_count = br->links->skeletons.count;
   BREAD_Skeleton *br_skeletons = BREAD_ListAsType(br->links->skeletons, BREAD_Skeleton);
@@ -187,12 +185,9 @@ static void AST_LoadSkeletons()
   ForU32(skeleton_index, skeletons_count)
   {
     BREAD_Skeleton *br_skel = br_skeletons + skeleton_index;
-    Asset *ast_skel = APP.ast.skeletons + skeleton_index;
-    ast_skel->loaded = true;
-    ast_skel->loaded_t = 1.f;
-    ast_skel->Skel.root_transform = br_skel->root_transform;
+    ASSET_Skeleton *skel = APP.ast.skeletons + skeleton_index;
+    skel->root_transform = br_skel->root_transform;
 
-    AN_Skeleton *skel = &ast_skel->Skel;
     skel->joints_count = br_skel->inv_bind_mats.count;
     Assert(skel->joints_count == br_skel->inv_bind_mats.count);
     Assert(skel->joints_count == br_skel->child_index_buf.count);
@@ -217,11 +212,11 @@ static void AST_LoadSkeletons()
     // Animations
     skel->anims_count = br_skel->anims.count;
     BREAD_Animation *br_anims = BREAD_ListAsType(br_skel->anims, BREAD_Animation);
-    skel->anims = Alloc(br->arena, AN_Animation, skel->anims_count);
+    skel->anims = Alloc(br->arena, ASSET_Animation, skel->anims_count);
 
     ForU32(anim_index, skel->anims_count)
     {
-      AN_Animation *anim = skel->anims + anim_index;
+      ASSET_Animation *anim = skel->anims + anim_index;
       BREAD_Animation *br_anim = br_anims + anim_index;
 
       anim->name_s8 = S8_Make(BREAD_ListAsType(br_anim->name, U8), br_anim->name.size);
@@ -231,11 +226,11 @@ static void AST_LoadSkeletons()
 
       anim->channels_count = br_anim->channels.count;
       BREAD_AnimationChannel *br_channels = BREAD_ListAsType(br_anim->channels, BREAD_AnimationChannel);
-      anim->channels = Alloc(br->arena, AN_Channel, anim->channels_count);
+      anim->channels = Alloc(br->arena, ASSET_AnimationChannel, anim->channels_count);
 
       ForU32(channel_index, anim->channels_count)
       {
-        AN_Channel *chan = anim->channels + channel_index;
+        ASSET_AnimationChannel *chan = anim->channels + channel_index;
         BREAD_AnimationChannel *br_chan = br_channels + channel_index;
 
         chan->joint_index = br_chan->joint_index;
@@ -255,18 +250,16 @@ static void AST_LoadSkeletons()
 //
 // Geometry
 //
-static Asset *AST_GetModel(MODEL_Type model_type)
+static ASSET_Model *ASSET_GetModel(MODEL_Type model_type)
 {
   // @todo @speed Stream geometry assets in the future.
   Assert(model_type < MODEL_COUNT);
-  Asset *asset = APP.ast.geo_assets + model_type;
-  asset->last_touched_frame = APP.frame_id;
-  return asset;
+  return APP.ast.models + model_type;
 }
 
-static void AST_LoadGeometry()
+static void ASSET_LoadGeometry()
 {
-  AST_BreadFile *br = &APP.ast.bread;
+  ASSET_BreadFile *br = &APP.ast.bread;
 
   APP.ast.rigid_vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
                                             br->links->models.rigid_vertices.size,
@@ -289,20 +282,18 @@ static void AST_LoadGeometry()
   ForU32(model_kind, MODEL_COUNT)
   {
     BREAD_Model *br_model = br->models + model_kind;
-    Asset *asset = APP.ast.geo_assets + model_kind;
-
-    asset->loaded = true;
-    asset->Model.is_skinned = br_model->is_skinned;
-    asset->Model.skeleton_index = br_model->skeleton_index;
-    asset->Model.geos_count = br_model->geometries.count;
-    asset->Model.geos = AllocZeroed(br->arena, ASSET_Geometry, asset->Model.geos_count);
+    ASSET_Model *asset = APP.ast.models + model_kind;
+    asset->is_skinned = br_model->is_skinned;
+    asset->skeleton_index = br_model->skeleton_index;
+    asset->geos_count = br_model->geometries.count;
+    asset->geos = AllocZeroed(br->arena, ASSET_Geometry, asset->geos_count);
 
     BREAD_Geometry *br_geos = BREAD_ListAsType(br_model->geometries, BREAD_Geometry);
 
-    ForU32(geo_index, asset->Model.geos_count)
+    ForU32(geo_index, asset->geos_count)
     {
       BREAD_Geometry *br_geo = br_geos + geo_index;
-      ASSET_Geometry *geo = asset->Model.geos + geo_index;
+      ASSET_Geometry *geo = asset->geos + geo_index;
       geo->vertices_start_index = br_geo->vertices_start_index;
       geo->indices_start_index = br_geo->indices_start_index;
       geo->indices_count = br_geo->indices_count;
@@ -313,7 +304,7 @@ static void AST_LoadGeometry()
 //
 //
 //
-static void AST_PostFrame()
+static void ASSET_PostFrame()
 {
   // Wake up texture asset loading thread
   if (APP.ast.tex_load_needed)
@@ -323,20 +314,20 @@ static void AST_PostFrame()
   }
 
   // Increment loaded_t
-  ForArray(i, APP.ast.tex_assets)
+  ForArray(i, APP.ast.textures)
   {
-    Asset *asset = APP.ast.tex_assets + i;
+    ASSET_Texture *asset = APP.ast.textures + i;
     float speed = 10.f;
-    asset->loaded_t += (float)asset->loaded * APP.dt * speed;
-    asset->loaded_t = Min(1.f, asset->loaded_t);
+    asset->b.loaded_t += (float)asset->b.loaded * APP.dt * speed;
+    asset->b.loaded_t = Min(1.f, asset->b.loaded_t);
   }
 }
 
-static void AST_Init()
+static void ASSET_Init()
 {
   BREAD_LoadFile("data.bread");
-  AST_LoadSkeletons();
-  AST_LoadGeometry();
+  ASSET_LoadSkeletons();
+  ASSET_LoadGeometry();
 
   // Init textures, create fallback texture
   {
@@ -411,21 +402,21 @@ static void AST_Init()
       SDL_SubmitGPUCommandBuffer(cmd);
     }
 
-    ForArray(i, APP.ast.tex_assets)
+    ForArray(i, APP.ast.textures)
     {
-      Asset *asset = APP.ast.tex_assets + i;
-      asset->Tex.handle = APP.ast.tex_fallback;
-      asset->Tex.shininess = 16.f;
+      ASSET_Texture *asset = APP.ast.textures + i;
+      asset->handle = APP.ast.tex_fallback;
+      asset->shininess = 16.f;
     }
   }
 }
 
-static void AST_Deinit()
+static void ASSET_Deinit()
 {
   // textures
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_fallback);
-  ForArray(i, APP.ast.tex_assets)
-    SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.tex_assets[i].Tex.handle);
+  ForArray(i, APP.ast.textures)
+    SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.textures[i].handle);
 
   // geometry
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.rigid_vertices);

@@ -9,7 +9,7 @@ static S8 BREAD_File()
 
 static void BREAD_LoadFile(const char *bread_file_path)
 {
-  AST_BreadFile *br = &APP.ast.bread;
+  ASSET_BreadFile *br = &APP.ast.bread;
   br->file = OS_LoadFileLeakMemory(bread_file_path);
   Assert(br->file.size); // @todo Handle lack of file gracefully in the future
 

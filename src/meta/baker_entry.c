@@ -10,7 +10,6 @@
 // Headers shared across baker and game
 #include "bread_file_format.h"
 #include "game_render.h"
-#include "game_animation.h"
 #include "game_asset_definitions.h"
 #include "game_type_info.h"
 

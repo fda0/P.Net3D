@@ -7,29 +7,70 @@ typedef struct
 
 typedef struct
 {
+  bool is_skinned;
+  U32 skeleton_index;
+  ASSET_Geometry *geos;
+  U32 geos_count;
+} ASSET_Model;
+
+typedef struct
+{
+  U32 joint_index : 30;
+  U32 type : 2; // BREAD_TransformType
+  U32 count;
+  float *inputs; // 1 * count
+  float *outputs; // (type == Rotation ? 4 : 3) * count
+  // add interpolation type? assume linear for now
+} ASSET_AnimationChannel;
+
+typedef struct
+{
+  char *name; // @todo delete
+  S8 name_s8;
+  float t_min, t_max;
+  ASSET_AnimationChannel *channels;
+  U32 channels_count;
+} ASSET_Animation;
+
+typedef struct
+{
+  Mat4 root_transform;
+
+  // --- animations ---
+  ASSET_Animation *anims;
+  U32 anims_count;
+
+  // --- joints section ---
+  // all pointers point to arrays with
+  // joints_count number of elements
+  U32 joints_count;
+  const char **names; // @todo delete
+  S8 *names_s8;
+  Mat4 *inv_bind_mats;
+  //
+  U32 *child_index_buf;
+  RngU32 *child_index_ranges;
+  // rest pose translations, rotations, scales
+  V3 *translations;
+  Quat *rotations;
+  V3 *scales;
+} ASSET_Skeleton;
+
+typedef struct
+{
   U64 last_touched_frame;
+  float loaded_t;
   U32 error : 1;
   U32 loaded : 1;
-  float loaded_t;
-  union
-  {
-    struct
-    {
-      SDL_GPUTexture *handle;
-      float shininess;
-    } Tex;
+} ASSET_Base;
 
-    struct
-    {
-      bool is_skinned;
-      U32 skeleton_index;
-      ASSET_Geometry *geos;
-      U32 geos_count;
-    } Model;
+typedef struct
+{
+  ASSET_Base b;
 
-    AN_Skeleton Skel;
-  };
-} Asset;
+  SDL_GPUTexture *handle;
+  float shininess;
+} ASSET_Texture;
 
 typedef struct
 {
@@ -43,31 +84,31 @@ typedef struct
 
   BREAD_Material *materials;
   U32 materials_count;
-} AST_BreadFile;
+} ASSET_BreadFile;
 
 typedef struct
 {
-  AST_BreadFile bread;
+  ASSET_BreadFile bread;
 
   // Texture
   SDL_GPUTexture *tex_fallback;
-  Asset tex_assets[TEX_COUNT];
+  ASSET_Texture textures[TEX_COUNT];
   // Texture thread
   bool tex_load_needed;
   SDL_Semaphore *tex_sem;
 
   // Skeleton
-  Asset skeletons[MODEL_COUNT];
+  ASSET_Skeleton skeletons[MODEL_COUNT];
   U32 skeletons_count;
 
   // Geometry
   SDL_GPUBuffer *rigid_vertices;
   SDL_GPUBuffer *skinned_vertices;
   SDL_GPUBuffer *indices;
-  Asset geo_assets[MODEL_COUNT];
+  ASSET_Model models[MODEL_COUNT];
 
   U64 serialize_last_check_timestamp;
   U64 serialize_hash;
-} AST_State;
+} ASSET_State;
 
 static void BREAD_LoadFile(const char *bread_file_path);

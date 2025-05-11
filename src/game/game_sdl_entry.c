@@ -341,7 +341,7 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
   (void)appstate;
 
   SDLNet_Quit();
-  AST_Deinit();
+  ASSET_Deinit();
   GPU_Deinit();
 
   SDL_ReleaseWindowFromGPUDevice(APP.gpu.device, APP.window);

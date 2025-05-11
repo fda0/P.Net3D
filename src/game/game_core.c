@@ -50,9 +50,9 @@ static void Game_AnimateObjects()
         obj->l.animation_t += dist * 0.015f;
       }
 
-      Asset *model = AST_GetModel(obj->s.model);
-      Asset *skel = AST_GetSkeleton(model->Model.skeleton_index);
-      obj->l.animation_t = AN_WrapAnimationTime(&skel->Skel, obj->s.animation_index, obj->l.animation_t);
+      ASSET_Model *model = ASSET_GetModel(obj->s.model);
+      ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
+      obj->l.animation_t = ANIM_WrapAnimationTime(skel, obj->s.animation_index, obj->l.animation_t);
     }
   }
 }
@@ -471,7 +471,7 @@ static void Game_Iterate()
 
     GPU_Iterate();
     GPU_PostFrameClear();
-    AST_PostFrame();
+    ASSET_PostFrame();
   }
 
   // Serializations
@@ -509,11 +509,11 @@ static void Game_Init()
   if (!APP.headless)
   {
     GPU_Init();
-    AST_Init();
+    ASSET_Init();
     SERIAL_AssetSettings(true);
 
     FONT_Init();
-    AST_InitTextureThread();
+    ASSET_InitTextureThread();
     UI_Init();
   }
 
