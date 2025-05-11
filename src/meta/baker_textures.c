@@ -36,9 +36,10 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
     {S8Lit("Color.jpg")},
     {S8Lit("NormalGL.jpg")},
     {S8Lit("Roughness.jpg")},
-    {S8Lit("Displacement.jpg")},
+    //{S8Lit("Displacement.jpg")},
   };
 
+  bool load_errors = false;
   ForArray(file_index, files)
   {
     BK_MaterialFile *file = files + file_index;
@@ -53,7 +54,22 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
 
     const char *path = Pr_AsCstr(&p);
     file->surfs[0] = IMG_Load(path);
-    M_Check(file->surfs[0]);
+    if (!file->surfs[0])
+    {
+      M_LOG(M_TEXWarning, "Failed to open texture file %s", path);
+      load_errors = true;
+      break;
+    }
+  }
+  
+  if (load_errors)
+  {
+    ForArray(file_index, files)
+    {
+      BK_MaterialFile *file = files + file_index;
+      if (file->surfs[0]) SDL_DestroySurface(file->surfs[0]);
+    }
+    return;
   }
 
   // Check that all files have the same dimensions

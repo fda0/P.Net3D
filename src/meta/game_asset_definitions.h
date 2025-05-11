@@ -8,7 +8,10 @@ X(Ground078) \
 X(Leather011) \
 X(PavingStones067) \
 X(Tiles101) \
-X(TestPBR001)
+X(TestPBR001) \
+X(Tree0Bark) \
+X(Tree0eaves) \
+X(Tree0Material)
 
 //
 // Textures

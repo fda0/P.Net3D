@@ -13,6 +13,7 @@ enum M_LogType
   M_Err         = (1 << 1),
   M_GLTFWarning = (1 << 3),
   M_GLTFDebug   = (1 << 4),
+  M_TEXWarning  = (1 << 5),
 };
 
 static struct
