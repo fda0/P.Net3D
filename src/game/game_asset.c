@@ -29,8 +29,14 @@ static void AST_LoadTextureFromBreadFile(TEX_Kind tex_kind, U64 min_frame)
 
   AST_BreadFile *br = &APP.ast.bread;
 
+  if (tex_kind >= br->materials_count)
+  {
+    asset->error = true;
+    asset->loaded = true;
+    return;
+  }
+
   // Material from .bread - it contains a big buffer that needs to uploaded to GPU
-  Assert(tex_kind < (I32)br->materials_count);
   BREAD_Material *br_material = br->materials + tex_kind;
   S8 gpu_full_data = BREAD_ListToS8(br_material->full_data);
 

@@ -161,7 +161,7 @@ static void BOB_Init(I32 args_count, char **args)
   BOB_CompInherit(&BOB.all, &BOB.justgame);
 }
 
-static int BOB_Run(const char *command)
+static I32 BOB_Run(const char *command)
 {
   if (BOB.show_input)
     fprintf(BOB_out, "[BOB] RUNNING: %s\n", command);
@@ -255,7 +255,7 @@ static int BOB_Run(const char *command)
 
   return exit_code;
 }
-static int BOB_RunPrinter(Printer *p)
+static I32 BOB_RunPrinter(Printer *p)
 {
   const char *command = Pr_AsCstr(p);
   if (p->err)
@@ -264,6 +264,18 @@ static int BOB_RunPrinter(Printer *p)
     exit(1);
   }
   return BOB_Run(command);
+}
+
+static I32 BOB_RunIcon(BOB_Compilation comp, const char *icon_name)
+{
+  BOB_PrinterOnStack(cmd);
+  Pr_Cstr(&cmd, comp.compiler == BOB_CC_CLANG ? "llvm-rc" : "rc");
+  Pr_Cstr(&cmd, " /nologo /fo ");
+  Pr_Cstr(&cmd, icon_name);
+  Pr_Cstr(&cmd, ".res ../res/ico/");
+  Pr_Cstr(&cmd, icon_name);
+  Pr_Cstr(&cmd, ".rc");
+  return BOB_RunPrinter(&cmd);
 }
 
 static void BOB_CheckError(I32 error_code)

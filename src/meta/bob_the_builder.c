@@ -144,13 +144,17 @@ int main(I32 args_count, char **args)
 
     if (!is_cached || !BOB_FileExists("data.bread"))
     {
+      I32 r = BOB_RunIcon(comp, "sandwich");
+      BOB_CheckError(r);
+
       BOB_PrinterOnStack(cmd);
       BOB_BuildCommand(&cmd, (BOB_BuildConfig){.inputs = "../src/meta/baker_entry.c ../libs/bc7enc.c",
+                                               .link_inputs = "sandwich.res",
                                                .output = "baker.exe",
                                                .comp = comp,
                                                .sdl3 = true,
                                                .sdl3_image = true});
-      I32 r = BOB_RunPrinter(&cmd);
+      r = BOB_RunPrinter(&cmd);
       BOB_CheckError(r);
 
       if (run_baker)
@@ -170,16 +174,13 @@ int main(I32 args_count, char **args)
     BOB_MarkSection("P", comp, (BOB_SectionConfig){.is_compilation = true});
 
     // Produce icon file
-    BOB_PrinterOnStack(cmd);
-    Pr_Cstr(&cmd, comp.compiler == BOB_CC_CLANG ? "llvm-rc" : "rc");
-    Pr_Cstr(&cmd, " /nologo /fo icon.res ../res/ico/icon.rc");
-    I32 r = BOB_RunPrinter(&cmd);
+    I32 r = BOB_RunIcon(comp, "coin");
     BOB_CheckError(r);
 
     // Compile game
-    Pr_Reset(&cmd);
+    BOB_PrinterOnStack(cmd);
     BOB_BuildCommand(&cmd, (BOB_BuildConfig){.inputs = "../src/game/game_sdl_entry.c",
-                                             .link_inputs = "icon.res",
+                                             .link_inputs = "coin.res",
                                              .output = "p.exe",
                                              .comp = comp,
                                              .gui = true,
