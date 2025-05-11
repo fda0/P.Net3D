@@ -325,7 +325,7 @@ static void GPU_Init()
           .instance_step_rate = 0,
         },
       },
-      .num_vertex_attributes = 3,
+      .num_vertex_attributes = 2,
       .vertex_attributes = (SDL_GPUVertexAttribute[])
       {
         {
@@ -337,11 +337,6 @@ static void GPU_Init()
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
           .location = 1,
           .offset = offsetof(WORLD_VertexRigid, p),
-        },
-        {
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
-          .location = 2,
-          .offset = offsetof(WORLD_VertexRigid, color),
         },
       },
     };
@@ -411,7 +406,7 @@ static void GPU_Init()
           .instance_step_rate = 0,
         },
       },
-      .num_vertex_attributes = 5,
+      .num_vertex_attributes = 4,
       .vertex_attributes = (SDL_GPUVertexAttribute[])
       {
         {
@@ -427,16 +422,11 @@ static void GPU_Init()
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
           .location = 2,
-          .offset = offsetof(WORLD_VertexSkinned, color),
-        },
-        {
-          .format = SDL_GPU_VERTEXELEMENTFORMAT_UINT,
-          .location = 3,
           .offset = offsetof(WORLD_VertexSkinned, joints_packed4),
         },
         {
           .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4,
-          .location = 4,
+          .location = 3,
           .offset = offsetof(WORLD_VertexSkinned, weights),
         },
       },
@@ -800,11 +790,13 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     SDL_GPUBuffer *storage_bufs[1] = { gpu_bundle->buffer->handle };
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
-    GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
-
     ForU32(geo_index, model->geos_count)
     {
       ASSET_Geometry *geo = model->geos + geo_index;
+
+      APP.gpu.world_uniform.color = geo->color;
+      GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+
       SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
                                    geo->indices_start_index, geo->vertices_start_index, 0);
     }
@@ -841,11 +833,13 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     };
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
-    GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
-
     ForU32(geo_index, model->geos_count)
     {
       ASSET_Geometry *geo = model->geos + geo_index;
+
+      APP.gpu.world_uniform.color = geo->color;
+      GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+
       SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
                                    geo->indices_start_index, geo->vertices_start_index, 0);
     }

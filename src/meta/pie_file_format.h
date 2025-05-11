@@ -54,11 +54,8 @@ typedef struct
 
 typedef struct
 {
-  U8 is_init_vertices : 1;
-  U8 is_init_indices : 1;
-  U8 uses_texture : 1;
-
-  U32 texture_index;
+  //U8 uses_texture : 1;
+  //U32 texture_index;
   U32 color;
 
   U32 vertices_start_index;

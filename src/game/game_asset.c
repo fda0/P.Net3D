@@ -294,6 +294,7 @@ static void ASSET_LoadGeometry()
     {
       PIE_Geometry *br_geo = br_geos + geo_index;
       ASSET_Geometry *geo = asset->geos + geo_index;
+      geo->color = br_geo->color;
       geo->vertices_start_index = br_geo->vertices_start_index;
       geo->indices_start_index = br_geo->indices_start_index;
       geo->indices_count = br_geo->indices_count;

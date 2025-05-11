@@ -1,5 +1,7 @@
 typedef struct
 {
+  U32 color;
+
   U32 vertices_start_index;
   U32 indices_start_index;
   U32 indices_count;

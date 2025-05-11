@@ -38,6 +38,7 @@ struct WORLD_DX_Uniform
   V3 towards_sun_dir;
   float tex_loaded_t;
   float tex_shininess;
+  U32 color; // used for pipelines without texture
 };
 
 cbuffer VertexUniformBuf : register(b0, space1) { WORLD_DX_Uniform UniV; };
@@ -48,14 +49,9 @@ struct WORLD_DX_Vertex
   V3 normal : TEXCOORD0;
   V3 position : TEXCOORD1;
 
-#if IS_RIGID
-  U32 color : TEXCOORD2;
-#endif
-
 #if IS_SKINNED
-  U32 color          : TEXCOORD2;
-  U32 joints_packed4 : TEXCOORD3;
-  V4  weights        : TEXCOORD4;
+  U32 joints_packed4 : TEXCOORD2;
+  V4  weights        : TEXCOORD3;
 #endif
 
 #if IS_TEXTURED
@@ -98,14 +94,13 @@ StructuredBuffer<Mat4> PoseBuf : register(t1);
 WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
 {
 #if HAS_COLOR
-  V4 input_color = UnpackColor32(input.color);
-  V4 color = input_color;
+  V4 color = UnpackColor32(UniV.color);
 
 #if HAS_INSTANCE_BUFFER
   WORLD_DX_Instance instance = InstanceBuf[input.instance_index];
   V4 instance_color = UnpackColor32(instance.color);
 
-  if (input.color == 0xff014b74) // @todo obviously temporary
+  if (UniV.color == 0xff014b74) // @todo obviously temporary
     color = instance_color;
 #endif // HAS_INSTANCE_BUFFER
 #endif // HAS_COLOR

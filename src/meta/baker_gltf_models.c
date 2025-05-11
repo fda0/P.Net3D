@@ -318,6 +318,7 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
     BK_GLTF_Geometry *bk_geo = bk_model->geos + geo_index;
     PIE_Geometry *pie_geo = pie_geometries + geo_index;
 
+    pie_geo->color = bk_geo->color;
     pie_geo->vertices_start_index = vert_printer->used / vert_size;
 
     // vertices
