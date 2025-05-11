@@ -10,6 +10,7 @@ typedef struct
   _Alignas(16) V3 towards_sun_dir;
   float tex_loaded_t;
   float tex_shininess;
+  U32 color; // used for pipelines without texture
 } WORLD_Uniform;
 
 // Vertices
@@ -17,14 +18,12 @@ typedef struct
 {
   V3 normal;
   V3 p;
-  U32 color;
 } WORLD_VertexRigid;
 
 typedef struct
 {
   V3 normal;
   V3 p;
-  U32 color;
   U32 joints_packed4;
   V4 weights;
 } WORLD_VertexSkinned;

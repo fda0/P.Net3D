@@ -13,20 +13,25 @@ static void M_FakeFree(void *user_data, void *ptr)
 
 static U64 BK_GLTF_FindJointIndex(cgltf_skin *skin, cgltf_node *find_node)
 {
-  U64 result = skin->joints_count;
   ForU64(joint_index, skin->joints_count)
-  {
     if (find_node == skin->joints[joint_index])
-    {
-      result = joint_index;
-      break;
-    }
-  }
-  return result;
+      return joint_index;
+
+  M_Check(false && "Joint index not found");
+  return skin->joints_count;
 }
 
+static U32 BK_GLTF_FindMaterialIndex(cgltf_data *data, cgltf_material *find_material)
+{
+  ForU32(material_index, (U32)data->materials_count)
+    if (find_material == data->materials + material_index)
+    return material_index;
 
-static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_ModelData *model, cgltf_data *data)
+  M_Check(false && "Material index not found");
+  return (U32)data->materials_count;
+}
+
+static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, cgltf_data *data)
 {
   if (model->has_skeleton)
     return;
@@ -297,86 +302,115 @@ static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
   return numbers;
 }
 
-static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_ModelData *model)
+static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
 {
-  PIE_AddModel(bb, model->type, model->is_skinned, 1); // @todo update hardcoded 1 in the future!
+  bool is_skinned = bk_model->is_skinned;
 
-  // vertices
-  ForU64(vert_i, model->verts_count)
+  Printer *vert_printer = is_skinned ? &bb->skinned_vertices : &bb->rigid_vertices;
+  U64 vert_align = is_skinned ? _Alignof(WORLD_VertexSkinned) : _Alignof(WORLD_VertexRigid);
+  U64 vert_size = is_skinned ? sizeof(WORLD_VertexSkinned) : sizeof(WORLD_VertexRigid);
+
+  PIE_Model *pie_model = bb->models + bk_model->type;
+  PIE_Geometry *pie_geometries = PIE_ListReserve(&bb->file, &pie_model->geometries, PIE_Geometry, bk_model->geos_count);
+
+  ForU32(geo_index, bk_model->geos_count)
   {
-    V3 normal =
-    {
-      *BK_BufferAtFloat(&model->normals, vert_i*3 + 0),
-      *BK_BufferAtFloat(&model->normals, vert_i*3 + 1),
-      *BK_BufferAtFloat(&model->normals, vert_i*3 + 2),
-    };
-    float normal_lensq = V3_LengthSq(normal);
-    if (normal_lensq < 0.001f)
-    {
-      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Found normal equal to zero");
-      normal = (V3){0,0,1};
-    }
-    else if (normal_lensq < 0.9f || normal_lensq > 1.1f)
-    {
-      M_LOG(M_LogGltfWarning, "[GLTF LOADER] Normal wasn't normalized");
-      normal = V3_Scale(normal, FInvSqrt(normal_lensq));
-    }
+    BK_GLTF_Geometry *bk_geo = bk_model->geos + geo_index;
+    PIE_Geometry *pie_geo = pie_geometries + geo_index;
 
-    V3 pos = {};
-    pos.x = *BK_BufferAtFloat(&model->positions, vert_i*3 + 0);
-    pos.y = *BK_BufferAtFloat(&model->positions, vert_i*3 + 1);
-    pos.z = *BK_BufferAtFloat(&model->positions, vert_i*3 + 2);
+    pie_geo->vertices_start_index = vert_printer->used / vert_size;
 
-    U32 color = *BK_BufferAtU32(&model->colors, vert_i);
-
-    if (!model->is_skinned) // it's rigid
+    // vertices
+    ForU64(vert_i, bk_geo->verts_count)
     {
-      WORLD_VertexRigid rigid = {};
-      rigid.normal = normal;
-      rigid.p = pos;
-      rigid.color = color;
-      *PIE_AddModelRigidVertex(bb) = rigid;
-    }
-    else // it's skinned
-    {
-      U32 joint_indices[4] =
+      V3 normal =
       {
-        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 0),
-        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 1),
-        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 2),
-        *BK_BufferAtU8(&model->joint_indices, vert_i*4 + 3),
+        *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 0),
+        *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 1),
+        *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 2),
       };
-      ForArray(i, joint_indices)
+      float normal_lensq = V3_LengthSq(normal);
+      if (normal_lensq < 0.001f)
       {
-        if (joint_indices[i] >= model->joints_count)
-          M_LOG(M_LogGltfWarning, "[GLTF LOADER] Joint index overflow. %u >= %u",
-                joint_indices[i], model->joints_count);
+        M_LOG(M_GLTFWarning, "[GLTF LOADER] Found normal equal to zero");
+        normal = (V3){0,0,1};
       }
-      U32 joints_packed4 = (joint_indices[0] |
-                            (joint_indices[1] << 8) |
-                            (joint_indices[2] << 16) |
-                            (joint_indices[3] << 24));
+      else if (normal_lensq < 0.9f || normal_lensq > 1.1f)
+      {
+        M_LOG(M_GLTFWarning, "[GLTF LOADER] Normal wasn't normalized");
+        normal = V3_Scale(normal, FInvSqrt(normal_lensq));
+      }
 
-      V4 weights = {};
-      weights.x = *BK_BufferAtFloat(&model->weights, vert_i*4 + 0);
-      weights.y = *BK_BufferAtFloat(&model->weights, vert_i*4 + 1);
-      weights.z = *BK_BufferAtFloat(&model->weights, vert_i*4 + 2);
-      weights.w = *BK_BufferAtFloat(&model->weights, vert_i*4 + 3);
-      float weight_sum = weights.x + weights.y + weights.z + weights.w;
-      if (weight_sum < 0.9f || weight_sum > 1.1f)
-        M_LOG(M_LogGltfWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
+      V3 pos = {};
+      pos.x = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 0);
+      pos.y = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 1);
+      pos.z = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 2);
 
-      WORLD_VertexSkinned skinned = {};
-      skinned.normal = normal;
-      skinned.p = pos;
-      skinned.color = color;
-      skinned.joints_packed4 = joints_packed4;
-      skinned.weights = weights;
-      *PIE_AddModelSkinnedVertex(bb) = skinned;
+      if (!is_skinned) // it's rigid
+      {
+        WORLD_VertexRigid rigid = {};
+        rigid.normal = normal;
+        rigid.p = pos;
+
+        WORLD_VertexRigid *dst = PIE_ReserveBytes(vert_printer, vert_size, vert_align);
+        Memclear(dst, vert_size);
+        *dst = rigid;
+      }
+      else // it's skinned
+      {
+        U32 joint_indices[4] =
+        {
+          *BK_BufferAtU8(&bk_geo->joint_indices, vert_i*4 + 0),
+          *BK_BufferAtU8(&bk_geo->joint_indices, vert_i*4 + 1),
+          *BK_BufferAtU8(&bk_geo->joint_indices, vert_i*4 + 2),
+          *BK_BufferAtU8(&bk_geo->joint_indices, vert_i*4 + 3),
+        };
+        ForArray(i, joint_indices)
+        {
+          if (joint_indices[i] >= bk_model->joints_count)
+          {
+            M_LOG(M_GLTFWarning,
+                  "[GLTF LOADER] Joint index overflow. %u >= %u",
+                  joint_indices[i], bk_model->joints_count);
+          }
+        }
+        U32 joints_packed4 = (joint_indices[0] |
+                              (joint_indices[1] << 8) |
+                              (joint_indices[2] << 16) |
+                              (joint_indices[3] << 24));
+
+        V4 weights = {};
+        weights.x = *BK_BufferAtFloat(&bk_geo->weights, vert_i*4 + 0);
+        weights.y = *BK_BufferAtFloat(&bk_geo->weights, vert_i*4 + 1);
+        weights.z = *BK_BufferAtFloat(&bk_geo->weights, vert_i*4 + 2);
+        weights.w = *BK_BufferAtFloat(&bk_geo->weights, vert_i*4 + 3);
+        float weight_sum = weights.x + weights.y + weights.z + weights.w;
+        if (weight_sum < 0.9f || weight_sum > 1.1f)
+          M_LOG(M_GLTFWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
+
+        WORLD_VertexSkinned skinned = {};
+        skinned.normal = normal;
+        skinned.p = pos;
+        skinned.joints_packed4 = joints_packed4;
+        skinned.weights = weights;
+
+        WORLD_VertexSkinned *dst = PIE_ReserveBytes(vert_printer, vert_size, vert_align);
+        Memclear(dst, vert_size);
+        *dst = skinned;
+      }
+    }
+
+    // indices
+    {
+      U16 *indices_ptr = bk_geo->indices.vals;
+      U32 indices_count = bk_geo->indices.used;
+
+      pie_geo->indices_start_index = bb->indices.used / sizeof(U16);
+      pie_geo->indices_count += indices_count;
+      U16 *dst = PIE_Reserve(&bb->indices, U16, indices_count);
+      Memcpy(dst, indices_ptr, sizeof(U16)*indices_count);
     }
   }
-
-  PIE_CopyIndices(bb, model->indices.vals, model->indices.used);
 }
 
 static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelConfig config)
@@ -403,21 +437,21 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
   cgltf_result res = cgltf_parse_file(&options, path, &data);
   if (res != cgltf_result_success)
   {
-    M_LOG(M_LogErr, "[GLTF LOADER] Failed to parse %s", path);
+    M_LOG(M_Err, "[GLTF LOADER] Failed to parse %s", path);
     return;
   }
 
   res = cgltf_load_buffers(&options, data, path);
   if (res != cgltf_result_success)
   {
-    M_LOG(M_LogErr, "[GLTF LOADER] Failed to load buffers, %s", path);
+    M_LOG(M_Err, "[GLTF LOADER] Failed to load buffers, %s", path);
     return;
   }
 
   res = cgltf_validate(data);
   if (res != cgltf_result_success)
   {
-    M_LOG(M_LogErr, "[GLTF LOADER] Failed to validate data, %s", path);
+    M_LOG(M_Err, "[GLTF LOADER] Failed to validate data, %s", path);
     return;
   }
 
@@ -428,28 +462,41 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
   U64 max_indices = 1024*256;
   U64 max_verts = 1024*128;
 
-  BK_GLTF_ModelData model = {};
+  BK_GLTF_Model model = {};
   model.config = config;
   model.type = model_type;
-  model.indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
-  model.positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
-  model.normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
-  model.texcoords     = BK_BufferAlloc(scratch.a, max_verts*2, sizeof(float));
-  model.joint_indices = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(U8));
-  model.weights       = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(float));
-  model.colors        = BK_BufferAlloc(scratch.a, max_verts*1, sizeof(U32)); // this doesn't need such a big array actually
+  model.geos_count = (U32)data->materials_count;
+  model.geos = Alloc(scratch.a, BK_GLTF_Geometry, model.geos_count);
+
+  ForU32(geo_index, model.geos_count)
+  {
+    cgltf_material *gltf_material = data->materials + geo_index;
+    BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
+    bk_geo->color = Color32_V4(*(V4 *)gltf_material->pbr_metallic_roughness.base_color_factor);
+
+    bk_geo->indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
+    bk_geo->positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
+    bk_geo->normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
+    bk_geo->texcoords     = BK_BufferAlloc(scratch.a, max_verts*2, sizeof(float));
+    bk_geo->joint_indices = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(U8));
+    bk_geo->weights       = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(float));
+  }
 
   ForU64(mesh_index, data->meshes_count)
   {
-    cgltf_mesh *mesh = data->meshes + mesh_index;
+    cgltf_mesh *gltf_mesh = data->meshes + mesh_index;
 
-    ForU64(primitive_index, mesh->primitives_count)
+    ForU64(primitive_index, gltf_mesh->primitives_count)
     {
-      cgltf_primitive *primitive = mesh->primitives + primitive_index;
+      cgltf_primitive *primitive = gltf_mesh->primitives + primitive_index;
+
+      // Select proper bk_geo based on material
+      U32 geo_index = BK_GLTF_FindMaterialIndex(data, primitive->material);
+      BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
 
       if (primitive->type != cgltf_primitive_type_triangles)
       {
-        M_LOG(M_LogGltfWarning,
+        M_LOG(M_GLTFWarning,
               "[GLTF LOADER] Primitive with non triangle type (%u) skipped",
               primitive->type);
         continue;
@@ -457,11 +504,11 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
 
       M_Check(primitive->indices);
       {
-        U64 index_start_offset = model.positions.used/3;
+        U64 index_start_offset = bk_geo->positions.used/3;
 
         cgltf_accessor *accessor = primitive->indices;
         M_Check(accessor->type == cgltf_type_scalar);
-        U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &model.indices);
+        U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &bk_geo->indices);
 
         if (index_start_offset)
         {
@@ -486,48 +533,48 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
         {
           case cgltf_attribute_type_position:
           {
-            save_buf = &model.positions;
+            save_buf = &bk_geo->positions;
             M_Check(comp_count == 3);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_normal:
           {
-            save_buf = &model.normals;
+            save_buf = &bk_geo->normals;
             M_Check(comp_count == 3);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_tangent:
           {
-            M_LOG(M_LogGltfDebug, "[GLTF LOADER] Attribute with type tangent skipped");
+            M_LOG(M_GLTFDebug, "[GLTF LOADER] Attribute with type tangent skipped");
             continue;
           } break;
 
           case cgltf_attribute_type_texcoord:
           {
-            save_buf = &model.texcoords;
+            save_buf = &bk_geo->texcoords;
             M_Check(comp_count == 2);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_joints:
           {
-            save_buf = &model.joint_indices;
+            save_buf = &bk_geo->joint_indices;
             M_Check(comp_count == 4);
             //M_Check(accessor->component_type == cgltf_component_type_r_8u);
           } break;
 
           case cgltf_attribute_type_weights:
           {
-            save_buf = &model.weights;
+            save_buf = &bk_geo->weights;
             M_Check(comp_count == 4);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           default:
           {
-            M_LOG(M_LogGltfWarning,
+            M_LOG(M_GLTFWarning,
                   "[GLTF LOADER] Attribute with unknown type (%u) skipped",
                   attribute->type);
             continue;
@@ -535,20 +582,6 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
         }
 
         BK_GLTF_UnpackAccessor(accessor, save_buf);
-
-        // @todo this is a temporary hack that saves a color per position
-        if (attribute->type == cgltf_attribute_type_position)
-        {
-          ForU64(vert_i, accessor->count)
-          {
-            cgltf_material* material = primitive->material;
-            V4 material_color = *(V4 *)material->pbr_metallic_roughness.base_color_factor;
-            static_assert(sizeof(material->pbr_metallic_roughness.base_color_factor) == sizeof(material_color));
-
-            U32 *color_value = BK_BufferPushU32(&model.colors, 1);
-            *color_value = Color32_V4(material_color);
-          }
-        }
       }
     }
   }
@@ -560,19 +593,26 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
   model.is_skinned = (data->animations_count > 0);
 
   // Validate buffer counts
-  M_Check(model.positions.used % 3 == 0);
-  model.verts_count = model.positions.used / 3;
+  ForU32(geo_index, model.geos_count)
+  {
+    BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
+    M_Check(bk_geo->positions.used % 3 == 0);
+    bk_geo->verts_count = bk_geo->positions.used / 3;
 
-  M_Check(model.normals.used % 3 == 0);
-  M_Check(model.verts_count == model.normals.used / 3);
+    M_Check(bk_geo->normals.used % 3 == 0);
+    M_Check(bk_geo->verts_count == bk_geo->normals.used / 3);
+
+    if (model.is_skinned)
+    {
+      M_Check(bk_geo->joint_indices.used % 4 == 0);
+      M_Check(bk_geo->verts_count == bk_geo->joint_indices.used / 4);
+      M_Check(bk_geo->weights.used % 4 == 0);
+      M_Check(bk_geo->verts_count == bk_geo->weights.used / 4);
+    }
+  }
 
   if (model.is_skinned)
   {
-    M_Check(model.joint_indices.used % 4 == 0);
-    M_Check(model.verts_count == model.joint_indices.used / 4);
-    M_Check(model.weights.used % 4 == 0);
-    M_Check(model.verts_count == model.weights.used / 4);
-
     // Joints
     M_Check(data->skins_count == 1);
     M_Check(data->skins[0].joints_count <= U32_MAX);
@@ -590,20 +630,24 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
     if (config.scale != 1.f || !Quat_IsIdentity(config.rot) ||
         config.move.x || config.move.y || config.move.z)
     {
-      ForU32(i, model.verts_count)
+      ForU32(geo_index, model.geos_count)
       {
-        V3 *position = (V3*)BK_BufferAtFloat(&model.positions, i*3);
-        V3 p = *position;
-        p = V3_Scale(p, config.scale);
-        p = V3_Rotate(p, config.rot);
-        p = V3_Add(p, config.move);
+        BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
+        ForU32(i, bk_geo->verts_count)
+        {
+          V3 *position = (V3*)BK_BufferAtFloat(&bk_geo->positions, i*3);
+          V3 p = *position;
+          p = V3_Scale(p, config.scale);
+          p = V3_Rotate(p, config.rot);
+          p = V3_Add(p, config.move);
 
-        V3 *normal = (V3*)BK_BufferAtFloat(&model.normals, i*3);
-        V3 n = *normal;
-        n = V3_Rotate(n, config.rot);
+          V3 *normal = (V3*)BK_BufferAtFloat(&bk_geo->normals, i*3);
+          V3 n = *normal;
+          n = V3_Rotate(n, config.rot);
 
-        *position = p;
-        *normal = n;
+          *position = p;
+          *normal = n;
+        }
       }
     }
   }

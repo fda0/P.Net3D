@@ -29,6 +29,7 @@ static void PIE_Aling(Printer *p, U64 alignment)
 //
 static void PIE_ListStart(Printer *printer_owner, PIE_List *list, TYPE_ENUM type)
 {
+  M_Check(!list->type);
   list->type = type;
   list->offset = printer_owner->used;
 }
@@ -104,7 +105,7 @@ static void PIE_FinalizeBuilder()
       PIE_Geometry *geo = geomeries + geo_index;
       if (!geo->indices_count)
       {
-        M_LOG(M_LogGltfWarning, "PIE warning: Model %u (%s) "
+        M_LOG(M_GLTFWarning, "PIE warning: Model %u (%s) "
               "contains uninitialized geometry (%u/%u)",
               (U32)model_index, MODEL_GetCstrName(model_index),
               geo_index, model->geometries.count);
@@ -152,59 +153,4 @@ static void PIE_SaveToFile(const char *file_path)
   M_Check(bb->finalized);
   S8 content = Pr_AsS8(&bb->file);
   M_SaveFile(file_path, content);
-}
-
-//
-// Helpers
-//
-static void PIE_AddModel(PIE_Builder *bb, MODEL_Type model_type, bool is_skinned, U32 geometry_count)
-{
-  M_Check(!bb->finalized);
-  M_Check(model_type < MODEL_COUNT);
-  bb->selected_model = model_type;
-
-  PIE_Model *model = bb->models + bb->selected_model;
-  model->is_skinned = is_skinned;
-
-  M_Check(!model->geometries.type); // Check that model wasn't initialized already
-  bb->geos = PIE_ListReserve(&bb->file, &model->geometries, PIE_Geometry, geometry_count);
-  bb->geos_count = geometry_count;
-  bb->geos_index = 0;
-}
-
-static void *PIE_AddModelVertex(PIE_Builder *bb, bool is_skinned)
-{
-  M_Check(!bb->finalized);
-  Printer *vert_printer = is_skinned ? &bb->skinned_vertices : &bb->rigid_vertices;
-  U64 vert_align = is_skinned ? _Alignof(WORLD_VertexSkinned) : _Alignof(WORLD_VertexRigid);
-  U64 vert_size = is_skinned ? sizeof(WORLD_VertexSkinned) : sizeof(WORLD_VertexRigid);
-
-  PIE_Geometry *geo = bb->geos + bb->geos_index;
-  if (!geo->is_init_vertices) // init vertices offset
-  {
-    geo->is_init_vertices = true;
-    geo->vertices_start_index = vert_printer->used / vert_size;
-  }
-
-  void *result = PIE_ReserveBytes(vert_printer, vert_size, vert_align);
-  Memclear(result, vert_size);
-  return result;
-}
-static WORLD_VertexSkinned *PIE_AddModelSkinnedVertex(PIE_Builder *bb) { return PIE_AddModelVertex(bb, true); }
-static WORLD_VertexRigid   *PIE_AddModelRigidVertex(PIE_Builder *bb)   { return PIE_AddModelVertex(bb, false); }
-
-static void PIE_CopyIndices(PIE_Builder *bb, U16 *src_indices, U32 src_indices_count)
-{
-  M_Check(!bb->finalized);
-  PIE_Geometry *geo = bb->geos + bb->geos_index;
-
-  if (!geo->is_init_indices)
-  {
-    geo->is_init_indices = true;
-    geo->indices_start_index = bb->indices.used / sizeof(U16);
-  }
-  geo->indices_count += src_indices_count;
-
-  U16 *dst = PIE_Reserve(&bb->indices, U16, src_indices_count);
-  Memcpy(dst, src_indices, sizeof(U16)*src_indices_count);
 }

@@ -45,7 +45,7 @@ int main()
   // Init
   BAKER.tmp = Arena_MakeInside(tmp_arena_memory, sizeof(tmp_arena_memory));
   BAKER.cgltf_arena = Arena_MakeInside(cgltf_arena_memory, sizeof(cgltf_arena_memory));
-  M_LogState.reject_filter = M_LogObjDebug | M_LogGltfDebug;
+  M_LogState.reject_filter = M_GLTFDebug;
 
   BK_TEX_Init();
 
@@ -94,6 +94,6 @@ int main()
   PIE_SaveToFile("data.pie");
 
   // exit
-  M_LOG(M_LogIdk, "%s", (M_LogState.error_count > 0 ? "Fail" : "Success"));
+  M_LOG(M_Idk, "%s", (M_LogState.error_count > 0 ? "Fail" : "Success"));
   return M_LogState.error_count;
 }

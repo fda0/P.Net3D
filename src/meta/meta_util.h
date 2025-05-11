@@ -9,11 +9,10 @@
 
 enum M_LogType
 {
-  M_LogIdk         = (1 << 0),
-  M_LogErr         = (1 << 1),
-  M_LogObjDebug    = (1 << 2),
-  M_LogGltfWarning = (1 << 3),
-  M_LogGltfDebug   = (1 << 4),
+  M_Idk         = (1 << 0),
+  M_Err         = (1 << 1),
+  M_GLTFWarning = (1 << 3),
+  M_GLTFDebug   = (1 << 4),
 };
 
 static struct
@@ -24,7 +23,7 @@ static struct
 
 static bool M_LogFlagCheck(I32 flags)
 {
-  if (flags & M_LogErr)
+  if (flags & M_Err)
     M_LogState.error_count += 1;
   return !(M_LogState.reject_filter & flags);
 }
@@ -48,7 +47,7 @@ static S8 M_LoadFile(const char *file_path, bool exit_on_err)
   void *data = SDL_LoadFile(file_path, &size);
   if (exit_on_err && !data)
   {
-    M_LOG(M_LogErr, "Failed to load file %s", file_path);
+    M_LOG(M_Err, "Failed to load file %s", file_path);
     exit(1);
   }
 
@@ -65,7 +64,7 @@ static void M_SaveFile(const char *file_path, S8 data)
   bool success = SDL_SaveFile(file_path, data.str, data.size);
   if (!success)
   {
-    M_LOG(M_LogErr, "Failed to save to file %s", file_path);
+    M_LOG(M_Err, "Failed to save to file %s", file_path);
     exit(1);
   }
 }
