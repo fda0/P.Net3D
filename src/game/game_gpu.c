@@ -789,8 +789,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
 
   ForU32(model_type, MODEL_COUNT)
   {
-    Asset *geo_asset = AST_GetGeometry(model_type);
-    if (geo_asset->Geo.is_skinned)
+    Asset *model = AST_GetModel(model_type);
+    if (model->Model.is_skinned)
       continue;
 
     GPU_MemoryBundle *gpu_bundle =
@@ -804,8 +804,13 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
     GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
-    SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, gpu_bundle->element_count,
-                                 geo_asset->Geo.indices_start_index, geo_asset->Geo.vertices_start_index, 0);
+
+    ForU32(geo_index, model->Model.geos_count)
+    {
+      ASSET_Geometry *geo = model->Model.geos + geo_index;
+      SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
+                                   geo->indices_start_index, geo->vertices_start_index, 0);
+    }
   }
 
   //
@@ -821,8 +826,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
 
   ForU32(model_type, MODEL_COUNT)
   {
-    Asset *geo_asset = AST_GetGeometry(model_type);
-    if (!geo_asset->Geo.is_skinned)
+    Asset *model = AST_GetModel(model_type);
+    if (!model->Model.is_skinned)
       continue;
 
     GPU_MemoryBundle *gpu_bundle =
@@ -840,8 +845,13 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
     GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
-    SDL_DrawGPUIndexedPrimitives(pass, geo_asset->Geo.indices_count, gpu_bundle->element_count,
-                                 geo_asset->Geo.indices_start_index, geo_asset->Geo.vertices_start_index, 0);
+
+    ForU32(geo_index, model->Model.geos_count)
+    {
+      ASSET_Geometry *geo = model->Model.geos + geo_index;
+      SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
+                                   geo->indices_start_index, geo->vertices_start_index, 0);
+    }
   }
 }
 

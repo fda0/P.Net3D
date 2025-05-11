@@ -1,5 +1,12 @@
 typedef struct
 {
+  U32 vertices_start_index;
+  U32 indices_start_index;
+  U32 indices_count;
+} ASSET_Geometry;
+
+typedef struct
+{
   U64 last_touched_frame;
   U32 error : 1;
   U32 loaded : 1;
@@ -15,11 +22,10 @@ typedef struct
     struct
     {
       bool is_skinned;
-      U32 vertices_start_index;
-      U32 indices_start_index;
-      U32 indices_count;
       U32 skeleton_index;
-    } Geo;
+      ASSET_Geometry *geos;
+      U32 geos_count;
+    } Model;
 
     AN_Skeleton Skel;
   };

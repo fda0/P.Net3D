@@ -50,8 +50,8 @@ static void Game_AnimateObjects()
         obj->l.animation_t += dist * 0.015f;
       }
 
-      Asset *geo = AST_GetGeometry(obj->s.model);
-      Asset *skel = AST_GetSkeleton(geo->Geo.skeleton_index);
+      Asset *model = AST_GetModel(obj->s.model);
+      Asset *skel = AST_GetSkeleton(model->Model.skeleton_index);
       obj->l.animation_t = AN_WrapAnimationTime(&skel->Skel, obj->s.animation_index, obj->l.animation_t);
     }
   }

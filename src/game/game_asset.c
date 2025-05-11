@@ -255,7 +255,7 @@ static void AST_LoadSkeletons()
 //
 // Geometry
 //
-static Asset *AST_GetGeometry(MODEL_Type model_type)
+static Asset *AST_GetModel(MODEL_Type model_type)
 {
   // @todo @speed Stream geometry assets in the future.
   Assert(model_type < MODEL_COUNT);
@@ -292,11 +292,21 @@ static void AST_LoadGeometry()
     Asset *asset = APP.ast.geo_assets + model_kind;
 
     asset->loaded = true;
-    asset->Geo.is_skinned = br_model->is_skinned;
-    asset->Geo.vertices_start_index = br_model->vertices_start_index;
-    asset->Geo.indices_start_index = br_model->indices_start_index;
-    asset->Geo.indices_count = br_model->indices_count;
-    asset->Geo.skeleton_index = br_model->skeleton_index;
+    asset->Model.is_skinned = br_model->is_skinned;
+    asset->Model.skeleton_index = br_model->skeleton_index;
+    asset->Model.geos_count = br_model->geometries.count;
+    asset->Model.geos = AllocZeroed(br->arena, ASSET_Geometry, asset->Model.geos_count);
+
+    BREAD_Geometry *br_geos = BREAD_ListAsType(br_model->geometries, BREAD_Geometry);
+
+    ForU32(geo_index, asset->Model.geos_count)
+    {
+      BREAD_Geometry *br_geo = br_geos + geo_index;
+      ASSET_Geometry *geo = asset->Model.geos + geo_index;
+      geo->vertices_start_index = br_geo->vertices_start_index;
+      geo->indices_start_index = br_geo->indices_start_index;
+      geo->indices_count = br_geo->indices_count;
+    }
   }
 }
 

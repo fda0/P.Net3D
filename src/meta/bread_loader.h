@@ -40,4 +40,4 @@ static void *BREAD_ListToPtr(BREAD_List list, TYPE_ENUM type)
   Assert(list.count == 0 || list.type == type); // validation
   return BREAD_ListToS8(list).str;
 }
-#define BREAD_ListAsType(Range, Type) (Type *)BREAD_ListToPtr(Range, TYPE_##Type)
+#define BREAD_ListAsType(List, Type) (Type *)BREAD_ListToPtr(List, TYPE_##Type)
