@@ -92,7 +92,7 @@ struct AppState
 
   // sun
   OBJ_Key sun;
-  V3 towards_sun_dir; // normalized
+  V3 sun_dir; // normalized
   V3 sun_camera_p;
   Mat4 sun_camera_transform;
 

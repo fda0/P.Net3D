@@ -746,8 +746,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
       // Update uniform
       if (!is_depth_prepass)
       {
-        APP.gpu.world_uniform.tex_loaded_t = tex->b.loaded_t;
-        APP.gpu.world_uniform.tex_shininess = tex->shininess;
+        APP.gpu.world_uniform.material_loaded_t = tex->b.loaded_t;
+        APP.gpu.world_uniform.material_shininess = tex->shininess;
         GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
       }
 
@@ -762,6 +762,12 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
       SDL_DrawGPUPrimitives(pass, gpu_bundle->element_count, 1, 0, 0);
     }
   }
+
+  //
+  // Reset some default uniform values
+  //
+  APP.gpu.world_uniform.material_specular = Color32_RGBf(0.05f, 0.02f, 0.02f),
+  APP.gpu.world_uniform.material_shininess = 4.f;
 
   //
   // Draw rigid models
@@ -794,7 +800,7 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     {
       ASSET_Geometry *geo = model->geos + geo_index;
 
-      APP.gpu.world_uniform.color = geo->color;
+      APP.gpu.world_uniform.material_diffuse = geo->color;
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
       SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
@@ -837,7 +843,7 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     {
       ASSET_Geometry *geo = model->geos + geo_index;
 
-      APP.gpu.world_uniform.color = geo->color;
+      APP.gpu.world_uniform.material_diffuse = geo->color;;
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
       SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
@@ -880,8 +886,14 @@ static void GPU_Iterate()
     .camera_transform = APP.sun_camera_transform,
     .shadow_transform = APP.sun_camera_transform,
     .camera_position = APP.camera_p,
-    .background_color = (V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B},
-    .towards_sun_dir = APP.towards_sun_dir,
+    .sun_dir = APP.sun_dir,
+
+    .fog_color = Color32_V3((V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B}),
+    .sky_ambient = Color32_RGBf(0.2f, 0.2f, 0.2f),
+    .sun_diffuse = Color32_RGBf(1.f, 1.f, 1.f),
+    .sun_specular = Color32_RGBf(1.f, 1.f, 1.f),
+    .material_specular = Color32_RGBf(1.f, 1.f, 1.f),
+    .material_shininess = 16.f,
   };
 
   // Sun shadow map render pass

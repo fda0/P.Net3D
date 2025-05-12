@@ -6,11 +6,17 @@ typedef struct
   Mat4 camera_transform;
   Mat4 shadow_transform;
   _Alignas(16) V3 camera_position;
-  _Alignas(16) V3 background_color;
-  _Alignas(16) V3 towards_sun_dir;
-  float tex_loaded_t;
-  float tex_shininess;
-  U32 color; // used for pipelines without texture
+  _Alignas(16) V3 sun_dir;
+
+  U32 fog_color; // RGBA
+  U32 sky_ambient; // RGBA
+  U32 sun_diffuse; // RGBA
+  U32 sun_specular; // RGBA
+
+  U32 material_diffuse; // RGBA
+  U32 material_specular; // RGBA
+  float material_shininess;
+  float material_loaded_t;
 } WORLD_Uniform;
 
 // Vertices

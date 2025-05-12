@@ -477,7 +477,7 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
   {
     cgltf_material *gltf_material = data->materials + geo_index;
     BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
-    
+
     bk_geo->color = Color32_V4(*(V4 *)gltf_material->pbr_metallic_roughness.base_color_factor);
 
     bk_geo->indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));

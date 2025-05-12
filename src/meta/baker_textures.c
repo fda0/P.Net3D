@@ -61,7 +61,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
       break;
     }
   }
-  
+
   if (load_errors)
   {
     ForArray(file_index, files)

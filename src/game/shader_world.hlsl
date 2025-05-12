@@ -34,11 +34,17 @@ struct WORLD_DX_Uniform
   Mat4 camera_transform;
   Mat4 shadow_transform;
   V3 camera_position;
-  V3 background_color;
-  V3 towards_sun_dir;
-  float tex_loaded_t;
-  float tex_shininess;
-  U32 color; // used for pipelines without texture
+  V3 sun_dir;
+
+  U32 fog_color; // RGBA
+  U32 sky_ambient; // RGBA
+  U32 sun_diffuse; // RGBA
+  U32 sun_specular; // RGBA
+
+  U32 material_diffuse; // RGBA
+  U32 material_specular; // RGBA
+  float material_shininess;
+  float material_loaded_t;
 };
 
 cbuffer VertexUniformBuf : register(b0, space1) { WORLD_DX_Uniform UniV; };
@@ -69,8 +75,7 @@ struct WORLD_DX_Fragment
   V2 uv           : TEXCOORD3;
   Mat3 normal_rot : TEXCOORD4;
 #else
-  V4 color      : TEXCOORD3;
-  Mat3 normal_rot : TEXCOORD4;
+  Mat3 normal_rot : TEXCOORD3;
 #endif
 
   V4 vertex_p : SV_Position;
@@ -93,20 +98,9 @@ StructuredBuffer<Mat4> PoseBuf : register(t1);
 
 WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
 {
-#if HAS_COLOR
-  V4 color = UnpackColor32(UniV.color);
-
-#if HAS_INSTANCE_BUFFER
-  WORLD_DX_Instance instance = InstanceBuf[input.instance_index];
-  V4 instance_color = UnpackColor32(instance.color);
-
-  if (UniV.color == 0xff014b74) // @todo obviously temporary
-    color = instance_color;
-#endif // HAS_INSTANCE_BUFFER
-#endif // HAS_COLOR
-
   // Position
 #if HAS_INSTANCE_BUFFER
+  WORLD_DX_Instance instance = InstanceBuf[input.instance_index];
   Mat4 position_transform = instance.transform;
 #else
   Mat4 position_transform = Mat4_Identity();
@@ -154,9 +148,6 @@ WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
 #if IS_TEXTURED
   frag.uv = input.uv;
 #endif
-#if HAS_COLOR
-  frag.color = color;
-#endif
   frag.normal_rot = normal_rotation;
   frag.vertex_p = vertex_p;
   return frag;
@@ -171,38 +162,42 @@ SamplerState ColorSampler : register(s1, space2);
 
 V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
 {
-  float shininess = UniP.tex_shininess;
+  V3 fog_color = UnpackColor32(UniP.fog_color).xyz;
+  V3 sky_ambient = UnpackColor32(UniP.sky_ambient).xyz;
+  V4 sun_diffuse = UnpackColor32(UniP.sun_diffuse);
+  V4 sun_specular = UnpackColor32(UniP.sun_specular);
+  V3 material_diffuse = UnpackColor32(UniP.material_diffuse).xyz;
+  V4 material_specular = UnpackColor32(UniP.material_specular);
+  float material_shininess = UniP.material_shininess;
+
   V3 face_normal = mul(frag.normal_rot, V3(0,0,1));
+  V3 pixel_normal = face_normal;
 
   // Load texture data
 #if IS_TEXTURED
   V3 tex_color  = ColorTexture.Sample(ColorSampler, V3(frag.uv, 0.f)).xyz;
   V3 tex_normal = ColorTexture.Sample(ColorSampler, V3(frag.uv, 1.f)).xyz;
-  // swizzle normal components into engine format - ideally this would be done by asset preprocessor
+  float tex_roughness = ColorTexture.Sample(ColorSampler, V3(frag.uv, 2.f)).x;
+  // @todo tex_occlusion
+  // @todo tex_displacement
+
+  // swizzle normal components into engine format - @todo do this in asset baker
   tex_normal.y = 1.f - tex_normal.y;
   tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
-  float tex_roughness = ColorTexture.Sample(ColorSampler, V3(frag.uv, 2.f)).x;
-  // @todo occlusion & displacement
 
-  // apply tex_loaded_t
+  // Apply default values when texture wasn't loaded yet
   {
-    float loaded_t = UniP.tex_loaded_t;
-    tex_color = lerp(UniP.background_color, tex_color, loaded_t);
-    tex_normal = lerp(face_normal, tex_normal, loaded_t);
-    tex_roughness = lerp(0.5f, tex_roughness, loaded_t);
-    //tex_occlusion = lerp(0.5f, tex_occlusion, loaded_t);
+    float t = UniP.material_loaded_t;
+    tex_color       = lerp(fog_color,    tex_color,     t);
+    tex_normal      = lerp(pixel_normal, tex_normal,    t);
+    tex_roughness   = lerp(0.5f,         tex_roughness, t);
+    //tex_occlusion = lerp(0.5f,         tex_occlusion, t);
   }
 
-  // apply color
-  V4 color = V4(tex_color, 1.f);
-
-  V3 pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
-
-  // Apply shininess
-  shininess *= (1.f - tex_roughness);
-#else
-  V4 color = frag.color;
-  V3 pixel_normal = face_normal;
+  // Use data loaded from textures
+  material_diffuse = tex_color;
+  pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
+  material_shininess *= (1.f - tex_roughness);
 #endif
 
   // Shadow mapping
@@ -232,7 +227,7 @@ V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
         float current_depth = shadow_proj.z;
         if (current_depth <= 1.f)
         {
-          float bias = max(0.05f * (1.f - dot(UniP.towards_sun_dir, face_normal)), 0.005f);
+          float bias = max(0.05f * (1.f - dot(-UniP.sun_dir, face_normal)), 0.005f);
           shadow += current_depth - bias > closest_depth ? 1.f : 0.f;
         }
       }
@@ -243,18 +238,20 @@ V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
   }
 
   // Light
-  float ambient = 0.2f;
-  float specular = 0.0f;
-  float diffuse = max(dot(UniP.towards_sun_dir, pixel_normal), 0.f);
-  if (diffuse > 0.f)
+  float specular_factor = 0.0f;
+  float diffuse_factor = max(dot(-UniP.sun_dir, pixel_normal), 0.f);
+  if (diffuse_factor > 0.f)
   {
     V3 view_dir = normalize(UniP.camera_position - frag.world_p);
-    V3 reflect_dir = reflect(-UniP.towards_sun_dir, pixel_normal);
-    V3 halfway_dir = normalize(view_dir + UniP.towards_sun_dir);
+    V3 halfway_dir = normalize(view_dir + UniP.sun_dir); // @todo previously it was -UniP.sun_dir, was it a bug?
     float specular_angle = max(dot(pixel_normal, halfway_dir), 0.f);
-    specular = pow(specular_angle, shininess);
+    specular_factor = pow(specular_angle, material_shininess);
   }
-  color.xyz *= ambient + (diffuse + specular) * (1.f - shadow);
+
+  V3 color_ambient = sky_ambient * material_diffuse;
+  V3 color_diffuse = diffuse_factor * sun_diffuse * material_diffuse;
+  V3 color_specular = specular_factor * sun_specular * material_specular;
+  V3 color = color_ambient + (color_diffuse + color_specular) * (1.f - shadow);
 
   // Apply fog
   {
@@ -263,8 +260,8 @@ V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
     float fog_max = 2000.f;
 
     float fog_t = smoothstep(fog_min, fog_max, pixel_distance);
-    color = lerp(color, V4(UniP.background_color, 1.f), fog_t);
+    color = lerp(color, fog_color, fog_t);
   }
 
-  return color;
+  return V4(color, 1.f);
 }

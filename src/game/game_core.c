@@ -354,24 +354,21 @@ static void Game_Iterate()
     }
   }
 
-  // move sun
+  // Sun things
   {
+    // Move sun
     float sun_x = FSin(0.5f + APP.at * 0.03f);
     float sun_y = FCos(0.5f + APP.at * 0.03f);
-    APP.towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 2.f});
+    V3 towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 2.f});
+    APP.sun_dir = V3_Reverse(towards_sun_dir);
 
-    V3 sun_dist = V3_Scale(APP.towards_sun_dir, 900.f);
+    V3 sun_dist = V3_Scale(towards_sun_dir, 900.f);
     V3 sun_obj_p = V3_Add(APP.camera_p, sun_dist);
     OBJ_Get(APP.sun, OBJ_Offline)->s.p = sun_obj_p;
-  }
 
-  // camera to sun
-  {
+    // Camera to sun
     APP.sun_camera_p = OBJ_GetAny(APP.sun)->s.p;
     Mat4 transl = Mat4_InvTranslation(Mat4_Translation(APP.sun_camera_p));
-
-    V3 sun_dir = V3_Scale(APP.towards_sun_dir, -1.f);
-    Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(sun_dir, AxisV3_X()));
 
     float scale = 0.8f;
     float w = APP.window_dim.x * 0.5f * scale;
@@ -379,6 +376,7 @@ static void Game_Iterate()
     w = h = 1200.f * scale;
 
     Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 200.f, 3000.f);
+    Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(APP.sun_dir, AxisV3_X()));
     APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
   }
 
