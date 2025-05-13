@@ -80,7 +80,7 @@ typedef struct
   // relative to full_data of Material
   U32 data_offset;
   U32 data_size;
-} PIE_MaterialTexture;
+} PIE_MaterialTexSection;
 
 typedef U32 PIE_TexFormat;
 enum
@@ -101,7 +101,7 @@ typedef struct
   U32 lods;
   U32 layers;
   PIE_ListT(U8) full_data;
-  PIE_ListT(PIE_MaterialTexture) texs;
+  PIE_ListT(PIE_MaterialTexSection) texs;
   // } tex;
 } PIE_Material;
 

@@ -140,10 +140,10 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
   br_material->lods = lods_count;
   br_material->layers = ArrayCount(files);
 
-  PIE_Aling(&bb->file, _Alignof(PIE_MaterialTexture));
+  PIE_Aling(&bb->file, _Alignof(PIE_MaterialTexSection));
   U32 br_textures_count = br_material->lods * br_material->layers;
-  PIE_MaterialTexture *br_textures = PIE_ListReserve(&bb->file, &br_material->texs,
-                                                     PIE_MaterialTexture, br_textures_count);
+  PIE_MaterialTexSection *br_textures = PIE_ListReserve(&bb->file, &br_material->texs,
+                                                        PIE_MaterialTexSection, br_textures_count);
 
   PIE_ListStart(&bb->file, &br_material->full_data, TYPE_U8);
 
@@ -161,7 +161,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
         SDL_Surface *surf = file->surfs[lod_index];
 
         M_Check(br_texture_index < br_textures_count);
-        PIE_MaterialTexture *br_tex = br_textures + br_texture_index;
+        PIE_MaterialTexSection *br_tex = br_textures + br_texture_index;
         br_texture_index += 1;
 
         // Calc
@@ -205,7 +205,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
         SDL_Surface *surf = file->surfs[lod_index];
 
         M_Check(br_texture_index < br_textures_count);
-        PIE_MaterialTexture *br_tex = br_textures + br_texture_index;
+        PIE_MaterialTexSection *br_tex = br_textures + br_texture_index;
         br_texture_index += 1;
 
         // Calculate data buffer dimensions

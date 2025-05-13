@@ -69,6 +69,17 @@ typedef struct
 typedef struct
 {
   ASSET_Base b;
+  bool has_texture;
+  SDL_GPUTexture *tex;
+
+  U32 diffuse;
+  U32 specular;
+  float shininess;
+} ASSET_Material;
+
+typedef struct
+{
+  ASSET_Base b;
 
   SDL_GPUTexture *handle;
   float shininess;

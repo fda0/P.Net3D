@@ -42,7 +42,7 @@ static void ASSET_LoadTextureFromPieFile(TEX_Kind tex_kind, U64 min_frame)
 
   // MaterialTextures - it contains a mapping from big buffer to individual pieces of texture layers and lods
   U32 br_textures_count = br_material->texs.count;
-  PIE_MaterialTexture *br_textures = PIE_ListAsType(br_material->texs, PIE_MaterialTexture);
+  PIE_MaterialTexSection *br_textures = PIE_ListAsType(br_material->texs, PIE_MaterialTexSection);
 
   U32 lods_count = br_material->lods;
   bool generate_lods = false;
@@ -101,7 +101,7 @@ static void ASSET_LoadTextureFromPieFile(TEX_Kind tex_kind, U64 min_frame)
 
       ForU32(br_texture_index, br_textures_count)
       {
-        PIE_MaterialTexture *br_sect = br_textures + br_texture_index;
+        PIE_MaterialTexSection *br_sect = br_textures + br_texture_index;
 
         SDL_GPUTextureTransferInfo source =
         {
