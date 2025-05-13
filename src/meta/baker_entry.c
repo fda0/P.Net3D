@@ -10,7 +10,7 @@
 // Headers shared across baker and game
 #include "pie_file_format.h"
 #include "game_render.h"
-#include "game_asset_listings.h"
+#include "game_asset_keys.h"
 #include "game_type_info.h"
 
 // 3rd party libraries
