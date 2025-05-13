@@ -128,12 +128,19 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
   // Allocate and prepare PIE_Material & array of PIE_Texture
   bb->materials_count += 1;
   PIE_Material *br_material = PIE_Reserve(&bb->materials, PIE_Material, 1);
+
+  PIE_ListStart(&bb->file, &br_material->name, TYPE_U8);
+  Pr_S8(&bb->file, tex_name);
+  PIE_ListEnd(&bb->file, &br_material->name);
+
+  br_material->key_hash = MATERIAL_Hash(tex_name);
   br_material->format = format;
   br_material->width = orig_width;
   br_material->height = orig_height;
   br_material->lods = lods_count;
   br_material->layers = ArrayCount(files);
 
+  PIE_Aling(&bb->file, _Alignof(PIE_MaterialTexture));
   U32 br_textures_count = br_material->lods * br_material->layers;
   PIE_MaterialTexture *br_textures = PIE_ListReserve(&bb->file, &br_material->texs,
                                                      PIE_MaterialTexture, br_textures_count);

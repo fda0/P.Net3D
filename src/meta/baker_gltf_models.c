@@ -169,7 +169,7 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, c
 
       // Name string
       PIE_ListStart(&bb->file, &br_anim->name, TYPE_U8);
-      Pr_S8(&bb->file, S8_FromCstr(gltf_anim->name));
+      Pr_Cstr(&bb->file, gltf_anim->name);
       PIE_ListEnd(&bb->file, &br_anim->name);
 
       // Ensure memory alignment after copying strings

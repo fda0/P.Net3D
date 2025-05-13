@@ -1,8 +1,12 @@
-static U64 MATERIAL_Hash(const char *name)
+static U64 MATERIAL_Hash(S8 name)
 {
   U64 hash = S8_Hash(0, S8Lit("TEX_Key:"));
-  hash = S8_Hash(hash, S8_FromCstr(name));
+  hash = S8_Hash(hash, name);
   return hash;
+}
+static U64 MATERIAL_HashCstr(const char *name)
+{
+  return MATERIAL_Hash(S8_FromCstr(name));
 }
 
 typedef struct
@@ -17,7 +21,7 @@ typedef struct
 static MATERIAL_Key MATERIAL_CreateKey(const char *name_cstr_literal)
 {
   MATERIAL_Key res = {};
-  res.hash = MATERIAL_Hash(name_cstr_literal);
+  res.hash = MATERIAL_HashCstr(name_cstr_literal);
   res.name = name_cstr_literal;
   return res;
 }
