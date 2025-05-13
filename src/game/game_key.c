@@ -1,4 +1,4 @@
-static void KEY_Update(U32 key_code, bool is_held_down)
+static void KEY_Update(U32 key_code, bool is_down)
 {
   if (key_code >= ArrayCount(APP.keys))
   {
@@ -7,41 +7,36 @@ static void KEY_Update(U32 key_code, bool is_held_down)
   }
 
   Key *key = APP.keys + key_code;
-  if (is_held_down)
+  bool is_held     = key->f & KEY_IsHeld;
+  bool is_pressed  = key->f & KEY_IsPressed;
+  bool is_released = key->f & KEY_IsReleased;
+
+  if (is_down)
   {
-    key->pressed = (!key->held && !key->pressed);
-    key->released = false;
+    is_pressed = (!is_held && !is_pressed);
+    is_released = false;
   }
   else
   {
-    key->released = (!key->held && !key->released);
-    key->pressed = false;
+    is_released = (!is_held && !is_released);
+    is_pressed = false;
   }
-  key->held = is_held_down;
+  is_held = is_down;
+
+  key->f = 0;
+  key->f |= (is_held     ? KEY_IsHeld : 0);
+  key->f |= (is_pressed  ? KEY_IsPressed : 0);
+  key->f |= (is_released ? KEY_IsReleased : 0);
 }
 
-typedef enum
-{
-  KEY_IsHeld,
-  KEY_IsPressed,
-  KEY_IsReleased,
-} KeyCheck;
-
-static bool KEY_Check(U32 key_code, KeyCheck check)
+static bool KEY_Check(U32 key_code, KEY_Flags check_flags)
 {
   if (key_code >= ArrayCount(APP.keys))
   {
     Assert(false);
     return false;
   }
-
-  Key key = APP.keys[key_code];
-  if (check == KEY_IsHeld) return key.held;
-  if (check == KEY_IsPressed) return key.pressed;
-  if (check == KEY_IsReleased) return key.released;
-
-  Assert(false);
-  return false;
+  return !!(APP.keys[key_code].f & check_flags);
 }
 
 static bool KEY_Held(U32 key_code)

@@ -39,23 +39,6 @@ typedef enum
   WorldDir_COUNT
 } WorldDir;
 
-typedef enum
-{
-  KEY_START = SDL_SCANCODE_COUNT + 1,
-
-  KEY_MouseLeft,
-  KEY_MouseRight,
-
-  KEY_COUNT
-} KeyCode;
-
-typedef struct
-{
-  U8 held : 1;
-  U8 pressed : 1; // was pressed on this frame
-  U8 released : 1; // released on this frame
-} Key;
-
 struct AppState
 {
   // SDL, window stuff

@@ -28,7 +28,7 @@
 #include "pie_file_format.h"
 #include "game_collision_vertices.h"
 #include "game_util.h"
-#include "game_asset_definitions.h"
+#include "game_asset_listings.h"
 #include "game_asset.h"
 #include "game_render.h"
 #include "game_object.h"
@@ -39,6 +39,7 @@
 #include "game_gpu_memory.h"
 #include "game_gpu.h"
 #include "game_font_atlas.h"
+#include "game_key.h"
 #include "game_core.h"
 #include "game_type_info.h"
 

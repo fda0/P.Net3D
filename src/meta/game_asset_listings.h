@@ -1,3 +1,8 @@
+typedef struct
+{
+  U32 hash;
+} TEX_Key;
+
 #define TEX_LIST(X) \
 X(Bricks071) \
 X(Bricks097) \
