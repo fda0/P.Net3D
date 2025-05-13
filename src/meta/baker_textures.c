@@ -134,16 +134,16 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
   br_material->lods = lods_count;
   br_material->layers = ArrayCount(files);
 
-  U32 br_sections_count = br_material->lods * br_material->layers;
-  PIE_MaterialSection *br_sections = PIE_ListReserve(&bb->file, &br_material->sections,
-                                                         PIE_MaterialSection, br_sections_count);
+  U32 br_textures_count = br_material->lods * br_material->layers;
+  PIE_MaterialTexture *br_textures = PIE_ListReserve(&bb->file, &br_material->texs,
+                                                     PIE_MaterialTexture, br_textures_count);
 
   PIE_ListStart(&bb->file, &br_material->full_data, TYPE_U8);
 
   // Iterate over fliles
   if (format == PIE_Tex_R8G8B8A8)
   {
-    U32 br_section_index = 0;
+    U32 br_texture_index = 0;
     ForArray(file_index, files)
     {
       BK_MaterialFile *file = files + file_index;
@@ -153,20 +153,20 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
       {
         SDL_Surface *surf = file->surfs[lod_index];
 
-        M_Check(br_section_index < br_sections_count);
-        PIE_MaterialSection *br_sect = br_sections + br_section_index;
-        br_section_index += 1;
+        M_Check(br_texture_index < br_textures_count);
+        PIE_MaterialTexture *br_tex = br_textures + br_texture_index;
+        br_texture_index += 1;
 
         // Calc
         U32 br_data_size = surf->w * surf->h * sizeof(U32);
 
-        // Fill section data
-        br_sect->width = surf->w;
-        br_sect->height = surf->h;
-        br_sect->lod = lod_index;
-        br_sect->layer = file_index;
-        br_sect->data_offset = bb->file.used - br_material->full_data.offset;
-        br_sect->data_size = br_data_size;
+        // Fill texture data
+        br_tex->width = surf->w;
+        br_tex->height = surf->h;
+        br_tex->lod = lod_index;
+        br_tex->layer = file_index;
+        br_tex->data_offset = bb->file.used - br_material->full_data.offset;
+        br_tex->data_size = br_data_size;
 
         // Alloc data buffer
         U8 *br_data = PIE_Reserve(&bb->file, U8, br_data_size);
@@ -187,7 +187,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
   }
   else if (format == PIE_Tex_BC7_RGBA)
   {
-    U32 br_section_index = 0;
+    U32 br_texture_index = 0;
     ForArray(file_index, files)
     {
       BK_MaterialFile *file = files + file_index;
@@ -197,22 +197,22 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
       {
         SDL_Surface *surf = file->surfs[lod_index];
 
-        M_Check(br_section_index < br_sections_count);
-        PIE_MaterialSection *br_sect = br_sections + br_section_index;
-        br_section_index += 1;
+        M_Check(br_texture_index < br_textures_count);
+        PIE_MaterialTexture *br_tex = br_textures + br_texture_index;
+        br_texture_index += 1;
 
         // Calculate data buffer dimensions
         I32 lod_chunks_per_w = (surf->w + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
         I32 lod_chunks_per_h = (surf->h + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
         I32 br_data_size = lod_chunks_per_w*lod_chunks_per_h * sizeof(U64)*2;
 
-        // Fill section data
-        br_sect->width = surf->w;
-        br_sect->height = surf->h;
-        br_sect->lod = lod_index;
-        br_sect->layer = file_index;
-        br_sect->data_offset = bb->file.used - br_material->full_data.offset;
-        br_sect->data_size = br_data_size;
+        // Fill texture data
+        br_tex->width = surf->w;
+        br_tex->height = surf->h;
+        br_tex->lod = lod_index;
+        br_tex->layer = file_index;
+        br_tex->data_offset = bb->file.used - br_material->full_data.offset;
+        br_tex->data_size = br_data_size;
 
         // Alloc data buffer
         U8 *br_data = PIE_Reserve(&bb->file, U8, br_data_size);

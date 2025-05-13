@@ -127,6 +127,7 @@ static void PIE_FinalizeBuilder()
   PIE_ListEnd(&bb->file, &links.skeletons);
 
   // Materials
+  PIE_Aling(&bb->file, _Alignof(PIE_Material));
   PIE_ListStart(&bb->file, &links.materials, TYPE_PIE_Material);
   Pr_Printer(&bb->file, &bb->materials);
   PIE_ListEnd(&bb->file, &links.materials);

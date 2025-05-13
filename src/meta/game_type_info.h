@@ -27,7 +27,7 @@ X(Mat4) \
 X(PIE_List) \
 X(PIE_Animation) \
 X(PIE_AnimationChannel) \
-X(PIE_MaterialSection) \
+X(PIE_MaterialTexture) \
 X(PIE_Material) \
 X(PIE_Geometry) \
 X(PIE_Model) \

@@ -40,9 +40,9 @@ static void ASSET_LoadTextureFromPieFile(TEX_Kind tex_kind, U64 min_frame)
   PIE_Material *br_material = br->materials + tex_kind;
   S8 gpu_full_data = PIE_ListToS8(br_material->full_data);
 
-  // MaterialSections - it contains a mapping from big buffer to individual pieces of texture layers and lods
-  U32 br_sections_count = br_material->sections.count;
-  PIE_MaterialSection *br_sections = PIE_ListAsType(br_material->sections, PIE_MaterialSection);
+  // MaterialTextures - it contains a mapping from big buffer to individual pieces of texture layers and lods
+  U32 br_textures_count = br_material->texs.count;
+  PIE_MaterialTexture *br_textures = PIE_ListAsType(br_material->texs, PIE_MaterialTexture);
 
   U32 lods_count = br_material->lods;
   bool generate_lods = false;
@@ -99,9 +99,9 @@ static void ASSET_LoadTextureFromPieFile(TEX_Kind tex_kind, U64 min_frame)
       SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
       SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
 
-      ForU32(br_section_index, br_sections_count)
+      ForU32(br_texture_index, br_textures_count)
       {
-        PIE_MaterialSection *br_sect = br_sections + br_section_index;
+        PIE_MaterialTexture *br_sect = br_textures + br_texture_index;
 
         SDL_GPUTextureTransferInfo source =
         {

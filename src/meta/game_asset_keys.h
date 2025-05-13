@@ -1,7 +1,27 @@
+static U64 MATERIAL_Hash(const char *name)
+{
+  U64 hash = S8_Hash(0, S8Lit("TEX_Key:"));
+  hash = S8_Hash(hash, S8_FromCstr(name));
+  return hash;
+}
+
 typedef struct
 {
-  U32 hash;
-} TEX_Key;
+  U64 hash;
+  const char *name;
+  // name format:
+  // tex.Bricks071
+  // Tree.Bark_diffuse
+} MATERIAL_Key;
+
+static MATERIAL_Key MATERIAL_CreateKey(const char *name_cstr_literal)
+{
+  MATERIAL_Key res = {};
+  res.hash = MATERIAL_Hash(name_cstr_literal);
+  res.name = name_cstr_literal;
+  return res;
+}
+
 
 #define TEX_LIST(X) \
 X(Bricks071) \
