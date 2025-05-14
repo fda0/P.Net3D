@@ -492,6 +492,7 @@ static void Game_Iterate()
 static void Game_Init()
 {
   // init debug options
+  APP.frame_id = 1000;
   APP.log_filter &= ~(Log_NetDatagram);
 
 #if TESTS_ENABLED

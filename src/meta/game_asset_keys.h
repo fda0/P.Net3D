@@ -1,6 +1,6 @@
 static U64 MATERIAL_Hash(S8 name)
 {
-  U64 hash = S8_Hash(0, S8Lit("TEX_Key:"));
+  U64 hash = S8_Hash(0, S8Lit("MATERIAL_KEY:"));
   hash = S8_Hash(hash, name);
   return hash;
 }

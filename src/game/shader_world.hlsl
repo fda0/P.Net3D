@@ -243,7 +243,7 @@ V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
   if (diffuse_factor > 0.f)
   {
     V3 view_dir = normalize(UniP.camera_position - frag.world_p);
-    V3 halfway_dir = normalize(view_dir + UniP.sun_dir); // @todo previously it was -UniP.sun_dir, was it a bug?
+    V3 halfway_dir = normalize(view_dir - UniP.sun_dir);
     float specular_angle = max(dot(pixel_normal, halfway_dir), 0.f);
     specular_factor = pow(specular_angle, material_shininess);
   }

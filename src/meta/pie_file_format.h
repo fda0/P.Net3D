@@ -92,7 +92,6 @@ enum
 
 typedef struct
 {
-  U64 key_hash;
   PIE_ListT(U8) name;
 
   U32 diffuse;

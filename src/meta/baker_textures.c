@@ -127,10 +127,10 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
   PIE_Material *br_material = PIE_Reserve(&bb->materials, PIE_Material, 1);
 
   PIE_ListStart(&bb->file, &br_material->name, TYPE_U8);
+  Pr_Cstr(&bb->file, "tex.");
   Pr_S8(&bb->file, tex_name);
   PIE_ListEnd(&bb->file, &br_material->name);
 
-  br_material->key_hash = MATERIAL_Hash(tex_name);
   br_material->tex.format = format;
   br_material->tex.width = orig_width;
   br_material->tex.height = orig_height;

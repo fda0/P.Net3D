@@ -90,7 +90,7 @@ struct AppState
   U64 tick_timestamp_accumulator;
   float dt;
   float at;
-  U64 frame_id;
+  U64 frame_id; // starts at 1000
   U64 tick_id;
   U32 obj_serial_counter;
 

@@ -37,6 +37,7 @@ static void ASSET_PrefetchMaterial(MATERIAL_Key key)
 static void ASSET_CreateNilMaterial()
 {
   APP.ast.nil_material.b.loaded = true;
+  APP.ast.nil_material.b.loaded_t = 1.f;
   APP.ast.nil_material.has_texture = true;
 
   I32 dim = 512;
@@ -124,7 +125,6 @@ static void ASSET_LoadMaterials()
     ASSET_Material *asset = APP.ast.materials + i;
 
     asset->key = MATERIAL_CreateKey(PIE_ListToS8(pie_material->name));
-    Assert(asset->key.hash == pie_material->key_hash);
 
     asset->diffuse = pie_material->diffuse;
     asset->specular = pie_material->specular;
@@ -132,7 +132,11 @@ static void ASSET_LoadMaterials()
 
     asset->has_texture = !!pie_material->tex.format;
     if (!asset->has_texture)
-      asset->b.loaded = true; // no texture = asset is already fully loaded
+    {
+      // no texture = asset is already fully loaded
+      asset->b.loaded = true;
+      asset->b.loaded_t = 1.f;
+    }
 
     asset->tex = APP.ast.nil_material.tex; // fallback texture as default in case anybody tries to use it
   }
@@ -426,7 +430,7 @@ static void ASSET_PostFrame()
   }
 
   // Increment loaded_t
-  ForArray(i, APP.ast.materials)
+  ForU32(i, APP.ast.materials_count)
   {
     ASSET_Material *asset = APP.ast.materials + i;
     float speed = 10.f;
