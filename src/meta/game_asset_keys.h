@@ -12,18 +12,28 @@ static U64 MATERIAL_HashCstr(const char *name)
 typedef struct
 {
   U64 hash;
-  const char *name;
+  S8 name;
   // name format:
-  // tex.Bricks071
-  // Tree.Bark_diffuse
+  //   tex.Bricks071
+  //   Tree.Bark_diffuse
 } MATERIAL_Key;
 
-static MATERIAL_Key MATERIAL_CreateKey(const char *name_cstr_literal)
+static MATERIAL_Key MATERIAL_CreateKey(S8 name /* EXTERNALLY OWNED STRING */)
 {
   MATERIAL_Key res = {};
-  res.hash = MATERIAL_HashCstr(name_cstr_literal);
-  res.name = name_cstr_literal;
+  res.hash = MATERIAL_Hash(name);
+  res.name = name;
   return res;
+}
+
+static bool MATERIAL_KeyMatch(MATERIAL_Key a, MATERIAL_Key b)
+{
+  return a.hash == b.hash;
+}
+
+static bool MATERIAL_KeyIsZero(MATERIAL_Key a)
+{
+  return !a.hash;
 }
 
 

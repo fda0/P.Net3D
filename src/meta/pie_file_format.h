@@ -85,6 +85,7 @@ typedef struct
 typedef U32 PIE_TexFormat;
 enum
 {
+  PIE_Tex_None,
   PIE_Tex_R8G8B8A8,
   PIE_Tex_BC7_RGBA,
 };
@@ -94,15 +95,19 @@ typedef struct
   U64 key_hash;
   PIE_ListT(U8) name;
 
-  // struct {
-  PIE_TexFormat format;
-  U32 width;
-  U32 height;
-  U32 lods;
-  U32 layers;
-  PIE_ListT(U8) full_data;
-  PIE_ListT(PIE_MaterialTexSection) texs;
-  // } tex;
+  U32 diffuse;
+  U32 specular;
+  float shininess;
+
+  struct {
+    PIE_TexFormat format;
+    U32 width;
+    U32 height;
+    U32 lods;
+    U32 layers;
+    PIE_ListT(U8) full_data;
+    PIE_ListT(PIE_MaterialTexSection) sections;
+  } tex;
 } PIE_Material;
 
 typedef struct

@@ -69,21 +69,14 @@ typedef struct
 typedef struct
 {
   ASSET_Base b;
-  bool has_texture;
-  SDL_GPUTexture *tex;
-
+  MATERIAL_Key key;
   U32 diffuse;
   U32 specular;
   float shininess;
+
+  bool has_texture;
+  SDL_GPUTexture *tex;
 } ASSET_Material;
-
-typedef struct
-{
-  ASSET_Base b;
-
-  SDL_GPUTexture *handle;
-  float shininess;
-} ASSET_Texture;
 
 typedef struct
 {
@@ -104,8 +97,10 @@ typedef struct
   ASSET_PieFile pie;
 
   // Texture
-  SDL_GPUTexture *tex_fallback;
-  ASSET_Texture textures[TEX_COUNT];
+  ASSET_Material nil_material;
+  ASSET_Material *materials;
+  U32 materials_count;
+
   // Texture thread
   bool tex_load_needed;
   SDL_Semaphore *tex_sem;

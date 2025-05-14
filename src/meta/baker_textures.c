@@ -134,18 +134,18 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
   PIE_ListEnd(&bb->file, &br_material->name);
 
   br_material->key_hash = MATERIAL_Hash(tex_name);
-  br_material->format = format;
-  br_material->width = orig_width;
-  br_material->height = orig_height;
-  br_material->lods = lods_count;
-  br_material->layers = ArrayCount(files);
+  br_material->tex.format = format;
+  br_material->tex.width = orig_width;
+  br_material->tex.height = orig_height;
+  br_material->tex.lods = lods_count;
+  br_material->tex.layers = ArrayCount(files);
 
   PIE_Aling(&bb->file, _Alignof(PIE_MaterialTexSection));
-  U32 br_textures_count = br_material->lods * br_material->layers;
-  PIE_MaterialTexSection *br_textures = PIE_ListReserve(&bb->file, &br_material->texs,
+  U32 br_textures_count = br_material->tex.lods * br_material->tex.layers;
+  PIE_MaterialTexSection *br_textures = PIE_ListReserve(&bb->file, &br_material->tex.sections,
                                                         PIE_MaterialTexSection, br_textures_count);
 
-  PIE_ListStart(&bb->file, &br_material->full_data, TYPE_U8);
+  PIE_ListStart(&bb->file, &br_material->tex.full_data, TYPE_U8);
 
   // Iterate over fliles
   if (format == PIE_Tex_R8G8B8A8)
@@ -172,7 +172,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
         br_tex->height = surf->h;
         br_tex->lod = lod_index;
         br_tex->layer = file_index;
-        br_tex->data_offset = bb->file.used - br_material->full_data.offset;
+        br_tex->data_offset = bb->file.used - br_material->tex.full_data.offset;
         br_tex->data_size = br_data_size;
 
         // Alloc data buffer
@@ -218,7 +218,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
         br_tex->height = surf->h;
         br_tex->lod = lod_index;
         br_tex->layer = file_index;
-        br_tex->data_offset = bb->file.used - br_material->full_data.offset;
+        br_tex->data_offset = bb->file.used - br_material->tex.full_data.offset;
         br_tex->data_size = br_data_size;
 
         // Alloc data buffer
@@ -265,7 +265,7 @@ static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
     }
   }
 
-  PIE_ListEnd(&bb->file, &br_material->full_data);
+  PIE_ListEnd(&bb->file, &br_material->tex.full_data);
 }
 
 static void BK_TEX_Init()
