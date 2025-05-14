@@ -33,8 +33,7 @@ X(PIE_Geometry) \
 X(PIE_Model) \
 X(PIE_Skeleton) \
 X(PIE_Links) \
-X(WORLD_VertexRigid) \
-X(WORLD_VertexSkinned)
+X(WORLD_Vertex)
 
 // @todo implement slices
 //#define TYPE_DEF_SLICE(T) typedef struct { T *arr; U64 count; } Slice_##T;

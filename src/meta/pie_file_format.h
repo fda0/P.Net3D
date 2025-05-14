@@ -113,8 +113,7 @@ typedef struct
 {
   struct
   {
-    PIE_ListT(WORLD_VertexRigid) rigid_vertices;
-    PIE_ListT(WORLD_VertexSkinned) skinned_vertices;
+    PIE_ListT(WORLD_Vertex) vertices;
     PIE_ListT(U16) indices;
     PIE_ListT(PIE_Model) list;
   } models;

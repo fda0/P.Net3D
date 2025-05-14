@@ -1,32 +1,4 @@
-#ifndef IS_RIGID
-#define IS_RIGID 0
-#endif
-#ifndef IS_SKINNED
-#define IS_SKINNED 0
-#endif
-#ifndef IS_TEXTURED
-#define IS_TEXTURED 0
-#endif
-#if (IS_RIGID + IS_SKINNED + IS_TEXTURED) != 1
-#error "(IS_RIGID + IS_SKINNED + IS_TEXTURED) has to be equal to 1"
-#endif
-
-#if IS_RIGID
-#define World_DxShaderVS World_DxShaderRigidVS
-#define World_DxShaderPS World_DxShaderRigidPS
-#endif
-#if IS_SKINNED
-#define World_DxShaderVS World_DxShaderSkinnedVS
-#define World_DxShaderPS World_DxShaderSkinnedPS
-#endif
-#if IS_TEXTURED
-#define World_DxShaderVS World_DxShaderMeshVS
-#define World_DxShaderPS World_DxShaderMeshPS
-#endif
-
-#define HAS_INSTANCE_BUFFER (IS_RIGID || IS_SKINNED)
-#define HAS_COLOR (IS_RIGID || IS_SKINNED)
-
+#include "shader_flags.h"
 #include "shader_util.hlsl"
 
 struct WORLD_DX_Uniform
@@ -35,6 +7,7 @@ struct WORLD_DX_Uniform
   Mat4 shadow_transform;
   V3 camera_position;
   V3 sun_dir;
+  U32 flags;
 
   U32 fog_color; // RGBA
   U32 sky_ambient; // RGBA
@@ -47,41 +20,28 @@ struct WORLD_DX_Uniform
   float material_loaded_t;
 };
 
-cbuffer VertexUniformBuf : register(b0, space1) { WORLD_DX_Uniform UniV; };
-cbuffer PixelUniformBuf  : register(b0, space3) { WORLD_DX_Uniform UniP; };
+cbuffer VertexUniformBuf : register(b0, space1) { WORLD_DX_Uniform UV; };
+cbuffer PixelUniformBuf  : register(b0, space3) { WORLD_DX_Uniform UP; };
 
 struct WORLD_DX_Vertex
 {
-  V3 normal : TEXCOORD0;
-  V3 position : TEXCOORD1;
-
-#if IS_SKINNED
-  U32 joints_packed4 : TEXCOORD2;
-  V4  weights        : TEXCOORD3;
-#endif
-
-#if IS_TEXTURED
-  V2  uv    : TEXCOORD2;
-#endif
-
+  V3  p              : TEXCOORD0;
+  V3  normal         : TEXCOORD1;
+  V2  uv             : TEXCOORD2;
+  U32 joints_packed4 : TEXCOORD3;
+  V4  joint_weights  : TEXCOORD4;
   U32 instance_index : SV_InstanceID;
 };
 
 struct WORLD_DX_Fragment
 {
-  V4 shadow_p   : TEXCOORD1; // position in shadow space
-  V3 world_p    : TEXCOORD2;
-#if IS_TEXTURED
-  V2 uv           : TEXCOORD3;
-  Mat3 normal_rot : TEXCOORD4;
-#else
+  V4   shadow_p   : TEXCOORD0; // position in shadow space
+  V3   world_p    : TEXCOORD1;
+  V2   uv         : TEXCOORD2;
   Mat3 normal_rot : TEXCOORD3;
-#endif
-
-  V4 vertex_p : SV_Position;
+  V4   vertex_p   : SV_Position;
 };
 
-#if HAS_INSTANCE_BUFFER
 struct WORLD_DX_Instance
 {
   Mat4 transform;
@@ -89,53 +49,50 @@ struct WORLD_DX_Instance
   U32 pose_offset; // in indices; unused for rigid
 };
 StructuredBuffer<WORLD_DX_Instance> InstanceBuf : register(t0);
-#endif
+StructuredBuffer<Mat4> SkinningPoseBuf : register(t1);
 
-#if IS_SKINNED
-StructuredBuffer<Mat4> PoseBuf : register(t1);
-#endif
-
-
-WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
+WORLD_DX_Fragment WORLD_DxShaderVS(WORLD_DX_Vertex vert)
 {
   // Position
-#if HAS_INSTANCE_BUFFER
-  WORLD_DX_Instance instance = InstanceBuf[input.instance_index];
-  Mat4 position_transform = instance.transform;
-#else
-  Mat4 position_transform = Mat4_Identity();
-#endif
+  WORLD_DX_Instance instance;
+  instance.transform = Mat4_Identity();
+  instance.color = 0;
+  instance.pose_offset = 0;
 
-#if IS_SKINNED
+  if (UV.flags & WORLD_FLAG_UseInstanceBuffer)
+    instance = InstanceBuf[vert.instance_index];
+
+  Mat4 position_transform = instance.transform;
+
+  if (UV.flags & WORLD_FLAG_DoMeshSkinning)
   {
-    U32 joint0 = (input.joints_packed4      ) & 0xff;
-    U32 joint1 = (input.joints_packed4 >>  8) & 0xff;
-    U32 joint2 = (input.joints_packed4 >> 16) & 0xff;
-    U32 joint3 = (input.joints_packed4 >> 24) & 0xff;
+    U32 joint0 = (vert.joints_packed4      ) & 0xff;
+    U32 joint1 = (vert.joints_packed4 >>  8) & 0xff;
+    U32 joint2 = (vert.joints_packed4 >> 16) & 0xff;
+    U32 joint3 = (vert.joints_packed4 >> 24) & 0xff;
     joint0 += instance.pose_offset;
     joint1 += instance.pose_offset;
     joint2 += instance.pose_offset;
     joint3 += instance.pose_offset;
 
-    float4x4 pose_transform0 = PoseBuf[joint0];
-    float4x4 pose_transform1 = PoseBuf[joint1];
-    float4x4 pose_transform2 = PoseBuf[joint2];
-    float4x4 pose_transform3 = PoseBuf[joint3];
+    Mat4 pose_transform0 = SkinningPoseBuf[joint0];
+    Mat4 pose_transform1 = SkinningPoseBuf[joint1];
+    Mat4 pose_transform2 = SkinningPoseBuf[joint2];
+    Mat4 pose_transform3 = SkinningPoseBuf[joint3];
 
-    float4x4 pose_transform =
-      pose_transform0 * input.weights.x +
-      pose_transform1 * input.weights.y +
-      pose_transform2 * input.weights.z +
-      pose_transform3 * input.weights.w;
+    Mat4 pose_transform =
+      pose_transform0 * vert.joint_weights.x +
+      pose_transform1 * vert.joint_weights.y +
+      pose_transform2 * vert.joint_weights.z +
+      pose_transform3 * vert.joint_weights.w;
 
     position_transform = mul(position_transform, pose_transform);
   }
-#endif
 
-  V4 world_p = mul(position_transform, float4(input.position, 1.0f));
-  V4 vertex_p = mul(UniV.camera_transform, world_p);
+  V4 world_p = mul(position_transform, float4(vert.p, 1.0f));
+  V4 vertex_p = mul(UV.camera_transform, world_p);
 
-  Quat normal_rot = Quat_FromZupCrossV3(input.normal);
+  Quat normal_rot = Quat_FromZupCrossV3(vert.normal);
   //Quat normal_rot = Quat(0,0,0,1);
   Mat3 input_normal_mat = Mat3_Rotation_Quat(normal_rot);
   Mat3 position_rotation = Mat3_FromMat4(Mat4_RotationPart(position_transform));
@@ -143,11 +100,9 @@ WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
 
   // Return
   WORLD_DX_Fragment frag;
-  frag.shadow_p = mul(UniV.shadow_transform, world_p);
+  frag.shadow_p = mul(UV.shadow_transform, world_p);
   frag.world_p = world_p.xyz;
-#if IS_TEXTURED
-  frag.uv = input.uv;
-#endif
+  frag.uv = vert.uv;
   frag.normal_rot = normal_rotation;
   frag.vertex_p = vertex_p;
   return frag;
@@ -155,50 +110,49 @@ WORLD_DX_Fragment World_DxShaderVS(WORLD_DX_Vertex input)
 
 Texture2DArray<half> ShadowTexture : register(t0, space2);
 SamplerState ShadowSampler : register(s0, space2);
-#if IS_TEXTURED
-Texture2DArray<float4> ColorTexture : register(t1, space2);
-SamplerState ColorSampler : register(s1, space2);
-#endif
+Texture2DArray<float4> MaterialTexture : register(t1, space2);
+SamplerState MaterialSampler : register(s1, space2);
 
-V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
+V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
 {
-  V3 fog_color = UnpackColor32(UniP.fog_color).xyz;
-  V3 sky_ambient = UnpackColor32(UniP.sky_ambient).xyz;
-  V4 sun_diffuse = UnpackColor32(UniP.sun_diffuse);
-  V4 sun_specular = UnpackColor32(UniP.sun_specular);
-  V3 material_diffuse = UnpackColor32(UniP.material_diffuse).xyz;
-  V4 material_specular = UnpackColor32(UniP.material_specular);
-  float material_shininess = UniP.material_shininess;
+  V3 fog_color = UnpackColor32(UP.fog_color).xyz;
+  V3 sky_ambient = UnpackColor32(UP.sky_ambient).xyz;
+  V3 sun_diffuse = UnpackColor32(UP.sun_diffuse).xyz;
+  V3 sun_specular = UnpackColor32(UP.sun_specular).xyz;
+  V3 material_diffuse = UnpackColor32(UP.material_diffuse).xyz;
+  V3 material_specular = UnpackColor32(UP.material_specular).xyz;
+  float material_shininess = UP.material_shininess;
 
   V3 face_normal = mul(frag.normal_rot, V3(0,0,1));
   V3 pixel_normal = face_normal;
 
-  // Load texture data
-#if IS_TEXTURED
-  V3 tex_color  = ColorTexture.Sample(ColorSampler, V3(frag.uv, 0.f)).xyz;
-  V3 tex_normal = ColorTexture.Sample(ColorSampler, V3(frag.uv, 1.f)).xyz;
-  float tex_roughness = ColorTexture.Sample(ColorSampler, V3(frag.uv, 2.f)).x;
-  // @todo tex_occlusion
-  // @todo tex_displacement
-
-  // swizzle normal components into engine format - @todo do this in asset baker
-  tex_normal.y = 1.f - tex_normal.y;
-  tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
-
-  // Apply default values when texture wasn't loaded yet
+  // Load data from material texture
   {
-    float t = UniP.material_loaded_t;
-    tex_color       = lerp(fog_color,    tex_color,     t);
-    tex_normal      = lerp(pixel_normal, tex_normal,    t);
-    tex_roughness   = lerp(0.5f,         tex_roughness, t);
-    //tex_occlusion = lerp(0.5f,         tex_occlusion, t);
-  }
+    if (UP.flags & WORLD_FLAG_SampleTexDiffuse)
+    {
+      V3 tex_diffuse  = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 0.f)).xyz;
+      tex_diffuse = lerp(fog_color, tex_diffuse, UP.material_loaded_t);
+      material_diffuse = tex_diffuse;
+    }
 
-  // Use data loaded from textures
-  material_diffuse = tex_color;
-  pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
-  material_shininess *= (1.f - tex_roughness);
-#endif
+    if (UP.flags & WORLD_FLAG_SampleTexNormal)
+    {
+      V3 tex_normal = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 1.f)).xyz;
+      // swizzle normal components into engine format - @todo do this in asset baker
+      tex_normal.y = 1.f - tex_normal.y;
+      tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
+
+      tex_normal = lerp(pixel_normal, tex_normal, UP.material_loaded_t);
+      pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
+    }
+
+    if (UP.flags & WORLD_FLAG_SampleTexRoughness)
+    {
+      float tex_roughness = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 2.f)).x;
+      tex_roughness = lerp(0.5f, tex_roughness, UP.material_loaded_t);
+      material_shininess *= (1.f - tex_roughness);
+    }
+  }
 
   // Shadow mapping
   float shadow = 0.f;
@@ -227,7 +181,7 @@ V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
         float current_depth = shadow_proj.z;
         if (current_depth <= 1.f)
         {
-          float bias = max(0.05f * (1.f - dot(-UniP.sun_dir, face_normal)), 0.005f);
+          float bias = max(0.05f * (1.f - dot(-UP.sun_dir, face_normal)), 0.005f);
           shadow += current_depth - bias > closest_depth ? 1.f : 0.f;
         }
       }
@@ -239,11 +193,11 @@ V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
 
   // Light
   float specular_factor = 0.0f;
-  float diffuse_factor = max(dot(-UniP.sun_dir, pixel_normal), 0.f);
+  float diffuse_factor = max(dot(-UP.sun_dir, pixel_normal), 0.f);
   if (diffuse_factor > 0.f)
   {
-    V3 view_dir = normalize(UniP.camera_position - frag.world_p);
-    V3 halfway_dir = normalize(view_dir - UniP.sun_dir);
+    V3 view_dir = normalize(UP.camera_position - frag.world_p);
+    V3 halfway_dir = normalize(view_dir - UP.sun_dir);
     float specular_angle = max(dot(pixel_normal, halfway_dir), 0.f);
     specular_factor = pow(specular_angle, material_shininess);
   }
@@ -255,7 +209,7 @@ V4 World_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
 
   // Apply fog
   {
-    float pixel_distance = distance(frag.world_p, UniP.camera_position);
+    float pixel_distance = distance(frag.world_p, UP.camera_position);
     float fog_min = 1000.f;
     float fog_max = 2000.f;
 

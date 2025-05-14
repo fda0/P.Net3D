@@ -306,10 +306,6 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
 {
   bool is_skinned = bk_model->is_skinned;
 
-  Printer *vert_printer = is_skinned ? &bb->skinned_vertices : &bb->rigid_vertices;
-  U64 vert_align = is_skinned ? _Alignof(WORLD_VertexSkinned) : _Alignof(WORLD_VertexRigid);
-  U64 vert_size = is_skinned ? sizeof(WORLD_VertexSkinned) : sizeof(WORLD_VertexRigid);
-
   PIE_Model *pie_model = bb->models + bk_model->type;
   pie_model->is_skinned = is_skinned;
   pie_model->skeleton_index = bk_model->skeleton_index;
@@ -322,45 +318,36 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
     PIE_Geometry *pie_geo = pie_geometries + geo_index;
 
     pie_geo->color = bk_geo->color;
-    pie_geo->vertices_start_index = vert_printer->used / vert_size;
+    pie_geo->vertices_start_index = bb->vertices.used / sizeof(WORLD_Vertex);
 
     // vertices
     ForU64(vert_i, bk_geo->verts_count)
     {
-      V3 normal =
+      WORLD_Vertex vert = {};
+
+      vert.p.x = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 0);
+      vert.p.y = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 1);
+      vert.p.z = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 2);
+
+      vert.normal = (V3)
       {
         *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 0),
         *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 1),
         *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 2),
       };
-      float normal_lensq = V3_LengthSq(normal);
+      float normal_lensq = V3_LengthSq(vert.normal);
       if (normal_lensq < 0.001f)
       {
         M_LOG(M_GLTFWarning, "[GLTF LOADER] Found normal equal to zero");
-        normal = (V3){0,0,1};
+        vert.normal = (V3){0,0,1};
       }
       else if (normal_lensq < 0.9f || normal_lensq > 1.1f)
       {
         M_LOG(M_GLTFWarning, "[GLTF LOADER] Normal wasn't normalized");
-        normal = V3_Scale(normal, FInvSqrt(normal_lensq));
+        vert.normal = V3_Scale(vert.normal, FInvSqrt(normal_lensq));
       }
 
-      V3 pos = {};
-      pos.x = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 0);
-      pos.y = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 1);
-      pos.z = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 2);
-
-      if (!is_skinned) // it's rigid
-      {
-        WORLD_VertexRigid rigid = {};
-        rigid.normal = normal;
-        rigid.p = pos;
-
-        WORLD_VertexRigid *dst = PIE_ReserveBytes(vert_printer, vert_size, vert_align);
-        Memclear(dst, vert_size);
-        *dst = rigid;
-      }
-      else // it's skinned
+      if (is_skinned)
       {
         U32 joint_indices[4] =
         {
@@ -378,10 +365,10 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
                   joint_indices[i], bk_model->joints_count);
           }
         }
-        U32 joints_packed4 = (joint_indices[0] |
-                              (joint_indices[1] << 8) |
-                              (joint_indices[2] << 16) |
-                              (joint_indices[3] << 24));
+        vert.joints_packed4 = (joint_indices[0] |
+                               (joint_indices[1] << 8) |
+                               (joint_indices[2] << 16) |
+                               (joint_indices[3] << 24));
 
         V4 weights = {};
         weights.x = *BK_BufferAtFloat(&bk_geo->weights, vert_i*4 + 0);
@@ -391,17 +378,10 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
         float weight_sum = weights.x + weights.y + weights.z + weights.w;
         if (weight_sum < 0.9f || weight_sum > 1.1f)
           M_LOG(M_GLTFWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
-
-        WORLD_VertexSkinned skinned = {};
-        skinned.normal = normal;
-        skinned.p = pos;
-        skinned.joints_packed4 = joints_packed4;
-        skinned.weights = weights;
-
-        WORLD_VertexSkinned *dst = PIE_ReserveBytes(vert_printer, vert_size, vert_align);
-        Memclear(dst, vert_size);
-        *dst = skinned;
+        vert.joint_weights = weights;
       }
+
+      *PIE_Reserve(&bb->vertices, WORLD_Vertex, 1) = vert;
     }
 
     // indices

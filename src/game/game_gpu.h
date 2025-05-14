@@ -1,12 +1,5 @@
 typedef struct
 {
-  SDL_GPUGraphicsPipeline *rigid;
-  SDL_GPUGraphicsPipeline *skinned;
-  SDL_GPUGraphicsPipeline *wall;
-} GPU_WorldPipelines;
-
-typedef struct
-{
   SDL_GPUDevice *device;
   GPU_MemoryState mem;
 
@@ -15,12 +8,15 @@ typedef struct
   SDL_GPUTexture *tex_resolve;
 
   SDL_GPUTexture *shadow_tex;
-  SDL_GPUTexture *dummy_shadow_tex; // bound in shadowmap prepass; @todo delete and write special-purpose barebones fragment shader without textures for prepass
   SDL_GPUSampler *shadow_sampler;
+
+  SDL_GPUTexture *dummy_shadow_tex; // bound in shadowmap prepass; @todo delete and write special-purpose barebones fragment shader without textures for prepass
+  SDL_GPUBuffer *dummy_instance_buffer;
+  SDL_GPUBuffer *dummy_pose_buffer;
 
   // pipeline, sample settings
   SDL_GPUSampleCount sample_count;
-  GPU_WorldPipelines world_pipelines[2]; // 0: 4xMSAA; 1: no AA (for shadow mapping)
+  SDL_GPUGraphicsPipeline *world_pipelines[2]; // 0: 4xMSAA; 1: no AA (for shadow mapping)
   SDL_GPUGraphicsPipeline *ui_pipeline;
 
   U64 bound_uniform_hash;

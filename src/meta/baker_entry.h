@@ -3,8 +3,7 @@ typedef struct
   Printer file;
   bool finalized;
 
-  Printer rigid_vertices;
-  Printer skinned_vertices;
+  Printer vertices;
   Printer indices;
   PIE_Model models[MODEL_COUNT];
 

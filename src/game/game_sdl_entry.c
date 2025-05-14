@@ -42,13 +42,10 @@
 #include "game_key.h"
 #include "game_core.h"
 #include "game_type_info.h"
+#include "shader_flags.h"
 
-#include "gen_shader_rigid.vert.h"
-#include "gen_shader_rigid.frag.h"
-#include "gen_shader_skinned.vert.h"
-#include "gen_shader_skinned.frag.h"
-#include "gen_shader_mesh.vert.h"
-#include "gen_shader_mesh.frag.h"
+#include "gen_shader_world.vert.h"
+#include "gen_shader_world.frag.h"
 #include "gen_shader_ui.vert.h"
 #include "gen_shader_ui.frag.h"
 

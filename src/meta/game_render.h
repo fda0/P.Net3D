@@ -7,6 +7,7 @@ typedef struct
   Mat4 shadow_transform;
   _Alignas(16) V3 camera_position;
   _Alignas(16) V3 sun_dir;
+  U32 flags;
 
   U32 fog_color; // RGBA
   U32 sky_ambient; // RGBA
@@ -22,24 +23,12 @@ typedef struct
 // Vertices
 typedef struct
 {
-  V3 normal;
   V3 p;
-} WORLD_VertexRigid;
-
-typedef struct
-{
   V3 normal;
-  V3 p;
-  U32 joints_packed4;
-  V4 weights;
-} WORLD_VertexSkinned;
-
-typedef struct
-{
-  V3 normal;
-  V3 p;
   V2 uv;
-} WORLD_VertexMesh;
+  U32 joints_packed4;
+  V4 joint_weights;
+} WORLD_Vertex;
 
 // Instances
 typedef struct

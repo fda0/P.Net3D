@@ -26,7 +26,7 @@ static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
   GPU_TransferUploadBytes(instance_bundle, &instance, sizeof(instance), 1);
 }
 
-static void WORLD_RenderMeshVertices(MATERIAL_Key material, WORLD_VertexMesh *vertices, U32 vertices_count)
+static void WORLD_RenderDynamicMesh(MATERIAL_Key material, WORLD_Vertex *vertices, U32 vertices_count)
 {
   GPU_MemoryBundle *mesh_bundle =
     GPU_MemoryFindOrCreateBundle((GPU_MemoryTarget){.type = GPU_MemoryMeshVertices, .material_key = material});

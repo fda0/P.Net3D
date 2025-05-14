@@ -110,8 +110,7 @@ typedef struct
   U32 skeletons_count;
 
   // Geometry
-  SDL_GPUBuffer *rigid_vertices;
-  SDL_GPUBuffer *skinned_vertices;
+  SDL_GPUBuffer *vertices;
   SDL_GPUBuffer *indices;
   ASSET_Model models[MODEL_COUNT];
 

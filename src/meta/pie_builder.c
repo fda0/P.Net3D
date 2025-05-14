@@ -62,9 +62,8 @@ static PIE_Builder PIE_CreateBuilder(Arena *a, U32 max_file_size)
   bb.file = Pr_Alloc(a, max_file_size);
 
   U32 small_size = max_file_size / 16;
-  bb.rigid_vertices   = Pr_Alloc(a, small_size);
-  bb.skinned_vertices = Pr_Alloc(a, small_size);
-  bb.indices          = Pr_Alloc(a, small_size);
+  bb.vertices = Pr_Alloc(a, small_size);
+  bb.indices = Pr_Alloc(a, small_size);
 
   U32 tiny_size = Kilobyte(16);
   bb.skeletons = Pr_Alloc(a, tiny_size);
@@ -84,13 +83,9 @@ static void PIE_FinalizeBuilder()
   //
   PIE_Links links = {};
 
-  PIE_ListStart(&bb->file, &links.models.rigid_vertices, TYPE_WORLD_VertexRigid);
-  Pr_Printer(&bb->file, &bb->rigid_vertices);
-  PIE_ListEnd(&bb->file, &links.models.rigid_vertices);
-
-  PIE_ListStart(&bb->file, &links.models.skinned_vertices, TYPE_WORLD_VertexSkinned);
-  Pr_Printer(&bb->file, &bb->skinned_vertices);
-  PIE_ListEnd(&bb->file, &links.models.skinned_vertices);
+  PIE_ListStart(&bb->file, &links.models.vertices, TYPE_WORLD_Vertex);
+  Pr_Printer(&bb->file, &bb->vertices);
+  PIE_ListEnd(&bb->file, &links.models.vertices);
 
   PIE_ListStart(&bb->file, &links.models.indices, TYPE_U16);
   Pr_Printer(&bb->file, &bb->indices);

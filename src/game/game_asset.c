@@ -376,22 +376,17 @@ static void ASSET_LoadGeometry()
 {
   ASSET_PieFile *br = &APP.ast.pie;
 
-  APP.ast.rigid_vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
-                                            br->links->models.rigid_vertices.size,
-                                            "Rigid model vertices");
-  APP.ast.skinned_vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
-                                              br->links->models.skinned_vertices.size,
-                                              "Skinned model vertices");
+  APP.ast.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+                                      br->links->models.vertices.size,
+                                      "WORLD vertices");
   APP.ast.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX,
                                      br->links->models.indices.size,
                                      "Model indices");
 
-  S8 rigid_string = PIE_ListToS8(br->links->models.rigid_vertices);
-  S8 skinned_string = PIE_ListToS8(br->links->models.skinned_vertices);
+  S8 vertices_string = PIE_ListToS8(br->links->models.vertices);
   S8 indices_string = PIE_ListToS8(br->links->models.indices);
 
-  GPU_TransferBuffer(APP.ast.rigid_vertices, rigid_string.str, rigid_string.size);
-  GPU_TransferBuffer(APP.ast.skinned_vertices, skinned_string.str, skinned_string.size);
+  GPU_TransferBuffer(APP.ast.vertices, vertices_string.str, vertices_string.size);
   GPU_TransferBuffer(APP.ast.indices, indices_string.str, indices_string.size);
 
   ForU32(model_kind, MODEL_COUNT)
@@ -460,7 +455,6 @@ static void ASSET_Deinit()
   }
 
   // geometry
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.rigid_vertices);
-  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.skinned_vertices);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.vertices);
   SDL_ReleaseGPUBuffer(APP.gpu.device, APP.ast.indices);
 }

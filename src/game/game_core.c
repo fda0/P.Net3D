@@ -98,7 +98,7 @@ static void Game_DrawObjects()
       U32 vertices_per_face = 3*2;
       U32 mesh_verts_count = face_count * vertices_per_face;
 
-      WORLD_VertexMesh mesh_verts[6 * 3 * 2]; // CPU side temporary buffer
+      WORLD_Vertex mesh_verts[6 * 3 * 2]; // CPU side temporary buffer
       Memclear(mesh_verts, sizeof(mesh_verts));
       Assert(ArrayCount(mesh_verts) >= mesh_verts_count);
 
@@ -208,7 +208,7 @@ static void Game_DrawObjects()
       }
 
       // Transfer verts to GPU
-      WORLD_RenderMeshVertices(material, mesh_verts, mesh_verts_count);
+      WORLD_RenderDynamicMesh(material, mesh_verts, mesh_verts_count);
     }
   }
 
