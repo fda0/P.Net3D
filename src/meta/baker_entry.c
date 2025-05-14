@@ -60,19 +60,19 @@ int main()
       //PIE_TexFormat format = PIE_Tex_R8G8B8A8;
       PIE_TexFormat format = PIE_Tex_BC7_RGBA;
 
-      BK_TEX_Load(TEX_Leather011, format);
-      BK_TEX_Load(TEX_PavingStones067, format);
-      BK_TEX_Load(TEX_Tiles101, format);
-      BK_TEX_Load(TEX_TestPBR001, format);
-      BK_TEX_Load(TEX_Tree0Bark, format);
-      BK_TEX_Load(TEX_Tree0eaves, format);
-      BK_TEX_Load(TEX_Bricks071, format);
-      BK_TEX_Load(TEX_Bricks097, format);
-      BK_TEX_Load(TEX_Grass004, format);
-      BK_TEX_Load(TEX_Ground037, format);
-      BK_TEX_Load(TEX_Ground068, format);
-      BK_TEX_Load(TEX_Ground078, format);
-      BK_TEX_Load(TEX_Tree0Material, format);
+      BK_TEX_Load(S8Lit("Leather011"), format);
+      BK_TEX_Load(S8Lit("PavingStones067"), format);
+      BK_TEX_Load(S8Lit("Tiles101"), format);
+      BK_TEX_Load(S8Lit("TestPBR001"), format);
+      BK_TEX_Load(S8Lit("Tree0Bark"), format);
+      BK_TEX_Load(S8Lit("Tree0eaves"), format);
+      BK_TEX_Load(S8Lit("Bricks071"), format);
+      BK_TEX_Load(S8Lit("Bricks097"), format);
+      BK_TEX_Load(S8Lit("Grass004"), format);
+      BK_TEX_Load(S8Lit("Ground037"), format);
+      BK_TEX_Load(S8Lit("Ground068"), format);
+      BK_TEX_Load(S8Lit("Ground078"), format);
+      BK_TEX_Load(S8Lit("Tree0Material"), format);
     }
 
     // Load .gltf models

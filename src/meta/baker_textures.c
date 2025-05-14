@@ -16,12 +16,9 @@ static U32 BK_TEX_CalculateMipMapCount(U32 width, U32 height)
   return msb;
 }
 
-static void BK_TEX_Load(TEX_Kind tex_kind, PIE_TexFormat format)
+static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
 {
   PIE_Builder *bb = &BAKER.bb;
-
-  Assert(tex_kind < TEX_COUNT);
-  S8 tex_name = TEX_GetName(tex_kind);
 
   typedef struct
   {

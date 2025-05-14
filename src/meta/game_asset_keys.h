@@ -36,47 +36,6 @@ static bool MATERIAL_KeyIsZero(MATERIAL_Key a)
   return !a.hash;
 }
 
-
-#define TEX_LIST(X) \
-X(Bricks071) \
-X(Bricks097) \
-X(Grass004) \
-X(Ground037) \
-X(Ground068) \
-X(Ground078) \
-X(Leather011) \
-X(PavingStones067) \
-X(Tiles101) \
-X(TestPBR001) \
-X(Tree0Bark) \
-X(Tree0eaves) \
-X(Tree0Material)
-
-//
-// Textures
-//
-typedef U32 TEX_Kind;
-enum
-{
-#define TEX_DEF_ENUM(a) TEX_##a,
-  TEX_LIST(TEX_DEF_ENUM)
-  TEX_COUNT
-};
-
-READ_ONLY static S8 TEX_Names[] =
-{
-#define TEX_DEF_NAMES(a) {(U8 *)#a, sizeof(#a)-1},
-  TEX_LIST(TEX_DEF_NAMES)
-};
-
-static S8 TEX_GetName(TEX_Kind tex_kind)
-{
-  Assert(tex_kind < TEX_COUNT);
-  return TEX_Names[tex_kind];
-}
-
-
-
 //
 // Models
 //

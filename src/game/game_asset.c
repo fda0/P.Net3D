@@ -258,8 +258,8 @@ static int SDLCALL ASSET_TextureThread(void *data)
     if (min_frame >= frame_margin) min_frame -= frame_margin;
     else                           min_frame = 0;
 
-    ForU32(tex_kind, TEX_COUNT)
-      ASSET_LoadMaterialFromPieFile(tex_kind, min_frame);
+    ForU32(material_index, APP.ast.materials_count)
+      ASSET_LoadMaterialFromPieFile(material_index, min_frame);
 
     SDL_WaitSemaphore(APP.ast.tex_sem);
     if (APP.in_shutdown)
