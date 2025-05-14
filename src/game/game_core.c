@@ -86,12 +86,12 @@ static void Game_DrawObjects()
     if (draw_collision || draw_model_collision)
     {
       float height = obj->s.collision_height;
-      TEX_Kind tex_kind = obj->s.texture;
+      MATERIAL_Key material = obj->s.material;
 
       if (draw_model_collision)
       {
         if (!height) height = 20.f;
-        if (!tex_kind) tex_kind = TEX_Leather011;
+        if (MATERIAL_KeyIsZero(material)) material = MATERIAL_CreateKey(S8Lit("tex.Leather011"));
       }
 
       U32 face_count = (height ? 6 : 1);
@@ -208,7 +208,7 @@ static void Game_DrawObjects()
       }
 
       // Transfer verts to GPU
-      WORLD_RenderMeshVertices(tex_kind, mesh_verts, mesh_verts_count);
+      WORLD_RenderMeshVertices(material, mesh_verts, mesh_verts_count);
     }
   }
 
@@ -544,13 +544,13 @@ static void Game_Init()
       Object *ground = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
       ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
       Collision_RecalculateNormals(&ground->s.collision);
-      ground->s.texture = TEX_Grass004;
+      ground->s.material = MATERIAL_CreateKey(S8Lit("tex.Grass004"));
     }
 
     {
       Object *flying_cube = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
       flying_cube->s.p = (V3){40, 40, 80};
-      flying_cube->s.texture = TEX_Tiles101;
+      flying_cube->s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles101"));
       flying_cube->s.texture_texels_per_cm = 0.018f;
       flying_cube->s.collision_height = 40;
       flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){40, 40});
@@ -559,7 +559,7 @@ static void Game_Init()
 
     {
       Object *sun = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-      sun->s.texture = TEX_Leather011;
+      sun->s.material = MATERIAL_CreateKey(S8Lit("tex.Leather011"));
       sun->s.collision_height = 50;
       sun->s.collision.verts = CollisionVertices_FromRectDim((V2){50, 50});
       Collision_RecalculateNormals(&sun->s.collision);

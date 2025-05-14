@@ -730,31 +730,33 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   // Meshes (walls)
   SDL_BindGPUGraphicsPipeline(pass, APP.gpu.world_pipelines[pipeline_index].wall);
   {
-    ForU32(tex_index, TEX_COUNT)
+    ForU32(bundle_index, APP.gpu.mem.bundles_count)
     {
-      GPU_MemoryBundle *gpu_bundle =
-        GPU_MemoryTargetToBundle((GPU_MemoryTarget){.type = GPU_MemoryMeshVertices,
-                                                    .tex = tex_index});
+      GPU_MemoryBundle *gpu_bundle = APP.gpu.mem.bundles + bundle_index;
+      if (gpu_bundle->target.type != GPU_MemoryMeshVertices)
+        continue;
       if (!gpu_bundle->element_count)
         continue;
 
       // Bind vertex buffer
       SDL_BindGPUVertexBuffers(pass, 0, &(SDL_GPUBufferBinding){.buffer = gpu_bundle->buffer->handle}, 1);
 
-      ASSET_Texture *tex = ASSET_GetTexture(tex_index);
+      ASSET_Material *material = ASSET_GetMaterial(gpu_bundle->target.material_key);
 
       // Update uniform
       if (!is_depth_prepass)
       {
-        APP.gpu.world_uniform.material_loaded_t = tex->b.loaded_t;
-        APP.gpu.world_uniform.material_shininess = tex->shininess;
+        APP.gpu.world_uniform.material_loaded_t = material->b.loaded_t;
+        APP.gpu.world_uniform.material_diffuse = material->diffuse;
+        APP.gpu.world_uniform.material_specular = material->specular;
+        APP.gpu.world_uniform.material_shininess = material->shininess;
         GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
       }
 
       // Bind fragment color texture sampler
       SDL_GPUTextureSamplerBinding binding_sampl =
       {
-        .texture = tex->handle,
+        .texture = material->tex,
         .sampler = APP.gpu.mesh_tex_sampler,
       };
       SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
@@ -780,16 +782,16 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   // bind index buffer for all models
   SDL_BindGPUIndexBuffer(pass, &(SDL_GPUBufferBinding){.buffer = APP.ast.indices}, SDL_GPU_INDEXELEMENTSIZE_16BIT);
 
-  ForU32(model_type, MODEL_COUNT)
+  ForU32(bundle_index, APP.gpu.mem.bundles_count)
   {
-    ASSET_Model *model = ASSET_GetModel(model_type);
-    if (model->is_skinned)
+    GPU_MemoryBundle *gpu_bundle = APP.gpu.mem.bundles + bundle_index;
+    if (gpu_bundle->target.type != GPU_MemoryModelInstances)
+      continue;
+    if (!gpu_bundle->element_count)
       continue;
 
-    GPU_MemoryBundle *gpu_bundle =
-      GPU_MemoryTargetToBundle((GPU_MemoryTarget){.type = GPU_MemoryModelInstances, .model = model_type});
-
-    if (!gpu_bundle->element_count)
+    ASSET_Model *model = ASSET_GetModel(gpu_bundle->target.model);
+    if (model->is_skinned)
       continue;
 
     // bind instance storage buffer
@@ -817,37 +819,39 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   SDL_BindGPUVertexBuffers(pass, 0, &(SDL_GPUBufferBinding){.buffer = APP.ast.skinned_vertices}, 1);
 
   // Get joint transform buffer
-  GPU_MemoryBundle *joints = GPU_MemoryTargetToBundle((GPU_MemoryTarget){.type = GPU_MemoryJointTransforms});
-
-  ForU32(model_type, MODEL_COUNT)
+  GPU_MemoryBundle *joints = GPU_MemoryFindBundle((GPU_MemoryTarget){.type = GPU_MemoryJointTransforms});
+  if (joints)
   {
-    ASSET_Model *model = ASSET_GetModel(model_type);
-    if (!model->is_skinned)
-      continue;
-
-    GPU_MemoryBundle *gpu_bundle =
-      GPU_MemoryTargetToBundle((GPU_MemoryTarget){.type = GPU_MemoryModelInstances, .model = model_type});
-
-    if (!gpu_bundle->element_count)
-      continue;
-
-    // bind instance storage buffer
-    SDL_GPUBuffer *storage_bufs[2] =
+    ForU32(bundle_index, APP.gpu.mem.bundles_count)
     {
-      gpu_bundle->buffer->handle,
-      joints->buffer->handle
-    };
-    SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
+      GPU_MemoryBundle *gpu_bundle = APP.gpu.mem.bundles + bundle_index;
+      if (gpu_bundle->target.type != GPU_MemoryModelInstances)
+        continue;
+      if (!gpu_bundle->element_count)
+        continue;
 
-    ForU32(geo_index, model->geos_count)
-    {
-      ASSET_Geometry *geo = model->geos + geo_index;
+      ASSET_Model *model = ASSET_GetModel(gpu_bundle->target.model);
+      if (!model->is_skinned)
+        continue;
 
-      APP.gpu.world_uniform.material_diffuse = geo->color;;
-      GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+      // bind instance storage buffer
+      SDL_GPUBuffer *storage_bufs[2] =
+      {
+        gpu_bundle->buffer->handle,
+        joints->buffer->handle
+      };
+      SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
-      SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
-                                   geo->indices_start_index, geo->vertices_start_index, 0);
+      ForU32(geo_index, model->geos_count)
+      {
+        ASSET_Geometry *geo = model->geos + geo_index;
+
+        APP.gpu.world_uniform.material_diffuse = geo->color;;
+        GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+
+        SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_bundle->element_count,
+                                     geo->indices_start_index, geo->vertices_start_index, 0);
+      }
     }
   }
 }

@@ -3,52 +3,50 @@
 - Think about overlapping GPU work. Now everything happens at the end of the frame in the final command buffer.
 */
 
-static GPU_MemoryTarget GPU_MemoryIndexToTarget(U32 index)
+static bool GPU_MemoryTargetMatch(GPU_MemoryTarget a, GPU_MemoryTarget b)
 {
-  GPU_MemoryTarget target = {};
-  if (index >= GPU_MEMORY_TARGET_COUNT)
-    return target;
-
-  if (index < TEX_COUNT)
+  if (a.type == b.type)
   {
-    target.type = GPU_MemoryMeshVertices;
-    target.tex = index;
-    return target;
-  }
-  index -= TEX_COUNT;
+    if (a.type == GPU_MemoryMeshVertices)
+      return MATERIAL_KeyMatch(a.material_key, b.material_key);
 
-  if (index < MODEL_COUNT)
-  {
-    target.type = GPU_MemoryModelInstances;
-    target.model = index;
-    return target;
-  }
-  index -= MODEL_COUNT;
+    if (a.type == GPU_MemoryModelInstances)
+      return a.model == b.model;
 
-  Assert(index == 0);
-  target.type = GPU_MemoryJointTransforms;
-  return target;
+    if (a.type == GPU_MemoryJointTransforms)
+      return true;
+  }
+  return false;
 }
 
-static U32 GPU_MemoryTargetToBundleIndex(GPU_MemoryTarget target)
+static GPU_MemoryBundle *GPU_MemoryFindBundle(GPU_MemoryTarget target)
 {
-  U32 index = 0;
-  if (target.type == GPU_MemoryMeshVertices)
-    return index + target.tex;
-  index += TEX_COUNT;
-
-  if (target.type == GPU_MemoryModelInstances)
-    return index + target.model;
-  index += MODEL_COUNT;
-
-  Assert(target.type == GPU_MemoryJointTransforms);
-  return index;
+  GPU_MemoryBundle *bundle = 0;
+  ForU32(i, APP.gpu.mem.bundles_count)
+  {
+    GPU_MemoryBundle *search = APP.gpu.mem.bundles + i;
+    if (GPU_MemoryTargetMatch(search->target, target))
+    {
+      bundle = search;
+      break;
+    }
+  }
+  return bundle;
 }
 
-static GPU_MemoryBundle *GPU_MemoryTargetToBundle(GPU_MemoryTarget target)
+static GPU_MemoryBundle *GPU_MemoryFindOrCreateBundle(GPU_MemoryTarget target)
 {
-  U32 bundle_index = GPU_MemoryTargetToBundleIndex(target);
-  GPU_MemoryBundle *bundle = APP.gpu.mem.bundles + bundle_index;
+  GPU_MemoryBundle *bundle = GPU_MemoryFindBundle(target);
+  if (!bundle)
+  {
+    Assert(APP.gpu.mem.bundles_count < ArrayCount(APP.gpu.mem.bundles));
+    bundle = APP.gpu.mem.bundles + APP.gpu.mem.bundles_count;
+    APP.gpu.mem.bundles_count += 1;
+    // We don't need to clear bundle since
+    // bundles array is zero initialized on game launch.
+    // + APP.gpu.mem.bundles_count isn't reset between frames.
+    bundle->target = target;
+  }
   return bundle;
 }
 
@@ -59,10 +57,8 @@ static void GPU_MemoryTransferUnmap(GPU_Transfer *transfer)
   transfer->mapped_memory = 0;
 }
 
-static GPU_Transfer *GPU_MemoryTransferCreate(GPU_MemoryTarget target, U32 size)
+static GPU_Transfer *GPU_MemoryTransferCreate(GPU_MemoryBundle *bundle, U32 size)
 {
-  GPU_MemoryBundle *bundle = GPU_MemoryTargetToBundle(target);
-
   // Calculate rounded-up alloc_size
   U32 alloc_size = U32_CeilPow2(size*2);
   if (bundle->buffer)
@@ -104,9 +100,8 @@ static GPU_Transfer *GPU_MemoryTransferCreate(GPU_MemoryTarget target, U32 size)
   return result;
 }
 
-static void *GPU_TransferGetMappedMemory(GPU_MemoryTarget target, U32 size, U32 elem_count)
+static void *GPU_TransferGetMappedMemory(GPU_MemoryBundle *bundle, U32 size, U32 elem_count)
 {
-  GPU_MemoryBundle *bundle = GPU_MemoryTargetToBundle(target);
   bundle->element_count += elem_count;
 
   GPU_Transfer *transfer = bundle->transfer_last;
@@ -122,7 +117,7 @@ static void *GPU_TransferGetMappedMemory(GPU_MemoryTarget target, U32 size, U32 
   }
 
   if (!transfer)
-    transfer = GPU_MemoryTransferCreate(target, size);
+    transfer = GPU_MemoryTransferCreate(bundle, size);
 
   void *result = (U8 *)transfer->mapped_memory + transfer->used;
   bundle->total_used += size;
@@ -130,9 +125,9 @@ static void *GPU_TransferGetMappedMemory(GPU_MemoryTarget target, U32 size, U32 
   return result;
 }
 
-static void GPU_TransferUploadBytes(GPU_MemoryTarget target, void *data, U32 size, U32 elem_count)
+static void GPU_TransferUploadBytes(GPU_MemoryBundle *bundle, void *data, U32 size, U32 elem_count)
 {
-  void *dest = GPU_TransferGetMappedMemory(target, size, elem_count);
+  void *dest = GPU_TransferGetMappedMemory(bundle, size, elem_count);
   Memcpy(dest, data, size);
 }
 
@@ -140,7 +135,7 @@ static void GPU_TransferUploadBytes(GPU_MemoryTarget target, void *data, U32 siz
 static void GPU_TransfersToBuffers(SDL_GPUCommandBuffer *cmd)
 {
   SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
-  ForU32(bundle_index, GPU_MEMORY_TARGET_COUNT)
+  ForU32(bundle_index, APP.gpu.mem.bundles_count)
   {
     GPU_MemoryBundle *bundle = APP.gpu.mem.bundles + bundle_index;
     if (bundle->total_used)
@@ -175,9 +170,8 @@ static void GPU_TransfersToBuffers(SDL_GPUCommandBuffer *cmd)
 
         U32 alloc_size = U32_CeilPow2(bundle->total_used*2);
 
-        GPU_MemoryTargetType target_type = GPU_MemoryIndexToTarget(bundle_index).type;
         SDL_GPUBufferUsageFlags usage = 0;
-        if (target_type == GPU_MemoryMeshVertices)
+        if (bundle->target.type == GPU_MemoryMeshVertices)
           usage |= SDL_GPU_BUFFERUSAGE_VERTEX;
         else
           usage |= SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
@@ -228,7 +222,7 @@ static void GPU_TransfersToBuffers(SDL_GPUCommandBuffer *cmd)
 
 static void GPU_MemoryClearEntries()
 {
-  ForU32(bundle_index, GPU_MEMORY_TARGET_COUNT)
+  ForU32(bundle_index, APP.gpu.mem.bundles_count)
   {
     GPU_MemoryBundle *bundle = APP.gpu.mem.bundles + bundle_index;
     Assert(!bundle->transfer_first);
@@ -240,7 +234,7 @@ static void GPU_MemoryClearEntries()
 
 static void GPU_MemoryDeinit()
 {
-  ForU32(bundle_index, GPU_MEMORY_TARGET_COUNT)
+  ForU32(bundle_index, APP.gpu.mem.bundles_count)
   {
     GPU_MemoryBundle *bundle = APP.gpu.mem.bundles + bundle_index;
     if (bundle->buffer)

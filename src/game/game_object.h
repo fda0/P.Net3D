@@ -52,7 +52,7 @@ typedef struct
   U32 animation_index; // used by DrawModel
   MODEL_Type model; // used by DrawModel
   float collision_height; // used by DrawCollision
-  TEX_Kind texture; // used by DrawCollision
+  MATERIAL_Key material; // used by DrawCollision
   float texture_texels_per_cm; // used by DrawCollision
 
   // input actions

@@ -304,16 +304,16 @@ static void UI_BuildUILayoutElements()
                                       .height = CLAY_SIZING_FIT()}},
                 .scroll = {.vertical = true}})
           {
-            ForU32(tex_index, TEX_COUNT)
+            ForU32(material_index, APP.ast.materials_count)
             {
-              CLAY_TEXT(ClayString_FromS8(TEX_GetName(tex_index)),
+              ASSET_Material *material = APP.ast.materials + material_index;
+              CLAY_TEXT(ClayString_FromS8(material->key.name),
                         CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
 
               CLAY({.layout = {.padding = UI_tex_pad}})
               {
                 UI_RenderSlider(CLAY_STRING("Shininess"), (UI_SliderConfig)
-                                {&ASSET_GetTexture(tex_index)->shininess, 0, 64, tex_index});
-                //UI_RenderSlider(CLAY_STRING("Displacement"), (UI_SliderConfig){0, 16, &APP.debug.tex_displacement});
+                                {&material->shininess, 0, 64, material_index});
               }
             }
           }

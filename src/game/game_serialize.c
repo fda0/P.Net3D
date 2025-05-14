@@ -270,6 +270,9 @@ static void SERIAL_DebugSettings(bool is_load)
 
 static void SERIAL_AssetSettings(bool is_load)
 {
+  if (!APP.ast.materials_count)
+    return;
+
   if (!is_load)
   {
     U64 period_ms = 100;
@@ -278,26 +281,36 @@ static void SERIAL_AssetSettings(bool is_load)
     APP.ast.serialize_last_check_timestamp = APP.timestamp;
   }
 
-  SERIAL_Item items[] =
   {
-#define SERIAL_DEF_TEXTURES(a) SERIAL_DEF(APP.ast.textures, [TEX_##a].shininess, float),
-    TEX_LIST(SERIAL_DEF_TEXTURES)
-  };
+    ArenaScope scope = Arena_PushScope(APP.tmp);
 
-  const char *file_path = "../src/data/assets.c_config";
-  if (is_load)
-  {
-    SERIAL_LoadFromFile(items, ArrayCount(items), file_path);
-    U64 hash = SERIAL_CalculateHash(items, ArrayCount(items));
-    APP.ast.serialize_hash = hash;
-  }
-  else
-  {
-    U64 hash = SERIAL_CalculateHash(items, ArrayCount(items));
-    if (APP.ast.serialize_hash == hash)
-      return;
-    APP.ast.serialize_hash = hash;
+    U32 items_count = APP.ast.materials_count;
+    SERIAL_Item *items = Alloc(scope.a, SERIAL_Item, items_count);
+    ForU32(i, items_count)
+    {
+      ASSET_Material *material = APP.ast.materials + i;
+      items[i].ptr = &material->shininess;
+      items[i].name = material->key.name;
+      items[i].type = TYPE_float;
+    }
 
-    SERIAL_SaveToFile(items, ArrayCount(items), file_path);
+    const char *file_path = "../src/data/assets.c_config";
+    if (is_load)
+    {
+      SERIAL_LoadFromFile(items, items_count, file_path);
+      U64 hash = SERIAL_CalculateHash(items, items_count);
+      APP.ast.serialize_hash = hash;
+    }
+    else
+    {
+      U64 hash = SERIAL_CalculateHash(items, items_count);
+      if (APP.ast.serialize_hash != hash)
+      {
+        APP.ast.serialize_hash = hash;
+        SERIAL_SaveToFile(items, items_count, file_path);
+      }
+    }
+
+    Arena_PopScope(scope);
   }
 }

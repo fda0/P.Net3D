@@ -10,24 +10,27 @@ static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
   ASSET_Model *model = ASSET_GetModel(model_type);
   if (model->is_skinned)
   {
-    GPU_MemoryTarget gpu_target = {.type = GPU_MemoryJointTransforms};
-    GPU_MemoryBundle *gpu_bundle = GPU_MemoryTargetToBundle(gpu_target);
-    instance.pose_offset = gpu_bundle->element_count;
+    GPU_MemoryBundle *joints_bundle = GPU_MemoryFindOrCreateBundle((GPU_MemoryTarget)
+                                                                {.type = GPU_MemoryJointTransforms});
+    instance.pose_offset = joints_bundle->element_count;
 
     ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
     ANIM_Pose pose = ANIM_PoseFromAnimation(skel, animation_index, animation_t);
-    GPU_TransferUploadBytes(gpu_target, pose.mats,
+    GPU_TransferUploadBytes(joints_bundle, pose.mats,
                             pose.mats_count * sizeof(pose.mats[0]),
                             pose.mats_count);
   }
 
-  GPU_TransferUploadBytes((GPU_MemoryTarget){.type = GPU_MemoryModelInstances, .model = model_type},
-                          &instance, sizeof(instance), 1);
+  GPU_MemoryBundle *instance_bundle =
+    GPU_MemoryFindOrCreateBundle((GPU_MemoryTarget){.type = GPU_MemoryModelInstances, .model = model_type});
+  GPU_TransferUploadBytes(instance_bundle, &instance, sizeof(instance), 1);
 }
 
-static void WORLD_RenderMeshVertices(TEX_Kind tex, WORLD_VertexMesh *vertices, U32 vertices_count)
+static void WORLD_RenderMeshVertices(MATERIAL_Key material, WORLD_VertexMesh *vertices, U32 vertices_count)
 {
-  GPU_TransferUploadBytes((GPU_MemoryTarget){.type = GPU_MemoryMeshVertices, .tex = tex},
+  GPU_MemoryBundle *mesh_bundle =
+    GPU_MemoryFindOrCreateBundle((GPU_MemoryTarget){.type = GPU_MemoryMeshVertices, .material_key = material});
+  GPU_TransferUploadBytes(mesh_bundle,
                           vertices,
                           vertices_count * sizeof(*vertices),
                           vertices_count);

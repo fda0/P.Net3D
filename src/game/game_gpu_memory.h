@@ -1,9 +1,7 @@
-#define GPU_MEMORY_TARGET_COUNT (TEX_COUNT + MODEL_COUNT + 1/*joints_count*/)
-
 typedef enum
 {
   GPU_MemoryUnknown,
-  GPU_MemoryMeshVertices, // TEX_COUNT
+  GPU_MemoryMeshVertices, // MATERIAL_Key
   GPU_MemoryModelInstances, // MODEL_COUNT
   GPU_MemoryJointTransforms, // 1
 } GPU_MemoryTargetType;
@@ -11,7 +9,7 @@ typedef enum
 typedef struct
 {
   GPU_MemoryTargetType type;
-  TEX_Kind tex;
+  MATERIAL_Key material_key;
   MODEL_Type model;
 } GPU_MemoryTarget;
 
@@ -37,6 +35,8 @@ struct GPU_Buffer
 
 typedef struct
 {
+  GPU_MemoryTarget target;
+
   // cleared after every frame
   GPU_Transfer *transfer_first;
   GPU_Transfer *transfer_last;
@@ -54,5 +54,6 @@ typedef struct
   GPU_Transfer *free_transfers;
   GPU_Buffer *free_buffers;
 
-  GPU_MemoryBundle bundles[GPU_MEMORY_TARGET_COUNT];
+  GPU_MemoryBundle bundles[2048];
+  U32 bundles_count;
 } GPU_MemoryState;
