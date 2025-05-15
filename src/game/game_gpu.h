@@ -1,7 +1,7 @@
 typedef struct
 {
   SDL_GPUDevice *device;
-  GPU_MemoryState mem;
+  GPU_MEM_State mem;
 
   SDL_GPUTexture *tex_depth;
   SDL_GPUTexture *tex_msaa;
@@ -12,7 +12,6 @@ typedef struct
 
   SDL_GPUTexture *dummy_shadow_tex; // bound in shadowmap prepass; @todo delete and write special-purpose barebones fragment shader without textures for prepass
   SDL_GPUBuffer *dummy_instance_buffer;
-  SDL_GPUBuffer *dummy_pose_buffer;
 
   // pipeline, sample settings
   SDL_GPUSampleCount sample_count;

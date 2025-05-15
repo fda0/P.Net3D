@@ -1,59 +1,59 @@
 typedef enum
 {
-  GPU_MemoryUnknown,
-  GPU_MemoryMeshVertices, // MATERIAL_Key
-  GPU_MemoryModelInstances, // MODEL_COUNT
-  GPU_MemoryJointTransforms, // 1
-} GPU_MemoryTargetType;
+  GPU_MEM_Unknown,
+  GPU_MEM_MeshVertices, // MATERIAL_Key
+  GPU_MEM_ModelInstances, // MODEL_COUNT
+} GPU_MEM_TargetType;
 
 typedef struct
 {
-  GPU_MemoryTargetType type;
+  GPU_MEM_TargetType type;
   MATERIAL_Key material_key;
   MODEL_Type model;
-} GPU_MemoryTarget;
+} GPU_MEM_Target;
 
-typedef struct GPU_Transfer GPU_Transfer;
-struct GPU_Transfer
+typedef struct GPU_MEM_Transfer GPU_MEM_Transfer;
+struct GPU_MEM_Transfer
 {
   SDL_GPUTransferBuffer *handle;
   U32 cap; // in bytes
 
   U32 used; // in bytes
   void *mapped_memory;
-  GPU_Transfer *next;
+  GPU_MEM_Transfer *next;
 };
 
-typedef struct GPU_Buffer GPU_Buffer;
-struct GPU_Buffer
+typedef struct GPU_MEM_Buffer GPU_MEM_Buffer;
+struct GPU_MEM_Buffer
 {
   SDL_GPUBuffer *handle;
   U32 cap;
 
-  GPU_Buffer *next; // used by free list only
+  GPU_MEM_Buffer *next; // used by free list only
 };
 
 typedef struct
 {
-  GPU_MemoryTarget target;
+  GPU_MEM_Target target;
 
   // cleared after every frame
-  GPU_Transfer *transfer_first;
-  GPU_Transfer *transfer_last;
+  GPU_MEM_Transfer *transfer_first;
+  GPU_MEM_Transfer *transfer_last;
   U32 total_used;
   U32 element_count;
 
   // can live between frames
-  GPU_Buffer *buffer;
-} GPU_MemoryBundle;
+  GPU_MEM_Buffer *buffer;
+} GPU_MEM_Batch;
 
 typedef struct
 {
   Arena *arena; // for allocating GPU_TransferStorage, GPU_BufferStorage
   // these free list don't hold any GPU resources, just a way to reuse CPU memory
-  GPU_Transfer *free_transfers;
-  GPU_Buffer *free_buffers;
+  GPU_MEM_Transfer *free_transfers;
+  GPU_MEM_Buffer *free_buffers;
 
-  GPU_MemoryBundle bundles[2048];
-  U32 bundles_count;
-} GPU_MemoryState;
+  GPU_MEM_Batch poses;
+  GPU_MEM_Batch batches[2048];
+  U32 batches_count;
+} GPU_MEM_State;

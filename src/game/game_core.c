@@ -505,6 +505,7 @@ static void Game_Init()
   if (!APP.headless)
   {
     GPU_Init();
+    GPU_MEM_Init();
     ASSET_Init();
     SERIAL_AssetSettings(true);
 
