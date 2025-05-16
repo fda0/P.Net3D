@@ -6,7 +6,3 @@
 #define GPU_USE_MSAA true
 
 #define TESTS_ENABLED 1
-
-// App forward declares
-struct AppState;
-typedef struct AppState AppState;

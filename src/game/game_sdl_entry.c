@@ -54,7 +54,7 @@ static void WORLD_ApplyMaterialToUniform(WORLD_Uniform *uniform, ASSET_Material 
 #define CLAY_IMPLEMENTATION
 #include "clay.h"
 
-static AppState APP;
+static GAME_State APP;
 #include "game_util.c"
 #include "game_pie_loader.c"
 #include "game_asset.c"

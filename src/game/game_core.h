@@ -39,7 +39,7 @@ typedef enum
   WorldDir_COUNT
 } WorldDir;
 
-struct AppState
+typedef struct
 {
   // SDL, window stuff
   SDL_Window* window;
@@ -159,7 +159,7 @@ struct AppState
 
     bool draw_model_collision;
   } debug;
-};
+} GAME_State;
 
 typedef struct
 {

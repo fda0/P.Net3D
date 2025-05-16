@@ -76,8 +76,8 @@ static void NET_RecalculatePacketHeader()
 static S8 NET_GetPacketString()
 {
   // there should be no padding between these
-  static_assert(offsetof(AppState, net.packet_header) + sizeof(APP.net.packet_header) ==
-                offsetof(AppState, net.packet_payload_buf));
+  static_assert(offsetof(GAME_State, net.packet_header) + sizeof(APP.net.packet_header) ==
+                offsetof(GAME_State, net.packet_payload_buf));
 
   U64 total_size = sizeof(APP.net.packet_header) + APP.net.payload_used;
   S8 result = S8_Make((U8 *)&APP.net.packet_header, total_size);
