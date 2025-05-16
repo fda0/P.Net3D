@@ -1,6 +1,6 @@
 typedef struct
 {
-  U32 color;
+  MATERIAL_Key material;
 
   U32 vertices_start_index;
   U32 indices_start_index;
@@ -70,10 +70,8 @@ typedef struct
 {
   ASSET_Base b;
   MATERIAL_Key key;
-  U32 diffuse;
-  U32 specular;
-  float shininess;
 
+  PIE_MaterialParams params;
   bool has_texture;
   SDL_GPUTexture *tex;
 } ASSET_Material;

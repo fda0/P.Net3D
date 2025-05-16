@@ -54,9 +54,7 @@ typedef struct
 
 typedef struct
 {
-  //U8 uses_texture : 1;
-  //U32 texture_index;
-  U32 color;
+  U32 material_index;
 
   U32 vertices_start_index;
   U32 indices_start_index;
@@ -85,18 +83,29 @@ typedef struct
 typedef U32 PIE_TexFormat;
 enum
 {
-  PIE_Tex_None,
+  PIE_Tex_Empty,
   PIE_Tex_R8G8B8A8,
   PIE_Tex_BC7_RGBA,
 };
 
+typedef U32 PIE_MaterialFlags;
+enum
+{
+  PIE_MaterialFlag_HasAlpha = (1 << 0),
+};
+
+typedef struct
+{
+  PIE_MaterialFlags flags;
+  U32 diffuse;
+  U32 specular;
+  float roughness; // [0:1]
+} PIE_MaterialParams;
+
 typedef struct
 {
   PIE_ListT(U8) name;
-
-  U32 diffuse;
-  U32 specular;
-  float shininess;
+  PIE_MaterialParams params;
 
   struct {
     PIE_TexFormat format;

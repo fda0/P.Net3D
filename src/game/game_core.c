@@ -551,11 +551,11 @@ static void Game_Init()
 
     {
       Object *flying_cube = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-      flying_cube->s.p = (V3){40, 40, 80};
+      flying_cube->s.p = (V3){50, 120, 100};
       flying_cube->s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles101"));
       flying_cube->s.texture_texels_per_cm = 0.018f;
-      flying_cube->s.collision_height = 40;
-      flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){40, 40});
+      flying_cube->s.collision_height = 30;
+      flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){100, 100});
       Collision_RecalculateNormals(&flying_cube->s.collision);
     }
 

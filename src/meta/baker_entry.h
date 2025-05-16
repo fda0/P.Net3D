@@ -12,9 +12,6 @@ typedef struct
 
   Printer materials;
   U32 materials_count;
-
-  // data for geometry that's currently under construction
-  MODEL_Type selected_model;
 } PIE_Builder;
 
 typedef struct
@@ -27,7 +24,7 @@ typedef struct
 typedef struct
 {
   // BK_GLTF_Geometry Groups all vertices and indicecs per common material in .gltf file.
-  U32 color;
+  U32 material_index;
 
   U32 verts_count;
   BK_Buffer indices;
@@ -65,7 +62,7 @@ typedef struct
   Arena *tmp;
   Arena *cgltf_arena;
 
-  PIE_Builder bb;
+  PIE_Builder pie_builder;
 
   BAKER_TexState tex;
 } BAKER_State;

@@ -16,7 +16,7 @@ struct WORLD_DX_Uniform
 
   U32 material_diffuse; // RGBA
   U32 material_specular; // RGBA
-  float material_shininess;
+  float material_roughness;
   float material_loaded_t;
 };
 
@@ -121,7 +121,7 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
   V3 sun_specular = UnpackColor32(UP.sun_specular).xyz;
   V3 material_diffuse = UnpackColor32(UP.material_diffuse).xyz;
   V3 material_specular = UnpackColor32(UP.material_specular).xyz;
-  float material_shininess = UP.material_shininess;
+  float material_roughness = UP.material_roughness;
 
   V3 face_normal = mul(frag.normal_rot, V3(0,0,1));
   V3 pixel_normal = face_normal;
@@ -150,7 +150,7 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
     {
       float tex_roughness = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 2.f)).x;
       tex_roughness = lerp(0.5f, tex_roughness, UP.material_loaded_t);
-      material_shininess *= (1.f - tex_roughness);
+      material_roughness = tex_roughness;
     }
   }
 
@@ -181,7 +181,7 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
         float current_depth = shadow_proj.z;
         if (current_depth <= 1.f)
         {
-          float bias = max(0.05f * (1.f - dot(-UP.sun_dir, face_normal)), 0.005f);
+          float bias = max(0.005f * (1.f - dot(-UP.sun_dir, face_normal)), 0.005f);
           shadow += current_depth - bias > closest_depth ? 1.f : 0.f;
         }
       }
@@ -199,7 +199,9 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
     V3 view_dir = normalize(UP.camera_position - frag.world_p);
     V3 halfway_dir = normalize(view_dir - UP.sun_dir);
     float specular_angle = max(dot(pixel_normal, halfway_dir), 0.f);
-    specular_factor = pow(specular_angle, material_shininess);
+    float max_shininess = 32.f;
+    float shininess = max_shininess * material_roughness;
+    specular_factor = pow(specular_angle, shininess);
   }
 
   V3 color_ambient = sky_ambient * material_diffuse;

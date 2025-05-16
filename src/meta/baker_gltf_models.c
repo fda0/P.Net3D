@@ -31,22 +31,22 @@ static U32 BK_GLTF_FindMaterialIndex(cgltf_data *data, cgltf_material *find_mate
   return (U32)data->materials_count;
 }
 
-static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, cgltf_data *data)
+static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *build, BK_GLTF_Model *model, cgltf_data *data)
 {
   if (model->has_skeleton)
     return;
 
   model->has_skeleton = true;
-  model->skeleton_index = bb->skeletons_count;
-  bb->skeletons_count += 1;
+  model->skeleton_index = build->skeletons_count;
+  build->skeletons_count += 1;
 
-  PIE_Skeleton *br_skel = PIE_Reserve(&bb->skeletons, PIE_Skeleton, 1);
+  PIE_Skeleton *pie_skel = PIE_Reserve(&build->skeletons, PIE_Skeleton, 1);
 
   // Root transform
   {
     Mat4 root_transform = Mat4_Scale((V3){model->config.scale, model->config.scale, model->config.scale});
     root_transform = Mat4_Mul(Mat4_Rotation_Quat(model->config.rot), root_transform);
-    br_skel->root_transform = root_transform;
+    pie_skel->root_transform = root_transform;
   }
 
   M_Check(data->skins_count == 1);
@@ -66,7 +66,8 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, c
       U64 comp_count = cgltf_num_components(inv_bind->type);
       M_Check(comp_count == 16);
 
-      Mat4 *matrices = PIE_ListReserve(&bb->file, &br_skel->inv_bind_mats, Mat4, (U32)inv_bind->count);
+      PIE_Aling(&build->file, _Alignof(Mat4));
+      Mat4 *matrices = PIE_ListReserve(&build->file, &pie_skel->inv_bind_mats, Mat4, (U32)inv_bind->count);
 
       U64 float_count = comp_count * inv_bind->count;
       U64 unpacked = cgltf_accessor_unpack_floats(inv_bind, matrices->flat, float_count);
@@ -75,8 +76,8 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, c
 
     // child hierarchy indices
     {
-      U32 *indices = PIE_ListReserve(&bb->file, &br_skel->child_index_buf, U32, joints_count);
-      RngU32 *ranges = PIE_ListReserve(&bb->file, &br_skel->child_index_ranges, RngU32, joints_count);
+      U32 *indices = PIE_ListReserve(&build->file, &pie_skel->child_index_buf, U32, joints_count);
+      RngU32 *ranges = PIE_ListReserve(&build->file, &pie_skel->child_index_ranges, RngU32, joints_count);
 
       U32 indices_count = 0;
       ForU64(joint_index, joints_count)
@@ -103,34 +104,34 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, c
     // rest pose transformations
     {
       // Translations
-      PIE_ListStart(&bb->file, &br_skel->translations, TYPE_V3);
+      PIE_ListStart(&build->file, &pie_skel->translations, TYPE_V3);
       ForU64(joint_index, joints_count)
       {
         cgltf_node *joint = skin->joints[joint_index];
         ForArray(i, joint->translation)
-          *PIE_Reserve(&bb->file, float, 1) = joint->translation[i];
+          *PIE_Reserve(&build->file, float, 1) = joint->translation[i];
       }
-      PIE_ListEnd(&bb->file, &br_skel->translations);
+      PIE_ListEnd(&build->file, &pie_skel->translations);
 
       // Rotations
-      PIE_ListStart(&bb->file, &br_skel->rotations, TYPE_Quat);
+      PIE_ListStart(&build->file, &pie_skel->rotations, TYPE_Quat);
       ForU64(joint_index, joints_count)
       {
         cgltf_node *joint = skin->joints[joint_index];
         ForArray(i, joint->rotation)
-          *PIE_Reserve(&bb->file, float, 1) = joint->rotation[i];
+          *PIE_Reserve(&build->file, float, 1) = joint->rotation[i];
       }
-      PIE_ListEnd(&bb->file, &br_skel->rotations);
+      PIE_ListEnd(&build->file, &pie_skel->rotations);
 
       // Scales
-      PIE_ListStart(&bb->file, &br_skel->scales, TYPE_V3);
+      PIE_ListStart(&build->file, &pie_skel->scales, TYPE_V3);
       ForU64(joint_index, joints_count)
       {
         cgltf_node *joint = skin->joints[joint_index];
         ForArray(i, joint->scale)
-          *PIE_Reserve(&bb->file, float, 1) = joint->scale[i];
+          *PIE_Reserve(&build->file, float, 1) = joint->scale[i];
       }
-      PIE_ListEnd(&bb->file, &br_skel->scales);
+      PIE_ListEnd(&build->file, &pie_skel->scales);
     }
 
     // First allocate all strings in one continuous chunk.
@@ -139,18 +140,18 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, c
     ForU64(joint_index, joints_count)
     {
       cgltf_node *joint = skin->joints[joint_index];
-      name_ranges[joint_index].min = bb->file.used;
-      Pr_Cstr(&bb->file, joint->name);
-      name_ranges[joint_index].max = bb->file.used;
+      name_ranges[joint_index].min = build->file.used;
+      Pr_Cstr(&build->file, joint->name);
+      name_ranges[joint_index].max = build->file.used;
     }
 
     // Ensure memory alignment after copying strings
-    PIE_Aling(&bb->file, _Alignof(RngU32));
+    PIE_Aling(&build->file, _Alignof(RngU32));
 
     // Memcpy name strign ranges into the file
     {
-      RngU32 *dst_name_ranges = PIE_ListReserve(&bb->file, &br_skel->name_ranges, RngU32, joints_count);
-      Memcpy(dst_name_ranges, name_ranges, br_skel->name_ranges.size);
+      RngU32 *dst_name_ranges = PIE_ListReserve(&build->file, &pie_skel->name_ranges, RngU32, joints_count);
+      Memcpy(dst_name_ranges, name_ranges, pie_skel->name_ranges.size);
     }
   }
 
@@ -158,38 +159,38 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, c
   if (data->animations_count)
   {
     U32 anims_count = (U32)data->animations_count;
-    PIE_Animation *br_animations = PIE_ListReserve(&bb->file, &br_skel->anims, PIE_Animation, anims_count);
+    PIE_Animation *pie_animations = PIE_ListReserve(&build->file, &pie_skel->anims, PIE_Animation, anims_count);
 
     ForU32(animation_index, anims_count)
     {
-      PIE_Animation *br_anim = br_animations + animation_index;
+      PIE_Animation *pie_anim = pie_animations + animation_index;
       cgltf_animation *gltf_anim = data->animations + animation_index;
       float t_min = FLT_MAX;
       float t_max = -FLT_MAX;
 
       // Name string
-      PIE_ListStart(&bb->file, &br_anim->name, TYPE_U8);
-      Pr_Cstr(&bb->file, gltf_anim->name);
-      PIE_ListEnd(&bb->file, &br_anim->name);
+      PIE_ListStart(&build->file, &pie_anim->name, TYPE_U8);
+      Pr_Cstr(&build->file, gltf_anim->name);
+      PIE_ListEnd(&build->file, &pie_anim->name);
 
       // Ensure memory alignment after copying strings
-      PIE_Aling(&bb->file, _Alignof(PIE_AnimationChannel));
+      PIE_Aling(&build->file, _Alignof(PIE_AnimationChannel));
 
       // Channels
       U32 channels_count = (U32)gltf_anim->channels_count;
-      PIE_AnimationChannel *br_channels = PIE_ListReserve(&bb->file, &br_anim->channels,
+      PIE_AnimationChannel *pie_channels = PIE_ListReserve(&build->file, &pie_anim->channels,
                                                               PIE_AnimationChannel, channels_count);
 
       ForU32(channel_index, channels_count)
       {
-        PIE_AnimationChannel *br_chan = br_channels + channel_index;
+        PIE_AnimationChannel *pie_chan = pie_channels + channel_index;
         cgltf_animation_channel *gltf_chan = gltf_anim->channels + channel_index;
         cgltf_animation_sampler *gltf_sampler = gltf_chan->sampler;
         M_Check(gltf_sampler->interpolation == cgltf_interpolation_type_linear);
         M_Check(gltf_sampler->input->count == gltf_sampler->output->count);
 
         U32 sample_count = (U32)gltf_sampler->input->count;
-        br_chan->joint_index = BK_GLTF_FindJointIndex(skin, gltf_chan->target_node);
+        pie_chan->joint_index = BK_GLTF_FindJointIndex(skin, gltf_chan->target_node);
 
         switch (gltf_chan->target_path)
         {
@@ -197,17 +198,17 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, c
           M_Check(false && "Unsupported channel target"); break;
 
           case cgltf_animation_path_type_translation:
-          br_chan->type = AN_Translation; break;
+          pie_chan->type = AN_Translation; break;
 
           case cgltf_animation_path_type_rotation:
-          br_chan->type = AN_Rotation; break;
+          pie_chan->type = AN_Rotation; break;
 
           case cgltf_animation_path_type_scale:
-          br_chan->type = AN_Scale; break;
+          pie_chan->type = AN_Scale; break;
         }
 
         // inputs
-        float *in_nums = PIE_ListReserve(&bb->file, &br_chan->inputs, float, sample_count);
+        float *in_nums = PIE_ListReserve(&build->file, &pie_chan->inputs, float, sample_count);
         U64 in_unpacked = cgltf_accessor_unpack_floats(gltf_sampler->input, in_nums, sample_count);
         M_Check(in_unpacked == sample_count);
 
@@ -221,13 +222,13 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *bb, BK_GLTF_Model *model, c
         // outputs
         U32 out_comp_count = (U32)cgltf_num_components(gltf_sampler->output->type);
         U32 out_count = out_comp_count * sample_count;
-        float *out_nums = PIE_ListReserve(&bb->file, &br_chan->outputs, float, out_count);
+        float *out_nums = PIE_ListReserve(&build->file, &pie_chan->outputs, float, out_count);
         U64 out_unpacked = cgltf_accessor_unpack_floats(gltf_sampler->output, out_nums, out_count);
         M_Check(out_unpacked == out_count);
       }
 
-      br_anim->t_min = t_min;
-      br_anim->t_max = t_max;
+      pie_anim->t_min = t_min;
+      pie_anim->t_max = t_max;
     }
   }
 }
@@ -302,23 +303,24 @@ static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
   return numbers;
 }
 
-static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
+static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model)
 {
   bool is_skinned = bk_model->is_skinned;
 
-  PIE_Model *pie_model = bb->models + bk_model->type;
+  PIE_Model *pie_model = build->models + bk_model->type;
   pie_model->is_skinned = is_skinned;
   pie_model->skeleton_index = bk_model->skeleton_index;
 
-  PIE_Geometry *pie_geometries = PIE_ListReserve(&bb->file, &pie_model->geometries, PIE_Geometry, bk_model->geos_count);
+  PIE_Aling(&build->file, _Alignof(PIE_Geometry));
+  PIE_Geometry *pie_geometries = PIE_ListReserve(&build->file, &pie_model->geometries, PIE_Geometry, bk_model->geos_count);
 
   ForU32(geo_index, bk_model->geos_count)
   {
     BK_GLTF_Geometry *bk_geo = bk_model->geos + geo_index;
     PIE_Geometry *pie_geo = pie_geometries + geo_index;
 
-    pie_geo->color = bk_geo->color;
-    pie_geo->vertices_start_index = bb->vertices.used / sizeof(WORLD_Vertex);
+    pie_geo->material_index = bk_geo->material_index;
+    pie_geo->vertices_start_index = build->vertices.used / sizeof(WORLD_Vertex);
 
     // vertices
     ForU64(vert_i, bk_geo->verts_count)
@@ -381,7 +383,7 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
         vert.joint_weights = weights;
       }
 
-      *PIE_Reserve(&bb->vertices, WORLD_Vertex, 1) = vert;
+      *PIE_Reserve(&build->vertices, WORLD_Vertex, 1) = vert;
     }
 
     // indices
@@ -389,10 +391,10 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
       U16 *src_indices = bk_geo->indices.vals;
       U32 src_indices_count = bk_geo->indices.used;
 
-      pie_geo->indices_start_index = bb->indices.used / sizeof(U16);
+      pie_geo->indices_start_index = build->indices.used / sizeof(U16);
       pie_geo->indices_count += src_indices_count;
 
-      U16 *dst = PIE_Reserve(&bb->indices, U16, src_indices_count);
+      U16 *dst = PIE_Reserve(&build->indices, U16, src_indices_count);
       Memcpy(dst, src_indices, sizeof(U16)*src_indices_count);
     }
   }
@@ -400,7 +402,7 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *bb, BK_GLTF_Model *bk_model)
 
 static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelConfig config)
 {
-  PIE_Builder *bb = &BAKER.bb;
+  PIE_Builder *build = &BAKER.pie_builder;
 
   // normalize config
   if (!config.scale) config.scale = 1.f;
@@ -451,21 +453,50 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
   model.config = config;
   model.type = model_type;
   model.geos_count = (U32)data->materials_count;
-  model.geos = Alloc(scratch.a, BK_GLTF_Geometry, model.geos_count);
+  model.geos = AllocZeroed(scratch.a, BK_GLTF_Geometry, model.geos_count);
+  model.name = MODEL_GetName(model_type);
+  model.is_skinned = (data->animations_count > 0);
 
   ForU32(geo_index, model.geos_count)
   {
-    cgltf_material *gltf_material = data->materials + geo_index;
     BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
-
-    bk_geo->color = Color32_V4(*(V4 *)gltf_material->pbr_metallic_roughness.base_color_factor);
-
+    // Prepare bk_geo buffers
     bk_geo->indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
     bk_geo->positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
     bk_geo->normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
     bk_geo->texcoords     = BK_BufferAlloc(scratch.a, max_verts*2, sizeof(float));
     bk_geo->joint_indices = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(U8));
     bk_geo->weights       = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(float));
+
+    // Fetch material data
+    cgltf_material *gltf_material = data->materials + geo_index;
+
+    // Create material
+    bk_geo->material_index = build->materials_count;
+    {
+      build->materials_count += 1;
+      PIE_Material *pie_material = PIE_Reserve(&build->materials, PIE_Material, 1);
+      BK_SetDefaultsPIEMaterial(pie_material);
+
+      // Fill material name
+      {
+        PIE_ListStart(&build->file, &pie_material->name, TYPE_U8);
+        Pr_S8(&build->file, model.name);
+        Pr_Cstr(&build->file, ".mat");
+        Pr_U32(&build->file, geo_index);
+        PIE_ListEnd(&build->file, &pie_material->name);
+      }
+
+      if (gltf_material->has_pbr_metallic_roughness)
+      {
+        cgltf_pbr_metallic_roughness *pbr_roughness = &gltf_material->pbr_metallic_roughness;
+        pie_material->params.diffuse = Color32_V4(*(V4 *)pbr_roughness->base_color_factor);
+        pie_material->params.roughness = pbr_roughness->roughness_factor;
+      }
+
+      if (gltf_material->alpha_mode != cgltf_alpha_mode_opaque)
+        pie_material->params.flags |= PIE_MaterialFlag_HasAlpha;
+    }
   }
 
   ForU64(mesh_index, data->meshes_count)
@@ -575,8 +606,6 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
   //
   //
   //
-  model.name = MODEL_GetName(model_type);
-  model.is_skinned = (data->animations_count > 0);
 
   // Validate buffer counts
   ForU32(geo_index, model.geos_count)
@@ -608,7 +637,7 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
   // Sekeleton export
   if (model.is_skinned)
   {
-    BK_GLTF_ExportSkeletonToPie(bb, &model, data);
+    BK_GLTF_ExportSkeletonToPie(build, &model, data);
   }
 
   if (!model.is_skinned) // apply transformations directly to rigid mesh
@@ -639,7 +668,7 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
   }
 
   // Vertices export
-  BK_GLTF_ExportModelToPie(bb, &model);
+  BK_GLTF_ExportModelToPie(build, &model);
 
   // Reset tmp arena
   Arena_PopScope(scratch);

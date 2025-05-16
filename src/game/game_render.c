@@ -1,3 +1,6 @@
+//
+// WORLD
+//
 static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
                               U32 animation_index, float animation_t)
 {
@@ -34,6 +37,17 @@ static void WORLD_RenderDynamicMesh(MATERIAL_Key material, WORLD_Vertex *vertice
                               vertices_count);
 }
 
+static void WORLD_ApplyMaterialToUniform(WORLD_Uniform *uniform, ASSET_Material *material)
+{
+  uniform->material_loaded_t = material->b.loaded_t;
+  uniform->material_diffuse = material->params.diffuse;
+  uniform->material_specular = material->params.specular;
+  uniform->material_roughness = material->params.roughness;
+}
+
+//
+// UI
+//
 static U32 UI_ActiveClipIndex()
 {
   AssertBounds(APP.gpu.ui.clip_stack_index, APP.gpu.ui.clip_stack);
@@ -107,7 +121,7 @@ static void UI_DrawRect(UI_Shape shape)
   UI_DrawRaw(shape);
 }
 
-static void GPU_PostFrameClear()
+static void GPU_PostFrameClear() // @todo this shouldn't be here! or should be renamed
 {
   GPU_MEM_ClearEntries();
 

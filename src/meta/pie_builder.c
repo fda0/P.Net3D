@@ -70,30 +70,29 @@ static PIE_Builder PIE_CreateBuilder(Arena *a, U32 max_file_size)
   bb.materials = Pr_Alloc(a, tiny_size);
 
   Pr_ReserveBytes(&bb.file, sizeof(PIE_Header)); // reserve space for header
-  bb.selected_model = MODEL_COUNT;
   return bb;
 }
 
 static void PIE_FinalizeBuilder()
 {
-  PIE_Builder *bb = &BAKER.bb;
+  PIE_Builder *pbuild = &BAKER.pie_builder;
 
   //
   // Prepare PIE_Links and append it to memory
   //
   PIE_Links links = {};
 
-  PIE_ListStart(&bb->file, &links.models.vertices, TYPE_WORLD_Vertex);
-  Pr_Printer(&bb->file, &bb->vertices);
-  PIE_ListEnd(&bb->file, &links.models.vertices);
+  PIE_ListStart(&pbuild->file, &links.models.vertices, TYPE_WORLD_Vertex);
+  Pr_Printer(&pbuild->file, &pbuild->vertices);
+  PIE_ListEnd(&pbuild->file, &links.models.vertices);
 
-  PIE_ListStart(&bb->file, &links.models.indices, TYPE_U16);
-  Pr_Printer(&bb->file, &bb->indices);
-  PIE_ListEnd(&bb->file, &links.models.indices);
+  PIE_ListStart(&pbuild->file, &links.models.indices, TYPE_U16);
+  Pr_Printer(&pbuild->file, &pbuild->indices);
+  PIE_ListEnd(&pbuild->file, &links.models.indices);
 
-  ForArray(model_index, bb->models)
+  ForArray(model_index, pbuild->models)
   {
-    PIE_Model *model = bb->models + model_index;
+    PIE_Model *model = pbuild->models + model_index;
     PIE_Geometry *geomeries = PIE_ListAsType(model->geometries, PIE_Geometry);
     ForU32(geo_index, model->geometries.count)
     {
@@ -109,44 +108,44 @@ static void PIE_FinalizeBuilder()
   }
 
   // Models
-  PIE_ListStart(&bb->file, &links.models.list, TYPE_PIE_Model);
+  PIE_ListStart(&pbuild->file, &links.models.list, TYPE_PIE_Model);
   {
-    PIE_Model *dst = PIE_ReserveBytes(&bb->file, sizeof(bb->models), _Alignof(PIE_Model));
-    Memcpy(dst, bb->models, sizeof(bb->models));
+    PIE_Model *dst = PIE_ReserveBytes(&pbuild->file, sizeof(pbuild->models), _Alignof(PIE_Model));
+    Memcpy(dst, pbuild->models, sizeof(pbuild->models));
   }
-  PIE_ListEnd(&bb->file, &links.models.list);
+  PIE_ListEnd(&pbuild->file, &links.models.list);
 
   // Skeletons
-  PIE_ListStart(&bb->file, &links.skeletons, TYPE_PIE_Skeleton);
-  Pr_Printer(&bb->file, &bb->skeletons);
-  PIE_ListEnd(&bb->file, &links.skeletons);
+  PIE_ListStart(&pbuild->file, &links.skeletons, TYPE_PIE_Skeleton);
+  Pr_Printer(&pbuild->file, &pbuild->skeletons);
+  PIE_ListEnd(&pbuild->file, &links.skeletons);
 
   // Materials
-  PIE_Aling(&bb->file, _Alignof(PIE_Material));
-  PIE_ListStart(&bb->file, &links.materials, TYPE_PIE_Material);
-  Pr_Printer(&bb->file, &bb->materials);
-  PIE_ListEnd(&bb->file, &links.materials);
+  PIE_Aling(&pbuild->file, _Alignof(PIE_Material));
+  PIE_ListStart(&pbuild->file, &links.materials, TYPE_PIE_Material);
+  Pr_Printer(&pbuild->file, &pbuild->materials);
+  PIE_ListEnd(&pbuild->file, &links.materials);
 
   //
   // Prepare PIE_Header
   //
-  PIE_Header *header = (PIE_Header *)bb->file.buf;
-  *PIE_ListReserve(&bb->file, &header->links, PIE_Links, 1) = links;
+  PIE_Header *header = (PIE_Header *)pbuild->file.buf;
+  *PIE_ListReserve(&pbuild->file, &header->links, PIE_Links, 1) = links;
 
   //
   // Calculate hash
   //
-  S8 whole_file = Pr_AsS8(&bb->file);
+  S8 whole_file = Pr_AsS8(&pbuild->file);
   S8 hashable_file = S8_Skip(whole_file, sizeof(header->file_hash));
   header->file_hash = S8_Hash(PIE_MAGIC_HASH_SEED, hashable_file);
 
-  bb->finalized = true;
+  pbuild->finalized = true;
 }
 
 static void PIE_SaveToFile(const char *file_path)
 {
-  PIE_Builder *bb = &BAKER.bb;
-  M_Check(bb->finalized);
-  S8 content = Pr_AsS8(&bb->file);
+  PIE_Builder *build = &BAKER.pie_builder;
+  M_Check(build->finalized);
+  S8 content = Pr_AsS8(&build->file);
   M_SaveFile(file_path, content);
 }

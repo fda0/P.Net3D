@@ -584,15 +584,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
 
       ASSET_Material *material = ASSET_GetMaterial(gpu_verts->target.material_key);
 
-      // Update uniform
-      if (!is_depth_prepass)
-      {
-        APP.gpu.world_uniform.material_loaded_t = material->b.loaded_t;
-        APP.gpu.world_uniform.material_diffuse = material->diffuse;
-        APP.gpu.world_uniform.material_specular = material->specular;
-        APP.gpu.world_uniform.material_shininess = material->shininess;
-        GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
-      }
+      WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
+      GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
       // Bind fragment color texture sampler
       SDL_GPUTextureSamplerBinding binding_sampl =
@@ -609,10 +602,6 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   //
   // Prepare GPU state to render models
   //
-
-  // Reset uniforms
-  APP.gpu.world_uniform.material_specular = Color32_RGBf(0.05f, 0.02f, 0.02f),
-  APP.gpu.world_uniform.material_shininess = 4.f;
 
   // Bind model vertices & indices
   SDL_BindGPUVertexBuffers(pass, 0, &(SDL_GPUBufferBinding){.buffer = APP.ast.vertices}, 1);
@@ -647,7 +636,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     {
       ASSET_Geometry *geo = model->geos + geo_index;
 
-      APP.gpu.world_uniform.material_diffuse = geo->color;
+      ASSET_Material *material = ASSET_GetMaterial(geo->material);
+      WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
       SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_instances->element_count,
@@ -660,6 +650,7 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   //
   APP.gpu.world_uniform.flags = (WORLD_FLAG_DoMeshSkinning |
                                  WORLD_FLAG_UseInstanceBuffer);
+
 
   // Get joint transform buffer
   ForU32(batch_index, APP.gpu.mem.batches_count)
@@ -686,7 +677,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     {
       ASSET_Geometry *geo = model->geos + geo_index;
 
-      APP.gpu.world_uniform.material_diffuse = geo->color;;
+      ASSET_Material *material = ASSET_GetMaterial(geo->material);
+      WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
       SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_instances->element_count,
@@ -735,8 +727,6 @@ static void GPU_Iterate()
     .sky_ambient = Color32_RGBf(0.2f, 0.2f, 0.2f),
     .sun_diffuse = Color32_RGBf(1.f, 1.f, 1.f),
     .sun_specular = Color32_RGBf(1.f, 1.f, 1.f),
-    .material_specular = Color32_RGBf(1.f, 1.f, 1.f),
-    .material_shininess = 16.f,
   };
 
   // Sun shadow map render pass

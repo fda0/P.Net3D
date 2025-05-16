@@ -270,6 +270,9 @@ static void SERIAL_DebugSettings(bool is_load)
 
 static void SERIAL_AssetSettings(bool is_load)
 {
+#if 1
+  (void)is_load;
+#else
   if (!APP.ast.materials_count)
     return;
 
@@ -313,4 +316,5 @@ static void SERIAL_AssetSettings(bool is_load)
 
     Arena_PopScope(scope);
   }
+#endif
 }

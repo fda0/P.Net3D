@@ -16,7 +16,7 @@ typedef struct
 
   U32 material_diffuse; // RGBA
   U32 material_specular; // RGBA
-  float material_shininess;
+  float material_roughness;
   float material_loaded_t;
 } WORLD_Uniform;
 

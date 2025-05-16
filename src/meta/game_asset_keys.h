@@ -13,6 +13,13 @@ typedef struct
 {
   U64 hash;
   S8 name;
+  // @info name is used for debugging/logging only -
+  // - and might be excluded from shipping builgs.
+  // The constraint is this string's buffer has to be stored externally and
+  // it has to be valid through the whole lifetime of the program.
+  // This is fine for now. In the future if we add .pie file reloading we might
+  // decide to store these names in some lookup table outside of MATERIAL_Key itself.
+
   // name format:
   //   tex.Bricks071
   //   Tree.Bark_diffuse

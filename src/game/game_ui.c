@@ -268,8 +268,7 @@ static void UI_BuildUILayoutElements()
                        .width = UI_border_width}})
       {
         UI_RenderButton(CLAY_STRING("🕹️"), false, &APP.debug.menu_category, 0);
-        UI_RenderButton(CLAY_STRING("🧱"), false, &APP.debug.menu_category, 1);
-        UI_RenderButton(CLAY_STRING("🤔"), false, &APP.debug.menu_category, 2);
+        UI_RenderButton(CLAY_STRING("🤔"), false, &APP.debug.menu_category, 1);
       }
 
       // Menu content
@@ -296,29 +295,6 @@ static void UI_BuildUILayoutElements()
           }
         }
         else if (APP.debug.menu_category == 1)
-        {
-          UI_RenderHeader(CLAY_STRING("Material editor"));
-
-          CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                           .sizing = {.width = CLAY_SIZING_GROW(),
-                                      .height = CLAY_SIZING_FIT()}},
-                .scroll = {.vertical = true}})
-          {
-            ForU32(material_index, APP.ast.materials_count)
-            {
-              ASSET_Material *material = APP.ast.materials + material_index;
-              CLAY_TEXT(ClayString_FromS8(material->key.name),
-                        CLAY_TEXT_CONFIG({.fontId = UI_font, .textColor = UI_fg}));
-
-              CLAY({.layout = {.padding = UI_tex_pad}})
-              {
-                UI_RenderSlider(CLAY_STRING("Shininess"), (UI_SliderConfig)
-                                {&material->shininess, 0, 64, material_index});
-              }
-            }
-          }
-        }
-        else if (APP.debug.menu_category == 2)
         {
           UI_RenderHeader(CLAY_STRING("Nothing here yet"));
         }

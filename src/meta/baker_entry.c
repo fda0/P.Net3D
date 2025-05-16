@@ -27,8 +27,16 @@
 // Pie
 static S8 PIE_File()
 {
-  return Pr_AsS8(&BAKER.bb.file);
+  return Pr_AsS8(&BAKER.pie_builder.file);
 }
+
+static void BK_SetDefaultsPIEMaterial(PIE_Material *pie_material)
+{
+  pie_material->params.diffuse = Color32_RGBi(128,128,128);
+  pie_material->params.specular = Color32_RGBf(0.05f, 0.02f, 0.01f);
+  pie_material->params.roughness = 0.5f;
+}
+
 #include "pie_loader.h"
 #include "pie_builder.c"
 
@@ -49,7 +57,7 @@ int main()
 
   BK_TEX_Init();
 
-  BAKER.bb = PIE_CreateBuilder(BAKER.tmp, Megabyte(256));
+  BAKER.pie_builder = PIE_CreateBuilder(BAKER.tmp, Megabyte(256));
 
   // Process assets
   {

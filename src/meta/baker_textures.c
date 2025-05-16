@@ -18,7 +18,7 @@ static U32 BK_TEX_CalculateMipMapCount(U32 width, U32 height)
 
 static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
 {
-  PIE_Builder *bb = &BAKER.bb;
+  PIE_Builder *build = &BAKER.pie_builder;
 
   typedef struct
   {
@@ -26,9 +26,9 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
     S8 postfix;
     U8 path_buffer[1024];
     SDL_Surface *surfs[BK_MIPMAPS_MAX];
-  } BK_MaterialFile;
+  } BK_PBRTextureFile;
 
-  BK_MaterialFile files[] =
+  BK_PBRTextureFile files[] =
   {
     {S8Lit("Color.jpg")},
     {S8Lit("NormalGL.jpg")},
@@ -39,7 +39,7 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
   bool load_errors = false;
   ForArray(file_index, files)
   {
-    BK_MaterialFile *file = files + file_index;
+    BK_PBRTextureFile *file = files + file_index;
 
     Printer p = Pr_Make(file->path_buffer, sizeof(file->path_buffer));
     Pr_S8(&p, S8Lit("../res/tex/"));
@@ -63,7 +63,7 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
   {
     ForArray(file_index, files)
     {
-      BK_MaterialFile *file = files + file_index;
+      BK_PBRTextureFile *file = files + file_index;
       if (file->surfs[0]) SDL_DestroySurface(file->surfs[0]);
     }
     return;
@@ -74,7 +74,7 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
   I32 orig_height = files[0].surfs[0]->h;
   ForArray(file_index, files)
   {
-    BK_MaterialFile *file = files + file_index;
+    BK_PBRTextureFile *file = files + file_index;
     M_Check(file->surfs[0]->w == orig_width && file->surfs[0]->h == orig_height);
   }
 
@@ -82,7 +82,7 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
   SDL_PixelFormat target_format = SDL_PIXELFORMAT_RGBA32;
   ForArray(file_index, files)
   {
-    BK_MaterialFile *file = files + file_index;
+    BK_PBRTextureFile *file = files + file_index;
 
     SDL_Surface *current_surface = file->surfs[0];
     if (current_surface->format != target_format)
@@ -103,7 +103,7 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
 
   ForArray(file_index, files)
   {
-    BK_MaterialFile *file = files + file_index;
+    BK_PBRTextureFile *file = files + file_index;
 
     V2I32 lod_dim = (V2I32){orig_width, orig_height};
     for (U32 lod_index = 1; lod_index < lods_count; lod_index += 1)
@@ -123,62 +123,63 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
   //
   //
   // Allocate and prepare PIE_Material & array of PIE_Texture
-  bb->materials_count += 1;
-  PIE_Material *br_material = PIE_Reserve(&bb->materials, PIE_Material, 1);
+  build->materials_count += 1;
+  PIE_Material *pie_material = PIE_Reserve(&build->materials, PIE_Material, 1);
+  BK_SetDefaultsPIEMaterial(pie_material);
 
-  PIE_ListStart(&bb->file, &br_material->name, TYPE_U8);
-  Pr_Cstr(&bb->file, "tex.");
-  Pr_S8(&bb->file, tex_name);
-  PIE_ListEnd(&bb->file, &br_material->name);
+  PIE_ListStart(&build->file, &pie_material->name, TYPE_U8);
+  Pr_Cstr(&build->file, "tex.");
+  Pr_S8(&build->file, tex_name);
+  PIE_ListEnd(&build->file, &pie_material->name);
 
-  br_material->tex.format = format;
-  br_material->tex.width = orig_width;
-  br_material->tex.height = orig_height;
-  br_material->tex.lods = lods_count;
-  br_material->tex.layers = ArrayCount(files);
+  pie_material->tex.format = format;
+  pie_material->tex.width = orig_width;
+  pie_material->tex.height = orig_height;
+  pie_material->tex.lods = lods_count;
+  pie_material->tex.layers = ArrayCount(files);
 
-  PIE_Aling(&bb->file, _Alignof(PIE_MaterialTexSection));
-  U32 br_textures_count = br_material->tex.lods * br_material->tex.layers;
-  PIE_MaterialTexSection *br_textures = PIE_ListReserve(&bb->file, &br_material->tex.sections,
-                                                        PIE_MaterialTexSection, br_textures_count);
+  PIE_Aling(&build->file, _Alignof(PIE_MaterialTexSection));
+  U32 pie_textures_count = pie_material->tex.lods * pie_material->tex.layers;
+  PIE_MaterialTexSection *pie_textures = PIE_ListReserve(&build->file, &pie_material->tex.sections,
+                                                        PIE_MaterialTexSection, pie_textures_count);
 
-  PIE_ListStart(&bb->file, &br_material->tex.full_data, TYPE_U8);
+  PIE_ListStart(&build->file, &pie_material->tex.full_data, TYPE_U8);
 
   // Iterate over fliles
   if (format == PIE_Tex_R8G8B8A8)
   {
-    U32 br_texture_index = 0;
+    U32 pie_texture_index = 0;
     ForArray(file_index, files)
     {
-      BK_MaterialFile *file = files + file_index;
+      BK_PBRTextureFile *file = files + file_index;
 
       // Iterate over lods
       ForU32(lod_index, lods_count)
       {
         SDL_Surface *surf = file->surfs[lod_index];
 
-        M_Check(br_texture_index < br_textures_count);
-        PIE_MaterialTexSection *br_tex = br_textures + br_texture_index;
-        br_texture_index += 1;
+        M_Check(pie_texture_index < pie_textures_count);
+        PIE_MaterialTexSection *pie_tex = pie_textures + pie_texture_index;
+        pie_texture_index += 1;
 
         // Calc
-        U32 br_data_size = surf->w * surf->h * sizeof(U32);
+        U32 pie_data_size = surf->w * surf->h * sizeof(U32);
 
         // Fill texture data
-        br_tex->width = surf->w;
-        br_tex->height = surf->h;
-        br_tex->lod = lod_index;
-        br_tex->layer = file_index;
-        br_tex->data_offset = bb->file.used - br_material->tex.full_data.offset;
-        br_tex->data_size = br_data_size;
+        pie_tex->width = surf->w;
+        pie_tex->height = surf->h;
+        pie_tex->lod = lod_index;
+        pie_tex->layer = file_index;
+        pie_tex->data_offset = build->file.used - pie_material->tex.full_data.offset;
+        pie_tex->data_size = pie_data_size;
 
         // Alloc data buffer
-        U8 *br_data = PIE_Reserve(&bb->file, U8, br_data_size);
+        U8 *pie_data = PIE_Reserve(&build->file, U8, pie_data_size);
 
         // Copy data to .pie file buffer
         if (surf->w * sizeof(U32) == surf->pitch)
         {
-          Memcpy(br_data, surf->pixels, br_data_size);
+          Memcpy(pie_data, surf->pixels, pie_data_size);
         }
         else
         {
@@ -191,37 +192,37 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
   }
   else if (format == PIE_Tex_BC7_RGBA)
   {
-    U32 br_texture_index = 0;
+    U32 pie_texture_index = 0;
     ForArray(file_index, files)
     {
-      BK_MaterialFile *file = files + file_index;
+      BK_PBRTextureFile *file = files + file_index;
 
       // Iterate over lods
       ForU32(lod_index, lods_count)
       {
         SDL_Surface *surf = file->surfs[lod_index];
 
-        M_Check(br_texture_index < br_textures_count);
-        PIE_MaterialTexSection *br_tex = br_textures + br_texture_index;
-        br_texture_index += 1;
+        M_Check(pie_texture_index < pie_textures_count);
+        PIE_MaterialTexSection *pie_tex = pie_textures + pie_texture_index;
+        pie_texture_index += 1;
 
         // Calculate data buffer dimensions
         I32 lod_chunks_per_w = (surf->w + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
         I32 lod_chunks_per_h = (surf->h + M_TEX_BC7_BLOCK_DIM - 1) / M_TEX_BC7_BLOCK_DIM;
-        I32 br_data_size = lod_chunks_per_w*lod_chunks_per_h * sizeof(U64)*2;
+        I32 pie_data_size = lod_chunks_per_w*lod_chunks_per_h * sizeof(U64)*2;
 
         // Fill texture data
-        br_tex->width = surf->w;
-        br_tex->height = surf->h;
-        br_tex->lod = lod_index;
-        br_tex->layer = file_index;
-        br_tex->data_offset = bb->file.used - br_material->tex.full_data.offset;
-        br_tex->data_size = br_data_size;
+        pie_tex->width = surf->w;
+        pie_tex->height = surf->h;
+        pie_tex->lod = lod_index;
+        pie_tex->layer = file_index;
+        pie_tex->data_offset = build->file.used - pie_material->tex.full_data.offset;
+        pie_tex->data_size = pie_data_size;
 
         // Alloc data buffer
-        U8 *br_data = PIE_Reserve(&bb->file, U8, br_data_size);
-        U8 *br_data_end = br_data + br_data_size;
-        U8 *br_pixels = br_data;
+        U8 *pie_data = PIE_Reserve(&build->file, U8, pie_data_size);
+        U8 *pie_data_end = pie_data + pie_data_size;
+        U8 *pie_pixels = pie_data;
 
         // Iterate over chunks of the current lod.
         // Fetch 4x4 chunks and compress them into memory allocated in .pie file.
@@ -251,18 +252,18 @@ static void BK_TEX_Load(S8 tex_name, PIE_TexFormat format)
             SDL_Surface *block_surf = BAKER.tex.bc7_block_surf;
             SDL_BlitSurfaceTiled(surf, &src_rect, block_surf, &dst_rect);
 
-            bc7enc_compress_block(br_pixels, block_surf->pixels, &BAKER.tex.params);
-            br_pixels += sizeof(U64)*2;
+            bc7enc_compress_block(pie_pixels, block_surf->pixels, &BAKER.tex.params);
+            pie_pixels += sizeof(U64)*2;
           }
         }
 
-        M_Check(br_pixels == br_data_end);
+        M_Check(pie_pixels == pie_data_end);
         SDL_DestroySurface(surf);
       }
     }
   }
 
-  PIE_ListEnd(&bb->file, &br_material->tex.full_data);
+  PIE_ListEnd(&build->file, &pie_material->tex.full_data);
 }
 
 static void BK_TEX_Init()

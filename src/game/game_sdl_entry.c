@@ -44,6 +44,8 @@
 #include "game_type_info.h"
 #include "shader_flags.h"
 
+static void WORLD_ApplyMaterialToUniform(WORLD_Uniform *uniform, ASSET_Material *material);
+
 #include "gen_shader_world.vert.h"
 #include "gen_shader_world.frag.h"
 #include "gen_shader_ui.vert.h"

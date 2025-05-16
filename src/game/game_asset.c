@@ -125,11 +125,7 @@ static void ASSET_LoadMaterials()
     ASSET_Material *asset = APP.ast.materials + i;
 
     asset->key = MATERIAL_CreateKey(PIE_ListToS8(pie_material->name));
-
-    asset->diffuse = pie_material->diffuse;
-    asset->specular = pie_material->specular;
-    asset->shininess = pie_material->shininess;
-
+    asset->params = pie_material->params;
     asset->has_texture = !!pie_material->tex.format;
     if (!asset->has_texture)
     {
@@ -137,7 +133,6 @@ static void ASSET_LoadMaterials()
       asset->b.loaded = true;
       asset->b.loaded_t = 1.f;
     }
-
     asset->tex = APP.ast.nil_material.tex; // fallback texture as default in case anybody tries to use it
   }
 }
@@ -374,40 +369,45 @@ static ASSET_Model *ASSET_GetModel(MODEL_Type model_type)
 
 static void ASSET_LoadGeometry()
 {
-  ASSET_PieFile *br = &APP.ast.pie;
+  ASSET_PieFile *pie = &APP.ast.pie;
 
   APP.ast.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
-                                      br->links->models.vertices.size,
+                                      pie->links->models.vertices.size,
                                       "WORLD vertices");
   APP.ast.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX,
-                                     br->links->models.indices.size,
+                                     pie->links->models.indices.size,
                                      "Model indices");
 
-  S8 vertices_string = PIE_ListToS8(br->links->models.vertices);
-  S8 indices_string = PIE_ListToS8(br->links->models.indices);
+  S8 vertices_string = PIE_ListToS8(pie->links->models.vertices);
+  S8 indices_string = PIE_ListToS8(pie->links->models.indices);
 
   GPU_TransferBuffer(APP.ast.vertices, vertices_string.str, vertices_string.size);
   GPU_TransferBuffer(APP.ast.indices, indices_string.str, indices_string.size);
 
   ForU32(model_kind, MODEL_COUNT)
   {
-    PIE_Model *br_model = br->models + model_kind;
+    PIE_Model *pie_model = pie->models + model_kind;
     ASSET_Model *asset = APP.ast.models + model_kind;
-    asset->is_skinned = br_model->is_skinned;
-    asset->skeleton_index = br_model->skeleton_index;
-    asset->geos_count = br_model->geometries.count;
-    asset->geos = AllocZeroed(br->arena, ASSET_Geometry, asset->geos_count);
+    asset->is_skinned = pie_model->is_skinned;
+    asset->skeleton_index = pie_model->skeleton_index;
+    asset->geos_count = pie_model->geometries.count;
+    asset->geos = AllocZeroed(pie->arena, ASSET_Geometry, asset->geos_count);
 
-    PIE_Geometry *br_geos = PIE_ListAsType(br_model->geometries, PIE_Geometry);
+    PIE_Geometry *pie_geos = PIE_ListAsType(pie_model->geometries, PIE_Geometry);
 
     ForU32(geo_index, asset->geos_count)
     {
-      PIE_Geometry *br_geo = br_geos + geo_index;
+      PIE_Geometry *pie_geo = pie_geos + geo_index;
       ASSET_Geometry *geo = asset->geos + geo_index;
-      geo->color = br_geo->color;
-      geo->vertices_start_index = br_geo->vertices_start_index;
-      geo->indices_start_index = br_geo->indices_start_index;
-      geo->indices_count = br_geo->indices_count;
+
+      if (pie_geo->material_index < APP.ast.materials_count)
+      {
+        ASSET_Material *material = APP.ast.materials + pie_geo->material_index;
+        geo->material = material->key;
+      }
+      geo->vertices_start_index = pie_geo->vertices_start_index;
+      geo->indices_start_index = pie_geo->indices_start_index;
+      geo->indices_count = pie_geo->indices_count;
     }
   }
 }
@@ -438,9 +438,9 @@ static void ASSET_Init()
 {
   PIE_LoadFile("data.pie");
   ASSET_LoadSkeletons();
-  ASSET_LoadGeometry();
   ASSET_CreateNilMaterial();
   ASSET_LoadMaterials();
+  ASSET_LoadGeometry();
 }
 
 static void ASSET_Deinit()
