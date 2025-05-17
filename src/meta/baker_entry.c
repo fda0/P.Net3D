@@ -61,27 +61,7 @@ int main()
 
   // Process assets
   {
-    ArenaScope tmp_check = Arena_PushScope(BAKER.tmp);
-
-    // Load texture files
-    {
-      //PIE_TexFormat format = PIE_Tex_R8G8B8A8;
-      PIE_TexFormat format = PIE_Tex_BC7_RGBA;
-
-      BK_TEX_Load(S8Lit("Leather011"), format);
-      BK_TEX_Load(S8Lit("PavingStones067"), format);
-      BK_TEX_Load(S8Lit("Tiles101"), format);
-      BK_TEX_Load(S8Lit("TestPBR001"), format);
-      BK_TEX_Load(S8Lit("Tree0Bark"), format);
-      BK_TEX_Load(S8Lit("Tree0eaves"), format);
-      BK_TEX_Load(S8Lit("Bricks071"), format);
-      BK_TEX_Load(S8Lit("Bricks097"), format);
-      BK_TEX_Load(S8Lit("Grass004"), format);
-      BK_TEX_Load(S8Lit("Ground037"), format);
-      BK_TEX_Load(S8Lit("Ground068"), format);
-      BK_TEX_Load(S8Lit("Ground078"), format);
-      BK_TEX_Load(S8Lit("Tree0Material"), format);
-    }
+    Arena_Scope tmp_check = Arena_PushScope(BAKER.tmp);
 
     // Load .gltf models
     {
@@ -103,6 +83,21 @@ int main()
       config.scale = 4.f;
       config.rot = Quat_Identity();
       BK_GLTF_Load(MODEL_Tree, "../res/models/tree_low-poly/scene.gltf", config);
+    }
+
+    // Load texture files
+    {
+      BK_TEX_LoadPBRs(S8Lit("Leather011"));
+      BK_TEX_LoadPBRs(S8Lit("PavingStones067"));
+      BK_TEX_LoadPBRs(S8Lit("Tiles101"));
+      BK_TEX_LoadPBRs(S8Lit("TestPBR001"));
+      BK_TEX_LoadPBRs(S8Lit("Bricks071"));
+      BK_TEX_LoadPBRs(S8Lit("Bricks097"));
+      BK_TEX_LoadPBRs(S8Lit("Grass004"));
+      BK_TEX_LoadPBRs(S8Lit("Ground037"));
+      BK_TEX_LoadPBRs(S8Lit("Ground068"));
+      BK_TEX_LoadPBRs(S8Lit("Ground078"));
+      BK_TEX_LoadPBRs(S8Lit("Tree0Material"));
     }
 
     // Check that all sub-functions didn't leak memory on tmp arena

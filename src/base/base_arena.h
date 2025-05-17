@@ -124,14 +124,14 @@ typedef struct
   Arena *a;
   U64 used;
   I8 scope_counter;
-} ArenaScope;
+} Arena_Scope;
 
-static ArenaScope Arena_PushScope(Arena *a)
+static Arena_Scope Arena_PushScope(Arena *a)
 {
   a->scope_counter += 1;
-  return (ArenaScope){a, a->used, a->scope_counter};
+  return (Arena_Scope){a, a->used, a->scope_counter};
 }
-static void Arena_PopScope(ArenaScope scope)
+static void Arena_PopScope(Arena_Scope scope)
 {
   Assert(scope.scope_counter == scope.a->scope_counter);
   Assert(scope.a->used >= scope.used);

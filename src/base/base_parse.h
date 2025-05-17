@@ -47,15 +47,15 @@ static float Parse_Float(S8 string, bool *err, U64 *adv) { return (float)Parse_D
 static void Parse_FloatArray(S8 string, float *arr, U32 arr_count, bool *err, U64 *adv)
 {
   U8 *start_str = string.str;
-  S8_Consume(&string, S8Lit("{"), 0);
+  S8_ConsumeSkip(&string, S8Lit("{"), 0);
 
   ForU32(i, arr_count)
   {
-    while (S8_Consume(&string, S8Lit(" "), 0));
+    while (S8_ConsumeSkip(&string, S8Lit(" "), 0));
     U64 parse_adv = 0;
     arr[i] = Parse_Float(string, err, &parse_adv);
     string = S8_Skip(string, parse_adv);
-    S8_Consume(&string, S8Lit(","), 0);
+    S8_ConsumeSkip(&string, S8Lit(","), 0);
   }
 
   if (adv) *adv = (U64)string.str - (U64)start_str;

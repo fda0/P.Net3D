@@ -244,7 +244,7 @@ static U64 S8_Count(S8 str, S8 substring, U64 start_pos, S8_MatchFlags flags)
 //
 // S8_Consume
 //
-static bool S8_Consume(S8 *haystack, S8 needle, S8_MatchFlags flags)
+static bool S8_ConsumeSkip(S8 *haystack, S8 needle, S8_MatchFlags flags)
 {
   if (S8_StartsWith(*haystack, needle, flags))
   {
@@ -253,7 +253,7 @@ static bool S8_Consume(S8 *haystack, S8 needle, S8_MatchFlags flags)
   }
   return false;
 }
-static bool S8_ConsumeBack(S8 *haystack, S8 needle, S8_MatchFlags flags)
+static bool S8_ConsumeChop(S8 *haystack, S8 needle, S8_MatchFlags flags)
 {
   if (S8_EndsWith(*haystack, needle, flags))
   {
@@ -263,7 +263,7 @@ static bool S8_ConsumeBack(S8 *haystack, S8 needle, S8_MatchFlags flags)
   return false;
 }
 
-static S8 S8_ConsumeUntil(S8 *haystack, S8 needle, S8_MatchFlags flags)
+static S8 S8_ConsumeSkipUntil(S8 *haystack, S8 needle, S8_MatchFlags flags)
 {
   S8_FindResult find = S8_Find(*haystack, needle, 0, flags);
   if (find.found)
@@ -274,7 +274,7 @@ static S8 S8_ConsumeUntil(S8 *haystack, S8 needle, S8_MatchFlags flags)
   }
   return (S8){0};
 }
-static S8 S8_ConsumeUntilBack(S8 *haystack, S8 needle, S8_MatchFlags flags)
+static S8 S8_ConsumeChopUntil(S8 *haystack, S8 needle, S8_MatchFlags flags)
 {
   S8_FindResult find = S8_Find(*haystack, needle, 0, flags);
   if (find.found)

@@ -55,6 +55,7 @@ typedef struct
 {
   bc7enc_compress_block_params params;
   SDL_Surface *bc7_block_surf;
+  PIE_TexFormat format;
 } BAKER_TexState;
 
 typedef struct

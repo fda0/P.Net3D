@@ -12,7 +12,7 @@ static void *PIE_ReserveBytes(Printer *p, U64 size, U64 alignment)
 }
 #define PIE_Reserve(P, Type, Count) (Type *)PIE_ReserveBytes(P, sizeof(Type)*(Count), _Alignof(Type))
 
-static void PIE_Aling(Printer *p, U64 alignment)
+static void PIE_Align(Printer *p, U64 alignment)
 {
   U64 missaligned_bytes = p->used % alignment;
   if (missaligned_bytes)
@@ -24,12 +24,18 @@ static void PIE_Aling(Printer *p, U64 alignment)
   }
 }
 
+static void PIE_AlignType(Printer *p, TYPE_ENUM type)
+{
+  PIE_Align(p, TYPE_GetAlign(type));
+}
+
 //
 // Allocating bytes in printer & tracking the range
 //
 static void PIE_ListStart(Printer *printer_owner, PIE_List *list, TYPE_ENUM type)
 {
   M_Check(!list->type);
+  PIE_AlignType(printer_owner, type);
   list->type = type;
   list->offset = printer_owner->used;
 }
@@ -121,7 +127,6 @@ static void PIE_FinalizeBuilder()
   PIE_ListEnd(&pbuild->file, &links.skeletons);
 
   // Materials
-  PIE_Aling(&pbuild->file, _Alignof(PIE_Material));
   PIE_ListStart(&pbuild->file, &links.materials, TYPE_PIE_Material);
   Pr_Printer(&pbuild->file, &pbuild->materials);
   PIE_ListEnd(&pbuild->file, &links.materials);

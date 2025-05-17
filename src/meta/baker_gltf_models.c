@@ -66,7 +66,6 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *build, BK_GLTF_Model *model
       U64 comp_count = cgltf_num_components(inv_bind->type);
       M_Check(comp_count == 16);
 
-      PIE_Aling(&build->file, _Alignof(Mat4));
       Mat4 *matrices = PIE_ListReserve(&build->file, &pie_skel->inv_bind_mats, Mat4, (U32)inv_bind->count);
 
       U64 float_count = comp_count * inv_bind->count;
@@ -145,9 +144,6 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *build, BK_GLTF_Model *model
       name_ranges[joint_index].max = build->file.used;
     }
 
-    // Ensure memory alignment after copying strings
-    PIE_Aling(&build->file, _Alignof(RngU32));
-
     // Memcpy name strign ranges into the file
     {
       RngU32 *dst_name_ranges = PIE_ListReserve(&build->file, &pie_skel->name_ranges, RngU32, joints_count);
@@ -172,9 +168,6 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *build, BK_GLTF_Model *model
       PIE_ListStart(&build->file, &pie_anim->name, TYPE_U8);
       Pr_Cstr(&build->file, gltf_anim->name);
       PIE_ListEnd(&build->file, &pie_anim->name);
-
-      // Ensure memory alignment after copying strings
-      PIE_Aling(&build->file, _Alignof(PIE_AnimationChannel));
 
       // Channels
       U32 channels_count = (U32)gltf_anim->channels_count;
@@ -258,7 +251,7 @@ static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
   else
   {
     // Alloc tmp buffer
-    ArenaScope scope = Arena_PushScope(BAKER.tmp);
+    Arena_Scope scope = Arena_PushScope(BAKER.tmp);
     U64 bytes_to_allocate = comp_size * total_count;
     void *tmp_nums = Arena_AllocateBytes(scope.a, bytes_to_allocate, comp_size, false);
 
@@ -311,7 +304,6 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
   pie_model->is_skinned = is_skinned;
   pie_model->skeleton_index = bk_model->skeleton_index;
 
-  PIE_Aling(&build->file, _Alignof(PIE_Geometry));
   PIE_Geometry *pie_geometries = PIE_ListReserve(&build->file, &pie_model->geometries, PIE_Geometry, bk_model->geos_count);
 
   ForU32(geo_index, bk_model->geos_count)
@@ -400,7 +392,7 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
   }
 }
 
-static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelConfig config)
+static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_ModelConfig config)
 {
   PIE_Builder *build = &BAKER.pie_builder;
 
@@ -421,31 +413,35 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
     },
   };
   cgltf_data *data = 0;
-  cgltf_result res = cgltf_parse_file(&options, path, &data);
+  cgltf_result res = cgltf_parse_file(&options, file_path, &data);
   if (res != cgltf_result_success)
   {
-    M_LOG(M_Err, "[GLTF LOADER] Failed to parse %s", path);
+    M_LOG(M_Err, "[GLTF LOADER] Failed to parse %s", file_path);
     return;
   }
 
-  res = cgltf_load_buffers(&options, data, path);
+  res = cgltf_load_buffers(&options, data, file_path);
   if (res != cgltf_result_success)
   {
-    M_LOG(M_Err, "[GLTF LOADER] Failed to load buffers, %s", path);
+    M_LOG(M_Err, "[GLTF LOADER] Failed to load buffers, %s", file_path);
     return;
   }
 
   res = cgltf_validate(data);
   if (res != cgltf_result_success)
   {
-    M_LOG(M_Err, "[GLTF LOADER] Failed to validate data, %s", path);
+    M_LOG(M_Err, "[GLTF LOADER] Failed to validate data, %s", file_path);
     return;
   }
 
   //
+  S8 dir_path = S8_FromCstr(file_path);
+  S8_ConsumeChopUntil(&dir_path, S8Lit("/"), S8_FindLast | S8_SlashInsensitive);
+
+  //
   // Collect data from .gltf file
   //
-  ArenaScope scratch = Arena_PushScope(BAKER.tmp);
+  Arena_Scope scratch = Arena_PushScope(BAKER.tmp);
   U64 max_indices = 1024*256;
   U64 max_verts = 1024*128;
 
@@ -482,16 +478,45 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *path, BK_GLTF_ModelC
       {
         PIE_ListStart(&build->file, &pie_material->name, TYPE_U8);
         Pr_S8(&build->file, model.name);
-        Pr_Cstr(&build->file, ".mat");
+        Pr_Cstr(&build->file, ".m");
         Pr_U32(&build->file, geo_index);
+        Pr_Cstr(&build->file, ".");
+        Pr_Cstr(&build->file, gltf_material->name);
         PIE_ListEnd(&build->file, &pie_material->name);
       }
 
       if (gltf_material->has_pbr_metallic_roughness)
       {
-        cgltf_pbr_metallic_roughness *pbr_roughness = &gltf_material->pbr_metallic_roughness;
-        pie_material->params.diffuse = Color32_V4(*(V4 *)pbr_roughness->base_color_factor);
-        pie_material->params.roughness = pbr_roughness->roughness_factor;
+        cgltf_pbr_metallic_roughness *metal = &gltf_material->pbr_metallic_roughness;
+        pie_material->params.diffuse   = Color32_V4(*(V4 *)metal->base_color_factor);
+        pie_material->params.roughness = metal->roughness_factor;
+      }
+
+      if (gltf_material->has_pbr_specular_glossiness)
+      {
+        cgltf_pbr_specular_glossiness *gloss = &gltf_material->pbr_specular_glossiness;
+        pie_material->params.diffuse   = Color32_V4(*(V4 *)gloss->diffuse_factor);
+        pie_material->params.specular  = Color32_V3(*(V3 *)gloss->specular_factor);
+        pie_material->params.roughness = 1.f - gloss->glossiness_factor;
+
+        cgltf_texture *texture = gloss->diffuse_texture.texture;
+        if (texture)
+        {
+          const char *uri = texture->image->uri;
+
+          Pr_MakeOnStack(tex_path, Kilobyte(4));
+          Pr_S8(&tex_path, dir_path);
+          if (!S8_EndsWith(Pr_AsS8(&tex_path), S8Lit("/"), S8_SlashInsensitive))
+            Pr_S8(&tex_path, S8Lit("/"));
+          Pr_Cstr(&tex_path, uri);
+
+          char *tex_path_cstr = Pr_AsCstr(&tex_path);
+          (void)tex_path_cstr;
+          int a = 1;
+          a += 1;
+          a += 1;
+          a += 1;
+        }
       }
 
       if (gltf_material->alpha_mode != cgltf_alpha_mode_opaque)
