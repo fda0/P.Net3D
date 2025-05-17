@@ -86,8 +86,9 @@ static void BK_TEX_LoadPaths(PIE_Material *pie_material, S8 *paths, U32 paths_co
       V2I32 lod_dim = (V2I32){orig_width, orig_height};
       for (U32 lod_index = 1; lod_index < lods_count; lod_index += 1)
       {
-        lod_dim = V2I32_DivScalar(lod_dim, 2);
-        M_Check(lod_dim.x >= 1 && lod_dim.y >= 1);
+        M_Check(lod_dim.x > 1 || lod_dim.y > 1);
+        lod_dim = V2I32_SDiv(lod_dim, 2);
+        lod_dim = V2I32_SMax(lod_dim, 1);
 
         file->surfs[lod_index] = SDL_CreateSurface(lod_dim.x, lod_dim.y, target_format);
         M_Check(file->surfs[lod_index]->w == lod_dim.x);

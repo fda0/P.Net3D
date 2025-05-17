@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <time.h>
 
-#define PRINTER_SKIP_ARENA
-#define PRINTER_SKIP_MATH
+#define BASE_SKIP_ARENA
+#define BASE_SKIP_MATH
 #include "base_types.h"
 #include "base_string.h"
 #include "base_hash.h"

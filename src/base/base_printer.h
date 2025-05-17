@@ -56,7 +56,7 @@ static Printer Pr_Make(U8 *buffer, U64 capacity)
   return res;
 }
 
-#ifndef PRINTER_SKIP_ARENA
+#ifndef BASE_SKIP_ARENA
 static Printer Pr_Alloc(Arena *a, U64 capacity)
 {
   Printer res = Pr_Make(Alloc(a, U8, capacity), capacity);
@@ -169,7 +169,7 @@ static void Pr_Float3(Printer *p, float value) // @todo allow to specify these t
   Pr_Cstr(p, buf);
 }
 
-#ifndef PRINTER_SKIP_MATH
+#ifndef BASE_SKIP_MATH
 static void Pr_V2(Printer *p, V2 value)
 {
   char buf[128];

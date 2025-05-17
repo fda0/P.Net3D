@@ -1,4 +1,5 @@
 #define M_LOG_HEADER "[CODEGEN_MATH] "
+#define BASE_SKIP_MATH
 #include "meta_util.h"
 
 int main()
@@ -37,7 +38,7 @@ int main()
 
       vectors[i].result = templ_vectors;
       if (vectors[i].is_unsigned)
-        S8_ConsumeUntilBack(&vectors[i].result, S8Lit("// [SIGNED_ONLY]"), 0);
+        S8_ConsumeChopUntil(&vectors[i].result, S8Lit("// [SIGNED_ONLY]"), 0);
 
       vectors[i].result = S8_ReplaceAll(tmp, vectors[i].result, S8Lit("SCALAR"), scalar, 0);
       vectors[i].result = S8_ReplaceAll(tmp, vectors[i].result, S8Lit("POST"), postfix, 0);
@@ -64,6 +65,6 @@ int main()
   M_SaveFile("../src/base/gen_vector_math.h", final);
 
   // exit
-  M_LOG(M_LogIdk, "%s", (M_LogState.error_count > 0 ? "Fail" : "Success"));
+  M_LOG(M_Idk, "%s", (M_LogState.error_count > 0 ? "Fail" : "Success"));
   return M_LogState.error_count;
 }

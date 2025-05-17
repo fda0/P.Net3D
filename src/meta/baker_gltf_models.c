@@ -485,6 +485,16 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
         PIE_ListEnd(&build->file, &pie_material->name);
       }
 
+      S8 diffuse_tex_path = {};
+      S8 normal_tex_path = {};
+      S8 specular_tex_path = {};
+
+      if (gltf_material->normal_texture.texture)
+      {
+        const char *uri = gltf_material->normal_texture.texture->image->uri;
+        normal_tex_path = S8_ConcatDirFile(scratch.a, dir_path, S8_FromCstr(uri));
+      }
+
       if (gltf_material->has_pbr_metallic_roughness)
       {
         cgltf_pbr_metallic_roughness *metal = &gltf_material->pbr_metallic_roughness;
@@ -499,28 +509,39 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
         pie_material->params.specular  = Color32_V3(*(V3 *)gloss->specular_factor);
         pie_material->params.roughness = 1.f - gloss->glossiness_factor;
 
-        cgltf_texture *texture = gloss->diffuse_texture.texture;
-        if (texture)
+        if (gloss->diffuse_texture.texture)
         {
-          const char *uri = texture->image->uri;
+          const char *uri = gloss->diffuse_texture.texture->image->uri;
+          diffuse_tex_path = S8_ConcatDirFile(scratch.a, dir_path, S8_FromCstr(uri));
+        }
 
-          Pr_MakeOnStack(tex_path, Kilobyte(4));
-          Pr_S8(&tex_path, dir_path);
-          if (!S8_EndsWith(Pr_AsS8(&tex_path), S8Lit("/"), S8_SlashInsensitive))
-            Pr_S8(&tex_path, S8Lit("/"));
-          Pr_Cstr(&tex_path, uri);
-
-          char *tex_path_cstr = Pr_AsCstr(&tex_path);
-          (void)tex_path_cstr;
-          int a = 1;
-          a += 1;
-          a += 1;
-          a += 1;
+        if (gloss->specular_glossiness_texture.texture)
+        {
+          const char *uri = gloss->specular_glossiness_texture.texture->image->uri;
+          specular_tex_path = S8_ConcatDirFile(scratch.a, dir_path, S8_FromCstr(uri));
         }
       }
 
       if (gltf_material->alpha_mode != cgltf_alpha_mode_opaque)
         pie_material->params.flags |= PIE_MaterialFlag_HasAlpha;
+
+      // Prepare tex_paths array
+      // These are expected to be in a fixed order for now
+      // So if any in the chain is missing we have to drop all subsequent textures.
+      S8 tex_paths[3] = {};
+      U32 tex_paths_count = 0;
+
+      if (diffuse_tex_path.size)
+        tex_paths[tex_paths_count++] = diffuse_tex_path;
+
+      if (tex_paths_count == 1 && normal_tex_path.size)
+        tex_paths[tex_paths_count++] = normal_tex_path;
+
+      if (tex_paths_count == 2 && specular_tex_path.size)
+        tex_paths[tex_paths_count++] = specular_tex_path;
+
+      if (tex_paths_count)
+        BK_TEX_LoadPaths(pie_material, tex_paths, tex_paths_count);
     }
   }
 

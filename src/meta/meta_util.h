@@ -6,6 +6,10 @@
 #include "base_string.h"
 #include "base_arena.h"
 #include "base_string_alloc.h"
+#ifndef BASE_SKIP_MATH
+#include "base_math.h"
+#endif
+#include "base_printer.h"
 
 enum M_LogType
 {
@@ -86,4 +90,15 @@ static S8 M_NameFromPath(S8 path)
     }
   }
   return model_name;
+}
+
+static S8 S8_ConcatDirFile(Arena *a, S8 dir, S8 file_name)
+{
+  Pr_MakeOnStack(p, Kilobyte(4));
+  Pr_S8(&p, dir);
+  if (!S8_EndsWith(Pr_AsS8(&p), S8Lit("/"), S8_SlashInsensitive))
+    Pr_S8(&p, S8Lit("/"));
+  Pr_S8(&p, file_name);
+  M_Check(!p.err);
+  return S8_Copy(a, Pr_AsS8(&p));
 }

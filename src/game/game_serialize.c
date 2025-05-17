@@ -212,7 +212,7 @@ static void SERIAL_LoadFromS8(SERIAL_Item *items, U32 items_count, S8 source)
 static void SERIAL_LoadFromFile(SERIAL_Item *items, U32 items_count, const char *file_path)
 {
   Arena *a = APP.tmp;
-  ArenaScope scope = Arena_PushScope(a);
+  Arena_Scope scope = Arena_PushScope(a);
   S8 file_content = OS_LoadFile(a, file_path);
   SERIAL_LoadFromS8(items, items_count, file_content);
   Arena_PopScope(scope);
@@ -223,7 +223,7 @@ static void SERIAL_SaveToFile(SERIAL_Item *items, U32 items_count, const char *f
   U64 max_save_size = Kilobyte(32);
 
   Arena *a = APP.tmp;
-  ArenaScope scope = Arena_PushScope(a);
+  Arena_Scope scope = Arena_PushScope(a);
   Printer p = Pr_Alloc(a, max_save_size);
   SERIAL_SaveToPrinter(items, items_count, &p);
   OS_SaveFile(file_path, Pr_AsS8(&p));

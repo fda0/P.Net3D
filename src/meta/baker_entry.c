@@ -2,8 +2,6 @@
 #define M_LOG_HEADER "[BAKER] "
 #include "meta_util.h"
 #include <SDL3_image/SDL_image.h>
-#include "base_math.h"
-#include "base_printer.h"
 #include "base_parse.h"
 #include "base_hash.h"
 

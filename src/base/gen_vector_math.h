@@ -44,9 +44,9 @@ static V2 V2_Div(V2 a, V2 b) { return (V2){a.x / b.x, a.y / b.y}; }
 static V3 V3_Div(V3 a, V3 b) { return (V3){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4 V4_Div(V4 a, V4 b) { return (V4){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
-static V2 V2_DivScalar(V2 a, float b) { return (V2){a.x / b, a.y / b}; }
-static V3 V3_DivScalar(V3 a, float b) { return (V3){a.x / b, a.y / b, a.z / b}; }
-static V4 V4_DivScalar(V4 a, float b) { return (V4){a.x / b, a.y / b, a.z / b, a.w / b}; }
+static V2 V2_SDiv(V2 a, float b) { return (V2){a.x / b, a.y / b}; }
+static V3 V3_SDiv(V3 a, float b) { return (V3){a.x / b, a.y / b, a.z / b}; }
+static V4 V4_SDiv(V4 a, float b) { return (V4){a.x / b, a.y / b, a.z / b, a.w / b}; }
 
 static V2 V2_Clamp(V2 min, V2 max, V2 val) {
   return (V2){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
@@ -56,6 +56,36 @@ static V3 V3_Clamp(V3 min, V3 max, V3 val) {
 }
 static V4 V4_Clamp(V4 min, V4 max, V4 val) {
   return (V4){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
+
+static V2 V2_SClamp(float min, float max, V2 val) {
+  return (V2){Clamp(min, max, val.x), Clamp(min, max, val.y)};
+}
+static V3 V3_SClamp(float min, float max, V3 val) {
+  return (V3){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z)};
+}
+static V4 V4_SClamp(float min, float max, V4 val) {
+  return (V4){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z), Clamp(min, max, val.w)};
+}
+
+static V2 V2_SMin(V2 val, float min) {
+  return (V2){Min(min, val.x), Min(min, val.y)};
+}
+static V3 V3_SMin(V3 val, float min) {
+  return (V3){Min(min, val.x), Min(min, val.y), Min(min, val.z)};
+}
+static V4 V4_SMin(V4 val, float min) {
+  return (V4){Min(min, val.x), Min(min, val.y), Min(min, val.z), Min(min, val.w)};
+}
+
+static V2 V2_SMax(V2 val, float max) {
+  return (V2){Max(max, val.x), Max(max, val.y)};
+}
+static V3 V3_SMax(V3 val, float max) {
+  return (V3){Max(max, val.x), Max(max, val.y), Max(max, val.z)};
+}
+static V4 V4_SMax(V4 val, float max) {
+  return (V4){Max(max, val.x), Max(max, val.y), Max(max, val.z), Max(max, val.w)};
 }
 
 static float V2_Dot(V2 a, V2 b) { return a.x*b.x + a.y*b.y; }
@@ -111,9 +141,9 @@ static V2I32 V2I32_Div(V2I32 a, V2I32 b) { return (V2I32){a.x / b.x, a.y / b.y};
 static V3I32 V3I32_Div(V3I32 a, V3I32 b) { return (V3I32){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4I32 V4I32_Div(V4I32 a, V4I32 b) { return (V4I32){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
-static V2I32 V2I32_DivScalar(V2I32 a, I32 b) { return (V2I32){a.x / b, a.y / b}; }
-static V3I32 V3I32_DivScalar(V3I32 a, I32 b) { return (V3I32){a.x / b, a.y / b, a.z / b}; }
-static V4I32 V4I32_DivScalar(V4I32 a, I32 b) { return (V4I32){a.x / b, a.y / b, a.z / b, a.w / b}; }
+static V2I32 V2I32_SDiv(V2I32 a, I32 b) { return (V2I32){a.x / b, a.y / b}; }
+static V3I32 V3I32_SDiv(V3I32 a, I32 b) { return (V3I32){a.x / b, a.y / b, a.z / b}; }
+static V4I32 V4I32_SDiv(V4I32 a, I32 b) { return (V4I32){a.x / b, a.y / b, a.z / b, a.w / b}; }
 
 static V2I32 V2I32_Clamp(V2I32 min, V2I32 max, V2I32 val) {
   return (V2I32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
@@ -123,6 +153,36 @@ static V3I32 V3I32_Clamp(V3I32 min, V3I32 max, V3I32 val) {
 }
 static V4I32 V4I32_Clamp(V4I32 min, V4I32 max, V4I32 val) {
   return (V4I32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
+
+static V2I32 V2I32_SClamp(I32 min, I32 max, V2I32 val) {
+  return (V2I32){Clamp(min, max, val.x), Clamp(min, max, val.y)};
+}
+static V3I32 V3I32_SClamp(I32 min, I32 max, V3I32 val) {
+  return (V3I32){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z)};
+}
+static V4I32 V4I32_SClamp(I32 min, I32 max, V4I32 val) {
+  return (V4I32){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z), Clamp(min, max, val.w)};
+}
+
+static V2I32 V2I32_SMin(V2I32 val, I32 min) {
+  return (V2I32){Min(min, val.x), Min(min, val.y)};
+}
+static V3I32 V3I32_SMin(V3I32 val, I32 min) {
+  return (V3I32){Min(min, val.x), Min(min, val.y), Min(min, val.z)};
+}
+static V4I32 V4I32_SMin(V4I32 val, I32 min) {
+  return (V4I32){Min(min, val.x), Min(min, val.y), Min(min, val.z), Min(min, val.w)};
+}
+
+static V2I32 V2I32_SMax(V2I32 val, I32 max) {
+  return (V2I32){Max(max, val.x), Max(max, val.y)};
+}
+static V3I32 V3I32_SMax(V3I32 val, I32 max) {
+  return (V3I32){Max(max, val.x), Max(max, val.y), Max(max, val.z)};
+}
+static V4I32 V4I32_SMax(V4I32 val, I32 max) {
+  return (V4I32){Max(max, val.x), Max(max, val.y), Max(max, val.z), Max(max, val.w)};
 }
 
 static I32 V2I32_Dot(V2I32 a, V2I32 b) { return a.x*b.x + a.y*b.y; }
@@ -178,9 +238,9 @@ static V2I16 V2I16_Div(V2I16 a, V2I16 b) { return (V2I16){a.x / b.x, a.y / b.y};
 static V3I16 V3I16_Div(V3I16 a, V3I16 b) { return (V3I16){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4I16 V4I16_Div(V4I16 a, V4I16 b) { return (V4I16){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
-static V2I16 V2I16_DivScalar(V2I16 a, I16 b) { return (V2I16){a.x / b, a.y / b}; }
-static V3I16 V3I16_DivScalar(V3I16 a, I16 b) { return (V3I16){a.x / b, a.y / b, a.z / b}; }
-static V4I16 V4I16_DivScalar(V4I16 a, I16 b) { return (V4I16){a.x / b, a.y / b, a.z / b, a.w / b}; }
+static V2I16 V2I16_SDiv(V2I16 a, I16 b) { return (V2I16){a.x / b, a.y / b}; }
+static V3I16 V3I16_SDiv(V3I16 a, I16 b) { return (V3I16){a.x / b, a.y / b, a.z / b}; }
+static V4I16 V4I16_SDiv(V4I16 a, I16 b) { return (V4I16){a.x / b, a.y / b, a.z / b, a.w / b}; }
 
 static V2I16 V2I16_Clamp(V2I16 min, V2I16 max, V2I16 val) {
   return (V2I16){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
@@ -190,6 +250,36 @@ static V3I16 V3I16_Clamp(V3I16 min, V3I16 max, V3I16 val) {
 }
 static V4I16 V4I16_Clamp(V4I16 min, V4I16 max, V4I16 val) {
   return (V4I16){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
+
+static V2I16 V2I16_SClamp(I16 min, I16 max, V2I16 val) {
+  return (V2I16){Clamp(min, max, val.x), Clamp(min, max, val.y)};
+}
+static V3I16 V3I16_SClamp(I16 min, I16 max, V3I16 val) {
+  return (V3I16){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z)};
+}
+static V4I16 V4I16_SClamp(I16 min, I16 max, V4I16 val) {
+  return (V4I16){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z), Clamp(min, max, val.w)};
+}
+
+static V2I16 V2I16_SMin(V2I16 val, I16 min) {
+  return (V2I16){Min(min, val.x), Min(min, val.y)};
+}
+static V3I16 V3I16_SMin(V3I16 val, I16 min) {
+  return (V3I16){Min(min, val.x), Min(min, val.y), Min(min, val.z)};
+}
+static V4I16 V4I16_SMin(V4I16 val, I16 min) {
+  return (V4I16){Min(min, val.x), Min(min, val.y), Min(min, val.z), Min(min, val.w)};
+}
+
+static V2I16 V2I16_SMax(V2I16 val, I16 max) {
+  return (V2I16){Max(max, val.x), Max(max, val.y)};
+}
+static V3I16 V3I16_SMax(V3I16 val, I16 max) {
+  return (V3I16){Max(max, val.x), Max(max, val.y), Max(max, val.z)};
+}
+static V4I16 V4I16_SMax(V4I16 val, I16 max) {
+  return (V4I16){Max(max, val.x), Max(max, val.y), Max(max, val.z), Max(max, val.w)};
 }
 
 static I16 V2I16_Dot(V2I16 a, V2I16 b) { return a.x*b.x + a.y*b.y; }
@@ -245,9 +335,9 @@ static V2U64 V2U64_Div(V2U64 a, V2U64 b) { return (V2U64){a.x / b.x, a.y / b.y};
 static V3U64 V3U64_Div(V3U64 a, V3U64 b) { return (V3U64){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4U64 V4U64_Div(V4U64 a, V4U64 b) { return (V4U64){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
-static V2U64 V2U64_DivScalar(V2U64 a, U64 b) { return (V2U64){a.x / b, a.y / b}; }
-static V3U64 V3U64_DivScalar(V3U64 a, U64 b) { return (V3U64){a.x / b, a.y / b, a.z / b}; }
-static V4U64 V4U64_DivScalar(V4U64 a, U64 b) { return (V4U64){a.x / b, a.y / b, a.z / b, a.w / b}; }
+static V2U64 V2U64_SDiv(V2U64 a, U64 b) { return (V2U64){a.x / b, a.y / b}; }
+static V3U64 V3U64_SDiv(V3U64 a, U64 b) { return (V3U64){a.x / b, a.y / b, a.z / b}; }
+static V4U64 V4U64_SDiv(V4U64 a, U64 b) { return (V4U64){a.x / b, a.y / b, a.z / b, a.w / b}; }
 
 static V2U64 V2U64_Clamp(V2U64 min, V2U64 max, V2U64 val) {
   return (V2U64){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
@@ -257,6 +347,36 @@ static V3U64 V3U64_Clamp(V3U64 min, V3U64 max, V3U64 val) {
 }
 static V4U64 V4U64_Clamp(V4U64 min, V4U64 max, V4U64 val) {
   return (V4U64){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
+
+static V2U64 V2U64_SClamp(U64 min, U64 max, V2U64 val) {
+  return (V2U64){Clamp(min, max, val.x), Clamp(min, max, val.y)};
+}
+static V3U64 V3U64_SClamp(U64 min, U64 max, V3U64 val) {
+  return (V3U64){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z)};
+}
+static V4U64 V4U64_SClamp(U64 min, U64 max, V4U64 val) {
+  return (V4U64){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z), Clamp(min, max, val.w)};
+}
+
+static V2U64 V2U64_SMin(V2U64 val, U64 min) {
+  return (V2U64){Min(min, val.x), Min(min, val.y)};
+}
+static V3U64 V3U64_SMin(V3U64 val, U64 min) {
+  return (V3U64){Min(min, val.x), Min(min, val.y), Min(min, val.z)};
+}
+static V4U64 V4U64_SMin(V4U64 val, U64 min) {
+  return (V4U64){Min(min, val.x), Min(min, val.y), Min(min, val.z), Min(min, val.w)};
+}
+
+static V2U64 V2U64_SMax(V2U64 val, U64 max) {
+  return (V2U64){Max(max, val.x), Max(max, val.y)};
+}
+static V3U64 V3U64_SMax(V3U64 val, U64 max) {
+  return (V3U64){Max(max, val.x), Max(max, val.y), Max(max, val.z)};
+}
+static V4U64 V4U64_SMax(V4U64 val, U64 max) {
+  return (V4U64){Max(max, val.x), Max(max, val.y), Max(max, val.z), Max(max, val.w)};
 }
 
 static U64 V2U64_Dot(V2U64 a, V2U64 b) { return a.x*b.x + a.y*b.y; }
@@ -308,9 +428,9 @@ static V2U32 V2U32_Div(V2U32 a, V2U32 b) { return (V2U32){a.x / b.x, a.y / b.y};
 static V3U32 V3U32_Div(V3U32 a, V3U32 b) { return (V3U32){a.x / b.x, a.y / b.y, a.z / b.z}; }
 static V4U32 V4U32_Div(V4U32 a, V4U32 b) { return (V4U32){a.x / b.x, a.y / b.y, a.z / b.z, a.w / b.w}; }
 
-static V2U32 V2U32_DivScalar(V2U32 a, U32 b) { return (V2U32){a.x / b, a.y / b}; }
-static V3U32 V3U32_DivScalar(V3U32 a, U32 b) { return (V3U32){a.x / b, a.y / b, a.z / b}; }
-static V4U32 V4U32_DivScalar(V4U32 a, U32 b) { return (V4U32){a.x / b, a.y / b, a.z / b, a.w / b}; }
+static V2U32 V2U32_SDiv(V2U32 a, U32 b) { return (V2U32){a.x / b, a.y / b}; }
+static V3U32 V3U32_SDiv(V3U32 a, U32 b) { return (V3U32){a.x / b, a.y / b, a.z / b}; }
+static V4U32 V4U32_SDiv(V4U32 a, U32 b) { return (V4U32){a.x / b, a.y / b, a.z / b, a.w / b}; }
 
 static V2U32 V2U32_Clamp(V2U32 min, V2U32 max, V2U32 val) {
   return (V2U32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y)};
@@ -320,6 +440,36 @@ static V3U32 V3U32_Clamp(V3U32 min, V3U32 max, V3U32 val) {
 }
 static V4U32 V4U32_Clamp(V4U32 min, V4U32 max, V4U32 val) {
   return (V4U32){Clamp(min.x, max.x, val.x), Clamp(min.y, max.y, val.y), Clamp(min.z, max.z, val.z), Clamp(min.w, max.w, val.w)};
+}
+
+static V2U32 V2U32_SClamp(U32 min, U32 max, V2U32 val) {
+  return (V2U32){Clamp(min, max, val.x), Clamp(min, max, val.y)};
+}
+static V3U32 V3U32_SClamp(U32 min, U32 max, V3U32 val) {
+  return (V3U32){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z)};
+}
+static V4U32 V4U32_SClamp(U32 min, U32 max, V4U32 val) {
+  return (V4U32){Clamp(min, max, val.x), Clamp(min, max, val.y), Clamp(min, max, val.z), Clamp(min, max, val.w)};
+}
+
+static V2U32 V2U32_SMin(V2U32 val, U32 min) {
+  return (V2U32){Min(min, val.x), Min(min, val.y)};
+}
+static V3U32 V3U32_SMin(V3U32 val, U32 min) {
+  return (V3U32){Min(min, val.x), Min(min, val.y), Min(min, val.z)};
+}
+static V4U32 V4U32_SMin(V4U32 val, U32 min) {
+  return (V4U32){Min(min, val.x), Min(min, val.y), Min(min, val.z), Min(min, val.w)};
+}
+
+static V2U32 V2U32_SMax(V2U32 val, U32 max) {
+  return (V2U32){Max(max, val.x), Max(max, val.y)};
+}
+static V3U32 V3U32_SMax(V3U32 val, U32 max) {
+  return (V3U32){Max(max, val.x), Max(max, val.y), Max(max, val.z)};
+}
+static V4U32 V4U32_SMax(V4U32 val, U32 max) {
+  return (V4U32){Max(max, val.x), Max(max, val.y), Max(max, val.z), Max(max, val.w)};
 }
 
 static U32 V2U32_Dot(V2U32 a, V2U32 b) { return a.x*b.x + a.y*b.y; }

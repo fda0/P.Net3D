@@ -52,7 +52,7 @@ static ANIM_Pose ANIM_PoseFromAnimation(ASSET_Skeleton *skeleton, U32 anim_index
 
   // mix default rest pose + animation channels using temporary memory
   {
-    ArenaScope scratch = Arena_PushScope(APP.tmp);
+    Arena_Scope scratch = Arena_PushScope(APP.tmp);
 
     V3 *translations = Alloc(scratch.a, V3, skeleton->joints_count);
     memcpy(translations, skeleton->translations, sizeof(*translations)*skeleton->joints_count);
