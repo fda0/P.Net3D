@@ -4,7 +4,8 @@
 #define GPU_CLEAR_COLOR_B 0.96f
 #define GPU_CLEAR_COLOR_A 1.0f
 #define GPU_JOINT_TRANSFORMS_MAX_SIZE (sizeof(Mat4)*62)
-#define GPU_SHADOW_MAP_DIM 2048
+#define GPU_SHADOW_MAP_DIM (2048*2)
+#define GPU_ENABLE_BACKFACE_CULL 0
 
 static SDL_GPUBuffer *GPU_CreateBuffer(SDL_GPUBufferUsageFlags usage, U32 size, const char *name)
 {
@@ -342,7 +343,7 @@ static void GPU_Init()
       .rasterizer_state =
       {
         .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
-        .cull_mode = SDL_GPU_CULLMODE_BACK,
+        .cull_mode = (GPU_ENABLE_BACKFACE_CULL ? SDL_GPU_CULLMODE_BACK : SDL_GPU_CULLMODE_NONE),
         .enable_depth_clip = true,
       },
       .target_info =
@@ -358,7 +359,7 @@ static void GPU_Init()
     APP.gpu.world_pipelines[0] = SDL_CreateGPUGraphicsPipeline(APP.gpu.device, &pipeline);
     Assert(APP.gpu.world_pipelines[0]);
 
-    // Modify pipeline for shadow mapping
+    // Modify pipeline settings for shadow mapping depth pass
     {
       pipeline.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
       pipeline.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE;
@@ -581,7 +582,6 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
       ASSET_Material *material = ASSET_GetMaterial(gpu_verts->target.material_key);
 
       // Uniforms
-      APP.gpu.world_uniform.flags = 0;
       WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
@@ -629,14 +629,12 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     ForU32(geo_index, model->geos_count)
     {
       ASSET_Geometry *geo = model->geos + geo_index;
-
       ASSET_Material *material = ASSET_GetMaterial(geo->material);
-      if (material->texture_layers >= 3) continue; // @todo temporary - disable leaves
 
       // Uniforms
-      APP.gpu.world_uniform.flags = WORLD_FLAG_UseInstanceBuffer;
-      if (model->is_skinned) APP.gpu.world_uniform.flags |= WORLD_FLAG_DoMeshSkinning;
       WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
+      APP.gpu.world_uniform.flags |= WORLD_FLAG_UseInstanceBuffer;
+      if (model->is_skinned) APP.gpu.world_uniform.flags |= WORLD_FLAG_DoMeshSkinning;
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
       // Bind texture

@@ -44,9 +44,7 @@ static void WORLD_ApplyMaterialToUniform(WORLD_Uniform *uniform, ASSET_Material 
   uniform->material_specular = material->params.specular;
   uniform->material_roughness = material->params.roughness;
 
-  uniform->flags &= ~(WORLD_FLAG_SampleTexDiffuse |
-                      WORLD_FLAG_SampleTexNormal |
-                      WORLD_FLAG_SampleTexRoughness);
+  uniform->flags = WORLD_FLAG_ApplyShadows;
   if (material->has_texture)
   {
     if (material->texture_layers >= 1) uniform->flags |= WORLD_FLAG_SampleTexDiffuse;

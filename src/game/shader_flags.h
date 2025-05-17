@@ -3,3 +3,4 @@
 #define WORLD_FLAG_SampleTexDiffuse   (1u << 2u)
 #define WORLD_FLAG_SampleTexNormal    (1u << 3u)
 #define WORLD_FLAG_SampleTexRoughness (1u << 4u)
+#define WORLD_FLAG_ApplyShadows       (1u << 5u)

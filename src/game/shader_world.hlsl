@@ -130,7 +130,11 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
   {
     if (UP.flags & WORLD_FLAG_SampleTexDiffuse)
     {
-      V3 tex_diffuse  = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 0.f)).xyz;
+      V4 tex_diffuse_raw = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 0.f));
+      if (tex_diffuse_raw.a <= 0.1419588476419449f)
+        discard;
+
+      V3 tex_diffuse = tex_diffuse_raw.xyz;
       tex_diffuse = lerp(fog_color, tex_diffuse, UP.material_loaded_t);
       material_diffuse = tex_diffuse;
     }
@@ -156,6 +160,7 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
 
   // Shadow mapping
   float shadow = 0.f;
+  if (UP.flags & WORLD_FLAG_ApplyShadows)
   {
     V3 shadow_proj = frag.shadow_p.xyz / frag.shadow_p.w; // this isn't needed for orthographic projection
     // [-1, 1] -> [0, 1]

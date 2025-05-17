@@ -315,4 +315,5 @@ static void BK_TEX_Init()
   M_Check(BAKER.tex.bc7_block_surf->w * sizeof(U32) == BAKER.tex.bc7_block_surf->pitch);
 
   BAKER.tex.format = PIE_Tex_BC7_RGBA;
+  BAKER.tex.format = PIE_Tex_R8G8B8A8;
 }
