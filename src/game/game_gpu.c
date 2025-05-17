@@ -566,10 +566,6 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   //
   // Dynamic meshes
   //
-  APP.gpu.world_uniform.flags = (WORLD_FLAG_SampleTexDiffuse |
-                                 WORLD_FLAG_SampleTexNormal |
-                                 WORLD_FLAG_SampleTexRoughness);
-
   {
     ForU32(batch_index, APP.gpu.mem.batches_count)
     {
@@ -584,10 +580,12 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
 
       ASSET_Material *material = ASSET_GetMaterial(gpu_verts->target.material_key);
 
+      // Uniforms
+      APP.gpu.world_uniform.flags = 0;
       WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
-      // Bind fragment color texture sampler
+      // Bind texture
       SDL_GPUTextureSamplerBinding binding_sampl =
       {
         .texture = material->tex,
@@ -608,10 +606,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
   SDL_BindGPUIndexBuffer(pass, &(SDL_GPUBufferBinding){.buffer = APP.ast.indices}, SDL_GPU_INDEXELEMENTSIZE_16BIT);
 
   //
-  // Rigid models
+  // Models
   //
-  APP.gpu.world_uniform.flags = (WORLD_FLAG_UseInstanceBuffer);
-
   ForU32(batch_index, APP.gpu.mem.batches_count)
   {
     GPU_MEM_Batch *gpu_instances = APP.gpu.mem.batches + batch_index;
@@ -621,8 +617,6 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
       continue;
 
     ASSET_Model *model = ASSET_GetModel(gpu_instances->target.model);
-    if (model->is_skinned)
-      continue;
 
     // bind instance storage buffer
     SDL_GPUBuffer *storage_bufs[] =
@@ -637,49 +631,24 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
       ASSET_Geometry *geo = model->geos + geo_index;
 
       ASSET_Material *material = ASSET_GetMaterial(geo->material);
+      if (material->texture_layers >= 3) continue; // @todo temporary - disable leaves
+
+      // Uniforms
+      APP.gpu.world_uniform.flags = WORLD_FLAG_UseInstanceBuffer;
+      if (model->is_skinned) APP.gpu.world_uniform.flags |= WORLD_FLAG_DoMeshSkinning;
       WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
-      SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_instances->element_count,
-                                   geo->indices_start_index, geo->vertices_start_index, 0);
-    }
-  }
-
-  //
-  // Draw skinned models
-  //
-  APP.gpu.world_uniform.flags = (WORLD_FLAG_DoMeshSkinning |
-                                 WORLD_FLAG_UseInstanceBuffer);
-
-
-  // Get joint transform buffer
-  ForU32(batch_index, APP.gpu.mem.batches_count)
-  {
-    GPU_MEM_Batch *gpu_instances = APP.gpu.mem.batches + batch_index;
-    if (gpu_instances->target.type != GPU_MEM_ModelInstances)
-      continue;
-    if (!gpu_instances->element_count)
-      continue;
-
-    ASSET_Model *model = ASSET_GetModel(gpu_instances->target.model);
-    if (!model->is_skinned)
-      continue;
-
-    // bind instance storage buffer
-    SDL_GPUBuffer *storage_bufs[2] =
-    {
-      gpu_instances->buffer->handle,
-      APP.gpu.mem.poses.buffer->handle
-    };
-    SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
-
-    ForU32(geo_index, model->geos_count)
-    {
-      ASSET_Geometry *geo = model->geos + geo_index;
-
-      ASSET_Material *material = ASSET_GetMaterial(geo->material);
-      WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
-      GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
+      // Bind texture
+      if (material->has_texture)
+      {
+        SDL_GPUTextureSamplerBinding binding_sampl =
+        {
+          .texture = material->tex,
+          .sampler = APP.gpu.mesh_tex_sampler,
+        };
+        SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
+      }
 
       SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_instances->element_count,
                                    geo->indices_start_index, geo->vertices_start_index, 0);

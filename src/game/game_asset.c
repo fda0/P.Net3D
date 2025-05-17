@@ -39,6 +39,7 @@ static void ASSET_CreateNilMaterial()
   APP.ast.nil_material.b.loaded = true;
   APP.ast.nil_material.b.loaded_t = 1.f;
   APP.ast.nil_material.has_texture = true;
+  APP.ast.nil_material.texture_layers = 1;
 
   I32 dim = 512;
   I32 tex_size = dim*dim*sizeof(U32);
@@ -127,6 +128,7 @@ static void ASSET_LoadMaterials()
     asset->key = MATERIAL_CreateKey(PIE_ListToS8(pie_material->name));
     asset->params = pie_material->params;
     asset->has_texture = !!pie_material->tex.format;
+    asset->texture_layers = pie_material->tex.layers;
     if (!asset->has_texture)
     {
       // no texture = asset is already fully loaded

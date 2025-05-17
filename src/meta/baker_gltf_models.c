@@ -319,28 +319,39 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
     {
       WORLD_Vertex vert = {};
 
+      // POS
       vert.p.x = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 0);
       vert.p.y = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 1);
       vert.p.z = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 2);
 
+      // NORMAL
       vert.normal = (V3)
       {
         *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 0),
         *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 1),
         *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 2),
       };
-      float normal_lensq = V3_LengthSq(vert.normal);
-      if (normal_lensq < 0.001f)
+
+      // NORMAL validation
       {
-        M_LOG(M_GLTFWarning, "[GLTF LOADER] Found normal equal to zero");
-        vert.normal = (V3){0,0,1};
-      }
-      else if (normal_lensq < 0.9f || normal_lensq > 1.1f)
-      {
-        M_LOG(M_GLTFWarning, "[GLTF LOADER] Normal wasn't normalized");
-        vert.normal = V3_Scale(vert.normal, FInvSqrt(normal_lensq));
+        float normal_lensq = V3_LengthSq(vert.normal);
+        if (normal_lensq < 0.001f)
+        {
+          M_LOG(M_GLTFWarning, "[GLTF LOADER] Found normal equal to zero");
+          vert.normal = (V3){0,0,1};
+        }
+        else if (normal_lensq < 0.9f || normal_lensq > 1.1f)
+        {
+          M_LOG(M_GLTFWarning, "[GLTF LOADER] Normal wasn't normalized");
+          vert.normal = V3_Scale(vert.normal, FInvSqrt(normal_lensq));
+        }
       }
 
+      // UV
+      vert.uv.x = *BK_BufferAtFloat(&bk_geo->texcoords, vert_i*2 + 0);
+      vert.uv.y = *BK_BufferAtFloat(&bk_geo->texcoords, vert_i*2 + 1);
+
+      // SKINNED specific
       if (is_skinned)
       {
         U32 joint_indices[4] =

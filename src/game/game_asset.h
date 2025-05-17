@@ -73,6 +73,7 @@ typedef struct
 
   PIE_MaterialParams params;
   bool has_texture;
+  U32 texture_layers;
   SDL_GPUTexture *tex;
 } ASSET_Material;
 
