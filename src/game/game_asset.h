@@ -5,14 +5,14 @@ typedef struct
   U32 vertices_start_index;
   U32 indices_start_index;
   U32 indices_count;
-} ASSET_Geometry;
+} ASSET_Mesh;
 
 typedef struct
 {
   bool is_skinned;
   U32 skeleton_index;
-  ASSET_Geometry *geos;
-  U32 geos_count;
+  ASSET_Mesh *meshes;
+  U32 meshes_count;
 } ASSET_Model;
 
 typedef struct

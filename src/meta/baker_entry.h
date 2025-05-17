@@ -23,7 +23,7 @@ typedef struct
 
 typedef struct
 {
-  // BK_GLTF_Geometry Groups all vertices and indicecs per common material in .gltf file.
+  // BK_GLTF_Mesh Groups all vertices and indicecs per common material in .gltf file.
   U32 material_index;
 
   U32 verts_count;
@@ -33,14 +33,14 @@ typedef struct
   BK_Buffer texcoords;
   BK_Buffer joint_indices;
   BK_Buffer weights;
-} BK_GLTF_Geometry;
+} BK_GLTF_Mesh;
 
 typedef struct
 {
   BK_GLTF_ModelConfig config;
 
-  BK_GLTF_Geometry *geos;
-  U32 geos_count;
+  BK_GLTF_Mesh *meshes;
+  U32 meshes_count;
 
   S8 name; // @todo remove
   MODEL_Type type;

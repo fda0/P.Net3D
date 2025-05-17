@@ -626,10 +626,10 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     };
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 
-    ForU32(geo_index, model->geos_count)
+    ForU32(mesh_index, model->meshes_count)
     {
-      ASSET_Geometry *geo = model->geos + geo_index;
-      ASSET_Material *material = ASSET_GetMaterial(geo->material);
+      ASSET_Mesh *mesh = model->meshes + mesh_index;
+      ASSET_Material *material = ASSET_GetMaterial(mesh->material);
 
       // Uniforms
       WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
@@ -648,8 +648,8 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
         SDL_BindGPUFragmentSamplers(pass, 1, &binding_sampl, 1);
       }
 
-      SDL_DrawGPUIndexedPrimitives(pass, geo->indices_count, gpu_instances->element_count,
-                                   geo->indices_start_index, geo->vertices_start_index, 0);
+      SDL_DrawGPUIndexedPrimitives(pass, mesh->indices_count, gpu_instances->element_count,
+                                   mesh->indices_start_index, mesh->vertices_start_index, 0);
     }
   }
 }

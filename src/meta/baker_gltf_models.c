@@ -304,32 +304,32 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
   pie_model->is_skinned = is_skinned;
   pie_model->skeleton_index = bk_model->skeleton_index;
 
-  PIE_Geometry *pie_geometries = PIE_ListReserve(&build->file, &pie_model->geometries, PIE_Geometry, bk_model->geos_count);
+  PIE_Mesh *pie_meshes = PIE_ListReserve(&build->file, &pie_model->meshes, PIE_Mesh, bk_model->meshes_count);
 
-  ForU32(geo_index, bk_model->geos_count)
+  ForU32(mesh_index, bk_model->meshes_count)
   {
-    BK_GLTF_Geometry *bk_geo = bk_model->geos + geo_index;
-    PIE_Geometry *pie_geo = pie_geometries + geo_index;
+    BK_GLTF_Mesh *bk_mesh = bk_model->meshes + mesh_index;
+    PIE_Mesh *pie_mesh = pie_meshes + mesh_index;
 
-    pie_geo->material_index = bk_geo->material_index;
-    pie_geo->vertices_start_index = build->vertices.used / sizeof(WORLD_Vertex);
+    pie_mesh->material_index = bk_mesh->material_index;
+    pie_mesh->vertices_start_index = build->vertices.used / sizeof(WORLD_Vertex);
 
     // vertices
-    ForU64(vert_i, bk_geo->verts_count)
+    ForU64(vert_i, bk_mesh->verts_count)
     {
       WORLD_Vertex vert = {};
 
       // POS
-      vert.p.x = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 0);
-      vert.p.y = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 1);
-      vert.p.z = *BK_BufferAtFloat(&bk_geo->positions, vert_i*3 + 2);
+      vert.p.x = *BK_BufferAtFloat(&bk_mesh->positions, vert_i*3 + 0);
+      vert.p.y = *BK_BufferAtFloat(&bk_mesh->positions, vert_i*3 + 1);
+      vert.p.z = *BK_BufferAtFloat(&bk_mesh->positions, vert_i*3 + 2);
 
       // NORMAL
       vert.normal = (V3)
       {
-        *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 0),
-        *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 1),
-        *BK_BufferAtFloat(&bk_geo->normals, vert_i*3 + 2),
+        *BK_BufferAtFloat(&bk_mesh->normals, vert_i*3 + 0),
+        *BK_BufferAtFloat(&bk_mesh->normals, vert_i*3 + 1),
+        *BK_BufferAtFloat(&bk_mesh->normals, vert_i*3 + 2),
       };
 
       // NORMAL validation
@@ -348,18 +348,18 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
       }
 
       // UV
-      vert.uv.x = *BK_BufferAtFloat(&bk_geo->texcoords, vert_i*2 + 0);
-      vert.uv.y = *BK_BufferAtFloat(&bk_geo->texcoords, vert_i*2 + 1);
+      vert.uv.x = *BK_BufferAtFloat(&bk_mesh->texcoords, vert_i*2 + 0);
+      vert.uv.y = *BK_BufferAtFloat(&bk_mesh->texcoords, vert_i*2 + 1);
 
       // SKINNED specific
       if (is_skinned)
       {
         U32 joint_indices[4] =
         {
-          *BK_BufferAtU8(&bk_geo->joint_indices, vert_i*4 + 0),
-          *BK_BufferAtU8(&bk_geo->joint_indices, vert_i*4 + 1),
-          *BK_BufferAtU8(&bk_geo->joint_indices, vert_i*4 + 2),
-          *BK_BufferAtU8(&bk_geo->joint_indices, vert_i*4 + 3),
+          *BK_BufferAtU8(&bk_mesh->joint_indices, vert_i*4 + 0),
+          *BK_BufferAtU8(&bk_mesh->joint_indices, vert_i*4 + 1),
+          *BK_BufferAtU8(&bk_mesh->joint_indices, vert_i*4 + 2),
+          *BK_BufferAtU8(&bk_mesh->joint_indices, vert_i*4 + 3),
         };
         ForArray(i, joint_indices)
         {
@@ -376,10 +376,10 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
                                (joint_indices[3] << 24));
 
         V4 weights = {};
-        weights.x = *BK_BufferAtFloat(&bk_geo->weights, vert_i*4 + 0);
-        weights.y = *BK_BufferAtFloat(&bk_geo->weights, vert_i*4 + 1);
-        weights.z = *BK_BufferAtFloat(&bk_geo->weights, vert_i*4 + 2);
-        weights.w = *BK_BufferAtFloat(&bk_geo->weights, vert_i*4 + 3);
+        weights.x = *BK_BufferAtFloat(&bk_mesh->weights, vert_i*4 + 0);
+        weights.y = *BK_BufferAtFloat(&bk_mesh->weights, vert_i*4 + 1);
+        weights.z = *BK_BufferAtFloat(&bk_mesh->weights, vert_i*4 + 2);
+        weights.w = *BK_BufferAtFloat(&bk_mesh->weights, vert_i*4 + 3);
         float weight_sum = weights.x + weights.y + weights.z + weights.w;
         if (weight_sum < 0.9f || weight_sum > 1.1f)
           M_LOG(M_GLTFWarning, "[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum);
@@ -391,11 +391,11 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
 
     // indices
     {
-      U16 *src_indices = bk_geo->indices.vals;
-      U32 src_indices_count = bk_geo->indices.used;
+      U16 *src_indices = bk_mesh->indices.vals;
+      U32 src_indices_count = bk_mesh->indices.used;
 
-      pie_geo->indices_start_index = build->indices.used / sizeof(U16);
-      pie_geo->indices_count += src_indices_count;
+      pie_mesh->indices_start_index = build->indices.used / sizeof(U16);
+      pie_mesh->indices_count += src_indices_count;
 
       U16 *dst = PIE_Reserve(&build->indices, U16, src_indices_count);
       Memcpy(dst, src_indices, sizeof(U16)*src_indices_count);
@@ -459,27 +459,27 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
   BK_GLTF_Model model = {};
   model.config = config;
   model.type = model_type;
-  model.geos_count = (U32)data->materials_count;
-  model.geos = AllocZeroed(scratch.a, BK_GLTF_Geometry, model.geos_count);
+  model.meshes_count = (U32)data->materials_count;
+  model.meshes = AllocZeroed(scratch.a, BK_GLTF_Mesh, model.meshes_count);
   model.name = MODEL_GetName(model_type);
   model.is_skinned = (data->animations_count > 0);
 
-  ForU32(geo_index, model.geos_count)
+  ForU32(mesh_index, model.meshes_count)
   {
-    BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
-    // Prepare bk_geo buffers
-    bk_geo->indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
-    bk_geo->positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
-    bk_geo->normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
-    bk_geo->texcoords     = BK_BufferAlloc(scratch.a, max_verts*2, sizeof(float));
-    bk_geo->joint_indices = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(U8));
-    bk_geo->weights       = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(float));
+    BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
+    // Prepare bk_mesh buffers
+    bk_mesh->indices = BK_BufferAlloc(scratch.a, max_indices, sizeof(U16));
+    bk_mesh->positions     = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
+    bk_mesh->normals       = BK_BufferAlloc(scratch.a, max_verts*3, sizeof(float));
+    bk_mesh->texcoords     = BK_BufferAlloc(scratch.a, max_verts*2, sizeof(float));
+    bk_mesh->joint_indices = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(U8));
+    bk_mesh->weights       = BK_BufferAlloc(scratch.a, max_verts*4, sizeof(float));
 
     // Fetch material data
-    cgltf_material *gltf_material = data->materials + geo_index;
+    cgltf_material *gltf_material = data->materials + mesh_index;
 
     // Create material
-    bk_geo->material_index = build->materials_count;
+    bk_mesh->material_index = build->materials_count;
     {
       build->materials_count += 1;
       PIE_Material *pie_material = PIE_Reserve(&build->materials, PIE_Material, 1);
@@ -490,7 +490,7 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
         PIE_ListStart(&build->file, &pie_material->name, TYPE_U8);
         Pr_S8(&build->file, model.name);
         Pr_Cstr(&build->file, ".m");
-        Pr_U32(&build->file, geo_index);
+        Pr_U32(&build->file, mesh_index);
         Pr_Cstr(&build->file, ".");
         Pr_Cstr(&build->file, gltf_material->name);
         PIE_ListEnd(&build->file, &pie_material->name);
@@ -564,9 +564,9 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
     {
       cgltf_primitive *primitive = gltf_mesh->primitives + primitive_index;
 
-      // Select proper bk_geo based on material
-      U32 geo_index = BK_GLTF_FindMaterialIndex(data, primitive->material);
-      BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
+      // Select proper bk_mesh based on material
+      U32 mesh_index = BK_GLTF_FindMaterialIndex(data, primitive->material);
+      BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
 
       if (primitive->type != cgltf_primitive_type_triangles)
       {
@@ -578,11 +578,11 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
 
       M_Check(primitive->indices);
       {
-        U64 index_start_offset = bk_geo->positions.used/3;
+        U64 index_start_offset = bk_mesh->positions.used/3;
 
         cgltf_accessor *accessor = primitive->indices;
         M_Check(accessor->type == cgltf_type_scalar);
-        U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &bk_geo->indices);
+        U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &bk_mesh->indices);
 
         if (index_start_offset)
         {
@@ -607,14 +607,14 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
         {
           case cgltf_attribute_type_position:
           {
-            save_buf = &bk_geo->positions;
+            save_buf = &bk_mesh->positions;
             M_Check(comp_count == 3);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_normal:
           {
-            save_buf = &bk_geo->normals;
+            save_buf = &bk_mesh->normals;
             M_Check(comp_count == 3);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
@@ -627,21 +627,21 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
 
           case cgltf_attribute_type_texcoord:
           {
-            save_buf = &bk_geo->texcoords;
+            save_buf = &bk_mesh->texcoords;
             M_Check(comp_count == 2);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
 
           case cgltf_attribute_type_joints:
           {
-            save_buf = &bk_geo->joint_indices;
+            save_buf = &bk_mesh->joint_indices;
             M_Check(comp_count == 4);
             //M_Check(accessor->component_type == cgltf_component_type_r_8u);
           } break;
 
           case cgltf_attribute_type_weights:
           {
-            save_buf = &bk_geo->weights;
+            save_buf = &bk_mesh->weights;
             M_Check(comp_count == 4);
             M_Check(accessor->component_type == cgltf_component_type_r_32f);
           } break;
@@ -665,21 +665,21 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
   //
 
   // Validate buffer counts
-  ForU32(geo_index, model.geos_count)
+  ForU32(mesh_index, model.meshes_count)
   {
-    BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
-    M_Check(bk_geo->positions.used % 3 == 0);
-    bk_geo->verts_count = bk_geo->positions.used / 3;
+    BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
+    M_Check(bk_mesh->positions.used % 3 == 0);
+    bk_mesh->verts_count = bk_mesh->positions.used / 3;
 
-    M_Check(bk_geo->normals.used % 3 == 0);
-    M_Check(bk_geo->verts_count == bk_geo->normals.used / 3);
+    M_Check(bk_mesh->normals.used % 3 == 0);
+    M_Check(bk_mesh->verts_count == bk_mesh->normals.used / 3);
 
     if (model.is_skinned)
     {
-      M_Check(bk_geo->joint_indices.used % 4 == 0);
-      M_Check(bk_geo->verts_count == bk_geo->joint_indices.used / 4);
-      M_Check(bk_geo->weights.used % 4 == 0);
-      M_Check(bk_geo->verts_count == bk_geo->weights.used / 4);
+      M_Check(bk_mesh->joint_indices.used % 4 == 0);
+      M_Check(bk_mesh->verts_count == bk_mesh->joint_indices.used / 4);
+      M_Check(bk_mesh->weights.used % 4 == 0);
+      M_Check(bk_mesh->verts_count == bk_mesh->weights.used / 4);
     }
   }
 
@@ -702,18 +702,18 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
     if (config.scale != 1.f || !Quat_IsIdentity(config.rot) ||
         config.move.x || config.move.y || config.move.z)
     {
-      ForU32(geo_index, model.geos_count)
+      ForU32(mesh_index, model.meshes_count)
       {
-        BK_GLTF_Geometry *bk_geo = model.geos + geo_index;
-        ForU32(i, bk_geo->verts_count)
+        BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
+        ForU32(i, bk_mesh->verts_count)
         {
-          V3 *position = (V3*)BK_BufferAtFloat(&bk_geo->positions, i*3);
+          V3 *position = (V3*)BK_BufferAtFloat(&bk_mesh->positions, i*3);
           V3 p = *position;
           p = V3_Scale(p, config.scale);
           p = V3_Rotate(p, config.rot);
           p = V3_Add(p, config.move);
 
-          V3 *normal = (V3*)BK_BufferAtFloat(&bk_geo->normals, i*3);
+          V3 *normal = (V3*)BK_BufferAtFloat(&bk_mesh->normals, i*3);
           V3 n = *normal;
           n = V3_Rotate(n, config.rot);
 

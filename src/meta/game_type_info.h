@@ -29,7 +29,7 @@ X(PIE_Animation) \
 X(PIE_AnimationChannel) \
 X(PIE_MaterialTexSection) \
 X(PIE_Material) \
-X(PIE_Geometry) \
+X(PIE_Mesh) \
 X(PIE_Model) \
 X(PIE_Skeleton) \
 X(PIE_Links) \

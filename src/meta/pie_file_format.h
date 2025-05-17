@@ -59,14 +59,14 @@ typedef struct
   U32 vertices_start_index;
   U32 indices_start_index;
   U32 indices_count;
-} PIE_Geometry;
+} PIE_Mesh;
 
 typedef struct
 {
   U8 is_skinned : 1;
   // @todo add [U8] name field
   U32 skeleton_index; // for skinned only; index to skeletons from PIE_Contents
-  PIE_ListT(PIE_Geometry) geometries;
+  PIE_ListT(PIE_Mesh) meshes;
 } PIE_Model;
 
 typedef struct

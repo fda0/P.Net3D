@@ -392,24 +392,24 @@ static void ASSET_LoadGeometry()
     ASSET_Model *asset = APP.ast.models + model_kind;
     asset->is_skinned = pie_model->is_skinned;
     asset->skeleton_index = pie_model->skeleton_index;
-    asset->geos_count = pie_model->geometries.count;
-    asset->geos = AllocZeroed(pie->arena, ASSET_Geometry, asset->geos_count);
+    asset->meshes_count = pie_model->meshes.count;
+    asset->meshes = AllocZeroed(pie->arena, ASSET_Mesh, asset->meshes_count);
 
-    PIE_Geometry *pie_geos = PIE_ListAsType(pie_model->geometries, PIE_Geometry);
+    PIE_Mesh *pie_meshes = PIE_ListAsType(pie_model->meshes, PIE_Mesh);
 
-    ForU32(geo_index, asset->geos_count)
+    ForU32(mesh_index, asset->meshes_count)
     {
-      PIE_Geometry *pie_geo = pie_geos + geo_index;
-      ASSET_Geometry *geo = asset->geos + geo_index;
+      PIE_Mesh *pie_mesh = pie_meshes + mesh_index;
+      ASSET_Mesh *mesh = asset->meshes + mesh_index;
 
-      if (pie_geo->material_index < APP.ast.materials_count)
+      if (pie_mesh->material_index < APP.ast.materials_count)
       {
-        ASSET_Material *material = APP.ast.materials + pie_geo->material_index;
-        geo->material = material->key;
+        ASSET_Material *material = APP.ast.materials + pie_mesh->material_index;
+        mesh->material = material->key;
       }
-      geo->vertices_start_index = pie_geo->vertices_start_index;
-      geo->indices_start_index = pie_geo->indices_start_index;
-      geo->indices_count = pie_geo->indices_count;
+      mesh->vertices_start_index = pie_mesh->vertices_start_index;
+      mesh->indices_start_index = pie_mesh->indices_start_index;
+      mesh->indices_count = pie_mesh->indices_count;
     }
   }
 }

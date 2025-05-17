@@ -99,16 +99,16 @@ static void PIE_FinalizeBuilder()
   ForArray(model_index, pbuild->models)
   {
     PIE_Model *model = pbuild->models + model_index;
-    PIE_Geometry *geomeries = PIE_ListAsType(model->geometries, PIE_Geometry);
-    ForU32(geo_index, model->geometries.count)
+    PIE_Mesh *meshes = PIE_ListAsType(model->meshes, PIE_Mesh);
+    ForU32(mesh_index, model->meshes.count)
     {
-      PIE_Geometry *geo = geomeries + geo_index;
-      if (!geo->indices_count)
+      PIE_Mesh *mesh = meshes + mesh_index;
+      if (!mesh->indices_count)
       {
         M_LOG(M_GLTFWarning, "PIE warning: Model %u (%s) "
-              "contains uninitialized geometry (%u/%u)",
+              "contains uninitialized mesh (%u/%u)",
               (U32)model_index, MODEL_GetCstrName(model_index),
-              geo_index, model->geometries.count);
+              mesh_index, model->meshes.count);
       }
     }
   }
