@@ -42,18 +42,25 @@ static void BK_SetDefaultsPIEMaterial(PIE_Material *pie_material)
 #include "baker_textures.c"
 #include "baker_gltf_models.c"
 
-// Memory allocations
-static U8 tmp_arena_memory[Megabyte(512)];
-static U8 cgltf_arena_memory[Megabyte(32)];
+static Arena *Arena_Malloc(U64 size)
+{
+  return Arena_MakeInside(malloc(size), size);
+}
 
 int main()
 {
   // Init
-  BAKER.tmp = Arena_MakeInside(tmp_arena_memory, sizeof(tmp_arena_memory));
-  BAKER.cgltf_arena = Arena_MakeInside(cgltf_arena_memory, sizeof(cgltf_arena_memory));
+  BAKER.tmp = Arena_Malloc(Gigabyte(1));
+  BAKER.cgltf_arena = Arena_Malloc(Gigabyte(1));
   M_LogState.reject_filter = M_GLTFDebug;
 
-  BK_TEX_Init();
+  // @todo There is a bug with BC7 currently where it doesn't encode alpha channel properly!
+  //       I'm not yet sure if the bug is in BAKER or GAME.
+  //       I'm planning to add .dds texture export option so I can watch my textures in some 3rd party viewer.
+  //       This might be a bug in bc7end or my usage of it.
+  //PIE_TexFormat tex_format = PIE_Tex_BC7_RGBA;
+  PIE_TexFormat tex_format = PIE_Tex_R8G8B8A8;
+  BK_TEX_Init(tex_format);
 
   BAKER.pie_builder = PIE_CreateBuilder(BAKER.tmp, Megabyte(256));
 

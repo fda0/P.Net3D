@@ -147,20 +147,20 @@ static void ASSET_LoadMaterialFromPieFile(U32 material_index, U64 min_frame)
   ASSET_Material *asset = APP.ast.materials + material_index;
   if (asset->b.loaded || asset->b.last_touched_frame < min_frame) return;
 
-  ASSET_PieFile *br = &APP.ast.pie;
   // Material from .pie - it contains a big buffer that needs to uploaded to GPU
-  PIE_Material *br_material = br->materials + material_index;
-  S8 gpu_full_data = PIE_ListToS8(br_material->tex.full_data);
+  ASSET_PieFile *pie = &APP.ast.pie;
+  PIE_Material *pie_material = pie->materials + material_index;
+  S8 gpu_full_data = PIE_ListToS8(pie_material->tex.full_data);
 
   // MaterialTextures - it contains a mapping from big buffer to individual pieces of texture layers and lods
-  U32 br_textures_count = br_material->tex.sections.count;
-  PIE_MaterialTexSection *br_textures = PIE_ListAsType(br_material->tex.sections, PIE_MaterialTexSection);
+  U32 pie_textures_count = pie_material->tex.sections.count;
+  PIE_MaterialTexSection *pie_textures = PIE_ListAsType(pie_material->tex.sections, PIE_MaterialTexSection);
 
-  U32 lods_count = br_material->tex.lods;
+  U32 lods_count = pie_material->tex.lods;
   bool generate_lods = false;
-  if (lods_count == 1 && br_material->tex.format != PIE_Tex_BC7_RGBA)
+  if (lods_count == 1 && pie_material->tex.format != PIE_Tex_BC7_RGBA)
   {
-    lods_count = CalculateMipMapCount(br_material->tex.width, br_material->tex.height);
+    lods_count = CalculateMipMapCount(pie_material->tex.width, pie_material->tex.height);
     generate_lods = true;
   }
 
@@ -184,7 +184,7 @@ static void ASSET_LoadMaterialFromPieFile(U32 material_index, U64 min_frame)
 
     // Create texture
     {
-      SDL_GPUTextureFormat sdl_format = (br_material->tex.format == PIE_Tex_R8G8B8A8 ?
+      SDL_GPUTextureFormat sdl_format = (pie_material->tex.format == PIE_Tex_R8G8B8A8 ?
                                          SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM :
                                          SDL_GPU_TEXTUREFORMAT_BC7_RGBA_UNORM);
 
@@ -192,9 +192,9 @@ static void ASSET_LoadMaterialFromPieFile(U32 material_index, U64 min_frame)
       {
         .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
         .format = sdl_format,
-        .width = br_material->tex.width,
-        .height = br_material->tex.height,
-        .layer_count_or_depth = br_material->tex.layers,
+        .width = pie_material->tex.width,
+        .height = pie_material->tex.height,
+        .layer_count_or_depth = pie_material->tex.layers,
         .num_levels = lods_count,
         .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
       };
@@ -203,7 +203,12 @@ static void ASSET_LoadMaterialFromPieFile(U32 material_index, U64 min_frame)
         texture_info.usage |= SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
 
       texture = SDL_CreateGPUTexture(APP.gpu.device, &texture_info);
-      SDL_SetGPUTextureName(APP.gpu.device, texture, "Texture from pie");
+
+      Pr_MakeOnStack(p, Kilobyte(1));
+      Pr_Cstr(&p, "PIE Texture: ");
+      Pr_S8(&p, PIE_ListToS8(pie_material->name));
+      char *debug_texture_name = Pr_AsCstr(&p);
+      SDL_SetGPUTextureName(APP.gpu.device, texture, debug_texture_name);
     }
 
     // GPU memory -> GPU texture
@@ -211,23 +216,23 @@ static void ASSET_LoadMaterialFromPieFile(U32 material_index, U64 min_frame)
       SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
       SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
 
-      ForU32(br_texture_index, br_textures_count)
+      ForU32(pie_texture_index, pie_textures_count)
       {
-        PIE_MaterialTexSection *br_sect = br_textures + br_texture_index;
+        PIE_MaterialTexSection *pie_sect = pie_textures + pie_texture_index;
 
         SDL_GPUTextureTransferInfo source =
         {
           .transfer_buffer = transfer,
-          .offset = br_sect->data_offset,
-          .pixels_per_row = br_sect->width,
+          .offset = pie_sect->data_offset,
+          .pixels_per_row = pie_sect->width,
         };
         SDL_GPUTextureRegion destination =
         {
           .texture = texture,
-          .mip_level = br_sect->lod,
-          .layer = br_sect->layer,
-          .w = br_sect->width,
-          .h = br_sect->height,
+          .mip_level = pie_sect->lod,
+          .layer = pie_sect->layer,
+          .w = pie_sect->width,
+          .h = pie_sect->height,
           .d = 1,
         };
         SDL_UploadToGPUTexture(copy_pass, &source, &destination, false);

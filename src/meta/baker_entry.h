@@ -42,7 +42,7 @@ typedef struct
   BK_GLTF_Mesh *meshes;
   U32 meshes_count;
 
-  S8 name; // @todo remove
+  S8 name;
   MODEL_Type type;
   bool is_skinned;
   U32 joints_count;

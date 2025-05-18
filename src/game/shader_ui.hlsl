@@ -21,7 +21,7 @@ struct UI_DX_Shape
   float corner_radius;
   float edge_softness;
   float border_thickness;
-  U32 color; // @todo array4
+  U32 color; // @todo array of 4 colors for gradients
 };
 
 struct UI_DX_Clip

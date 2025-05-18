@@ -35,10 +35,6 @@ X(PIE_Skeleton) \
 X(PIE_Links) \
 X(WORLD_Vertex)
 
-// @todo implement slices
-//#define TYPE_DEF_SLICE(T) typedef struct { T *arr; U64 count; } Slice_##T;
-//TYPE_LIST(TYPE_DEF_SLICE)
-
 typedef U32 TYPE_ENUM;
 enum
 {

@@ -27,7 +27,6 @@ typedef struct
 
 typedef struct
 {
-  char *name; // @todo delete
   S8 name_s8;
   float t_min, t_max;
   ASSET_AnimationChannel *channels;
@@ -46,7 +45,6 @@ typedef struct
   // all pointers point to arrays with
   // joints_count number of elements
   U32 joints_count;
-  const char **names; // @todo delete
   S8 *names_s8;
   Mat4 *inv_bind_mats;
   //

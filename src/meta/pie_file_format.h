@@ -1,7 +1,6 @@
 //
 // This file describes PIE file format - which is produced by "baker" asset preprocessor.
-//
-// @todo Rename to 'pie'
+// .pie files pack all the data needed by the game like models' meshes & animations, materials, textures.
 //
 
 typedef struct
@@ -137,15 +136,3 @@ typedef struct
 #define PIE_MAGIC_HASH_SEED (0xB5EADC0D + 0)
   PIE_List links;
 } PIE_Header;
-
-//
-// The format is a bit flexible in regards to where stuff is located.
-// With the current PieBuilder implementation we can expect it to be:
-//
-// [PIE_Header]
-// all rigid vertices [MDL_GpuRigidVertex]
-// all skinned vertices [MDL_GpuSkinnedVertex]
-// all indices [U16]
-// array of [PIE_Model]
-// [PIE_Links]
-//

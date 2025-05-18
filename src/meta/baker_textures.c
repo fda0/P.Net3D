@@ -294,7 +294,7 @@ static void BK_TEX_LoadPBRs(S8 tex_name)
   }
 }
 
-static void BK_TEX_Init()
+static void BK_TEX_Init(PIE_TexFormat tex_format)
 {
   // Init bc7enc texture compressor
   {
@@ -314,6 +314,5 @@ static void BK_TEX_Init()
   BAKER.tex.bc7_block_surf = SDL_CreateSurface(M_TEX_BC7_BLOCK_DIM, M_TEX_BC7_BLOCK_DIM, SDL_PIXELFORMAT_RGBA32);
   M_Check(BAKER.tex.bc7_block_surf->w * sizeof(U32) == BAKER.tex.bc7_block_surf->pitch);
 
-  BAKER.tex.format = PIE_Tex_BC7_RGBA;
-  BAKER.tex.format = PIE_Tex_R8G8B8A8;
+  BAKER.tex.format = tex_format;
 }
