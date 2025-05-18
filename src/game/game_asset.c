@@ -291,74 +291,73 @@ static ASSET_Skeleton *ASSET_GetSkeleton(U32 skel_index)
 
 static void ASSET_LoadSkeletons()
 {
-  ASSET_PieFile *br = &APP.ast.pie;
+  ASSET_PieFile *pie = &APP.ast.pie;
+  PIE_Skeleton *pie_skeletons = PIE_ListAsType(pie->links->skeletons, PIE_Skeleton);
+  U32 skeletons_count = pie->links->skeletons.count;
 
-  U32 br_skeletons_count = br->links->skeletons.count;
-  PIE_Skeleton *br_skeletons = PIE_ListAsType(br->links->skeletons, PIE_Skeleton);
-
-  U32 skeletons_count = Min(br_skeletons_count, ArrayCount(APP.ast.skeletons));
   APP.ast.skeletons_count = skeletons_count;
+  APP.ast.skeletons = AllocZeroed(pie->arena, ASSET_Skeleton, skeletons_count);
 
   ForU32(skeleton_index, skeletons_count)
   {
-    PIE_Skeleton *br_skel = br_skeletons + skeleton_index;
+    PIE_Skeleton *pie_skel = pie_skeletons + skeleton_index;
     ASSET_Skeleton *skel = APP.ast.skeletons + skeleton_index;
-    skel->root_transform = br_skel->root_transform;
+    skel->root_transform = pie_skel->root_transform;
 
-    skel->joints_count = br_skel->inv_bind_mats.count;
-    Assert(skel->joints_count == br_skel->inv_bind_mats.count);
-    Assert(skel->joints_count == br_skel->child_index_buf.count);
-    Assert(skel->joints_count == br_skel->child_index_ranges.count);
-    Assert(skel->joints_count == br_skel->translations.count);
-    Assert(skel->joints_count == br_skel->rotations.count);
-    Assert(skel->joints_count == br_skel->scales.count);
-    Assert(skel->joints_count == br_skel->name_ranges.count);
+    skel->joints_count = pie_skel->inv_bind_mats.count;
+    Assert(skel->joints_count == pie_skel->inv_bind_mats.count);
+    Assert(skel->joints_count == pie_skel->child_index_buf.count);
+    Assert(skel->joints_count == pie_skel->child_index_ranges.count);
+    Assert(skel->joints_count == pie_skel->translations.count);
+    Assert(skel->joints_count == pie_skel->rotations.count);
+    Assert(skel->joints_count == pie_skel->scales.count);
+    Assert(skel->joints_count == pie_skel->name_ranges.count);
 
-    skel->inv_bind_mats      = PIE_ListAsType(br_skel->inv_bind_mats, Mat4);
-    skel->child_index_buf    = PIE_ListAsType(br_skel->child_index_buf, U32);
-    skel->child_index_ranges = PIE_ListAsType(br_skel->child_index_ranges, RngU32);
-    skel->translations       = PIE_ListAsType(br_skel->translations, V3);
-    skel->rotations          = PIE_ListAsType(br_skel->rotations, Quat);
-    skel->scales             = PIE_ListAsType(br_skel->scales, V3);
+    skel->inv_bind_mats      = PIE_ListAsType(pie_skel->inv_bind_mats, Mat4);
+    skel->child_index_buf    = PIE_ListAsType(pie_skel->child_index_buf, U32);
+    skel->child_index_ranges = PIE_ListAsType(pie_skel->child_index_ranges, RngU32);
+    skel->translations       = PIE_ListAsType(pie_skel->translations, V3);
+    skel->rotations          = PIE_ListAsType(pie_skel->rotations, Quat);
+    skel->scales             = PIE_ListAsType(pie_skel->scales, V3);
 
-    RngU32 *name_ranges = PIE_ListAsType(br_skel->name_ranges, RngU32);
-    skel->names_s8 = Alloc(br->arena, S8, skel->joints_count);
+    RngU32 *name_ranges = PIE_ListAsType(pie_skel->name_ranges, RngU32);
+    skel->names_s8 = Alloc(pie->arena, S8, skel->joints_count);
     ForU32(i, skel->joints_count)
       skel->names_s8[i] = S8_Substring(PIE_File(), name_ranges[i].min, name_ranges[i].max);
 
     // Animations
-    skel->anims_count = br_skel->anims.count;
-    PIE_Animation *br_anims = PIE_ListAsType(br_skel->anims, PIE_Animation);
-    skel->anims = Alloc(br->arena, ASSET_Animation, skel->anims_count);
+    skel->anims_count = pie_skel->anims.count;
+    PIE_Animation *pie_anims = PIE_ListAsType(pie_skel->anims, PIE_Animation);
+    skel->anims = Alloc(pie->arena, ASSET_Animation, skel->anims_count);
 
     ForU32(anim_index, skel->anims_count)
     {
       ASSET_Animation *anim = skel->anims + anim_index;
-      PIE_Animation *br_anim = br_anims + anim_index;
+      PIE_Animation *pie_anim = pie_anims + anim_index;
 
-      anim->name_s8 = S8_Make(PIE_ListAsType(br_anim->name, U8), br_anim->name.size);
+      anim->name = S8_Make(PIE_ListAsType(pie_anim->name, U8), pie_anim->name.size);
 
-      anim->t_min = br_anim->t_min;
-      anim->t_max = br_anim->t_max;
+      anim->t_min = pie_anim->t_min;
+      anim->t_max = pie_anim->t_max;
 
-      anim->channels_count = br_anim->channels.count;
-      PIE_AnimationChannel *br_channels = PIE_ListAsType(br_anim->channels, PIE_AnimationChannel);
-      anim->channels = Alloc(br->arena, ASSET_AnimationChannel, anim->channels_count);
+      anim->channels_count = pie_anim->channels.count;
+      PIE_AnimationChannel *pie_channels = PIE_ListAsType(pie_anim->channels, PIE_AnimationChannel);
+      anim->channels = Alloc(pie->arena, ASSET_AnimationChannel, anim->channels_count);
 
       ForU32(channel_index, anim->channels_count)
       {
         ASSET_AnimationChannel *chan = anim->channels + channel_index;
-        PIE_AnimationChannel *br_chan = br_channels + channel_index;
+        PIE_AnimationChannel *pie_chan = pie_channels + channel_index;
 
-        chan->joint_index = br_chan->joint_index;
-        chan->type = br_chan->type;
-        chan->count = br_chan->inputs.count;
+        chan->joint_index = pie_chan->joint_index;
+        chan->type = pie_chan->type;
+        chan->count = pie_chan->inputs.count;
 
         U32 comp_count = (chan->type == AN_Rotation ? 4 : 3);
-        Assert(comp_count * chan->count == br_chan->outputs.count);
+        Assert(comp_count * chan->count == pie_chan->outputs.count);
 
-        chan->inputs = PIE_ListAsType(br_chan->inputs, float);
-        chan->outputs = PIE_ListAsType(br_chan->outputs, float);
+        chan->inputs = PIE_ListAsType(pie_chan->inputs, float);
+        chan->outputs = PIE_ListAsType(pie_chan->outputs, float);
       }
     }
   }
@@ -367,41 +366,67 @@ static void ASSET_LoadSkeletons()
 //
 // Geometry
 //
-static ASSET_Model *ASSET_GetModel(MODEL_Type model_type)
+static void ASSET_CreateNilModel()
 {
-  // @todo @speed Stream geometry assets in the future.
-  Assert(model_type < MODEL_COUNT);
-  return APP.ast.models + model_type;
+  // @todo create some obviously wrong mesh; error message?
 }
 
-static void ASSET_LoadGeometry()
+static bool ASSET_ModelIsNil(ASSET_Model *a)
+{
+  return a == &APP.ast.nil_model;
+}
+
+static ASSET_Model *ASSET_GetModel(MODEL_Key key)
+{
+  // @speed hash table lookup in the future
+  ASSET_Model *asset = &APP.ast.nil_model;
+  ForU32(i, APP.ast.models_count)
+  {
+    ASSET_Model *search = APP.ast.models + i;
+    if (MODEL_KeyMatch(search->key, key))
+    {
+      asset = search;
+      break;
+    }
+  }
+  return asset;
+}
+
+static void ASSET_LoadModelMeshes()
 {
   ASSET_PieFile *pie = &APP.ast.pie;
 
-  APP.ast.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
-                                      pie->links->models.vertices.size,
-                                      "WORLD vertices");
-  APP.ast.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX,
-                                     pie->links->models.indices.size,
-                                     "Model indices");
-
-  S8 vertices_string = PIE_ListToS8(pie->links->models.vertices);
-  S8 indices_string = PIE_ListToS8(pie->links->models.indices);
-
-  GPU_TransferBuffer(APP.ast.vertices, vertices_string.str, vertices_string.size);
-  GPU_TransferBuffer(APP.ast.indices, indices_string.str, indices_string.size);
-
-  ForU32(model_kind, MODEL_COUNT)
+  // Load meshes
   {
-    PIE_Model *pie_model = pie->models + model_kind;
-    ASSET_Model *asset = APP.ast.models + model_kind;
+    APP.ast.vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+                                        pie->links->models.vertices.size,
+                                        "WORLD vertices");
+    APP.ast.indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX,
+                                       pie->links->models.indices.size,
+                                       "Model indices");
+
+    S8 vertices_string = PIE_ListToS8(pie->links->models.vertices);
+    S8 indices_string = PIE_ListToS8(pie->links->models.indices);
+
+    GPU_TransferBuffer(APP.ast.vertices, vertices_string.str, vertices_string.size);
+    GPU_TransferBuffer(APP.ast.indices, indices_string.str, indices_string.size);
+  }
+
+  APP.ast.models_count = pie->models_count;
+  APP.ast.models = AllocZeroed(pie->arena, ASSET_Model, APP.ast.models_count);
+
+  ForU32(model_index, pie->models_count)
+  {
+    PIE_Model *pie_model = pie->models + model_index;
+
+    ASSET_Model *asset = APP.ast.models + model_index;
+    asset->key = MODEL_CreateKey(PIE_ListToS8(pie_model->name));
     asset->is_skinned = pie_model->is_skinned;
     asset->skeleton_index = pie_model->skeleton_index;
     asset->meshes_count = pie_model->meshes.count;
     asset->meshes = AllocZeroed(pie->arena, ASSET_Mesh, asset->meshes_count);
 
     PIE_Mesh *pie_meshes = PIE_ListAsType(pie_model->meshes, PIE_Mesh);
-
     ForU32(mesh_index, asset->meshes_count)
     {
       PIE_Mesh *pie_mesh = pie_meshes + mesh_index;
@@ -443,11 +468,12 @@ static void ASSET_PostFrame()
 
 static void ASSET_Init()
 {
-  PIE_LoadFile("data.pie");
+  ASSET_LoadPieFile("data.pie");
   ASSET_LoadSkeletons();
   ASSET_CreateNilMaterial();
   ASSET_LoadMaterials();
-  ASSET_LoadGeometry();
+  ASSET_CreateNilModel();
+  ASSET_LoadModelMeshes();
 }
 
 static void ASSET_Deinit()

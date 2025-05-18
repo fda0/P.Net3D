@@ -17,6 +17,7 @@ static S8 PIE_FileOffsetToS8(U64 offset, U64 size)
 static S8 PIE_ListToS8(PIE_List list)
 {
   // validation
+  Assert(list.type);
   U32 type_size = TYPE_GetSize(list.type);
   U32 type_align = TYPE_GetAlign(list.type);
   Assert(list.size == list.count * type_size);

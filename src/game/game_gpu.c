@@ -616,7 +616,7 @@ static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bo
     if (!gpu_instances->element_count)
       continue;
 
-    ASSET_Model *model = ASSET_GetModel(gpu_instances->target.model);
+    ASSET_Model *model = ASSET_GetModel(gpu_instances->target.model_key);
 
     // bind instance storage buffer
     SDL_GPUBuffer *storage_bufs[] =

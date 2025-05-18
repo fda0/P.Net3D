@@ -208,7 +208,7 @@ static void Game_DrawObjects()
       }
 
       // Transfer verts to GPU
-      WORLD_RenderDynamicMesh(material, mesh_verts, mesh_verts_count);
+      WORLD_RenderVertices(material, mesh_verts, mesh_verts_count);
     }
   }
 
@@ -448,7 +448,7 @@ static void Game_Iterate()
       if (KEY_Held(KEY_MouseRight) && APP.world_mouse_valid)
       {
         marker->s.flags |= ObjFlag_DrawModel;
-        marker->s.model = MODEL_Flag;
+        marker->s.model = MODEL_CreateKey(S8Lit("Flag"));
         marker->s.p = V3_From_XY_Z(APP.world_mouse, 0);
 
         marker->l.animated_p.x = marker->s.p.x;
@@ -520,7 +520,29 @@ static void Game_Init()
   APP.obj_serial_counter = 1;
   APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;
 
-  // add walls, ground etc
+  // Sun
+  {
+    Object *sun = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
+    sun->s.material = MATERIAL_CreateKey(S8Lit("tex.Leather011"));
+    sun->s.collision_height = 50;
+    sun->s.collision.verts = CollisionVertices_FromRectDim((V2){50, 50});
+    Collision_RecalculateNormals(&sun->s.collision);
+    APP.sun = sun->s.key;
+  }
+  
+  // Pathing marker
+  {
+    APP.pathing_marker = OBJ_Create(OBJ_Offline, ObjFlag_AnimatePosition)->s.key;
+  }
+  
+  // Ground
+  {
+    Object *ground = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
+    ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
+    Collision_RecalculateNormals(&ground->s.collision);
+    ground->s.material = MATERIAL_CreateKey(S8Lit("tex.Grass004"));
+  }
+  
   {
     float thickness = 20.f;
     float length = 400.f;
@@ -542,13 +564,6 @@ static void Game_Init()
     }
 
     {
-      Object *ground = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-      ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
-      Collision_RecalculateNormals(&ground->s.collision);
-      ground->s.material = MATERIAL_CreateKey(S8Lit("tex.Grass004"));
-    }
-
-    {
       Object *flying_cube = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
       flying_cube->s.p = (V3){50, 120, 100};
       flying_cube->s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles101"));
@@ -557,20 +572,6 @@ static void Game_Init()
       flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){100, 100});
       Collision_RecalculateNormals(&flying_cube->s.collision);
     }
-
-    {
-      Object *sun = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-      sun->s.material = MATERIAL_CreateKey(S8Lit("tex.Leather011"));
-      sun->s.collision_height = 50;
-      sun->s.collision.verts = CollisionVertices_FromRectDim((V2){50, 50});
-      Collision_RecalculateNormals(&sun->s.collision);
-      APP.sun = sun->s.key;
-    }
-  }
-
-  // pathing marker
-  {
-    APP.pathing_marker = OBJ_Create(OBJ_Offline, ObjFlag_AnimatePosition)->s.key;
   }
 
   // Add trees
@@ -599,7 +600,7 @@ static void Game_Init()
         if (!OBJ_IsNil(tree))
         {
           tree->s.p = pos;
-          tree->s.model = MODEL_Tree;
+          tree->s.model = MODEL_CreateKey(S8Lit("Tree"));
         }
       }
     }

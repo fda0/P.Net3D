@@ -268,7 +268,7 @@ static S8 S8_ConsumeSkipUntil(S8 *haystack, S8 needle, S8_MatchFlags flags)
   S8_FindResult find = S8_Find(*haystack, needle, 0, flags);
   if (find.found)
   {
-    S8 result = S8_Prefix(*haystack, find.index);
+    S8 result = S8_Prefix(*haystack, find.index); // result doesn't contain consumed needle
     *haystack = S8_Skip(*haystack, find.index + needle.size);
     return result;
   }
@@ -279,7 +279,7 @@ static S8 S8_ConsumeChopUntil(S8 *haystack, S8 needle, S8_MatchFlags flags)
   S8_FindResult find = S8_Find(*haystack, needle, 0, flags);
   if (find.found)
   {
-    S8 result = S8_Skip(*haystack, find.index + needle.size);
+    S8 result = S8_Skip(*haystack, find.index + needle.size); // result doesn't contain consumed needle
     *haystack = S8_Prefix(*haystack, find.index);
     return result;
   }

@@ -5,7 +5,9 @@ typedef struct
 
   Printer vertices;
   Printer indices;
-  PIE_Model models[MODEL_COUNT];
+
+  Printer models;
+  U32 models_count;
 
   Printer skeletons;
   U32 skeletons_count;
@@ -19,6 +21,7 @@ typedef struct
   float scale;
   Quat rot;
   V3 move;
+  S8 name; // If empty name will be taken from file name.
 } BK_GLTF_ModelConfig;
 
 typedef struct
@@ -43,12 +46,11 @@ typedef struct
   U32 meshes_count;
 
   S8 name;
-  MODEL_Type type;
-  bool is_skinned;
-  U32 joints_count;
-
   bool has_skeleton;
   U32 skeleton_index;
+
+  bool is_skinned;
+  U32 joints_count;
 } BK_GLTF_Model;
 
 typedef struct

@@ -79,15 +79,16 @@ int main()
       float scale = 40;
       BK_GLTF_ModelConfig config = {.scale = scale, .rot = rot_xz};
 
-      BK_GLTF_Load(MODEL_Flag, "../res/models/Flag.glb",
+      BK_GLTF_Load("../res/models/Flag.glb",
                    (BK_GLTF_ModelConfig){1.f, rot_x, (V3){0,0,-4.5f}});
-      BK_GLTF_Load(MODEL_Worker, "../res/models/Worker.gltf", config);
-      BK_GLTF_Load(MODEL_Formal, "../res/models/Formal.gltf", config);
-      BK_GLTF_Load(MODEL_Casual, "../res/models/Casual.gltf", config);
+      BK_GLTF_Load("../res/models/Worker.gltf", config);
+      BK_GLTF_Load("../res/models/Formal.gltf", config);
+      BK_GLTF_Load("../res/models/Casual.gltf", config);
 
       config.scale = 4.f;
       config.rot = Quat_Identity();
-      BK_GLTF_Load(MODEL_Tree, "../res/models/tree_low-poly/scene.gltf", config);
+      config.name = S8Lit("Tree");
+      BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf", config);
     }
 
     // Load texture files

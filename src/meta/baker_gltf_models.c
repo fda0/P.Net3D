@@ -298,10 +298,14 @@ static void *BK_GLTF_UnpackAccessor(cgltf_accessor *accessor, BK_Buffer *buffer)
 
 static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model)
 {
-  bool is_skinned = bk_model->is_skinned;
+  PIE_Model *pie_model = PIE_Reserve(&build->models, PIE_Model, 1);
 
-  PIE_Model *pie_model = build->models + bk_model->type;
-  pie_model->is_skinned = is_skinned;
+  // Name string
+  PIE_ListStart(&build->file, &pie_model->name, TYPE_U8);
+  Pr_S8(&build->file, bk_model->name);
+  PIE_ListEnd(&build->file, &pie_model->name);
+
+  pie_model->is_skinned = bk_model->is_skinned;
   pie_model->skeleton_index = bk_model->skeleton_index;
 
   PIE_Mesh *pie_meshes = PIE_ListReserve(&build->file, &pie_model->meshes, PIE_Mesh, bk_model->meshes_count);
@@ -352,7 +356,7 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
       vert.uv.y = *BK_BufferAtFloat(&bk_mesh->texcoords, vert_i*2 + 1);
 
       // SKINNED specific
-      if (is_skinned)
+      if (pie_model->is_skinned)
       {
         U32 joint_indices[4] =
         {
@@ -403,7 +407,7 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
   }
 }
 
-static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_ModelConfig config)
+static void BK_GLTF_Load(const char *file_path, BK_GLTF_ModelConfig config)
 {
   PIE_Builder *build = &BAKER.pie_builder;
 
@@ -446,8 +450,14 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
   }
 
   //
+  // Prepare strings based on file_path
+  //
   S8 dir_path = S8_FromCstr(file_path);
   S8_ConsumeChopUntil(&dir_path, S8Lit("/"), S8_FindLast | S8_SlashInsensitive);
+
+  S8 file_name_no_ext = S8_FromCstr(file_path);
+  S8_ConsumeSkipUntil(&file_name_no_ext, S8Lit("/"), S8_FindLast | S8_SlashInsensitive);
+  S8_ConsumeChopUntil(&file_name_no_ext, S8Lit("."), S8_FindLast | S8_SlashInsensitive);
 
   //
   // Collect data from .gltf file
@@ -458,10 +468,10 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
 
   BK_GLTF_Model model = {};
   model.config = config;
-  model.type = model_type;
   model.meshes_count = (U32)data->materials_count;
   model.meshes = AllocZeroed(scratch.a, BK_GLTF_Mesh, model.meshes_count);
-  model.name = MODEL_GetName(model_type);
+  model.name = config.name;
+  if (!model.name.size) model.name = file_name_no_ext;
   model.is_skinned = (data->animations_count > 0);
 
   ForU32(mesh_index, model.meshes_count)
@@ -556,15 +566,18 @@ static void BK_GLTF_Load(MODEL_Type model_type, const char *file_path, BK_GLTF_M
     }
   }
 
-  ForU64(mesh_index, data->meshes_count)
+  // The hierarchy of .gltf files might be a bit confusing.
+  // Division into meshes and primitives wasn't strictly
+  // necessary (it could have been merged into one) but it is what it is.
+  ForU64(gltf_mesh_index, data->meshes_count)
   {
-    cgltf_mesh *gltf_mesh = data->meshes + mesh_index;
+    cgltf_mesh *gltf_mesh = data->meshes + gltf_mesh_index;
 
-    ForU64(primitive_index, gltf_mesh->primitives_count)
+    ForU64(gltf_primitive_index, gltf_mesh->primitives_count)
     {
-      cgltf_primitive *primitive = gltf_mesh->primitives + primitive_index;
+      cgltf_primitive *primitive = gltf_mesh->primitives + gltf_primitive_index;
 
-      // Select proper bk_mesh based on material
+      // Our internal groups things into common meshes based on common material.
       U32 mesh_index = BK_GLTF_FindMaterialIndex(data, primitive->material);
       BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
 

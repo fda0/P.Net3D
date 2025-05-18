@@ -11,7 +11,7 @@ static bool GPU_MEM_TargetMatch(GPU_MEM_Target a, GPU_MEM_Target b)
       return MATERIAL_KeyMatch(a.material_key, b.material_key);
 
     if (a.type == GPU_MEM_ModelInstances)
-      return a.model == b.model;
+      return MODEL_KeyMatch(a.model_key, b.model_key);
   }
   return false;
 }

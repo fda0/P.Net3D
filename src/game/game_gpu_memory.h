@@ -9,7 +9,7 @@ typedef struct
 {
   GPU_MEM_TargetType type;
   MATERIAL_Key material_key;
-  MODEL_Type model;
+  MODEL_Key model_key;
 } GPU_MEM_Target;
 
 typedef struct GPU_MEM_Transfer GPU_MEM_Transfer;

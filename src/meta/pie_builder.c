@@ -72,6 +72,7 @@ static PIE_Builder PIE_CreateBuilder(Arena *a, U32 max_file_size)
   bb.indices = Pr_Alloc(a, small_size);
 
   U32 tiny_size = Kilobyte(16);
+  bb.models = Pr_Alloc(a, tiny_size);
   bb.skeletons = Pr_Alloc(a, tiny_size);
   bb.materials = Pr_Alloc(a, tiny_size);
 
@@ -81,70 +82,50 @@ static PIE_Builder PIE_CreateBuilder(Arena *a, U32 max_file_size)
 
 static void PIE_FinalizeBuilder()
 {
-  PIE_Builder *pbuild = &BAKER.pie_builder;
+  PIE_Builder *build = &BAKER.pie_builder;
 
   //
   // Prepare PIE_Links and append it to memory
   //
   PIE_Links links = {};
 
-  PIE_ListStart(&pbuild->file, &links.models.vertices, TYPE_WORLD_Vertex);
-  Pr_Printer(&pbuild->file, &pbuild->vertices);
-  PIE_ListEnd(&pbuild->file, &links.models.vertices);
+  PIE_ListStart(&build->file, &links.models.vertices, TYPE_WORLD_Vertex);
+  Pr_Printer(&build->file, &build->vertices);
+  PIE_ListEnd(&build->file, &links.models.vertices);
 
-  PIE_ListStart(&pbuild->file, &links.models.indices, TYPE_U16);
-  Pr_Printer(&pbuild->file, &pbuild->indices);
-  PIE_ListEnd(&pbuild->file, &links.models.indices);
-
-  ForArray(model_index, pbuild->models)
-  {
-    PIE_Model *model = pbuild->models + model_index;
-    PIE_Mesh *meshes = PIE_ListAsType(model->meshes, PIE_Mesh);
-    ForU32(mesh_index, model->meshes.count)
-    {
-      PIE_Mesh *mesh = meshes + mesh_index;
-      if (!mesh->indices_count)
-      {
-        M_LOG(M_GLTFWarning, "PIE warning: Model %u (%s) "
-              "contains uninitialized mesh (%u/%u)",
-              (U32)model_index, MODEL_GetCstrName(model_index),
-              mesh_index, model->meshes.count);
-      }
-    }
-  }
+  PIE_ListStart(&build->file, &links.models.indices, TYPE_U16);
+  Pr_Printer(&build->file, &build->indices);
+  PIE_ListEnd(&build->file, &links.models.indices);
 
   // Models
-  PIE_ListStart(&pbuild->file, &links.models.list, TYPE_PIE_Model);
-  {
-    PIE_Model *dst = PIE_ReserveBytes(&pbuild->file, sizeof(pbuild->models), _Alignof(PIE_Model));
-    Memcpy(dst, pbuild->models, sizeof(pbuild->models));
-  }
-  PIE_ListEnd(&pbuild->file, &links.models.list);
+  PIE_ListStart(&build->file, &links.models.list, TYPE_PIE_Model);
+  Pr_Printer(&build->file, &build->models);
+  PIE_ListEnd(&build->file, &links.models.list);
 
   // Skeletons
-  PIE_ListStart(&pbuild->file, &links.skeletons, TYPE_PIE_Skeleton);
-  Pr_Printer(&pbuild->file, &pbuild->skeletons);
-  PIE_ListEnd(&pbuild->file, &links.skeletons);
+  PIE_ListStart(&build->file, &links.skeletons, TYPE_PIE_Skeleton);
+  Pr_Printer(&build->file, &build->skeletons);
+  PIE_ListEnd(&build->file, &links.skeletons);
 
   // Materials
-  PIE_ListStart(&pbuild->file, &links.materials, TYPE_PIE_Material);
-  Pr_Printer(&pbuild->file, &pbuild->materials);
-  PIE_ListEnd(&pbuild->file, &links.materials);
+  PIE_ListStart(&build->file, &links.materials, TYPE_PIE_Material);
+  Pr_Printer(&build->file, &build->materials);
+  PIE_ListEnd(&build->file, &links.materials);
 
   //
   // Prepare PIE_Header
   //
-  PIE_Header *header = (PIE_Header *)pbuild->file.buf;
-  *PIE_ListReserve(&pbuild->file, &header->links, PIE_Links, 1) = links;
+  PIE_Header *header = (PIE_Header *)build->file.buf;
+  *PIE_ListReserve(&build->file, &header->links, PIE_Links, 1) = links;
 
   //
   // Calculate hash
   //
-  S8 whole_file = Pr_AsS8(&pbuild->file);
+  S8 whole_file = Pr_AsS8(&build->file);
   S8 hashable_file = S8_Skip(whole_file, sizeof(header->file_hash));
   header->file_hash = S8_Hash(PIE_MAGIC_HASH_SEED, hashable_file);
 
-  pbuild->finalized = true;
+  build->finalized = true;
 }
 
 static void PIE_SaveToFile(const char *file_path)

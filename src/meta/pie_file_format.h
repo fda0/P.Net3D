@@ -62,9 +62,9 @@ typedef struct
 
 typedef struct
 {
+  PIE_ListT(U8) name;
   U8 is_skinned : 1;
-  // @todo add [U8] name field
-  U32 skeleton_index; // for skinned only; index to skeletons from PIE_Contents
+  U32 skeleton_index; // for skinned only
   PIE_ListT(PIE_Mesh) meshes;
 } PIE_Model;
 

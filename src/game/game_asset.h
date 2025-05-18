@@ -9,6 +9,7 @@ typedef struct
 
 typedef struct
 {
+  MODEL_Key key;
   bool is_skinned;
   U32 skeleton_index;
   ASSET_Mesh *meshes;
@@ -27,7 +28,7 @@ typedef struct
 
 typedef struct
 {
-  S8 name_s8;
+  S8 name;
   float t_min, t_max;
   ASSET_AnimationChannel *channels;
   U32 channels_count;
@@ -102,17 +103,20 @@ typedef struct
   bool tex_load_needed;
   SDL_Semaphore *tex_sem;
 
-  // Skeleton
-  ASSET_Skeleton skeletons[MODEL_COUNT];
-  U32 skeletons_count;
+  // Meshes
+  ASSET_Model nil_model;
+  ASSET_Model *models;
+  U32 models_count;
 
-  // Geometry
   SDL_GPUBuffer *vertices;
   SDL_GPUBuffer *indices;
-  ASSET_Model models[MODEL_COUNT];
+
+  // Skeleton
+  ASSET_Skeleton *skeletons;
+  U32 skeletons_count;
 
   U64 serialize_last_check_timestamp;
   U64 serialize_hash;
 } ASSET_State;
 
-static void PIE_LoadFile(const char *pie_file_path);
+static void ASSET_LoadPieFile(const char *pie_file_path);

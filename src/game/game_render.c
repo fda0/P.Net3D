@@ -1,7 +1,7 @@
 //
 // WORLD
 //
-static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
+static void WORLD_RenderModel(MODEL_Key model_key, Mat4 transform, U32 color,
                               U32 animation_index, float animation_t)
 {
   WORLD_InstanceModel instance =
@@ -10,7 +10,7 @@ static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
     .color = color,
   };
 
-  ASSET_Model *model = ASSET_GetModel(model_type);
+  ASSET_Model *model = ASSET_GetModel(model_key);
   if (model->is_skinned)
   {
     instance.pose_offset = APP.gpu.mem.poses.element_count;
@@ -23,11 +23,11 @@ static void WORLD_RenderModel(MODEL_Type model_type, Mat4 transform, U32 color,
   }
 
   GPU_MEM_Batch *instance_batch =
-    GPU_MEM_FindOrCreateBundle((GPU_MEM_Target){.type = GPU_MEM_ModelInstances, .model = model_type});
+    GPU_MEM_FindOrCreateBundle((GPU_MEM_Target){.type = GPU_MEM_ModelInstances, .model_key = model_key});
   GPU_MEM_TransferUploadBytes(instance_batch, &instance, sizeof(instance), 1);
 }
 
-static void WORLD_RenderDynamicMesh(MATERIAL_Key material, WORLD_Vertex *vertices, U32 vertices_count)
+static void WORLD_RenderVertices(MATERIAL_Key material, WORLD_Vertex *vertices, U32 vertices_count)
 {
   GPU_MEM_Batch *mesh_batch =
     GPU_MEM_FindOrCreateBundle((GPU_MEM_Target){.type = GPU_MEM_MeshVertices, .material_key = material});

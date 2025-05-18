@@ -222,7 +222,14 @@ static void NET_IterateSend()
 
         if (!player_key->serial_number)
         {
-          MODEL_Type model = MODEL_Worker + (user_index % (MODEL_COUNT - MODEL_Worker));
+          MODEL_Key model_keys[] =
+          {
+            MODEL_CreateKey(S8Lit("Worker")),
+            MODEL_CreateKey(S8Lit("Formal")),
+            MODEL_CreateKey(S8Lit("Casual")),
+          };
+
+          MODEL_Key model = model_keys[user_index % ArrayCount(model_keys)];
           Object *player = OBJ_CreatePlayer(model);
           if (!OBJ_IsNil(player))
           {

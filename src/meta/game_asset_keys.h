@@ -1,3 +1,4 @@
+// MATERIAL
 static U64 MATERIAL_Hash(S8 name)
 {
   U64 hash = S8_Hash(0, S8Lit("MATERIAL_KEY:"));
@@ -24,7 +25,6 @@ typedef struct
   //   tex.Bricks071
   //   Tree.Bark_diffuse
 } MATERIAL_Key;
-
 static MATERIAL_Key MATERIAL_CreateKey(S8 name /* EXTERNALLY OWNED STRING */)
 {
   MATERIAL_Key res = {};
@@ -32,20 +32,51 @@ static MATERIAL_Key MATERIAL_CreateKey(S8 name /* EXTERNALLY OWNED STRING */)
   res.name = name;
   return res;
 }
-
 static bool MATERIAL_KeyMatch(MATERIAL_Key a, MATERIAL_Key b)
 {
   return a.hash == b.hash;
 }
-
 static bool MATERIAL_KeyIsZero(MATERIAL_Key a)
 {
   return !a.hash;
 }
 
-//
-// Models
-//
+// MODEL
+#if 1
+static U64 MODEL_Hash(S8 name)
+{
+  U64 hash = S8_Hash(0, S8Lit("MODEL_KEY:"));
+  hash = S8_Hash(hash, name);
+  return hash;
+}
+static U64 MODEL_HashCstr(const char *name)
+{
+  return MODEL_Hash(S8_FromCstr(name));
+}
+
+typedef struct
+{
+  U64 hash;
+  S8 name;
+} MODEL_Key;
+static MODEL_Key MODEL_CreateKey(S8 name /* EXTERNALLY OWNED STRING */)
+{
+  MODEL_Key res = {};
+  res.hash = MODEL_Hash(name);
+  res.name = name;
+  return res;
+}
+static bool MODEL_KeyMatch(MODEL_Key a, MODEL_Key b)
+{
+  return a.hash == b.hash;
+}
+static bool MODEL_KeyIsZero(MODEL_Key a)
+{
+  return !a.hash;
+}
+
+
+#else
 #define MODEL_LIST(X) \
 X(Flag) \
 X(Tree) \
@@ -85,3 +116,4 @@ static S8 MODEL_GetName(MODEL_Type model)
     return MODEL_Names[model];
   return S8Lit("MODEL.MISSING.S8");
 }
+#endif
