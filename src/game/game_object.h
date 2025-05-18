@@ -53,7 +53,7 @@ typedef struct
   MODEL_Key model; // used by DrawModel
   MATERIAL_Key material; // used by DrawCollision
   float collision_height; // used by DrawCollision
-  float texture_texels_per_cm; // used by DrawCollision
+  float texture_texels_per_m; // used by DrawCollision
 
   // input actions
   bool is_pathing;

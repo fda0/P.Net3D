@@ -33,13 +33,11 @@ static void TICK_AdvanceSimulation()
     V2 player_dir = input.move_dir;
     if (player->s.is_pathing)
     {
-      V2 dir = V2_Sub(player->s.pathing_dest_p, V2_FromV3_XY(player->s.p));
-      float len_sq = V2_LengthSq(dir);
-      if (len_sq > 1.f)
+      V2 player_to_dest = V2_Sub(player->s.pathing_dest_p, V2_FromV3_XY(player->s.p));
+      float len_sq = V2_LengthSq(player_to_dest);
+      if (len_sq > (0.01f * 0.01f))
       {
-        float len_inv = FInvSqrt(len_sq);
-        dir = V2_Scale(dir, len_inv);
-        player_dir = dir;
+        player_dir = V2_Scale(player_to_dest, FInvSqrt(len_sq));
       }
       else
       {
@@ -47,7 +45,7 @@ static void TICK_AdvanceSimulation()
       }
     }
 
-    float player_speed = 60.f * TICK_FLOAT_STEP;
+    float player_speed = 0.6f * TICK_FLOAT_STEP;
     player->s.desired_dp = V3_From_XY_Z(V2_Scale(player_dir, player_speed), 0);
   }
 

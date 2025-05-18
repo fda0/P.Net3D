@@ -151,7 +151,7 @@ static Object *OBJ_CreatePlayer(MODEL_Key model)
                               ObjFlag_AnimateRotation |
                               ObjFlag_AnimateT);
 
-  player->s.collision.verts = CollisionVertices_FromRectDim((V2){20, 20});
+  player->s.collision.verts = CollisionVertices_FromRectDim((V2){0.2f, 0.2f});
   Collision_RecalculateNormals(&player->s.collision);
 
   player->s.model = model;

@@ -233,7 +233,7 @@ static void NET_IterateSend()
           Object *player = OBJ_CreatePlayer(model);
           if (!OBJ_IsNil(player))
           {
-            player->s.p.y = -150.f + user_index * 70.f;
+            player->s.p.y = -1.5f + user_index * 0.7f;
             V3 color = {};
             color.x = (user_index & 4) ? .3f : 0.8f;
             color.y = (user_index & 2) ? .3f : 0.8f;

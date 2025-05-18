@@ -28,12 +28,12 @@ static void Game_AnimateObjects()
     {
       V3 delta = V3_Sub(obj->s.p, obj->l.animated_p);
       float speed = APP.dt * 10.f;
-      delta = V3_Scale(delta, speed);
+      V3 move_by = V3_Scale(delta, speed);
+      obj->l.animated_p = V3_Add(obj->l.animated_p, move_by);
 
-      obj->l.animated_p = V3_Add(obj->l.animated_p, delta);
       ForArray(i, obj->l.animated_p.E)
       {
-        if (FAbs(delta.E[i]) < 0.1f)
+        if (FAbs(delta.E[i]) < 0.01f)
           obj->l.animated_p.E[i] = obj->s.p.E[i];
       }
     }
@@ -47,7 +47,7 @@ static void Game_AnimateObjects()
       else
       {
         float dist = V3_Length(obj->s.moved_dp);
-        obj->l.animation_t += dist * 0.015f;
+        obj->l.animation_t += dist * 1.5f;
       }
 
       ASSET_Model *model = ASSET_GetModel(obj->s.model);
@@ -90,7 +90,7 @@ static void Game_DrawObjects()
 
       if (draw_model_collision)
       {
-        if (!height) height = 20.f;
+        if (!height) height = 0.2f;
         if (MATERIAL_KeyIsZero(material)) material = MATERIAL_CreateKey(S8Lit("tex.Leather011"));
       }
 
@@ -150,9 +150,9 @@ static void Game_DrawObjects()
       float w2 = V2_Length(V2_Sub(collision.arr[2], collision.arr[3]));
       float w3 = V2_Length(V2_Sub(collision.arr[3], collision.arr[0]));
 
-      float texels_per_cm = obj->s.texture_texels_per_cm;
-      if (texels_per_cm <= 0.f)
-        texels_per_cm = 0.015f;
+      float texels_per_m = obj->s.texture_texels_per_m;
+      if (texels_per_m <= 0.f)
+        texels_per_m = 1.5f;
 
       ForU32(face_i, face_count)
       {
@@ -172,7 +172,7 @@ static void Game_DrawObjects()
           case WorldDir_B: face_dim = (V2){w0, w1}; break; // works for rects only
         }
 
-        face_dim = V2_Scale(face_dim, texels_per_cm);
+        face_dim = V2_Scale(face_dim, texels_per_m);
         V2 face_uvs[6] =
         {
           (V2){0, face_dim.y},
@@ -340,7 +340,7 @@ static void Game_Iterate()
       if (KEY_Held(SDL_SCANCODE_LSHIFT) || KEY_Held(SDL_SCANCODE_RSHIFT)) move_dir.z -= 1;
       move_dir = V3_Normalize(move_dir);
       move_dir = V3_Rotate(move_dir, Quat_FromAxisAngle_RH((V3){0,0,-1} /* @todo figure out why -1 here fixes things */, APP.camera_angles.z));
-      move_dir = V3_Scale(move_dir, APP.dt * 200.f);
+      move_dir = V3_Scale(move_dir, APP.dt * 2.f);
       APP.camera_p = V3_Add(APP.camera_p, move_dir);
     }
     else
@@ -349,8 +349,8 @@ static void Game_Iterate()
       if (!OBJ_IsNil(player))
       {
         APP.camera_p = player->s.p;
-        APP.camera_p.z += 250.f;
-        APP.camera_p.x -= 140.f;
+        APP.camera_p.z += 2.50f;
+        APP.camera_p.x -= 1.40f;
         APP.camera_angles = (V3){0, -0.155f, 0};
       }
     }
@@ -363,7 +363,7 @@ static void Game_Iterate()
       V3 towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 2.f});
       APP.sun_dir = V3_Reverse(towards_sun_dir);
 
-      V3 sun_dist = V3_Scale(towards_sun_dir, 900.f);
+      V3 sun_dist = V3_Scale(towards_sun_dir, 40.f);
       V3 sun_obj_p = V3_Add(APP.camera_p, sun_dist);
       OBJ_Get(APP.sun, OBJ_Offline)->s.p = sun_obj_p;
 
@@ -374,9 +374,9 @@ static void Game_Iterate()
       float scale = 0.8f;
       float w = APP.window_dim.x * 0.5f * scale;
       float h = APP.window_dim.y * 0.5f * scale;
-      w = h = 1200.f * scale;
+      w = h = 12.f * scale;
 
-      Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 200.f, 3000.f);
+      Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 4.f, 30.f);
       Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(APP.sun_dir, AxisV3_X()));
       APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
     }
@@ -388,7 +388,7 @@ static void Game_Iterate()
       rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,0,1}, APP.camera_angles.z), rot);
       rot = Mat4_Mul(Mat4_Rotation_RH((V3){0,1,0}, APP.camera_angles.y), rot);
       Mat4 projection =
-        Mat4_Perspective(APP.camera_fov_y, APP.window_dim.x/APP.window_dim.y, 32.f, 2048.f);
+        Mat4_Perspective(APP.camera_fov_y, APP.window_dim.x/APP.window_dim.y, 0.25f, 25.f);
 
       APP.camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
     }
@@ -442,7 +442,7 @@ static void Game_Iterate()
            KEY_Held(SDL_SCANCODE_A) ||
            KEY_Held(SDL_SCANCODE_D)))
       {
-        marker->s.p.z = -60.f;
+        marker->s.p.z = -2.f;
       }
 
       if (KEY_Held(KEY_MouseRight) && APP.world_mouse_valid)
@@ -454,7 +454,7 @@ static void Game_Iterate()
         marker->l.animated_p.x = marker->s.p.x;
         marker->l.animated_p.y = marker->s.p.y;
         if (KEY_Pressed(KEY_MouseRight))
-          marker->l.animated_p.z = 50.f;
+          marker->l.animated_p.z = 0.5f;
 
         APP.pathing_marker_set = true;
       }
@@ -515,7 +515,7 @@ static void Game_Init()
 
   APP.timestamp = SDL_GetTicks();
   APP.camera_fov_y = 0.15f;
-  APP.camera_p = (V3){-180.f, 0.f, 70.f};
+  APP.camera_p = (V3){-1.8f, 0.f, .7f};
   APP.camera_angles = (V3){0, 0, 0};
   APP.obj_serial_counter = 1;
   APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;
@@ -525,36 +525,36 @@ static void Game_Init()
     Object *sun = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
     sun->s.material = MATERIAL_CreateKey(S8Lit("tex.Leather011"));
     sun->s.collision_height = 50;
-    sun->s.collision.verts = CollisionVertices_FromRectDim((V2){50, 50});
+    sun->s.collision.verts = CollisionVertices_FromRectDim((V2){.5f, .5f});
     Collision_RecalculateNormals(&sun->s.collision);
     APP.sun = sun->s.key;
   }
-  
+
   // Pathing marker
   {
     APP.pathing_marker = OBJ_Create(OBJ_Offline, ObjFlag_AnimatePosition)->s.key;
   }
-  
+
   // Ground
   {
     Object *ground = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-    ground->s.collision.verts = CollisionVertices_FromRectDim((V2){4000, 4000});
+    ground->s.collision.verts = CollisionVertices_FromRectDim((V2){40, 40});
     Collision_RecalculateNormals(&ground->s.collision);
     ground->s.material = MATERIAL_CreateKey(S8Lit("tex.Grass004"));
   }
-  
+
   {
-    float thickness = 20.f;
-    float length = 400.f;
+    float thickness = 0.2f;
+    float length = 4.f;
     float off = length*0.5f - thickness*0.5f;
-    OBJ_CreateWall((V2){ off, 0}, (V2){thickness, length}, 70.f);
-    OBJ_CreateWall((V2){-off, 0}, (V2){thickness, length}, 50.f);
-    OBJ_CreateWall((V2){0,  off}, (V2){length, thickness}, 60.f);
-    OBJ_CreateWall((V2){0, -off}, (V2){length*0.5f, thickness}, 40.f);
+    OBJ_CreateWall((V2){ off, 0}, (V2){thickness, length}, .7f);
+    OBJ_CreateWall((V2){-off, 0}, (V2){thickness, length}, .5f);
+    OBJ_CreateWall((V2){0,  off}, (V2){length, thickness}, .6f);
+    OBJ_CreateWall((V2){0, -off}, (V2){length*0.5f, thickness}, .4f);
 
     {
       Object *rotated_wall = OBJ_CreateWall((V2){0.75f*off, -0.5f*off},
-                                            (V2){thickness, 5.f*thickness}, 100.f);
+                                            (V2){thickness, 5.f*thickness}, 1.f);
 
       Vertices_Rotate(rotated_wall->s.collision.verts.arr,
                       ArrayCount(rotated_wall->s.collision.verts.arr),
@@ -565,11 +565,11 @@ static void Game_Init()
 
     {
       Object *flying_cube = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-      flying_cube->s.p = (V3){50, 120, 100};
+      flying_cube->s.p = (V3){0.5f, 1.2f, 1.f};
       flying_cube->s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles101"));
-      flying_cube->s.texture_texels_per_cm = 0.018f;
-      flying_cube->s.collision_height = 30;
-      flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){100, 100});
+      flying_cube->s.texture_texels_per_m = 1.f;
+      flying_cube->s.collision_height = 0.3f;
+      flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){1.f, 1.f});
       Collision_RecalculateNormals(&flying_cube->s.collision);
     }
   }
@@ -587,11 +587,11 @@ static void Game_Init()
         U32 y_half_count = y_count/2;
 
         V3 pos = {};
-        if ((x^y)&1) pos.x = 270.f;
-        else         pos.y = 290.f;
+        if ((x^y)&1) pos.x = 2.70f;
+        else         pos.y = 2.90f;
 
-        pos.x += 170.f*(x % x_half_count);
-        pos.y += 140.f*(y % y_half_count);
+        pos.x += 1.70f*(x % x_half_count);
+        pos.y += 1.40f*(y % y_half_count);
 
         pos.x *= (x < x_half_count ? -1.f : 1.f);
         pos.y *= (y < y_half_count ? -1.f : 1.f);
