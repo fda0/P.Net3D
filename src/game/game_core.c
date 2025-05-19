@@ -371,12 +371,8 @@ static void Game_Iterate()
       APP.sun_camera_p = OBJ_GetAny(APP.sun)->s.p;
       Mat4 transl = Mat4_InvTranslation(Mat4_Translation(APP.sun_camera_p));
 
-      float scale = 0.8f;
-      float w = APP.window_dim.x * 0.5f * scale;
-      float h = APP.window_dim.y * 0.5f * scale;
-      w = h = 12.f * scale;
-
-      Mat4 projection = Mat4_Orthographic(-w, w, -h, h, 4.f, 30.f);
+      float dim = 20.f;
+      Mat4 projection = Mat4_Orthographic(-dim, dim, -dim, dim, 10.f, 60.f);
       Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(APP.sun_dir, AxisV3_X()));
       APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
     }
