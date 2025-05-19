@@ -13,8 +13,8 @@
 #include <SDL3_net/SDL_net.h>
 #include <SDL3_image/SDL_image.h>
 
-#define WINDOW_HEIGHT 640
-#define WINDOW_WIDTH 854
+#define INIT_WINDOW_HEIGHT 1600
+#define INIT_WINDOW_WIDTH 900
 
 #include "base_types.h"
 #include "base_math.h"
@@ -106,7 +106,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
   {
     APP.timestamp_post_first_frame = SDL_GetTicks();
     U64 startup_delta = APP.timestamp_post_first_frame - APP.timestamp_app_launch;
-    LOG(Log_Perf, "Launch to first frame took: %llums", startup_delta);
+    LOG(LOG_Perf, "Launch to first frame took: %llums", startup_delta);
   }
 
   // Post frame input cleanup
@@ -117,6 +117,9 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
   APP.window_resized = false;
   APP.font.scale_changed = false;
+
+  if (APP.in_shutdown)
+    return SDL_APP_SUCCESS;
 
   return SDL_APP_CONTINUE;
 }
@@ -224,16 +227,20 @@ static void GAME_ParseCmd(int argc, char **argv)
 
       if (!found_number)
       {
-        LOG(Log_Idk, "%.*s needs to be followed by positive number", S8Print(arg));
+        LOG(LOG_Idk, "%.*s needs to be followed by positive number", S8Print(arg));
       }
     }
     else if (S8_Match(arg, S8Lit("-autolayout"), 0))
     {
       APP.window_autolayout = true;
     }
+    else if (S8_Match(arg, S8Lit("-exit-on-dc"), 0))
+    {
+      APP.server_exit_on_disconnect = true;
+    }
     else
     {
-      LOG(Log_Idk, "Unhandled argument: %.*s", S8Print(arg));
+      LOG(LOG_Idk, "Unhandled argument: %.*s", S8Print(arg));
     }
   }
 }
@@ -253,9 +260,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   APP.gpu.mem.arena = Arena_Malloc(Kilobyte(16));
   APP.ast.pie.arena = Arena_Malloc(Megabyte(64));
 
-  APP.log_filter = ~(U32)Log_NetAll;
-  APP.init_window_width = WINDOW_WIDTH;
-  APP.init_window_height = WINDOW_HEIGHT;
+  APP.log_category_filter = ~(U32)LOG_NetAll;
+  APP.init_window_width = INIT_WINDOW_WIDTH;
+  APP.init_window_height = INIT_WINDOW_HEIGHT;
   APP.dpi_scaling = 1.f;
 
   GAME_ParseCmd(argc, argv);
@@ -341,6 +348,7 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
 
   SDLNet_Quit();
   ASSET_Deinit();
+  GPU_MEM_Deinit();
   GPU_Deinit();
 
   SDL_ReleaseWindowFromGPUDevice(APP.gpu.device, APP.window);

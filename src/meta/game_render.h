@@ -63,5 +63,3 @@ typedef struct
   V2 p_min;
   V2 p_max;
 } UI_Clip;
-
-static void GPU_PostFrameClear();

@@ -67,7 +67,7 @@ static bool CLIENT_InsertSnapshot(CLIENT_ObjSnapshots *snaps, U64 insert_at_tick
       insert_at_tick_id >= snaps->recent_lerp_start_tick &&
       insert_at_tick_id <= snaps->recent_lerp_end_tick)
   {
-    LOG(Log_NetClient,
+    LOG(LOG_NetClient,
         "%s: Rejecting snapshot insert (in the middle, locked by lerp) - "
         "latest server tick: %llu; "
         "insert tick: %llu; "
@@ -91,7 +91,7 @@ static bool CLIENT_InsertSnapshot(CLIENT_ObjSnapshots *snaps, U64 insert_at_tick
   if (insert_at_tick_id < minimum_server_tick)
   {
     Assert(delta_from_latest <= 0);
-    LOG(Log_NetClient,
+    LOG(LOG_NetClient,
         "%s: Rejecting snapshot insert (underflow) - "
         "latest server tick: %llu; "
         "insert tick: %llu; "

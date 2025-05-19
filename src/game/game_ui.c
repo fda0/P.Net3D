@@ -312,7 +312,7 @@ static void UI_BuildUILayoutElements()
 //
 static void UI_LogError(Clay_ErrorData error)
 {
-  LOG(Log_Clay, "%s", error.errorText.chars);
+  LOG(LOG_Clay, "%s", error.errorText.chars);
 }
 
 static Clay_Dimensions UI_MeasureText(Clay_StringSlice clay_slice, Clay_TextElementConfig *config, void *user_data)
@@ -326,7 +326,7 @@ static Clay_Dimensions UI_MeasureText(Clay_StringSlice clay_slice, Clay_TextElem
 
   I32 width = 0, height = 0;
   if (!TTF_GetStringSize(ttf_font, (char *)string.str, string.size, &width, &height))
-    LOG(Log_Clay, "Failed to measure text: %s", SDL_GetError());
+    LOG(LOG_Clay, "Failed to measure text: %s", SDL_GetError());
 
   Clay_Dimensions result = {width, height};
   return result;
@@ -435,7 +435,7 @@ static void UI_FinishFrame()
 
         //float real_width = shape.p_max.x - shape.p_min.x;
         //float tex_width = shape.tex_max.x - shape.tex_min.x;
-        //LOG(Log_Clay, "real width: %f, tex width: %f", real_width, tex_width);
+        //LOG(LOG_Clay, "real width: %f, tex width: %f", real_width, tex_width);
 
         shape.color = Color32_ClayColor(text.textColor);
         // @todo font id, letterSpacing, lineHeight etc

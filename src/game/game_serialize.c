@@ -183,7 +183,7 @@ static void SERIAL_LoadFromS8(SERIAL_Item *items, U32 items_count, S8 source)
   for (;;)
   {
     lex = SERIAL_NextToken(lex);
-    //LOG(Log_Serial, "[%.*s]", S8Print(lex.token));
+    //LOG(LOG_Serial, "[%.*s]", S8Print(lex.token));
 
     if (lex.token_kind == SERIAL_TokenEndOfSource)
       break;

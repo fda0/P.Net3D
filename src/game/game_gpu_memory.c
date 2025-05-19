@@ -229,7 +229,7 @@ static void GPU_MEM_UploadAllBatches(SDL_GPUCommandBuffer *cmd)
   SDL_EndGPUCopyPass(copy_pass);
 }
 
-static void GPU_MEM_ClearEntries()
+static void GPU_MEM_PostFrame()
 {
   ForU32(batch_index, APP.gpu.mem.batches_count)
   {

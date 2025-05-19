@@ -4,6 +4,12 @@
 //           stuff when it's reasonable.
 //
 
+static bool LOG_Check(LOG_Category category)
+{
+  bool print = !!(category & APP.log_category_filter);
+  return print;
+}
+
 static void GAME_AnimateObjects()
 {
   ForArray(obj_index, APP.all_objects)
@@ -80,7 +86,7 @@ static void GAME_DrawObjects()
         transform = Mat4_Mul(transform, rot_mat); // rotate first, translate second
       }
 
-      WORLD_RenderModel(obj->s.model, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
+      WORLD_DrawModel(obj->s.model, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
     }
 
     if (draw_collision || draw_model_collision)
@@ -208,7 +214,7 @@ static void GAME_DrawObjects()
       }
 
       // Transfer verts to GPU
-      WORLD_RenderVertices(material, mesh_verts, mesh_verts_count);
+      WORLD_DrawVertices(material, mesh_verts, mesh_verts_count);
     }
   }
 
@@ -458,9 +464,10 @@ static void GAME_Iterate()
 
     GAME_DrawObjects();
     UI_FinishFrame();
-
     GPU_Iterate();
-    GPU_PostFrameClear();
+
+    GPU_MEM_PostFrame();
+    UI_PostFrame();
     ASSET_PostFrame();
   }
 
@@ -488,7 +495,6 @@ static void GAME_Init()
 {
   // init debug options
   APP.frame_id = 1000;
-  APP.log_filter &= ~(Log_NetDatagram);
 
 #if TESTS_ENABLED
   TEST_RunOnce();

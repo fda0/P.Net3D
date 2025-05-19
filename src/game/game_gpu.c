@@ -190,8 +190,6 @@ static void GPU_TransferTexture(SDL_GPUTexture *gpu_tex,
 
 static void GPU_Init()
 {
-  GPU_PostFrameClear();
-
   // preapre props
   {
     APP.gpu.clear_depth_props = SDL_CreateProperties();
@@ -500,10 +498,10 @@ static void GPU_Deinit()
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.tex_resolve);
 
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.shadow_tex);
-  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.dummy_shadow_tex);
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.shadow_sampler);
 
-  GPU_MEM_Deinit();
+  SDL_ReleaseGPUTexture(APP.gpu.device, APP.gpu.dummy_shadow_tex);
+  SDL_ReleaseGPUBuffer(APP.gpu.device, APP.gpu.dummy_instance_buffer);
 
   // Mesh
   SDL_ReleaseGPUSampler(APP.gpu.device, APP.gpu.mesh_tex_sampler);
@@ -538,7 +536,7 @@ static void GPU_UpdateUIUniform(SDL_GPUCommandBuffer *cmd, UI_Uniform uniform)
   }
 }
 
-static void GPU_DrawWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bool is_depth_prepass)
+static void GPU_RenderWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, bool is_depth_prepass)
 {
   U32 pipeline_index = is_depth_prepass ? 1 : 0;
   AssertBounds(pipeline_index, APP.gpu.world_pipelines);
@@ -700,7 +698,7 @@ static void GPU_Iterate()
   {
     depth_target.texture = APP.gpu.shadow_tex;
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, 0, 0, &depth_target);
-    GPU_DrawWorld(cmd, pass, true);
+    GPU_RenderWorld(cmd, pass, true);
     SDL_EndGPURenderPass(pass);
   }
 
@@ -743,7 +741,7 @@ static void GPU_Iterate()
     }
 
     SDL_GPURenderPass *pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, &depth_target);
-    GPU_DrawWorld(cmd, pass, false);
+    GPU_RenderWorld(cmd, pass, false);
     SDL_EndGPURenderPass(pass);
   }
 

@@ -1,23 +1,27 @@
-typedef enum
+typedef U32 LOG_Category;
+enum
 {
-  Log_Idk         = (1 << 0),
-  Log_NetInfo     = (1 << 1),
-  Log_NetDatagram = (1 << 2),
-  Log_NetSend     = (1 << 3),
-  Log_NetPacket   = (1 << 4),
-  Log_NetPayload  = (1 << 5),
-  Log_NetClient   = (1 << 6),
-  Log_NetTick     = (1 << 7),
-  Log_NetCatchup  = (1 << 8),
-  Log_NetAll      = (0xff << 1),
+  LOG_Idk         = (1 << 0),
+  LOG_NetInfo     = (1 << 1),
+  LOG_NetDatagram = (1 << 2),
+  LOG_NetSend     = (1 << 3),
+  LOG_NetPacket   = (1 << 4),
+  LOG_NetPayload  = (1 << 5),
+  LOG_NetClient   = (1 << 6),
+  LOG_NetTick     = (1 << 7),
+  LOG_NetCatchup  = (1 << 8),
+  LOG_NetAll      = (0xff << 1),
 
-  Log_Debug = (1 << 9),
-  Log_GPU = (1 << 10),
-  Log_Perf = (1 << 11),
-  Log_Clay = (1 << 12),
-  Log_OS = (1 << 13),
-  Log_Serial = (1 << 14),
-} Log_Flags;
+  LOG_Debug = (1 << 9),
+  LOG_GPU = (1 << 10),
+  LOG_Perf = (1 << 11),
+  LOG_Clay = (1 << 12),
+  LOG_OS = (1 << 13),
+  LOG_Serial = (1 << 14),
+  LOG_Important = (1 << 15),
+};
+
+static bool LOG_Check(LOG_Category category);
 
 // @note disable logging
 //#define LOG(FLAGS, ...) do{ (void)(FLAGS); if(0){ SDL_Log(__VA_ARGS__); }}while(0)
@@ -26,7 +30,7 @@ typedef enum
 //#define LOG(FLAGS, ...) do{ (void)(FLAGS); if(0){ printf(__VA_ARGS__); }}while(0)
 
 // @note enable logging
-#define LOG(FLAGS, ...) do{ if(((FLAGS) & APP.log_filter) == (FLAGS)){ SDL_Log(__VA_ARGS__); }}while(0)
+#define LOG(Category, ...) do{ if(LOG_Check(Category)) { SDL_Log(__VA_ARGS__); }}while(0)
 
 typedef enum
 {
@@ -64,10 +68,11 @@ typedef struct
   bool window_on_top;
   bool window_borderless;
 
+  bool server_exit_on_disconnect;
   bool window_autolayout;
   U32 latest_autolayout_user_count;
 
-  U32 log_filter; // active log filer flags
+  U32 log_category_filter; // active log filer flags
 
   // special objects
   OBJ_Key pathing_marker;

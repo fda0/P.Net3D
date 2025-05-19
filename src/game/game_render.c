@@ -1,8 +1,8 @@
 //
 // WORLD
 //
-static void WORLD_RenderModel(MODEL_Key model_key, Mat4 transform, U32 color,
-                              U32 animation_index, float animation_t)
+static void WORLD_DrawModel(MODEL_Key model_key, Mat4 transform, U32 color,
+                            U32 animation_index, float animation_t)
 {
   WORLD_InstanceModel instance =
   {
@@ -27,7 +27,7 @@ static void WORLD_RenderModel(MODEL_Key model_key, Mat4 transform, U32 color,
   GPU_MEM_TransferUploadBytes(instance_batch, &instance, sizeof(instance), 1);
 }
 
-static void WORLD_RenderVertices(MATERIAL_Key material, WORLD_Vertex *vertices, U32 vertices_count)
+static void WORLD_DrawVertices(MATERIAL_Key material, WORLD_Vertex *vertices, U32 vertices_count)
 {
   GPU_MEM_Batch *mesh_batch =
     GPU_MEM_FindOrCreateBundle((GPU_MEM_Target){.type = GPU_MEM_MeshVertices, .material_key = material});
@@ -129,10 +129,8 @@ static void UI_DrawRect(UI_Shape shape)
   UI_DrawRaw(shape);
 }
 
-static void GPU_PostFrameClear() // @todo this shouldn't be here! or should be renamed
+static void UI_PostFrame()
 {
-  GPU_MEM_ClearEntries();
-
   // ui
   APP.gpu.ui.indices_count = 0;
   APP.gpu.ui.shapes_count = 0;

@@ -306,7 +306,7 @@ static void FONT_ProcessWindowResize(bool init)
 
     if (resize_texture || init)
     {
-      LOG(Log_GPU, "Font Atlas resize from %d to %d", (I32)APP.font.texture_dim, new_texture_dim);
+      LOG(LOG_GPU, "Font Atlas resize from %d to %d", (I32)APP.font.texture_dim, new_texture_dim);
 
       APP.font.texture_dim = new_texture_dim;
 

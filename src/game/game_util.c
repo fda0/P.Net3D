@@ -146,17 +146,17 @@ static void TI_LogPerfArray(const char *label, U64 *arr, U64 count)
 {
   if (count > 1)
   {
-    LOG(Log_Perf, "Perf counters (%llu) for %s:", count, label);
+    LOG(LOG_Perf, "Perf counters (%llu) for %s:", count, label);
     ForU64(i, count - 1)
     {
       U64 delta_u64 = arr[i + 1] - arr[i];
       double delta_d = (double)delta_u64*1000.0 / (double)SDL_GetPerformanceFrequency();
-      LOG(Log_Perf, "%fms", delta_d);
+      LOG(LOG_Perf, "%fms", delta_d);
     }
   }
   else
   {
-    LOG(Log_Perf, "Perf counters - only %llu measurement for %s", count, label);
+    LOG(LOG_Perf, "Perf counters - only %llu measurement for %s", count, label);
   }
 }
 
@@ -188,7 +188,7 @@ static S8 OS_LoadFile(Arena *a, const char *file_path)
   U64 size = 0;
   U8 *data = SDL_LoadFile(file_path, &size); // go through better api
   if (!data)
-    LOG(Log_OS, "Failed to load file %s", file_path);
+    LOG(LOG_OS, "Failed to load file %s", file_path);
 
   U8 *dest = Arena_AllocateBytes(a, size, 64, false); // high alignment
   Memcpy(dest, data, size);
@@ -202,7 +202,7 @@ static void OS_SaveFile(const char *file_path, S8 data)
 {
   bool success = SDL_SaveFile(file_path, data.str, data.size);
   if (!success)
-    LOG(Log_OS, "Failed to save to file %s", file_path);
+    LOG(LOG_OS, "Failed to save to file %s", file_path);
 }
 
 //
