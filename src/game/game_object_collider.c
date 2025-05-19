@@ -1,4 +1,4 @@
-static OBJ_Collider OBJ_ColliderVerticesFromRectDim(V2 dim)
+static OBJ_Collider OBJ_GetColliderFromRect2D(V2 dim)
 {
   V2 p0 = V2_Scale(dim, -0.5f);
   V2 p1 = V2_Scale(dim, 0.5f);

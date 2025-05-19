@@ -24,10 +24,10 @@ enum
 static bool LOG_Check(LOG_Category category);
 
 // @note disable logging
-//#define LOG(FLAGS, ...) do{ (void)(FLAGS); if(0){ SDL_Log(__VA_ARGS__); }}while(0)
+//#define LOG(Category, ...) do{ if(0){ SDL_Log(__VA_ARGS__); }}while(0)
 
 // @note disable logging but use printf for compiler checks
-//#define LOG(FLAGS, ...) do{ (void)(FLAGS); if(0){ printf(__VA_ARGS__); }}while(0)
+//#define LOG(Category, ...) do{ if(0){ printf(__VA_ARGS__); }}while(0)
 
 // @note enable logging
 #define LOG(Category, ...) do{ if(LOG_Check(Category)) { SDL_Log(__VA_ARGS__); }}while(0)

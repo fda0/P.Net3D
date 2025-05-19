@@ -91,7 +91,7 @@ static void GAME_DrawObjects()
 
     if (draw_collision || draw_model_collision)
     {
-      float height = obj->s.collision_height;
+      float height = obj->s.height;
       MATERIAL_Key material = obj->s.material;
 
       if (draw_model_collision)
@@ -156,38 +156,43 @@ static void GAME_DrawObjects()
       float w2 = V2_Length(V2_Sub(collision.vals[2], collision.vals[3]));
       float w3 = V2_Length(V2_Sub(collision.vals[3], collision.vals[0]));
 
-      float texels_per_m = obj->s.texture_texels_per_m;
-      if (texels_per_m <= 0.f)
-        texels_per_m = 1.5f;
-
       ForU32(face_i, face_count)
       {
         WorldDir face_dir = face_i;
         if (face_count == 1) face_dir = WorldDir_T;
 
-        // face texture UVs
-        V2 face_dim = {};
-        switch (face_dir)
-        {
-          default: break;
-          case WorldDir_E: face_dim = (V2){w0, height}; break;
-          case WorldDir_W: face_dim = (V2){w2, height}; break;
-          case WorldDir_N: face_dim = (V2){w3, height}; break;
-          case WorldDir_S: face_dim = (V2){w1, height}; break;
-          case WorldDir_T: face_dim = (V2){w0, w1}; break; // works for rects only
-          case WorldDir_B: face_dim = (V2){w0, w1}; break; // works for rects only
-        }
-
-        face_dim = V2_Scale(face_dim, texels_per_m);
         V2 face_uvs[6] =
         {
-          (V2){0, face_dim.y},
-          (V2){face_dim.x, 0},
+          (V2){0, 1},
+          (V2){1, 0},
           (V2){0, 0},
-          (V2){0, face_dim.y},
-          (V2){face_dim.x, face_dim.y},
-          (V2){face_dim.x, 0},
+          (V2){0, 1},
+          (V2){1, 1},
+          (V2){1, 0},
         };
+
+        // If texture_texels_per_m is set - scale texture uvs
+        if (obj->s.texture_texels_per_m)
+        {
+          // face texture UVs
+          V2 face_dim = {};
+          switch (face_dir)
+          {
+            default: break;
+            case WorldDir_E: face_dim = (V2){w0, height}; break;
+            case WorldDir_W: face_dim = (V2){w2, height}; break;
+            case WorldDir_N: face_dim = (V2){w3, height}; break;
+            case WorldDir_S: face_dim = (V2){w1, height}; break;
+            case WorldDir_T: face_dim = (V2){w0, w1}; break; // works for rects only
+            case WorldDir_B: face_dim = (V2){w0, w1}; break; // works for rects only
+          }
+
+          V2 face_scale = V2_Scale(face_dim, obj->s.texture_texels_per_m);
+          ForArray(i, face_uvs)
+          {
+            face_uvs[i] = V2_Mul(face_uvs[i], face_scale);
+          }
+        }
 
         OBJ_UpdateColliderNormals(obj);
         V3 normal = {};
@@ -527,8 +532,8 @@ static void GAME_Init()
   {
     Object *sun = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
     sun->s.material = MATERIAL_CreateKey(S8Lit("tex.Leather011"));
-    sun->s.collision_height = 50;
-    sun->s.collider_vertices = OBJ_ColliderVerticesFromRectDim((V2){.5f, .5f});
+    sun->s.height = .5f;
+    sun->s.collider_vertices = OBJ_GetColliderFromRect2D((V2){.5f, .5f});
     APP.sun = sun->s.key;
   }
 
@@ -540,8 +545,9 @@ static void GAME_Init()
   // Ground
   {
     Object *ground = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-    ground->s.collider_vertices = OBJ_ColliderVerticesFromRectDim((V2){40, 40});
+    ground->s.collider_vertices = OBJ_GetColliderFromRect2D((V2){40, 40});
     ground->s.material = MATERIAL_CreateKey(S8Lit("tex.Grass004"));
+    ground->s.texture_texels_per_m = 1.f;
   }
 
   {
@@ -564,9 +570,18 @@ static void GAME_Init()
       flying_cube->s.p = (V3){0.5f, 1.2f, 1.f};
       flying_cube->s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles101"));
       flying_cube->s.texture_texels_per_m = 1.f;
-      flying_cube->s.collision_height = 0.3f;
-      flying_cube->s.collider_vertices = OBJ_ColliderVerticesFromRectDim((V2){1.f, 1.f});
+      flying_cube->s.height = 0.3f;
+      flying_cube->s.collider_vertices = OBJ_GetColliderFromRect2D((V2){1.f, 1.f});
     }
+  }
+
+  // blocks thing
+  {
+    Object *thing = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
+    float d = .5f;
+    thing->s.p = (V3){d,d,0};
+    OBJ_SetColliderFromCube(thing, (V3){d,d,d});
+    thing->s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles087"));
   }
 
   // Add trees

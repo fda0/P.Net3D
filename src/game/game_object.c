@@ -129,15 +129,23 @@ static Object *OBJ_Create(OBJ_Storage storage, U32 flags)
   return obj;
 }
 
+static void OBJ_SetColliderFromCube(Object *obj, V3 dim)
+{
+  obj->s.collider_vertices = OBJ_GetColliderFromRect2D(V2_FromV3_XY(dim));
+  obj->l.collider_normals_are_updated = false;
+  obj->s.height = dim.z;
+}
+
 static Object *OBJ_CreateWall(V2 p, V2 dim, float height)
 {
   Object *obj = OBJ_Create(OBJ_Offline,
                            ObjFlag_DrawCollision | ObjFlag_Collide);
   obj->s.p = V3_From_XY_Z(p, 0);
-  obj->s.collider_vertices = OBJ_ColliderVerticesFromRectDim(dim);
+  obj->s.collider_vertices = OBJ_GetColliderFromRect2D(dim);
   obj->s.material = MATERIAL_CreateKey(S8Lit("tex.Bricks071"));
+  obj->s.texture_texels_per_m = 1.f;
   obj->s.color = Color32_RGBf(1,1,1);
-  obj->s.collision_height = height;
+  obj->s.height = height;
   return obj;
 }
 
@@ -150,7 +158,7 @@ static Object *OBJ_CreatePlayer(MODEL_Key model)
                               ObjFlag_AnimateRotation |
                               ObjFlag_AnimateT);
 
-  player->s.collider_vertices = OBJ_ColliderVerticesFromRectDim((V2){0.2f, 0.2f});
+  player->s.collider_vertices = OBJ_GetColliderFromRect2D((V2){0.2f, 0.2f});
   player->s.model = model;
   player->s.color = Color32_RGBf(1,1,1);
   player->s.animation_index = 23;

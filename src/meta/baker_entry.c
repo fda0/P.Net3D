@@ -94,6 +94,7 @@ int main()
     {
       BK_TEX_LoadPBRs(S8Lit("Leather011"));
       BK_TEX_LoadPBRs(S8Lit("PavingStones067"));
+      BK_TEX_LoadPBRs(S8Lit("Tiles087"));
       BK_TEX_LoadPBRs(S8Lit("Tiles101"));
       BK_TEX_LoadPBRs(S8Lit("TestPBR001"));
       BK_TEX_LoadPBRs(S8Lit("Bricks071"));
@@ -102,7 +103,6 @@ int main()
       BK_TEX_LoadPBRs(S8Lit("Ground037"));
       BK_TEX_LoadPBRs(S8Lit("Ground068"));
       BK_TEX_LoadPBRs(S8Lit("Ground078"));
-      BK_TEX_LoadPBRs(S8Lit("Tree0Material"));
     }
 
     // Check that all sub-functions didn't leak memory on tmp arena

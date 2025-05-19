@@ -619,7 +619,7 @@ static void NET_IterateTimeoutUsers()
         if (APP.server_exit_on_disconnect)
         {
           LOG(LOG_Important,
-              "%s: Quitting server on disconnect (-exit-on-dc).",
+              "%s: Quitting server on client disconnect because -exit-on-dc argument was used.",
               NET_Label());
           APP.in_shutdown = true;
         }
