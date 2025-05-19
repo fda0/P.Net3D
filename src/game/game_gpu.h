@@ -10,7 +10,7 @@ typedef struct
   SDL_GPUTexture *shadow_tex;
   SDL_GPUSampler *shadow_sampler;
 
-  SDL_GPUTexture *dummy_shadow_tex; // bound in shadowmap prepass; @todo delete and write special-purpose barebones fragment shader without textures for prepass
+  SDL_GPUTexture *dummy_shadow_tex; // bound in shadowmap prepass; @todo delete?
   SDL_GPUBuffer *dummy_instance_buffer;
 
   // pipeline, sample settings

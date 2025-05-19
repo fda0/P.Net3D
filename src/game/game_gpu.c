@@ -557,7 +557,7 @@ static void GPU_RenderWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, 
     SDL_GPUBuffer *storage_bufs[2] =
     {
       APP.gpu.dummy_instance_buffer,
-      APP.gpu.mem.poses.buffer->handle,
+      GPU_MEM_GetPosesBatch()->buffer->handle,
     };
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
   }
@@ -620,7 +620,7 @@ static void GPU_RenderWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, 
     SDL_GPUBuffer *storage_bufs[] =
     {
       gpu_instances->buffer->handle,
-      APP.gpu.mem.poses.buffer->handle,
+      GPU_MEM_GetPosesBatch()->buffer->handle,
     };
     SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
 

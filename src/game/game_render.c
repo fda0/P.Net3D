@@ -13,11 +13,11 @@ static void WORLD_DrawModel(MODEL_Key model_key, Mat4 transform, U32 color,
   ASSET_Model *model = ASSET_GetModel(model_key);
   if (model->is_skinned)
   {
-    instance.pose_offset = APP.gpu.mem.poses.element_count;
+    instance.pose_offset = GPU_MEM_GetPosesBatch()->element_count;
 
     ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
     ANIM_Pose pose = ANIM_PoseFromAnimation(skel, animation_index, animation_t);
-    GPU_MEM_TransferUploadBytes(&APP.gpu.mem.poses, pose.mats,
+    GPU_MEM_TransferUploadBytes(GPU_MEM_GetPosesBatch(), pose.mats,
                                 pose.mats_count * sizeof(pose.mats[0]),
                                 pose.mats_count);
   }

@@ -26,7 +26,6 @@
 #include "base_parse.h"
 #include "game_constants.h"
 #include "pie_file_format.h"
-#include "game_collision_vertices.h"
 #include "game_util.h"
 #include "game_asset_keys.h"
 #include "game_asset.h"
@@ -348,13 +347,16 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
   (void)appstate;
 
   SDLNet_Quit();
-  ASSET_Deinit();
-  GPU_MEM_Deinit();
-  GPU_Deinit();
+  if (!APP.headless)
+  {
+    ASSET_Deinit();
+    GPU_MEM_Deinit();
+    GPU_Deinit();
 
-  SDL_ReleaseWindowFromGPUDevice(APP.gpu.device, APP.window);
-  SDL_DestroyWindow(APP.window);
-  SDL_DestroyGPUDevice(APP.gpu.device);
+    SDL_ReleaseWindowFromGPUDevice(APP.gpu.device, APP.window);
+    SDL_DestroyWindow(APP.window);
+    SDL_DestroyGPUDevice(APP.gpu.device);
+  }
 
   const char* error = SDL_GetError();
   if (error[0])

@@ -480,7 +480,7 @@ static void ASSET_Deinit()
 {
   // textures
   SDL_ReleaseGPUTexture(APP.gpu.device, APP.ast.nil_material.tex);
-  ForArray(i, APP.ast.materials)
+  ForU32(i, APP.ast.materials_count)
   {
     ASSET_Material *mat = APP.ast.materials + i;
     if (mat->has_texture && mat->b.loaded)

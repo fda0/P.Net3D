@@ -224,7 +224,6 @@ static void GPU_MEM_UploadAllBatches(SDL_GPUCommandBuffer *cmd)
     GPU_MEM_Batch *batch = APP.gpu.mem.batches + batch_index;
     GPU_MEM_UploadBatch(copy_pass, batch);
   }
-  GPU_MEM_UploadBatch(copy_pass, &APP.gpu.mem.poses);
 
   SDL_EndGPUCopyPass(copy_pass);
 }
@@ -239,13 +238,19 @@ static void GPU_MEM_PostFrame()
     batch->total_used = 0;
     batch->element_count = 0;
   }
-  APP.gpu.mem.poses.total_used = 0;
-  APP.gpu.mem.poses.element_count = 0;
+}
+
+static GPU_MEM_Batch *GPU_MEM_GetPosesBatch()
+{
+  return APP.gpu.mem.batches + 0;
 }
 
 static void GPU_MEM_Init()
 {
-  APP.gpu.mem.poses.buffer = GPU_MEM_AllocBuffer(16, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ);
+  // reserve poses batch
+  APP.gpu.mem.batches_count += 1;
+  APP.gpu.mem.batches[0].target.type = GPU_MEM_Poses;
+  APP.gpu.mem.batches[0].buffer = GPU_MEM_AllocBuffer(16, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ);
 }
 
 static void GPU_MEM_Deinit()

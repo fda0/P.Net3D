@@ -1,8 +1,9 @@
 typedef enum
 {
   GPU_MEM_Unknown,
-  GPU_MEM_MeshVertices, // MATERIAL_Key
-  GPU_MEM_ModelInstances, // MODEL_COUNT
+  GPU_MEM_MeshVertices,
+  GPU_MEM_ModelInstances,
+  GPU_MEM_Poses,
 } GPU_MEM_TargetType;
 
 typedef struct
@@ -53,7 +54,6 @@ typedef struct
   GPU_MEM_Transfer *free_transfers;
   GPU_MEM_Buffer *free_buffers;
 
-  GPU_MEM_Batch poses;
   GPU_MEM_Batch batches[2048];
   U32 batches_count;
 } GPU_MEM_State;
