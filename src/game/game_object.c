@@ -134,8 +134,7 @@ static Object *OBJ_CreateWall(V2 p, V2 dim, float height)
   Object *obj = OBJ_Create(OBJ_Offline,
                            ObjFlag_DrawCollision | ObjFlag_Collide);
   obj->s.p = V3_From_XY_Z(p, 0);
-  obj->s.collision.verts = CollisionVertices_FromRectDim(dim);
-  Collision_RecalculateNormals(&obj->s.collision);
+  obj->s.collider_vertices = OBJ_ColliderVerticesFromRectDim(dim);
   obj->s.material = MATERIAL_CreateKey(S8Lit("tex.Bricks071"));
   obj->s.color = Color32_RGBf(1,1,1);
   obj->s.collision_height = height;
@@ -151,58 +150,10 @@ static Object *OBJ_CreatePlayer(MODEL_Key model)
                               ObjFlag_AnimateRotation |
                               ObjFlag_AnimateT);
 
-  player->s.collision.verts = CollisionVertices_FromRectDim((V2){0.2f, 0.2f});
-  Collision_RecalculateNormals(&player->s.collision);
-
+  player->s.collider_vertices = OBJ_ColliderVerticesFromRectDim((V2){0.2f, 0.2f});
   player->s.model = model;
-
   player->s.color = Color32_RGBf(1,1,1);
   player->s.animation_index = 23;
   player->s.rotation = Quat_FromAxisAngle_RH((V3){0,0,1}, -0.5f);
   return player;
-}
-
-
-typedef struct
-{
-  RngF arr[4];
-} CollisionProjection;
-
-static CollisionProjection Collision_CalculateProjection(CollisionNormals normals, CollisionVertices verts)
-{
-  CollisionProjection result = {0};
-
-  static_assert(ArrayCount(result.arr) == ArrayCount(normals.arr));
-  ForArray(normal_index, normals.arr)
-  {
-    RngF *projection = result.arr + normal_index;
-    projection->min = FLT_MAX;
-    projection->max = -FLT_MAX;
-
-    V2 normal = normals.arr[normal_index];
-    ForArray(vert_index, verts.arr)
-    {
-      V2 vert = verts.arr[vert_index];
-      float inner = V2_Dot(normal, vert);
-      projection->min = Min(inner, projection->min);
-      projection->max = Max(inner, projection->max);
-    }
-  }
-
-  return result;
-}
-
-static void Collision_RecalculateNormals(Collision_Data *collision)
-{
-  U64 vert_count = ArrayCount(collision->verts.arr);
-  ForU64(vert_id, vert_count)
-  {
-    U64 next_vert_id = vert_id + 1;
-    if (next_vert_id >= vert_count)
-      next_vert_id -= vert_count;
-
-    collision->norms.arr[vert_id]
-      = V2_CalculateNormal(collision->verts.arr[vert_id],
-                           collision->verts.arr[next_vert_id]);
-  }
 }

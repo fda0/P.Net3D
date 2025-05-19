@@ -111,18 +111,18 @@ static void GAME_DrawObjects()
       float bot_z = obj->s.p.z;
       float top_z = bot_z + height;
 
-      CollisionVertices collision = obj->s.collision.verts;
+      OBJ_Collider collision = obj->s.collider_vertices;
       {
         V3 cube_verts[8] =
         {
-          V3_From_XY_Z(collision.arr[0], bot_z), // 0
-          V3_From_XY_Z(collision.arr[1], bot_z), // 1
-          V3_From_XY_Z(collision.arr[2], bot_z), // 2
-          V3_From_XY_Z(collision.arr[3], bot_z), // 3
-          V3_From_XY_Z(collision.arr[0], top_z), // 4
-          V3_From_XY_Z(collision.arr[1], top_z), // 5
-          V3_From_XY_Z(collision.arr[2], top_z), // 6
-          V3_From_XY_Z(collision.arr[3], top_z), // 7
+          V3_From_XY_Z(collision.vals[0], bot_z), // 0
+          V3_From_XY_Z(collision.vals[1], bot_z), // 1
+          V3_From_XY_Z(collision.vals[2], bot_z), // 2
+          V3_From_XY_Z(collision.vals[3], bot_z), // 3
+          V3_From_XY_Z(collision.vals[0], top_z), // 4
+          V3_From_XY_Z(collision.vals[1], top_z), // 5
+          V3_From_XY_Z(collision.vals[2], top_z), // 6
+          V3_From_XY_Z(collision.vals[3], top_z), // 7
         };
 
         // mapping to expand verts to walls (each wall is made out of 2 triangles)
@@ -151,10 +151,10 @@ static void GAME_DrawObjects()
         }
       }
 
-      float w0 = V2_Length(V2_Sub(collision.arr[0], collision.arr[1]));
-      float w1 = V2_Length(V2_Sub(collision.arr[1], collision.arr[2]));
-      float w2 = V2_Length(V2_Sub(collision.arr[2], collision.arr[3]));
-      float w3 = V2_Length(V2_Sub(collision.arr[3], collision.arr[0]));
+      float w0 = V2_Length(V2_Sub(collision.vals[0], collision.vals[1]));
+      float w1 = V2_Length(V2_Sub(collision.vals[1], collision.vals[2]));
+      float w2 = V2_Length(V2_Sub(collision.vals[2], collision.vals[3]));
+      float w3 = V2_Length(V2_Sub(collision.vals[3], collision.vals[0]));
 
       float texels_per_m = obj->s.texture_texels_per_m;
       if (texels_per_m <= 0.f)
@@ -189,11 +189,12 @@ static void GAME_DrawObjects()
           (V2){face_dim.x, 0},
         };
 
+        OBJ_UpdateColliderNormals(obj);
         V3 normal = {};
-        V3 obj_norm_E = V3_From_XY_Z(obj->s.collision.norms.arr[0], 0);
-        V3 obj_norm_W = V3_From_XY_Z(obj->s.collision.norms.arr[2], 0);
-        V3 obj_norm_N = V3_From_XY_Z(obj->s.collision.norms.arr[1], 0);
-        V3 obj_norm_S = V3_From_XY_Z(obj->s.collision.norms.arr[3], 0);
+        V3 obj_norm_E = V3_From_XY_Z(obj->l.collider_normals.vals[0], 0);
+        V3 obj_norm_W = V3_From_XY_Z(obj->l.collider_normals.vals[2], 0);
+        V3 obj_norm_N = V3_From_XY_Z(obj->l.collider_normals.vals[1], 0);
+        V3 obj_norm_S = V3_From_XY_Z(obj->l.collider_normals.vals[3], 0);
         switch (face_dir)
         {
           default: break;
@@ -527,8 +528,7 @@ static void GAME_Init()
     Object *sun = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
     sun->s.material = MATERIAL_CreateKey(S8Lit("tex.Leather011"));
     sun->s.collision_height = 50;
-    sun->s.collision.verts = CollisionVertices_FromRectDim((V2){.5f, .5f});
-    Collision_RecalculateNormals(&sun->s.collision);
+    sun->s.collider_vertices = OBJ_ColliderVerticesFromRectDim((V2){.5f, .5f});
     APP.sun = sun->s.key;
   }
 
@@ -540,8 +540,7 @@ static void GAME_Init()
   // Ground
   {
     Object *ground = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-    ground->s.collision.verts = CollisionVertices_FromRectDim((V2){40, 40});
-    Collision_RecalculateNormals(&ground->s.collision);
+    ground->s.collider_vertices = OBJ_ColliderVerticesFromRectDim((V2){40, 40});
     ground->s.material = MATERIAL_CreateKey(S8Lit("tex.Grass004"));
   }
 
@@ -557,12 +556,7 @@ static void GAME_Init()
     {
       Object *rotated_wall = OBJ_CreateWall((V2){0.75f*off, -0.5f*off},
                                             (V2){thickness, 5.f*thickness}, 1.f);
-
-      Vertices_Rotate(rotated_wall->s.collision.verts.arr,
-                      ArrayCount(rotated_wall->s.collision.verts.arr),
-                      0.1f);
-
-      Collision_RecalculateNormals(&rotated_wall->s.collision);
+      OBJ_RotateColliderVertices(&rotated_wall->s.collider_vertices, 0.1f);
     }
 
     {
@@ -571,8 +565,7 @@ static void GAME_Init()
       flying_cube->s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles101"));
       flying_cube->s.texture_texels_per_m = 1.f;
       flying_cube->s.collision_height = 0.3f;
-      flying_cube->s.collision.verts = CollisionVertices_FromRectDim((V2){1.f, 1.f});
-      Collision_RecalculateNormals(&flying_cube->s.collision);
+      flying_cube->s.collider_vertices = OBJ_ColliderVerticesFromRectDim((V2){1.f, 1.f});
     }
   }
 

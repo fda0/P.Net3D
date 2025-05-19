@@ -53,6 +53,7 @@ static void TICK_AdvanceSimulation()
   {
     Object *obj = APP.all_objects + obj_index;
     if (!OBJ_HasAnyFlag(obj, ObjFlag_Move)) continue;
+    OBJ_UpdateColliderNormals(obj);
 
     // movement simulation
     V2 obj_dp = V2_FromV3_XY(obj->s.desired_dp);
@@ -64,18 +65,19 @@ static void TICK_AdvanceSimulation()
       float closest_obstacle_separation_dist = FLT_MAX;
       V2 closest_obstacle_wall_normal = {0};
 
-      CollisionVertices obj_verts = obj->s.collision.verts;
-      Vertices_Offset(obj_verts.arr, ArrayCount(obj_verts.arr), obj_pos);
+      OBJ_Collider obj_verts = obj->s.collider_vertices;
+      OBJ_OffsetColliderVertices(&obj_verts, obj_pos);
 
       ForArray(obstacle_index, APP.all_objects)
       {
         Object *obstacle = APP.all_objects + obstacle_index;
         if (!OBJ_HasAnyFlag(obstacle, ObjFlag_Collide)) continue;
         if (obj == obstacle) continue;
+        OBJ_UpdateColliderNormals(obstacle);
 
         V2 obstacle_pos = V2_FromV3_XY(obstacle->s.p);
-        CollisionVertices obstacle_verts = obstacle->s.collision.verts;
-        Vertices_Offset(obstacle_verts.arr, ArrayCount(obstacle_verts.arr), obstacle_pos);
+        OBJ_Collider obstacle_verts = obstacle->s.collider_vertices;
+        OBJ_OffsetColliderVertices(&obstacle_verts, obstacle_pos);
 
         float biggest_dist = -FLT_MAX;
         V2 wall_normal = {0};
@@ -86,17 +88,17 @@ static void TICK_AdvanceSimulation()
         ForU32(sat_iteration, 2)
         {
           bool use_obj_normals = !sat_iteration;
-          CollisionNormals normals = (use_obj_normals ?
-                                      obj->s.collision.norms :
-                                      obstacle->s.collision.norms);
+          OBJ_Collider normals = (use_obj_normals ?
+                                  obj->l.collider_normals :
+                                  obstacle->l.collider_normals);
 
-          CollisionProjection proj_obj = Collision_CalculateProjection(normals, obj_verts);
-          CollisionProjection proj_obstacle = Collision_CalculateProjection(normals, obstacle_verts);
+          OBJ_ColliderProjection proj_obj = OBJ_CalculateColliderProjection(&normals, &obj_verts);
+          OBJ_ColliderProjection proj_obstacle = OBJ_CalculateColliderProjection(&normals, &obstacle_verts);
 
-          ForArray(i, proj_obj.arr)
+          ForArray(i, proj_obj.ranges)
           {
-            static_assert(ArrayCount(proj_obj.arr) == ArrayCount(normals.arr));
-            V2 normal = normals.arr[i];
+            static_assert(ArrayCount(proj_obj.ranges) == ArrayCount(normals.vals));
+            V2 normal = normals.vals[i];
 
             V2 obstacle_dir = V2_Sub(obstacle_pos, obj_pos);
             if (V2_Dot(normal, obstacle_dir) < 0)
@@ -104,7 +106,7 @@ static void TICK_AdvanceSimulation()
               continue;
             }
 
-            float d = RngF_MaxDistance(proj_obj.arr[i], proj_obstacle.arr[i]);
+            float d = RngF_MaxDistance(proj_obj.ranges[i], proj_obstacle.ranges[i]);
             if (d > 0.f)
             {
               // @info(mg) We can exit early from checking this

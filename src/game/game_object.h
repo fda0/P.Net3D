@@ -2,12 +2,6 @@
 #define OBJ_MAX_OFFLINE_OBJECTS 512
 #define OBJ_MAX_ALL_OBJECTS (OBJ_MAX_NETWORK_OBJECTS + OBJ_MAX_OFFLINE_OBJECTS)
 
-typedef struct
-{
-  CollisionVertices verts;
-  CollisionNormals norms;
-} Collision_Data;
-
 typedef enum
 {
   ObjFlag_Move            = (1 << 0),
@@ -36,6 +30,18 @@ typedef struct
   U32 index;
 } OBJ_Key;
 
+#define OBJ_COLLIDER_MAX_VERTS 4
+typedef struct
+{
+  V2 vals[OBJ_COLLIDER_MAX_VERTS];
+} OBJ_Collider;
+
+typedef struct
+{
+  RngF ranges[OBJ_COLLIDER_MAX_VERTS];
+} OBJ_ColliderProjection;
+
+
 typedef struct
 {
   // Object data that's synced with the server
@@ -59,7 +65,7 @@ typedef struct
   bool is_pathing;
   V2 pathing_dest_p;
 
-  Collision_Data collision;
+  OBJ_Collider collider_vertices;
 } OBJ_Sync;
 
 typedef struct
@@ -68,6 +74,9 @@ typedef struct
   Quat animated_rot; // animates towards rotation
   V3 animated_p; // animates towards (V3){p.x, p.y, p.z}
   float animation_t;
+
+  bool collider_normals_are_updated;
+  OBJ_Collider collider_normals;
 } OBJ_Local;
 
 typedef struct
@@ -77,4 +86,3 @@ typedef struct
 } Object;
 
 static OBJ_Sync OBJ_SyncLerp(OBJ_Sync prev, OBJ_Sync next, float t);
-static void Collision_RecalculateNormals(Collision_Data *collision);

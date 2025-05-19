@@ -59,6 +59,7 @@ static GAME_State APP;
 #include "game_pie_loader.c"
 #include "game_asset.c"
 #include "game_key.c"
+#include "game_object_collider.c"
 #include "game_object.c"
 #include "game_client.c"
 #include "game_server.c"
