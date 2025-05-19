@@ -166,6 +166,6 @@ typedef struct
   U32 x, y, w, h;
 } WindowLayoutData;
 
-static void Game_AutoLayoutApply(U32 user_count, I32 px, I32 py, I32 w, I32 h);
+static void GAME_AutoLayoutApply(U32 user_count, I32 px, I32 py, I32 w, I32 h);
 
 

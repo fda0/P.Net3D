@@ -279,7 +279,7 @@ static void NET_IterateSend()
         U32 win_h = APP.init_window_height / rows;
 
         // calc server window
-        Game_AutoLayoutApply(client_count, win_x, win_y, win_w, win_h);
+        GAME_AutoLayoutApply(client_count, win_x, win_y, win_w, win_h);
 
         // calc client window
         {
@@ -468,7 +468,7 @@ static void NET_ProcessReceivedPayload(U16 player_id, S8 full_message)
 
       if (APP.window_autolayout)
       {
-        Game_AutoLayoutApply(layout.user_count,
+        GAME_AutoLayoutApply(layout.user_count,
                              layout.px, layout.py, layout.w, layout.h);
       }
     }

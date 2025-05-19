@@ -97,7 +97,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     }
   }
 
-  Game_Iterate();
+  GAME_Iterate();
 
   //
   // Post frame
@@ -179,7 +179,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
   return SDL_APP_CONTINUE;
 }
 
-static void Game_ParseCmd(int argc, char **argv)
+static void GAME_ParseCmd(int argc, char **argv)
 {
   for (int i = 1; i < argc; i += 1)
   {
@@ -258,7 +258,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   APP.init_window_height = WINDOW_HEIGHT;
   APP.dpi_scaling = 1.f;
 
-  Game_ParseCmd(argc, argv);
+  GAME_ParseCmd(argc, argv);
 
   if (!SDL_Init(SDL_INIT_VIDEO))
   {
@@ -326,7 +326,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
   if (APP.headless)
     SDL_Log("Starting in headless mode");
 
-  Game_Init();
+  GAME_Init();
 
   if (!APP.headless)
     SDL_ShowWindow(APP.window);

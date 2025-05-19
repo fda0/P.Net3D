@@ -4,7 +4,7 @@
 //           stuff when it's reasonable.
 //
 
-static void Game_AnimateObjects()
+static void GAME_AnimateObjects()
 {
   ForArray(obj_index, APP.all_objects)
   {
@@ -57,7 +57,7 @@ static void Game_AnimateObjects()
   }
 }
 
-static void Game_DrawObjects()
+static void GAME_DrawObjects()
 {
   ForArray(obj_index, APP.all_objects)
   {
@@ -236,23 +236,23 @@ static void Game_DrawObjects()
   }
 }
 
-static void Game_SetWindowPosSize(I32 px, I32 py, I32 w, I32 h)
+static void GAME_SetWindowPosSize(I32 px, I32 py, I32 w, I32 h)
 {
   SDL_SetWindowPosition(APP.window, px, py);
   SDL_SetWindowSize(APP.window, w, h);
 }
 
-static void Game_AutoLayoutApply(U32 user_count,
+static void GAME_AutoLayoutApply(U32 user_count,
                                  I32 px, I32 py, I32 w, I32 h)
 {
   if (user_count == APP.latest_autolayout_user_count)
     return;
 
   APP.latest_autolayout_user_count = user_count;
-  Game_SetWindowPosSize(px, py, w, h);
+  GAME_SetWindowPosSize(px, py, w, h);
 }
 
-static void Game_Iterate()
+static void GAME_Iterate()
 {
   // pre-frame setup
   {
@@ -427,7 +427,7 @@ static void Game_Iterate()
       }
     }
 
-    Game_AnimateObjects();
+    GAME_AnimateObjects();
 
     Object *marker = OBJ_Get(APP.pathing_marker, OBJ_Offline);
     if (!OBJ_IsNil(marker))
@@ -456,7 +456,7 @@ static void Game_Iterate()
       }
     }
 
-    Game_DrawObjects();
+    GAME_DrawObjects();
     UI_FinishFrame();
 
     GPU_Iterate();
@@ -484,7 +484,7 @@ static void Game_Iterate()
   }
 }
 
-static void Game_Init()
+static void GAME_Init()
 {
   // init debug options
   APP.frame_id = 1000;
