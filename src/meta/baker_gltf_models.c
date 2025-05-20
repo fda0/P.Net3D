@@ -43,11 +43,7 @@ static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *build, BK_GLTF_Model *model
   PIE_Skeleton *pie_skel = PIE_Reserve(&build->skeletons, PIE_Skeleton, 1);
 
   // Root transform
-  {
-    Mat4 root_transform = Mat4_Scale((V3){model->config.scale, model->config.scale, model->config.scale});
-    root_transform = Mat4_Mul(Mat4_Rotation_Quat(model->config.rot), root_transform);
-    pie_skel->root_transform = root_transform;
-  }
+  pie_skel->root_transform = model->spec_transform;
 
   M_Check(data->skins_count == 1);
   cgltf_skin *skin = data->skins;
@@ -407,13 +403,13 @@ static void BK_GLTF_ExportModelToPie(PIE_Builder *build, BK_GLTF_Model *bk_model
   }
 }
 
-static void BK_GLTF_Load(const char *file_path, BK_GLTF_ModelConfig config)
+static void BK_GLTF_Load(const char *file_path, BK_GLTF_Spec spec)
 {
   PIE_Builder *build = &BAKER.pie_builder;
 
-  // normalize config
-  if (!config.scale) config.scale = 1.f;
-  if (Memeq(&config.rot, &(Quat){}, sizeof(Quat))) config.rot = Quat_Identity();
+  // normalize spec
+  if (!spec.scale) spec.scale = 1.f;
+  if (Memeq(&spec.rot, &(Quat){}, sizeof(Quat))) spec.rot = Quat_Identity();
 
   //
   // Parse .gltf file using cgltf library
@@ -467,10 +463,10 @@ static void BK_GLTF_Load(const char *file_path, BK_GLTF_ModelConfig config)
   U64 max_verts = 1024*128;
 
   BK_GLTF_Model model = {};
-  model.config = config;
+  model.spec = spec;
   model.meshes_count = (U32)data->materials_count;
   model.meshes = AllocZeroed(scratch.a, BK_GLTF_Mesh, model.meshes_count);
-  model.name = config.name;
+  model.name = spec.name;
   if (!model.name.size) model.name = file_name_no_ext;
   model.is_skinned = (data->animations_count > 0);
 
@@ -696,6 +692,50 @@ static void BK_GLTF_Load(const char *file_path, BK_GLTF_ModelConfig config)
     }
   }
 
+  // Calculate model spec transforms
+  {
+    // query highest and lowest Z position
+    float biggest_z = -FLT_MAX;
+    float lowest_z = FLT_MAX;
+    ForU32(mesh_index, model.meshes_count)
+    {
+      BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
+      ForU32(i, bk_mesh->verts_count)
+      {
+        V3 p = *(V3*)BK_BufferAtFloat(&bk_mesh->positions, i*3);
+        p = V3_Rotate(p, spec.rot); // We want to query Z after rotation is applied.
+        biggest_z = Max(biggest_z, p.z);
+        lowest_z = Min(lowest_z, p.z);
+      }
+    }
+
+    float height_fix = 1.f;
+    if (spec.height)
+    {
+      float current_height = biggest_z - lowest_z;
+      height_fix = spec.height / current_height;
+    }
+
+    V3 ground_fix = (V3){};
+    if (!spec.disable_z0)
+    {
+      ground_fix = (V3){0,0,-lowest_z};
+    }
+
+    // Apply scales to ground fix
+    float total_scale = spec.scale * height_fix;
+    ground_fix = V3_Scale(ground_fix, total_scale);
+    V3 total_move = V3_Add(spec.move, ground_fix);
+
+    // Get spec transforms
+    Mat4 mat_scale = Mat4_ScaleF(total_scale);
+    Mat4 mat_rotate = Mat4_Rotation_Quat(spec.rot);
+    Mat4 mat_move = Mat4_Translation(total_move);
+
+    // Calculate final transform
+    model.spec_transform = Mat4_Mul(mat_move, Mat4_Mul(mat_rotate, mat_scale));
+  }
+
   if (model.is_skinned)
   {
     // Joints
@@ -712,8 +752,7 @@ static void BK_GLTF_Load(const char *file_path, BK_GLTF_ModelConfig config)
 
   if (!model.is_skinned) // apply transformations directly to rigid mesh
   {
-    if (config.scale != 1.f || !Quat_IsIdentity(config.rot) ||
-        config.move.x || config.move.y || config.move.z)
+    if (!Mat4_IsIdentity(model.spec_transform))
     {
       ForU32(mesh_index, model.meshes_count)
       {
@@ -721,16 +760,13 @@ static void BK_GLTF_Load(const char *file_path, BK_GLTF_ModelConfig config)
         ForU32(i, bk_mesh->verts_count)
         {
           V3 *position = (V3*)BK_BufferAtFloat(&bk_mesh->positions, i*3);
-          V3 p = *position;
-          p = V3_Scale(p, config.scale);
-          p = V3_Rotate(p, config.rot);
-          p = V3_Add(p, config.move);
+          V4 p = V4_From_XYZ_W(*position, 1.f);
+          p = V4_MulM4(model.spec_transform, p);
 
           V3 *normal = (V3*)BK_BufferAtFloat(&bk_mesh->normals, i*3);
-          V3 n = *normal;
-          n = V3_Rotate(n, config.rot);
+          V3 n = V3_Rotate(*normal, spec.rot);
 
-          *position = p;
+          *position = V3_FromV4_XYZ(p);
           *normal = n;
         }
       }

@@ -214,6 +214,19 @@ static void UI_RenderHeader(Clay_String label)
   }
 }
 
+static void UI_RenderLabel(S8 label)
+{
+  S8 copy = S8_Copy(APP.a_frame, label);
+  Clay_String clay_str = ClayString_FromS8(copy);
+
+  CLAY({.layout = {.sizing = {.width = CLAY_SIZING_GROW(),
+                              .height = CLAY_SIZING_FIT()},
+                   .padding = UI_header_pad}})
+  {
+    CLAY_TEXT(clay_str, CLAY_TEXT_CONFIG({.fontId = FONT_Regular, .textColor = UI_fg}));
+  }
+}
+
 static void UI_BuildUILayoutElements()
 {
   if (!APP.debug.show_debug_window)
@@ -281,6 +294,13 @@ static void UI_BuildUILayoutElements()
         if (APP.debug.menu_category == 0)
         {
           UI_RenderHeader(CLAY_STRING("Debug switches"));
+
+          Pr_MakeOnStack(p, Kilobyte(1));
+          Pr_Cstr(&p, "Camera p: ");
+          Pr_V3(&p, APP.camera_p);
+          Pr_Cstr(&p, "\nCamera angles: ");
+          Pr_V3(&p, APP.camera_angles);
+          UI_RenderLabel(Pr_AsS8(&p));
 
           CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
                            .sizing = {.width = CLAY_SIZING_GROW(),

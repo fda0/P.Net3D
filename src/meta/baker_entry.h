@@ -18,11 +18,15 @@ typedef struct
 
 typedef struct
 {
+  float height; // automatically adjust scale so model is equal height (meters) on Z axis
+  bool disable_z0; // automatically move model to start at z = 0
+
   float scale;
   Quat rot;
   V3 move;
+
   S8 name; // If empty name will be taken from file name.
-} BK_GLTF_ModelConfig;
+} BK_GLTF_Spec;
 
 typedef struct
 {
@@ -40,8 +44,6 @@ typedef struct
 
 typedef struct
 {
-  BK_GLTF_ModelConfig config;
-
   BK_GLTF_Mesh *meshes;
   U32 meshes_count;
 
@@ -51,6 +53,9 @@ typedef struct
 
   bool is_skinned;
   U32 joints_count;
+
+  BK_GLTF_Spec spec;
+  Mat4 spec_transform;
 } BK_GLTF_Model;
 
 typedef struct

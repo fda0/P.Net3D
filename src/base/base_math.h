@@ -176,6 +176,9 @@ static V3 V3_From_YX_Z(V2 xy, float z) { return (V3){xy.y, xy.x, z}; }
 static V3 V3_From_ZY_X(V2 zy, float x) { return (V3){zy.x, zy.y, x}; }
 static V3 V3_FromV4_XYZ(V4 vec) { return (V3){vec.x, vec.y, vec.z}; }
 
+// Ctors V4
+static V4 V4_From_XYZ_W(V3 xyz, float w) { return (V4){xyz.x, xyz.y, xyz.z, w}; }
+
 // Float vectors - one-off functions
 static float FAtan2(V2 vec) { return SDL_atan2f(vec.x, vec.y)*RAD_TO_TURNS; }
 
@@ -377,6 +380,15 @@ static Mat4 Mat4_ScaleF(float scale)
   res.elem[0][0] = scale;
   res.elem[1][1] = scale;
   res.elem[2][2] = scale;
+  return res;
+}
+
+static Mat4 Mat4_InvScale(Mat4 scale_mat)
+{
+  Mat4 res = scale_mat;
+  res.elem[0][0] = 1.f / scale_mat.elem[0][0];
+  res.elem[1][1] = 1.f / scale_mat.elem[1][1];
+  res.elem[2][2] = 1.f / scale_mat.elem[2][2];
   return res;
 }
 

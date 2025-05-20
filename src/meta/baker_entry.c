@@ -75,19 +75,14 @@ int main()
       Quat rot_xz = Quat_Mul(rot_z, rot_x);
       (void)rot_y;
 
-      float scale = 0.4f;
-      BK_GLTF_ModelConfig config = {.scale = scale, .rot = rot_xz};
-      BK_GLTF_Load("../res/models/Worker.gltf", config);
-      BK_GLTF_Load("../res/models/Formal.gltf", config);
-      BK_GLTF_Load("../res/models/Casual.gltf", config);
+      BK_GLTF_Spec spec = {.height = 1.7f, .rot = rot_xz};
+      BK_GLTF_Load("../res/models/Worker.gltf", spec);
+      BK_GLTF_Load("../res/models/Formal.gltf", spec);
+      BK_GLTF_Load("../res/models/Casual.gltf", spec);
 
-      BK_GLTF_Load("../res/models/Flag.glb",
-                   (BK_GLTF_ModelConfig){0.01f*0.75f, rot_x, (V3){0,0,-0.045f*0.75f}});
-
-      config.scale = 0.05f;
-      config.rot = Quat_Identity();
-      config.name = S8Lit("Tree");
-      BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf", config);
+      BK_GLTF_Load("../res/models/Flag.glb", (BK_GLTF_Spec){.height = 1.f, .rot = rot_x});
+      BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf",
+                   (BK_GLTF_Spec){.disable_z0 = true, .scale = 0.05f, .name = S8Lit("Tree")});
     }
 
     // Load texture files

@@ -53,7 +53,7 @@ static void GAME_AnimateObjects()
       else
       {
         float dist = V3_Length(obj->s.moved_dp);
-        obj->l.animation_t += dist * 1.5f;
+        obj->l.animation_t += dist * 0.8f; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
       }
 
       ASSET_Model *model = ASSET_GetModel(obj->s.model);
@@ -361,9 +361,9 @@ static void GAME_Iterate()
       if (!OBJ_IsNil(player))
       {
         APP.camera_p = player->s.p;
-        APP.camera_p.z += 2.50f;
-        APP.camera_p.x -= 1.40f;
-        APP.camera_angles = (V3){0, -0.155f, 0};
+        APP.camera_p.z += 9.2f;
+        APP.camera_p.x -= 6.5f;
+        APP.camera_angles = (V3){0, -0.14f, 0};
       }
     }
 
@@ -577,8 +577,8 @@ static void GAME_Init()
 
   // blocks thing
   {
-    Object *thing = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-    float d = .5f;
+    Object *thing = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision|ObjFlag_Collide);
+    float d = 0.5f;
     thing->s.p = (V3){d,d,0};
     OBJ_SetColliderFromCube(thing, (V3){d,d,d});
     thing->s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles087"));
