@@ -22,6 +22,7 @@ static Axis2 Axis2_Other(Axis2 axis)
 #define TURNS_TO_RAD (2.f*SDL_PI_F)
 #define RAD_TO_TURNS (1.f/(2.f*SDL_PI_F))
 
+static float FSquare(float a) { return a*a; }
 static float FSqrt(float a) { return SDL_sqrtf(a); }
 static float FInvSqrt(float a) { return 1.f / FSqrt(a); } // @todo use SSE intrinsic?
 static float FAbs(float a) { return (a < 0.f ? -a : a); }

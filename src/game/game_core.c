@@ -53,7 +53,7 @@ static void GAME_AnimateObjects()
       else
       {
         float dist = V3_Length(obj->s.moved_dp);
-        obj->l.animation_t += dist * 0.8f; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
+        obj->l.animation_t += dist * 0.016f * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
       }
 
       ASSET_Model *model = ASSET_GetModel(obj->s.model);
@@ -361,9 +361,9 @@ static void GAME_Iterate()
       if (!OBJ_IsNil(player))
       {
         APP.camera_p = player->s.p;
-        APP.camera_p.z += 9.2f;
-        APP.camera_p.x -= 6.5f;
-        APP.camera_angles = (V3){0, -0.14f, 0};
+        APP.camera_p.z += 12.5f;
+        APP.camera_p.x -= 9.8f;
+        APP.camera_angles = (V3){0, -0.138f, 0};
       }
     }
 
@@ -384,7 +384,7 @@ static void GAME_Iterate()
       Mat4 transl = Mat4_InvTranslation(Mat4_Translation(APP.sun_camera_p));
 
       float dim = 20.f;
-      Mat4 projection = Mat4_Orthographic(-dim, dim, -dim, dim, 10.f, 60.f);
+      Mat4 projection = Mat4_Orthographic(-dim, dim, -dim, dim, 30.f, 100.f);
       Mat4 rot = Mat4_Rotation_Quat(Quat_FromPair(APP.sun_dir, AxisV3_X()));
       APP.sun_camera_transform = Mat4_Mul(projection, Mat4_Mul(rot, transl));
     }
@@ -522,8 +522,8 @@ static void GAME_Init()
   }
 
   APP.timestamp = SDL_GetTicks();
-  APP.camera_fov_y = 0.15f;
-  APP.camera_p = (V3){-1.8f, 0.f, .7f};
+  APP.camera_fov_y = 0.111f;
+  APP.camera_p = (V3){-4.f, 0.f, 1.f};
   APP.camera_angles = (V3){0, 0, 0};
   APP.obj_serial_counter = 1;
   APP.tick_id = NET_CLIENT_MAX_SNAPSHOTS;
@@ -545,19 +545,19 @@ static void GAME_Init()
   // Ground
   {
     Object *ground = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
-    ground->s.collider_vertices = OBJ_GetColliderFromRect2D((V2){40, 40});
+    ground->s.collider_vertices = OBJ_GetColliderFromRect2D((V2){100, 100});
     ground->s.material = MATERIAL_CreateKey(S8Lit("tex.Grass004"));
     ground->s.texture_texels_per_m = 1.f;
   }
 
   {
     float thickness = 0.2f;
-    float length = 4.f;
+    float length = 8.f;
     float off = length*0.5f - thickness*0.5f;
-    OBJ_CreateWall((V2){ off, 0}, (V2){thickness, length}, .7f);
-    OBJ_CreateWall((V2){-off, 0}, (V2){thickness, length}, .5f);
-    OBJ_CreateWall((V2){0,  off}, (V2){length, thickness}, .6f);
-    OBJ_CreateWall((V2){0, -off}, (V2){length*0.5f, thickness}, .4f);
+    OBJ_CreateWall((V2){ off, 0}, (V2){thickness, length}, 0.8f);
+    OBJ_CreateWall((V2){-off, 0}, (V2){thickness, length}, 2.f);
+    OBJ_CreateWall((V2){0,  off}, (V2){length, thickness}, 1.6f);
+    OBJ_CreateWall((V2){0, -off}, (V2){length*0.5f, thickness}, 1.2f);
 
     {
       Object *rotated_wall = OBJ_CreateWall((V2){0.75f*off, -0.5f*off},
@@ -597,11 +597,11 @@ static void GAME_Init()
         U32 y_half_count = y_count/2;
 
         V3 pos = {};
-        if ((x^y)&1) pos.x = 2.70f;
-        else         pos.y = 2.90f;
+        if ((x^y)&1) pos.x = 4.70f;
+        else         pos.y = 6.90f;
 
-        pos.x += 1.70f*(x % x_half_count);
-        pos.y += 1.40f*(y % y_half_count);
+        pos.x += 4.0f*(x % x_half_count);
+        pos.y += 2.4f*(y % y_half_count);
 
         pos.x *= (x < x_half_count ? -1.f : 1.f);
         pos.y *= (y < y_half_count ? -1.f : 1.f);

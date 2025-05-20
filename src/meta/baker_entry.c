@@ -82,7 +82,7 @@ int main()
 
       BK_GLTF_Load("../res/models/Flag.glb", (BK_GLTF_Spec){.height = 1.f, .rot = rot_x});
       BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf",
-                   (BK_GLTF_Spec){.disable_z0 = true, .scale = 0.05f, .name = S8Lit("Tree")});
+                   (BK_GLTF_Spec){.disable_z0 = true, .height = 5.f, .name = S8Lit("Tree")});
     }
 
     // Load texture files

@@ -35,7 +35,7 @@ static void TICK_AdvanceSimulation()
     {
       V2 player_to_dest = V2_Sub(player->s.pathing_dest_p, V2_FromV3_XY(player->s.p));
       float len_sq = V2_LengthSq(player_to_dest);
-      if (len_sq > (0.01f * 0.01f))
+      if (len_sq > FSquare(0.05f))
       {
         player_dir = V2_Scale(player_to_dest, FInvSqrt(len_sq));
       }
