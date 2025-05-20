@@ -370,7 +370,7 @@ static void GAME_Iterate()
     // Sun things
     {
       // Move sun
-      float sun_time = APP.at;
+      float sun_time = APP.at*4.f;
       sun_time = 6.f;
 
       float sun_x = FSin(0.5f + sun_time * 0.03f);
@@ -600,8 +600,8 @@ static void GAME_Init()
 
   // Add trees
   {
-    U32 x_count = 16;
-    U32 y_count = 16;
+    U32 x_count = 8;
+    U32 y_count = 8;
 
     ForU32(y, y_count)
     {

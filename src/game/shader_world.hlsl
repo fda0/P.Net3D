@@ -199,6 +199,7 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
   // Light
   float specular_factor = 0.0f;
   float diffuse_factor = max(dot(-UP.sun_dir, pixel_normal), 0.f);
+
   if (diffuse_factor > 0.f)
   {
     V3 view_dir = normalize(UP.camera_position - frag.world_p);

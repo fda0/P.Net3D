@@ -637,6 +637,10 @@ static void GPU_RenderWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, 
       WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
       APP.gpu.world_uniform.flags |= WORLD_FLAG_UseInstanceBuffer;
       if (model->is_skinned) APP.gpu.world_uniform.flags |= WORLD_FLAG_DoMeshSkinning;
+      if (MODEL_KeyMatch(model->key, MODEL_CreateKey(S8Lit("Tree"))))
+      {
+        //APP.gpu.world_uniform.flags |= WORLD_Flag_LessShadows;
+      }
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
       // Bind texture
@@ -693,8 +697,8 @@ static void GPU_Iterate()
     .sun_dir = APP.sun_dir,
 
     .fog_color = Color32_V3((V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B}),
-    .sky_ambient = Color32_RGBf(0.2f, 0.2f, 0.2f),
-    .sun_diffuse = Color32_RGBf(1.f, 1.f, 1.f),
+    .sky_ambient = Color32_RGBf(0.5f, 0.4f, 0.2f),
+    .sun_diffuse = Color32_RGBf(1.f, 0.8f, 0.2f),
     .sun_specular = Color32_RGBf(1.f, 1.f, 1.f),
   };
 
