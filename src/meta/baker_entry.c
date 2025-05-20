@@ -87,17 +87,23 @@ int main()
 
     // Load texture files
     {
-      BK_TEX_LoadPBRs(S8Lit("Leather011"));
-      BK_TEX_LoadPBRs(S8Lit("PavingStones067"));
-      BK_TEX_LoadPBRs(S8Lit("Tiles087"));
-      BK_TEX_LoadPBRs(S8Lit("Tiles101"));
-      BK_TEX_LoadPBRs(S8Lit("TestPBR001"));
-      BK_TEX_LoadPBRs(S8Lit("Bricks071"));
-      BK_TEX_LoadPBRs(S8Lit("Bricks097"));
-      BK_TEX_LoadPBRs(S8Lit("Grass004"));
-      BK_TEX_LoadPBRs(S8Lit("Ground037"));
-      BK_TEX_LoadPBRs(S8Lit("Ground068"));
-      BK_TEX_LoadPBRs(S8Lit("Ground078"));
+      // @todo adjust after adding tone mapping
+      U32 spec_tiny = Color32_Grayf(0.05f);
+      U32 spec_low = Color32_Grayf(0.1f);
+      U32 spec_mid = Color32_Grayf(0.2f);
+      U32 spec_big = Color32_Grayf(0.4f);
+      BK_TEX_LoadPBRs(S8Lit("Bricks071"), spec_mid);
+      BK_TEX_LoadPBRs(S8Lit("Bricks097"), spec_mid);
+      BK_TEX_LoadPBRs(S8Lit("Clay002"), spec_big);
+      BK_TEX_LoadPBRs(S8Lit("Grass004"), spec_tiny);
+      BK_TEX_LoadPBRs(S8Lit("Ground037"), spec_tiny);
+      BK_TEX_LoadPBRs(S8Lit("Ground068"), spec_tiny);
+      BK_TEX_LoadPBRs(S8Lit("Ground078"), spec_tiny);
+      BK_TEX_LoadPBRs(S8Lit("Leather011"), spec_big);
+      BK_TEX_LoadPBRs(S8Lit("PavingStones067"), spec_low);
+      BK_TEX_LoadPBRs(S8Lit("Tiles087"), spec_big);
+      BK_TEX_LoadPBRs(S8Lit("Tiles101"), spec_big);
+      BK_TEX_LoadPBRs(S8Lit("TestPBR001"), spec_mid);
     }
 
     // Check that all sub-functions didn't leak memory on tmp arena

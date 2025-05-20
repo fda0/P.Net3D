@@ -158,7 +158,9 @@ static Object *OBJ_CreatePlayer(MODEL_Key model)
                               ObjFlag_AnimateRotation |
                               ObjFlag_AnimateT);
 
-  player->s.collider_vertices = OBJ_GetColliderFromRect2D((V2){0.2f, 0.2f});
+  float dim = 0.4f;
+  OBJ_SetColliderFromCube(player, (V3){dim,dim,dim});
+
   player->s.model = model;
   player->s.color = Color32_RGBf(1,1,1);
   player->s.animation_index = 23;

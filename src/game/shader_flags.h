@@ -4,3 +4,4 @@
 #define WORLD_FLAG_SampleTexNormal    (1u << 3u)
 #define WORLD_FLAG_SampleTexRoughness (1u << 4u)
 #define WORLD_FLAG_ApplyShadows       (1u << 5u)
+#define WORLD_Flag_DrawBorderAtUVEdge (1u << 6u)

@@ -247,7 +247,7 @@ static void BK_TEX_LoadPaths(PIE_Material *pie_material, S8 *paths, U32 paths_co
   Arena_PopScope(scope);
 }
 
-static void BK_TEX_LoadPBRs(S8 tex_name)
+static void BK_TEX_LoadPBRs(S8 tex_name, U32 specular_color)
 {
   PIE_Builder *build = &BAKER.pie_builder;
 
@@ -260,6 +260,8 @@ static void BK_TEX_LoadPBRs(S8 tex_name)
   Pr_Cstr(&build->file, "tex.");
   Pr_S8(&build->file, tex_name);
   PIE_ListEnd(&build->file, &pie_material->name);
+
+  pie_material->params.specular = specular_color;
 
   {
     Arena_Scope scope = Arena_PushScope(BAKER.tmp);

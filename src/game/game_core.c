@@ -352,7 +352,7 @@ static void GAME_Iterate()
       if (KEY_Held(SDL_SCANCODE_LSHIFT) || KEY_Held(SDL_SCANCODE_RSHIFT)) move_dir.z -= 1;
       move_dir = V3_Normalize(move_dir);
       move_dir = V3_Rotate(move_dir, Quat_FromAxisAngle_RH((V3){0,0,-1} /* @todo figure out why -1 here fixes things */, APP.camera_angles.z));
-      move_dir = V3_Scale(move_dir, APP.dt * 2.f);
+      move_dir = V3_Scale(move_dir, APP.dt * 4.f);
       APP.camera_p = V3_Add(APP.camera_p, move_dir);
     }
     else
@@ -370,8 +370,11 @@ static void GAME_Iterate()
     // Sun things
     {
       // Move sun
-      float sun_x = FSin(0.5f + APP.at * 0.03f);
-      float sun_y = FCos(0.5f + APP.at * 0.03f);
+      float sun_time = APP.at;
+      sun_time = 6.f;
+
+      float sun_x = FSin(0.5f + sun_time * 0.03f);
+      float sun_y = FCos(0.5f + sun_time * 0.03f);
       V3 towards_sun_dir = V3_Normalize((V3){sun_x, sun_y, 2.f});
       APP.sun_dir = V3_Reverse(towards_sun_dir);
 
@@ -577,11 +580,15 @@ static void GAME_Init()
 
   // blocks thing
   {
-    Object *thing = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision|ObjFlag_Collide);
     float d = 0.5f;
-    thing->s.p = (V3){d,d,0};
-    OBJ_SetColliderFromCube(thing, (V3){d,d,d});
-    thing->s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles087"));
+
+    ForU32(x, 16)
+    {
+      Object *thing = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision|ObjFlag_Collide);
+      thing->s.p = (V3){d, d*x, 0};
+      OBJ_SetColliderFromCube(thing, (V3){d,d,d});
+      thing->s.material = MATERIAL_CreateKey(S8Lit("tex.Clay002"));
+    }
   }
 
   // Add trees

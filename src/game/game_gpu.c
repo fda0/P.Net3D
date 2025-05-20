@@ -581,6 +581,10 @@ static void GPU_RenderWorld(SDL_GPUCommandBuffer *cmd, SDL_GPURenderPass *pass, 
 
       // Uniforms
       WORLD_ApplyMaterialToUniform(&APP.gpu.world_uniform, material);
+      if (MATERIAL_KeyMatch(material->key, MATERIAL_CreateKey(S8Lit("tex.Clay002"))))
+      {
+        APP.gpu.world_uniform.flags |= WORLD_Flag_DrawBorderAtUVEdge;
+      }
       GPU_UpdateWorldUniform(cmd, APP.gpu.world_uniform);
 
       // Bind texture

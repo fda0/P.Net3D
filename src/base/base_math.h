@@ -773,6 +773,11 @@ static U32 Color32_RGBi(U32 r, U32 g, U32 b)
   return Color32_RGBAi(r, g, b, 255);
 }
 
+static U32 Color32_Grayi(U32 rgb)
+{
+  return Color32_RGBi(rgb, rgb, rgb);
+}
+
 static U32 Color32_RGBAf(float r, float g, float b, float a)
 {
   U32 ri = (U32)(r * 255.f) & 255;
@@ -788,6 +793,11 @@ static U32 Color32_RGBf(float r, float g, float b)
   U32 gi = (U32)(g * 255.f) & 255;
   U32 bi = (U32)(b * 255.f) & 255;
   return Color32_RGBAi(ri, gi, bi, 255);
+}
+
+static U32 Color32_Grayf(float rgb)
+{
+  return Color32_RGBf(rgb, rgb, rgb);
 }
 
 static U32 Color32_V3(V3 color)

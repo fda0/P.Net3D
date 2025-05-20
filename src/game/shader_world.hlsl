@@ -214,6 +214,21 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
   V3 color_specular = specular_factor * sun_specular * material_specular;
   V3 color = color_ambient + (color_diffuse + color_specular) * (1.f - shadow);
 
+  if (UP.flags & WORLD_Flag_DrawBorderAtUVEdge)
+  {
+    float u = frac(frag.uv.x);
+    float v = frac(frag.uv.y);
+
+    float border = 1.f;
+    border *= smoothstep(0.01f, 0.02f, u); // u min
+    border *= smoothstep(0.01f, 0.02f, v); // v min
+    border *= smoothstep(0.99f, 0.98f, u); // u max
+    border *= smoothstep(0.99f, 0.98f, v); // v max
+
+    border = 0.5f*border + 0.5f;
+    color *= border;
+  }
+
   // Apply fog
   {
     float pixel_distance = distance(frag.world_p, UP.camera_position);
