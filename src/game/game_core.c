@@ -580,14 +580,21 @@ static void GAME_Init()
 
   // blocks thing
   {
-    float d = 0.5f;
 
-    ForU32(x, 16)
+    ForU32(wall, 4)
     {
-      Object *thing = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision|ObjFlag_Collide);
-      thing->s.p = (V3){d, d*x, 0};
-      OBJ_SetColliderFromCube(thing, (V3){d,d,d});
-      thing->s.material = MATERIAL_CreateKey(S8Lit("tex.Clay002"));
+      U32 len = 32;
+      ForU32(i, len)
+      {
+        float d = 0.5f;
+        U32 x = (wall <= 1 ? i : (wall == 2 ? 0 : len));
+        U32 y = (wall >= 2 ? i : (wall == 0 ? 0 : len));
+
+        Object *thing = OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision|ObjFlag_Collide);
+        thing->s.p = (V3){d*x - len*0.5f*d, d*y - len*0.5f*d, 0};
+        OBJ_SetColliderFromCube(thing, (V3){d,d,d});
+        thing->s.material = MATERIAL_CreateKey(S8Lit("tex.Clay002"));
+      }
     }
   }
 

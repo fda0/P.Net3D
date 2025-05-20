@@ -3,7 +3,7 @@ static OBJ_Collider OBJ_GetColliderFromRect2D(V2 dim)
   V2 p0 = V2_Scale(dim, -0.5f);
   V2 p1 = V2_Scale(dim, 0.5f);
 
-  OBJ_Collider result = {0};
+  OBJ_Collider result = {};
   result.vals[0] = (V2){p1.x, p0.y}; // SE
   result.vals[1] = (V2){p1.x, p1.y}; // NE
   result.vals[2] = (V2){p0.x, p1.y}; // NW
