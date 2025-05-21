@@ -21,7 +21,8 @@ static void WORLD_DrawObjects()
         transform = Mat4_Mul(transform, rot_mat); // rotate first, translate second
       }
 
-      WORLD_DrawModel(obj->s.model, transform, obj->s.color, obj->s.animation_index, obj->l.animation_t);
+      WORLD_DrawModel(obj->s.model, transform, obj->s.color,
+                      obj->l.anim_walk.req.animation_index, obj->l.anim_walk.time);
     }
 
     if (draw_collision || draw_model_collision)

@@ -76,6 +76,34 @@ static Object *OBJ_FromNetIndex(U32 net_index)
   return APP.net_objects + net_index;
 }
 
+static void OBJ_RequestAnimationByIndex(Object *obj, U32 animation_index, bool loop)
+{
+  ANIM_PlaybackRequest *oldest = obj->s.anim_requests + 0;
+  ForArray(i, obj->s.anim_requests)
+  {
+    ANIM_PlaybackRequest *curr = obj->s.anim_requests + i;
+    if (oldest->start_at_tick > curr->start_at_tick)
+      oldest = curr;
+  }
+
+  oldest->is_active = true;
+  oldest->loop = loop;
+  oldest->animation_index = animation_index;
+  oldest->start_at_tick = APP.tick_id;
+}
+
+static void OBJ_RequestAnimationByName(Object *obj, S8 anim_name, bool loop)
+{
+  ASSET_Model *model = ASSET_GetModel(obj->s.model);
+  ResU32 anim_index = ASSET_ModelAnimNameToIndex(model, anim_name);
+  if (anim_index.err)
+  {
+    LOGx(Anim, Warn, "Animation with name %.*s not found", S8Print(anim_name));
+    return;
+  }
+  OBJ_RequestAnimationByIndex(obj, anim_index.val, loop);
+}
+
 static Object *OBJ_Create(OBJ_Storage storage, U32 flags)
 {
   bool matched_storage = false;
@@ -156,14 +184,14 @@ static Object *OBJ_CreatePlayer(MODEL_Key model)
                               ObjFlag_Collide |
                               ObjFlag_DrawModel |
                               ObjFlag_AnimateRotation |
-                              ObjFlag_AnimateT);
+                              ObjFlag_AnimateTracks);
 
   float dim = 0.4f;
   OBJ_SetColliderFromCube(player, (V3){dim,dim,dim});
 
   player->s.model = model;
   player->s.color = Color32_RGBf(1,1,1);
-  player->s.animation_index = 23;
+  OBJ_RequestAnimationByName(player, S8Lit("Dance_Loop"), true);
   player->s.rotation = Quat_FromAxisAngle_RH((V3){0,0,1}, -0.5f);
   return player;
 }

@@ -445,6 +445,50 @@ static void ASSET_LoadModelMeshes()
 }
 
 //
+typedef struct
+{
+  U32 val;
+  bool err;
+} ResU32;
+
+static ResU32 ASSET_AnimNameToIndex(ASSET_Skeleton *skel, S8 name)
+{
+  ResU32 res = {.err = true};
+  ForU32(i, skel->anims_count)
+  {
+    if (S8_Match(name, skel->anims[i].name, 0))
+    {
+      res = (ResU32){.val = i, .err = false};
+      break;
+    }
+  }
+  return res;
+}
+
+static bool ASSET_AnimNameMatch(ASSET_Skeleton *skel, U32 anim_index, S8 name)
+{
+  bool res = false;
+  if (anim_index < skel->anims_count)
+  {
+    ASSET_Animation *anim = skel->anims + anim_index;
+    res = S8_Match(anim->name, name, 0);
+  }
+  return res;
+}
+
+static ResU32 ASSET_ModelAnimNameToIndex(ASSET_Model *model, S8 name)
+{
+  ResU32 res = {.err = true};
+  if (model->is_skinned)
+  {
+    ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
+    res = ASSET_AnimNameToIndex(skel, name);
+  }
+  return res;
+}
+
+
+//
 //
 //
 static void ASSET_PostFrame()

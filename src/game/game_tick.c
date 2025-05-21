@@ -161,13 +161,15 @@ static void TICK_AdvanceSimulation()
   ForArray(obj_index, APP.all_objects)
   {
     Object *obj = APP.all_objects + obj_index;
-    if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateT))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateTracks))
     {
       // set walking animation if player moves
+#if 0
       if (V3_HasLength(obj->s.desired_dp))
       {
-        obj->s.animation_index = 22;
+        OBJ_RequestAnimationByName(obj, S8Lit("Walk_Loop"), true);
       }
+#endif
     }
 
     if (OBJ_HasAllFlags(obj, ObjFlag_AnimateRotation))

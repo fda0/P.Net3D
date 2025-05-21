@@ -1,9 +1,3 @@
-typedef struct
-{
-  Mat4 *mats;
-  U32 mats_count;
-} ANIM_Pose;
-
 static void ANIM_WaterfallTransformsToChildren(ASSET_Skeleton *skeleton, Mat4 *mats, U32 joint_index, Mat4 parent_transform)
 {
   if (joint_index >= skeleton->joints_count)
@@ -147,6 +141,17 @@ static ANIM_Pose ANIM_PoseFromAnimation(ASSET_Skeleton *skeleton, U32 anim_index
 //
 //
 //
+static float ANIM_AnimationEndTime(ASSET_Skeleton *skel, U32 anim_index)
+{
+  float res = 0.f;
+  if (anim_index < skel->anims_count)
+  {
+    ASSET_Animation *anim = skel->anims + anim_index;
+    res = anim->t_max;
+  }
+  return res;
+}
+
 static void ANIM_AnimateObjects()
 {
   ForArray(obj_index, APP.all_objects)
@@ -181,21 +186,72 @@ static void ANIM_AnimateObjects()
       }
     }
 
-    if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateT))
+    if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateTracks))
     {
-      if (obj->s.animation_index == 23)
-      {
-        obj->l.animation_t += APP.dt;
-      }
-      else
-      {
-        float dist = V3_Length(obj->s.moved_dp);
-        obj->l.animation_t += dist * 0.016f * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
-      }
-
       ASSET_Model *model = ASSET_GetModel(obj->s.model);
-      ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
-      obj->l.animation_t = ANIM_WrapAnimationTime(skel, obj->s.animation_index, obj->l.animation_t);
+      if (model->is_skinned)
+      {
+        // PlaybackRequest -> Playback
+        {
+          U64 biggest_req_tick = 0;
+          ForArray(i, obj->s.anim_requests)
+          {
+            ANIM_PlaybackRequest *req = obj->s.anim_requests + i;
+            biggest_req_tick = Max(req->start_at_tick, biggest_req_tick);
+
+            ANIM_Playback *target = req->loop ? &obj->l.anim_loop : &obj->l.anim_once;
+            if (target->req.start_at_tick < req->start_at_tick)
+            {
+              target->req = *req;
+              target->time = 0.f;
+              target->weight = 1.f;
+            }
+          }
+        }
+
+        ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
+
+        // Update time
+        {
+          obj->l.anim_once.time += APP.dt;
+          if (obj->l.anim_once.time >= ANIM_AnimationEndTime(skel, obj->l.anim_once.req.animation_index))
+          {
+            obj->l.anim_once.req.is_active = false;
+          }
+
+          obj->l.anim_loop.time = ANIM_WrapAnimationTime(skel, obj->l.anim_loop.req.animation_index,
+                                                         obj->l.anim_loop.time + APP.dt);
+
+          obj->l.anim_walk.req = (ANIM_PlaybackRequest)
+          {
+            .is_active = true,
+            .loop = true,
+            .animation_index = ASSET_AnimNameToIndex(skel, S8Lit("Walk_Loop")).val,
+          };
+
+          float dist = V3_Length(obj->s.moved_dp);
+          obj->l.anim_walk.time += dist * 0.016f * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
+          obj->l.anim_walk.time = ANIM_WrapAnimationTime(skel, obj->l.anim_walk.req.animation_index, obj->l.anim_walk.time);
+        }
+
+
+
+#if 0
+        if (obj->s.animation_index == 23)
+        {
+          obj->l.animation_t += APP.dt;
+        }
+        else
+        {
+          float dist = V3_Length(obj->s.moved_dp);
+          obj->l.animation_t += dist * 0.016f * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
+        }
+
+        ASSET_Model *model = ASSET_GetModel(obj->s.model);
+        ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
+        obj->l.animation_t = ANIM_WrapAnimationTime(skel, obj->s.animation_index, obj->l.animation_t);
+#endif
+      }
     }
   }
 }

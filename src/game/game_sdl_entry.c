@@ -31,6 +31,7 @@
 #include "game_asset.h"
 #include "game_render_world.h"
 #include "game_render_ui.h"
+#include "game_animation.h"
 #include "game_object.h"
 #include "game_tick.h"
 #include "game_network.h"

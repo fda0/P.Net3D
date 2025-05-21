@@ -19,6 +19,16 @@ enum
   LOG_OS = (1 << 13),
   LOG_Serial = (1 << 14),
   LOG_Important = (1 << 15),
+  LOG_Anim = (1 << 16),
+};
+
+typedef U32 Log_Level;
+enum
+{
+  LOG_DebugLevel, // @todo cleanup
+  LOG_Info,
+  LOG_Warn,
+  LOG_Error,
 };
 
 static bool LOG_Check(LOG_Category category);
@@ -31,6 +41,8 @@ static bool LOG_Check(LOG_Category category);
 
 // @note enable logging
 #define LOG(Category, ...) do{ if(LOG_Check(Category)) { SDL_Log(__VA_ARGS__); }}while(0)
+#define LOGlv(Category, Level, ...) LOG(Category, __VA_ARGS__) // @todo do something with Level
+#define LOGx(Category, Level, ...) LOGlv(LOG_##Category, LOG_##Level, __VA_ARGS__)
 
 typedef enum
 {

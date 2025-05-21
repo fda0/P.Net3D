@@ -6,6 +6,8 @@
 
 static bool LOG_Check(LOG_Category category)
 {
+  if (!category) category = LOG_Idk;
+
   bool print = !!(category & APP.log_category_filter);
   return print;
 }

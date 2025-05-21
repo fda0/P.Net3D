@@ -1,6 +1,7 @@
 #define OBJ_MAX_NETWORK_OBJECTS 24
 #define OBJ_MAX_OFFLINE_OBJECTS 512
 #define OBJ_MAX_ALL_OBJECTS (OBJ_MAX_NETWORK_OBJECTS + OBJ_MAX_OFFLINE_OBJECTS)
+#define OBJ_MAX_ANIMATIONS 4
 
 typedef enum
 {
@@ -9,7 +10,7 @@ typedef enum
 
   ObjFlag_AnimateRotation = (1 << 2),
   ObjFlag_AnimatePosition = (1 << 3),
-  ObjFlag_AnimateT        = (1 << 4),
+  ObjFlag_AnimateTracks   = (1 << 4),
 
   ObjFlag_DrawModel       = (1 << 5),
   ObjFlag_DrawCollision   = (1 << 6),
@@ -41,7 +42,6 @@ typedef struct
   RngF ranges[OBJ_COLLIDER_MAX_VERTS];
 } OBJ_ColliderProjection;
 
-
 typedef struct
 {
   // Object data that's synced with the server
@@ -55,7 +55,6 @@ typedef struct
   // visuals
   U32 color;
   Quat rotation;
-  U32 animation_index; // used by DrawModel
   MODEL_Key model; // used by DrawModel
   MATERIAL_Key material; // used by DrawCollision
   float height; // used by DrawCollision
@@ -65,6 +64,8 @@ typedef struct
   bool is_pathing;
   V2 pathing_dest_p;
 
+  ANIM_PlaybackRequest anim_requests[OBJ_MAX_ANIMATIONS];
+
   OBJ_Collider collider_vertices;
 } OBJ_Sync;
 
@@ -73,7 +74,10 @@ typedef struct
   // Object data that's kept on client side only
   Quat animated_rot; // animates towards rotation
   V3 animated_p; // animates towards (V3){p.x, p.y, p.z}
-  float animation_t;
+
+  ANIM_Playback anim_once;
+  ANIM_Playback anim_loop;
+  ANIM_Playback anim_walk;
 
   bool collider_normals_are_updated;
   OBJ_Collider collider_normals;
