@@ -697,9 +697,9 @@ static void GPU_Iterate()
     .sun_dir = APP.sun_dir,
 
     .fog_color = Color32_V3((V3){GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B}),
-    .sky_ambient = Color32_RGBf(0.5f, 0.4f, 0.2f),
-    .sun_diffuse = Color32_RGBf(1.f, 0.8f, 0.2f),
-    .sun_specular = Color32_RGBf(1.f, 1.f, 1.f),
+    .sky_ambient = Color32_RGBf(0.5f, 0.45f, 0.4f),
+    .sun_diffuse = Color32_RGBf(1.f, 0.95f, 0.9f),
+    .sun_specular = Color32_RGBf(1.f, 0.9f, 0.85f),
   };
 
   // Sun shadow map render pass

@@ -224,6 +224,7 @@ static void NET_IterateSend()
         {
           MODEL_Key model_keys[] =
           {
+            MODEL_CreateKey(S8Lit("Dude")),
             MODEL_CreateKey(S8Lit("Worker")),
             MODEL_CreateKey(S8Lit("Formal")),
             MODEL_CreateKey(S8Lit("Casual")),

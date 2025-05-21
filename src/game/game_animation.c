@@ -130,10 +130,7 @@ static ANIM_Pose ANIM_PoseFromAnimation(ASSET_Skeleton *skeleton, U32 anim_index
       Mat4 scale = Mat4_Scale(scales[i]); // @optimization skip scale matrices if they are always 1,1,1 ?
       Mat4 rot = Mat4_Rotation_Quat(rotations[i]);
       Mat4 trans = Mat4_Translation(translations[i]);
-
-      Mat4 combined = Mat4_Mul(rot, scale);
-      combined = Mat4_Mul(trans, combined);
-      res.mats[i] = combined;
+      res.mats[i] = Mat4_Mul(trans, Mat4_Mul(rot, scale));
     }
 
     Arena_PopScope(scratch);
@@ -145,4 +142,60 @@ static ANIM_Pose ANIM_PoseFromAnimation(ASSET_Skeleton *skeleton, U32 anim_index
     res.mats[i] = Mat4_Mul(res.mats[i], skeleton->inv_bind_mats[i]);
 
   return res;
+}
+
+//
+//
+//
+static void ANIM_AnimateObjects()
+{
+  ForArray(obj_index, APP.all_objects)
+  {
+    Object *obj = APP.all_objects + obj_index;
+
+    if (OBJ_HasAllFlags(obj, ObjFlag_AnimateRotation))
+    {
+      Quat q0 = obj->l.animated_rot;
+      Quat q1 = obj->s.rotation;
+
+      float w1 = Min(1.f, APP.dt * 16.f);
+      float w0 = 1.f - w1;
+
+      if (Quat_Dot(q0, q1) < 0.f)
+        w1 = -w1;
+
+      obj->l.animated_rot = Quat_Normalize(Quat_Mix(q0, q1, w0, w1));
+    }
+
+    if (OBJ_HasAnyFlag(obj, ObjFlag_AnimatePosition))
+    {
+      V3 delta = V3_Sub(obj->s.p, obj->l.animated_p);
+      float speed = APP.dt * 10.f;
+      V3 move_by = V3_Scale(delta, speed);
+      obj->l.animated_p = V3_Add(obj->l.animated_p, move_by);
+
+      ForArray(i, obj->l.animated_p.E)
+      {
+        if (FAbs(delta.E[i]) < 0.01f)
+          obj->l.animated_p.E[i] = obj->s.p.E[i];
+      }
+    }
+
+    if (OBJ_HasAnyFlag(obj, ObjFlag_AnimateT))
+    {
+      if (obj->s.animation_index == 23)
+      {
+        obj->l.animation_t += APP.dt;
+      }
+      else
+      {
+        float dist = V3_Length(obj->s.moved_dp);
+        obj->l.animation_t += dist * 0.016f * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
+      }
+
+      ASSET_Model *model = ASSET_GetModel(obj->s.model);
+      ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
+      obj->l.animation_t = ANIM_WrapAnimationTime(skel, obj->s.animation_index, obj->l.animation_t);
+    }
+  }
 }

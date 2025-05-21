@@ -7,7 +7,7 @@
 
 // Headers shared across baker and game
 #include "pie_file_format.h"
-#include "game_render.h"
+#include "game_render_world.h"
 #include "game_type_info.h"
 
 // 3rd party libraries
@@ -76,13 +76,16 @@ int main()
       (void)rot_y;
 
       BK_GLTF_Spec spec = {.height = 1.7f, .rot = rot_xz};
-      BK_GLTF_Load("../res/models/Worker.gltf", spec);
-      BK_GLTF_Load("../res/models/Formal.gltf", spec);
-      BK_GLTF_Load("../res/models/Casual.gltf", spec);
+      // @todo detect duplicated skeleton & animations and reuse it
+      BK_GLTF_Load("../res/models/UltimateModularWomen/Worker.gltf", spec);
+      BK_GLTF_Load("../res/models/UltimateModularWomen/Formal.gltf", spec);
+      BK_GLTF_Load("../res/models/UltimateModularWomen/Casual.gltf", spec);
+
+      BK_GLTF_Load("../res/models/UniversalAnimationLibrary[Standard]/Dude.glb", spec);
 
       BK_GLTF_Load("../res/models/Flag.glb", (BK_GLTF_Spec){.height = 1.f, .rot = rot_x});
-      BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf",
-                   (BK_GLTF_Spec){.disable_z0 = true, .height = 5.f, .name = S8Lit("Tree")});
+      BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf", (BK_GLTF_Spec)
+                   {.disable_z0 = true, .height = 5.f, .name = S8Lit("Tree")});
     }
 
     // Load texture files
