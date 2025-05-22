@@ -191,66 +191,12 @@ static void ANIM_AnimateObjects()
       ASSET_Model *model = ASSET_GetModel(obj->s.model);
       if (model->is_skinned)
       {
-        // PlaybackRequest -> Playback
-        {
-          U64 biggest_req_tick = 0;
-          ForArray(i, obj->s.anim_requests)
-          {
-            ANIM_PlaybackRequest *req = obj->s.anim_requests + i;
-            biggest_req_tick = Max(req->start_at_tick, biggest_req_tick);
-
-            ANIM_Playback *target = req->loop ? &obj->l.anim_loop : &obj->l.anim_once;
-            if (target->req.start_at_tick < req->start_at_tick)
-            {
-              target->req = *req;
-              target->time = 0.f;
-              target->weight = 1.f;
-            }
-          }
-        }
-
         ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
-
-        // Update time
-        {
-          obj->l.anim_once.time += APP.dt;
-          if (obj->l.anim_once.time >= ANIM_AnimationEndTime(skel, obj->l.anim_once.req.animation_index))
-          {
-            obj->l.anim_once.req.is_active = false;
-          }
-
-          obj->l.anim_loop.time = ANIM_WrapAnimationTime(skel, obj->l.anim_loop.req.animation_index,
-                                                         obj->l.anim_loop.time + APP.dt);
-
-          obj->l.anim_walk.req = (ANIM_PlaybackRequest)
-          {
-            .is_active = true,
-            .loop = true,
-            .animation_index = ASSET_AnimNameToIndex(skel, S8Lit("Walk_Loop")).val,
-          };
-
-          float dist = V3_Length(obj->s.moved_dp);
-          obj->l.anim_walk.time += dist * 0.016f * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
-          obj->l.anim_walk.time = ANIM_WrapAnimationTime(skel, obj->l.anim_walk.req.animation_index, obj->l.anim_walk.time);
-        }
-
-
-
-#if 0
-        if (obj->s.animation_index == 23)
-        {
-          obj->l.animation_t += APP.dt;
-        }
-        else
-        {
-          float dist = V3_Length(obj->s.moved_dp);
-          obj->l.animation_t += dist * 0.016f * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
-        }
-
-        ASSET_Model *model = ASSET_GetModel(obj->s.model);
-        ASSET_Skeleton *skel = ASSET_GetSkeleton(model->skeleton_index);
-        obj->l.animation_t = ANIM_WrapAnimationTime(skel, obj->s.animation_index, obj->l.animation_t);
-#endif
+        // Update t
+        obj->l.animation_index = ASSET_AnimNameToIndex(skel, S8Lit("Walk_Loop")).val;
+        float dist = V3_Length(obj->s.moved_dp);
+        obj->l.animation_t += dist * 0.016f * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
+        obj->l.animation_t = ANIM_WrapAnimationTime(skel, obj->l.animation_index, obj->l.animation_t);
       }
     }
   }

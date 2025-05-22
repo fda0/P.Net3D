@@ -64,8 +64,6 @@ typedef struct
   bool is_pathing;
   V2 pathing_dest_p;
 
-  ANIM_PlaybackRequest anim_requests[OBJ_MAX_ANIMATIONS];
-
   OBJ_Collider collider_vertices;
 } OBJ_Sync;
 
@@ -75,9 +73,8 @@ typedef struct
   Quat animated_rot; // animates towards rotation
   V3 animated_p; // animates towards (V3){p.x, p.y, p.z}
 
-  ANIM_Playback anim_once;
-  ANIM_Playback anim_loop;
-  ANIM_Playback anim_walk;
+  U32 animation_index;
+  float animation_t;
 
   bool collider_normals_are_updated;
   OBJ_Collider collider_normals;

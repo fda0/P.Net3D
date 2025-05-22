@@ -22,7 +22,7 @@ static void WORLD_DrawObjects()
       }
 
       WORLD_DrawModel(obj->s.model, transform, obj->s.color,
-                      obj->l.anim_walk.req.animation_index, obj->l.anim_walk.time);
+                      obj->l.animation_index, obj->l.animation_t);
     }
 
     if (draw_collision || draw_model_collision)
