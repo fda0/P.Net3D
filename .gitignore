@@ -1,5 +1,7 @@
 build/
+.build/*
 gen/
 *.kajet
 .vscode
 __*
+
