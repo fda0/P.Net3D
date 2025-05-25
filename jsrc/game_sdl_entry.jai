@@ -7,6 +7,8 @@ main :: ()
 
 PLATFORM_Init :: ()
 {
+  G.dpi_scaling = 1;
+
   ok := SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
   if ok
@@ -25,14 +27,43 @@ PLATFORM_Init :: ()
       if G.init_window_dim.y < 0
         G.init_window_dim.y = 1080;
     }
-
-    renderer: *SDL_Renderer;
-    ok = SDL_CreateWindowAndRenderer("Treasure", xx G.init_window_dim.x, xx G.init_window_dim.y, SDL_WINDOW_OPENGL, *G.window, *renderer);
   }
+
+  if ok && !G.headless
+  {
+    G.gpu.device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL, debug_mode = true, name = null);
+    ok = !!G.gpu.device;
+  }
+
+  if ok && !G.headless
+  {
+    G.window_dim = G.init_window_dim;
+    window_flags: SDL_WindowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
+    if G.window_on_top      window_flags |= SDL_WINDOW_ALWAYS_ON_TOP;
+    if G.window_borderless  window_flags |= SDL_WINDOW_BORDERLESS;
+
+    G.window = SDL_CreateWindow("Treasure", xx G.window_dim.x, xx G.window_dim.y, window_flags);
+    ok = !!G.window;
+  }
+
+  if ok && !G.headless
+  {
+    ok = SDL_ClaimWindowForGPUDevice(G.gpu.device, G.window);
+  }
+
+  if ok && !G.headless && (G.init_window_p.x > 0 || G.init_window_p.y)
+  {
+    x := ifx G.init_window_p.x > 0 then xx G.init_window_p.x else cast(s32) SDL_WINDOWPOS_UNDEFINED();
+    y := ifx G.init_window_p.y > 0 then xx G.init_window_p.y else cast(s32) SDL_WINDOWPOS_UNDEFINED();
+    SDL_SetWindowPosition(G.window, x, y);
+  }
+
+  if ok && !G.headless
+    SDL_ShowWindow(G.window);
 
   if !ok
   {
-    print("Failed to initialize SDL window\n");
+    log_error("Failed to initialize SDL window\n");
     exit(1);
   }
 }
@@ -101,6 +132,7 @@ PLATFORM_Deinit :: ()
 
 #load "game_core.jai";
 #load "game_key.jai";
+#load "game_gpu.jai";
 #import "Basic";
 #import "Math";
 

@@ -4,6 +4,9 @@ GAME_State :: struct {
   // core game state
   in_shutdown: bool;
 
+  // component states
+  gpu: GPU_State;
+
   // SDL, window stuff
   window: *SDL_Window;
   dpi_scaling: float;
@@ -30,21 +33,48 @@ G: GAME_State;
 
 GAME_ParseCommandLineArguments :: (args: [] string)
 {
+  parse_value :: (str: string, target: *float)
+  {
+
+  }
+
+  parse_target: *float;
   for args
   {
     if it_index == 0  continue; // skip arg with executable path
     arg := it;
 
-    if arg ==
+    if parse_target
     {
-      case "-headless";   G.headless = true;
-      // case "-w"; etc
-      case "-fullscreen"; G.window_fullscreen = true;
-      case "-borderless"; G.window_borderless = true;
-      case "-top";        G.window_on_top = true;
-      case "-autolayout"; G.window_autolayout = true;
-      // case "-server";     G.net.is_server = true;
-      // case "-exit-;on-dc" G.server.exit_on_disconnect = true;
+      value, success := string_to_int(arg);
+      if !success
+      {
+        log_error("Failed to parse % as an integer number.\n", arg);
+        exit(1);
+      }
+      parse_target.* = cast(float) value;
+      parse_target = null;
+    }
+    else
+    {
+      if arg ==
+      {
+        case "-headless";   G.headless = true;
+        case "-w";          parse_target = *G.init_window_dim.x;
+        case "-h";          parse_target = *G.init_window_dim.y;
+        case "-px";         parse_target = *G.init_window_p.x;
+        case "-py";         parse_target = *G.init_window_p.y;
+        case "-fullscreen"; G.window_fullscreen = true;
+        case "-borderless"; G.window_borderless = true;
+        case "-top";        G.window_on_top = true;
+        case "-autolayout"; G.window_autolayout = true;
+        // case "-server";     G.net.is_server = true;
+        // case "-exit-;on-dc" G.server.exit_on_disconnect = true;
+
+        case;
+        log_error("Invalid command line argument %s.\n", arg);
+        exit(1);
+      }
     }
 
     print("arg%: %\n", it_index, it);
