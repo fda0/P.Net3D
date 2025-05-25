@@ -14,7 +14,7 @@ build :: () {
     print("Workspace: %\nOptions: %\n", w, options);
   }
 
-  add_build_file(tprint("%jsrc/sdl_entry.jai", #filepath), w);
+  add_build_file(tprint("%jsrc/game_sdl_entry.jai", #filepath), w);
   set_build_options_dc(.{do_output=false});
 }
 #run build();
