@@ -9,26 +9,30 @@ PLATFORM_Init :: ()
 {
   ok := SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
-  // Query display resolution and calculate default window dimensions
-  if G.init_window_dim.x < 0 || G.init_window_dim.y < 0
+  if ok
   {
-    // @todo use:
-    //       SDL_DisplayID SDL_GetPrimaryDisplay(void);
-    //       bool SDL_GetDisplayUsableBounds(SDL_DisplayID displayID, SDL_Rect *rect);
-    if G.init_window_dim.x < 0
-      G.init_window_dim.x = 1920;
+    GAME_ParseCommandLineArguments(get_command_line_arguments());
 
-    if G.init_window_dim.y < 0
-      G.init_window_dim.y = 1080;
-  }
+    // Query display resolution and calculate default window dimensions
+    if G.init_window_dim.x < 0 || G.init_window_dim.y < 0
+    {
+      // @todo use:
+      //       SDL_DisplayID SDL_GetPrimaryDisplay(void);
+      //       bool SDL_GetDisplayUsableBounds(SDL_DisplayID displayID, SDL_Rect *rect);
+      if G.init_window_dim.x < 0
+        G.init_window_dim.x = 1920;
 
-  renderer: *SDL_Renderer;
-  if ok {
+      if G.init_window_dim.y < 0
+        G.init_window_dim.y = 1080;
+    }
+
+    renderer: *SDL_Renderer;
     ok = SDL_CreateWindowAndRenderer("Treasure", xx G.init_window_dim.x, xx G.init_window_dim.y, SDL_WINDOW_OPENGL, *G.window, *renderer);
   }
 
-  if !ok {
-    print("Failed to initialize SDL things\n");
+  if !ok
+  {
+    print("Failed to initialize SDL window\n");
     exit(1);
   }
 }
