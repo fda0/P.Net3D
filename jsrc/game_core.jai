@@ -1,5 +1,3 @@
-V2 :: Vector2;
-
 GAME_State :: struct {
   // core game state
   in_shutdown: bool;
@@ -30,14 +28,21 @@ GAME_State :: struct {
 }
 G: GAME_State;
 
+GAME_Init :: ()
+{
+  if !G.headless
+  {
+    GPU_Init();
+  }
+}
+
+GAME_Iter :: ()
+{
+
+}
 
 GAME_ParseCommandLineArguments :: (args: [] string)
 {
-  parse_value :: (str: string, target: *float)
-  {
-
-  }
-
   parse_target: *float;
   for args
   {
@@ -80,3 +85,16 @@ GAME_ParseCommandLineArguments :: (args: [] string)
     print("arg%: %\n", it_index, it);
   }
 }
+
+// Includes and stuff
+#load "game_key.jai";
+#load "game_gpu.jai";
+#load "game_render_world.jai";
+#load "game_render_ui.jai";
+
+V2 :: Vector2;
+V3 :: Vector3;
+V4 :: Vector4;
+Mat4 :: Matrix4;
+#import "Basic";
+#import "Math";

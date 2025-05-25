@@ -58,6 +58,8 @@ PLATFORM_Init :: ()
     SDL_SetWindowPosition(G.window, x, y);
   }
 
+  GAME_Init();
+
   if ok && !G.headless
     SDL_ShowWindow(G.window);
 
@@ -131,11 +133,6 @@ PLATFORM_Deinit :: ()
 }
 
 #load "game_core.jai";
-#load "game_key.jai";
-#load "game_gpu.jai";
-#import "Basic";
-#import "Math";
-
 
 //
 // SDL THINGS
