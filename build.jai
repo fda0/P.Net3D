@@ -19,6 +19,14 @@ build :: () {
 }
 #run build();
 
+translate_precompiled_shader_headers :: ()
+{
+  // 0. (future) Trigger shader precompilation.
+  // 1. Scan gen/ directory
+  // 2. Do a simple string transformation to generate .jai files.
+  // In the future steps 1 & 2 would be done only after shader precompilation - not for all game compilations.
+}
+
 #import "Basic";
 #import "File";
 #import "Compiler";
