@@ -140,53 +140,6 @@ static void GPU_TransferBuffer(SDL_GPUBuffer *gpu_buffer, void *data, U32 data_s
   SDL_ReleaseGPUTransferBuffer(APP.gpu.device, buf_transfer);
 }
 
-static void GPU_TransferTexture(SDL_GPUTexture *gpu_tex,
-                                U32 layer, U32 w, U32 h,
-                                void *data, U32 data_size)
-{
-  // Create transfer buffer
-  SDL_GPUTransferBufferCreateInfo trans_desc =
-  {
-    .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-    .size = data_size
-  };
-  SDL_GPUTransferBuffer *trans_buf = SDL_CreateGPUTransferBuffer(APP.gpu.device, &trans_desc);
-  Assert(trans_buf); // @todo report err
-
-  // CPU memory -> GPU memory
-  {
-    void *map = SDL_MapGPUTransferBuffer(APP.gpu.device, trans_buf, false);
-    memcpy(map, data, data_size);
-    SDL_UnmapGPUTransferBuffer(APP.gpu.device, trans_buf);
-  }
-
-  // GPU memory -> GPU buffers
-  {
-    SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(APP.gpu.device);
-    SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
-
-    SDL_GPUTextureTransferInfo trans_info =
-    {
-      .transfer_buffer = trans_buf,
-      .offset = 0,
-    };
-    SDL_GPUTextureRegion dst_region =
-    {
-      .texture = gpu_tex,
-      .layer = layer,
-      .w = w,
-      .h = h,
-      .d = 1,
-    };
-    SDL_UploadToGPUTexture(copy_pass, &trans_info, &dst_region, false);
-
-    SDL_EndGPUCopyPass(copy_pass);
-    SDL_SubmitGPUCommandBuffer(cmd);
-  }
-
-  SDL_ReleaseGPUTransferBuffer(APP.gpu.device, trans_buf);
-}
-
 static void GPU_Init()
 {
   // preapre props

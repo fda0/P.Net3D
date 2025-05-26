@@ -333,14 +333,25 @@ GPU_Init :: ()
   GPU_ProcessWindowResize(true);
 }
 
-GPU_ProcessWindowResize :: (is_init: bool)
+GPU_Iter :: ()
 {
   // @todo
 }
 
-GPU_Iter :: ()
+GPU_ProcessWindowResize :: (init: bool)
 {
-  // @todo
+  if (G.window_resized || init)
+  {
+    SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_depth);
+    SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_msaa);
+    SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_resolve);
+
+    window_width := cast(u32) G.window_dim.x;
+    window_height := cast(u32) G.window_dim.y;
+    G.gpu.tex_depth = GPU_CreateDepthTexture(window_width, window_height, false);
+    G.gpu.tex_msaa = GPU_CreateMSAATexture(window_width, window_height);
+    G.gpu.tex_resolve = GPU_CreateResolveTexture(window_width, window_height);
+  }
 }
 
 GPU_CreateBuffer :: (usage: SDL_GPUBufferUsageFlags, size: u32, name: string) -> *SDL_GPUBuffer
@@ -420,4 +431,95 @@ GPU_CreateResolveTexture :: (width: u32, height: u32) -> *SDL_GPUTexture
   result := SDL_CreateGPUTexture(G.gpu.device, *info);
   assert(!!result); // @todo report err
   return result;
+}
+
+GPU_TransferBuffer :: (gpu_buffer: *SDL_GPUBuffer, data: *void, data_size: u32)
+{
+  // create transfer buffer
+  trans_desc := SDL_GPUTransferBufferCreateInfo.{
+    usage = .SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+    size = data_size
+  };
+  buf_transfer := SDL_CreateGPUTransferBuffer(G.gpu.device, *trans_desc);
+  assert(!!buf_transfer); // @todo report err
+
+  // CPU memory -> GPU memory
+  {
+    map : *void = SDL_MapGPUTransferBuffer(G.gpu.device, buf_transfer, false);
+    memcpy(map, data, data_size);
+    SDL_UnmapGPUTransferBuffer(G.gpu.device, buf_transfer);
+  }
+
+  // GPU memory -> GPU buffers
+  {
+    cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
+    copy_pass := SDL_BeginGPUCopyPass(cmd);
+
+    buf_location := SDL_GPUTransferBufferLocation.{
+      transfer_buffer = buf_transfer,
+      offset = 0,
+    };
+    dst_region := SDL_GPUBufferRegion.{
+      buffer = gpu_buffer,
+      offset = 0,
+      size = data_size,
+    };
+    SDL_UploadToGPUBuffer(copy_pass, *buf_location, *dst_region, false);
+
+    SDL_EndGPUCopyPass(copy_pass);
+    SDL_SubmitGPUCommandBuffer(cmd);
+  }
+
+  SDL_ReleaseGPUTransferBuffer(G.gpu.device, buf_transfer);
+}
+
+GPU_UpdateWorldUniform :: (cmd: *SDL_GPUCommandBuffer, uniform: WORLD_Uniform)
+{
+  uniform_hash := Hash64T(0, uniform);
+  if (G.gpu.bound_uniform_hash != uniform_hash)
+  {
+    G.gpu.bound_uniform_hash = uniform_hash;
+    SDL_PushGPUVertexUniformData(cmd, 0, *uniform, size_of(type_of(uniform)));
+    SDL_PushGPUFragmentUniformData(cmd, 0, *uniform, size_of(type_of(uniform)));
+  }
+}
+
+GPU_UpdateUIUniform :: (cmd: *SDL_GPUCommandBuffer, uniform: UI_Uniform)
+{
+  uniform_hash := Hash64T(0, uniform);
+  if (G.gpu.bound_uniform_hash != uniform_hash)
+  {
+    G.gpu.bound_uniform_hash = uniform_hash;
+    SDL_PushGPUVertexUniformData(cmd, 0, *uniform, size_of(type_of(uniform)));
+    // SDL_PushGPUFragmentUniformData(cmd, 0, *uniform, size_of(type_of(uniform)));
+  }
+}
+
+GPU_Deinit :: ()
+{
+  for G.gpu.world_pipelines
+  {
+    SDL_ReleaseGPUGraphicsPipeline(G.gpu.device, it);
+  }
+  SDL_ReleaseGPUGraphicsPipeline(G.gpu.device, G.gpu.ui_pipeline);
+
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_depth);
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_msaa);
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_resolve);
+
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.shadow_tex);
+  SDL_ReleaseGPUSampler(G.gpu.device, G.gpu.shadow_sampler);
+
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.dummy_shadow_tex);
+  SDL_ReleaseGPUBuffer(G.gpu.device, G.gpu.dummy_instance_buffer);
+
+  // Mesh
+  SDL_ReleaseGPUSampler(G.gpu.device, G.gpu.mesh_tex_sampler);
+
+  // UI
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.ui.gpu_atlas_texture);
+  SDL_ReleaseGPUSampler(G.gpu.device, G.gpu.ui.gpu_atlas_sampler);
+  SDL_ReleaseGPUBuffer(G.gpu.device, G.gpu.ui.gpu_indices);
+  SDL_ReleaseGPUBuffer(G.gpu.device, G.gpu.ui.gpu_shape_buffer);
+  SDL_ReleaseGPUBuffer(G.gpu.device, G.gpu.ui.gpu_clip_buffer);
 }

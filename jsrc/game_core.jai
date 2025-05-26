@@ -87,29 +87,10 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 }
 
 // Includes and stuff
+#load "game_base.jai";
 #load "game_key.jai";
 #load "game_gpu.jai";
 #load "game_render_world.jai";
 #load "game_render_ui.jai";
 #load "game_precompiled_shaders_tmp.jai";
 
-V2 :: Vector2;
-V3 :: Vector3;
-V4 :: Vector4;
-Mat4 :: Matrix4;
-#import "Basic";
-#import "Math";
-
-Kilobyte :: v => v * 1024;
-Megabyte :: v => v * 1024 * 1024;
-Gigabyte :: v => v * 1024 * 1024 * 1024;
-
-offset_of :: ($T: Type, $member: string) -> int {
-  for type_info(T).members {
-    if it.name == member return it.offset_in_bytes;
-  }
-  assert(false, "Type '%' does not have member '%'", T, member);
-  return -1;
-}
-
-size_of_type :: T => size_of(type_of(T));
