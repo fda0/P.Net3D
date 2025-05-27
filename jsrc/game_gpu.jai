@@ -10,6 +10,7 @@ GPU_CLEAR_COLOR_A :: 1.0;
 GPU_State :: struct
 {
   device: *SDL_GPUDevice;
+  mem: GPU_BATCH_State;
 
   tex_depth: *SDL_GPUTexture;
   tex_msaa: *SDL_GPUTexture;
@@ -335,8 +336,125 @@ GPU_Init :: ()
 
 GPU_Iter :: ()
 {
+  GPU_RenderWorld :: (cmd: *SDL_GPUCommandBuffer, pass: *SDL_GPURenderPass, is_depth_prepass: bool)
+  {
+    pipeline_index := ifx is_depth_prepass then 1 else 0;
+    SDL_BindGPUGraphicsPipeline(pass, G.gpu.world_pipelines[pipeline_index]);
+
+    // Bind shadow texture sampler to fragment shader
+    {
+      binding_sampl := SDL_GPUTextureSamplerBinding.{
+        texture = ifx is_depth_prepass then G.gpu.dummy_shadow_tex else G.gpu.shadow_tex,
+        sampler = G.gpu.shadow_sampler,
+      };
+      SDL_BindGPUFragmentSamplers(pass, 0, *binding_sampl, 1);
+    }
+
+    // Bind dummy buffers
+    {
+       storage_bufs := *SDL_GPUBuffer.[
+        G.gpu.dummy_instance_buffer,
+        GPU_BATCH_GetPosesBatch().buffer.handle,
+      ];
+      SDL_BindGPUVertexStorageBuffers(pass, 0, *storage_bufs[0], storage_bufs.count);
+
+    }
+    //
+    // Dynamic meshes
+    //
+    {
+      for batch_index: 0..G.gpu.mem.batches_count-1
+      {
+        gpu_verts := *G.gpu.mem.batches[batch_index];
+        if (gpu_verts.target.type != .MeshVertices)
+        continue;
+        if (!gpu_verts.element_count)
+        continue;
+
+        // Bind vertex buffer
+        SDL_BindGPUVertexBuffers(pass, 0, *(SDL_GPUBufferBinding.{buffer = gpu_verts.buffer.handle}), 1);
+
+        material := ASSET_GetMaterial(gpu_verts.target.material_key);
+
+        // Uniforms
+        WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material);
+        if (MATERIAL_KeyMatch(material.key, MATERIAL_CreateKey(S8Lit("tex.Clay002"))))
+        {
+          G.gpu.world_uniform.flags |= WORLD_Flag_DrawBorderAtUVEdge;
+        }
+        GPU_UpdateWorldUniform(cmd, G.gpu.world_uniform);
+
+        // Bind texture
+        binding_sampl = SDL_GPUTextureSamplerBinding.{
+          .texture = material.tex,
+          .sampler = G.gpu.mesh_tex_sampler,
+        };
+        SDL_BindGPUFragmentSamplers(pass, 1, *binding_sampl, 1);
+
+        SDL_DrawGPUPrimitives(pass, gpu_verts.element_count, 1, 0, 0);
+      }
+    }
+
+    //
+    // Prepare GPU state to render models
+    //
+
+    // Bind model vertices & indices
+    SDL_BindGPUVertexBuffers(pass, 0, *SDL_GPUBufferBinding.{buffer = G.ast.vertices}, 1);
+    SDL_BindGPUIndexBuffer(pass, *SDL_GPUBufferBinding.{buffer = G.ast.indices}, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+
+    //
+    // Models
+    //
+    for batch_index: 0..G.gpu.mem.batches_count-1
+    {
+      GPU_MEM_Batch *gpu_instances = G.gpu.mem.batches + batch_index;
+      if gpu_instances.target.type != GPU_MEM_ModelInstances  continue;
+      if !gpu_instances.element_count  continue;
+
+      model := ASSET_GetModel(gpu_instances.target.model_key);
+
+      // bind instance storage buffer
+      storage_bufs := *SDL_GPUBuffer.[
+        gpu_instances.buffer.handle,
+        GPU_MEM_GetPosesBatch().buffer.handle,
+      ];
+      SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
+
+      for mesh_index: 0..model.meshes_count-1
+      {
+        ASSET_Mesh *mesh = model.meshes + mesh_index;
+        ASSET_Material *material = ASSET_GetMaterial(mesh.material);
+
+        // Uniforms
+        WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material);
+        G.gpu.world_uniform.flags |= WORLD_FLAG_UseInstanceBuffer;
+        if (model.is_skinned) G.gpu.world_uniform.flags |= WORLD_FLAG_DoMeshSkinning;
+        if (MODEL_KeyMatch(model.key, MODEL_CreateKey(S8Lit("Tree"))))
+        {
+          //G.gpu.world_uniform.flags |= WORLD_Flag_LessShadows;
+        }
+        GPU_UpdateWorldUniform(cmd, G.gpu.world_uniform);
+
+        // Bind texture
+        if material.has_texture
+        {
+          binding_sampl = SDL_GPUTextureSamplerBinding.{
+            .texture = material.tex,
+            .sampler = G.gpu.mesh_tex_sampler,
+          };
+          SDL_BindGPUFragmentSamplers(pass, 1, *binding_sampl, 1);
+        }
+
+        SDL_DrawGPUIndexedPrimitives(pass, mesh.indices_count, gpu_instances.element_count,
+          mesh.indices_start_index, mesh.vertices_start_index, 0);
+      }
+    }
+  }
+
   // @todo
 }
+
 
 GPU_ProcessWindowResize :: (init: bool)
 {

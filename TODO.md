@@ -1,6 +1,5 @@
 - Interpolate client state based on render DT instead of tick DT. The goal is to make both cases look good: [270fps monitor + 16 tick rate] and [30fps monitor + 128 tick rate].
 - Explore client side input prediction improvements.
-- Debug ui interface.
 - Multithreading (+ put input polling on client thread)/
 - Support more shapes in the collision system (add circles!).
 - Pathfinding.
