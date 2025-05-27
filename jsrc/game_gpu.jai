@@ -378,16 +378,16 @@ GPU_Iter :: ()
 
         // Uniforms
         WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material);
-        if (MATERIAL_KeyMatch(material.key, MATERIAL_CreateKey(S8Lit("tex.Clay002"))))
+        if (MATERIAL_MatchKey(material.key, MATERIAL_CreateKey("tex.Clay002")))
         {
-          G.gpu.world_uniform.flags |= WORLD_Flag_DrawBorderAtUVEdge;
+          G.gpu.world_uniform.flags |= .DrawBorderAtUVEdge;
         }
         GPU_UpdateWorldUniform(cmd, G.gpu.world_uniform);
 
         // Bind texture
-        binding_sampl = SDL_GPUTextureSamplerBinding.{
-          .texture = material.tex,
-          .sampler = G.gpu.mesh_tex_sampler,
+        binding_sampl := SDL_GPUTextureSamplerBinding.{
+          texture = material.tex,
+          sampler = G.gpu.mesh_tex_sampler,
         };
         SDL_BindGPUFragmentSamplers(pass, 1, *binding_sampl, 1);
 
@@ -400,16 +400,16 @@ GPU_Iter :: ()
     //
 
     // Bind model vertices & indices
-    SDL_BindGPUVertexBuffers(pass, 0, *SDL_GPUBufferBinding.{buffer = G.ast.vertices}, 1);
-    SDL_BindGPUIndexBuffer(pass, *SDL_GPUBufferBinding.{buffer = G.ast.indices}, SDL_GPU_INDEXELEMENTSIZE_16BIT);
+    SDL_BindGPUVertexBuffers(pass, 0, *(SDL_GPUBufferBinding.{buffer = G.ast.model_vertices}), 1);
+    SDL_BindGPUIndexBuffer(pass, *(SDL_GPUBufferBinding.{buffer = G.ast.model_indices}), .SDL_GPU_INDEXELEMENTSIZE_16BIT);
 
     //
     // Models
     //
     for batch_index: 0..G.gpu.mem.batches_count-1
     {
-      GPU_MEM_Batch *gpu_instances = G.gpu.mem.batches + batch_index;
-      if gpu_instances.target.type != GPU_MEM_ModelInstances  continue;
+      gpu_instances := *G.gpu.mem.batches[batch_index];
+      if gpu_instances.target.type != .ModelInstances  continue;
       if !gpu_instances.element_count  continue;
 
       model := ASSET_GetModel(gpu_instances.target.model_key);

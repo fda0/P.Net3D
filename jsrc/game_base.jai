@@ -82,3 +82,11 @@ CeilPow2 :: (v: u32) -> u32
   v += 1;
   return v;
 }
+
+CalculateMipMapCount :: (width: u32, height: u32) -> u32
+{
+  max_dim := max(width, height);
+  msb := MostSignificantBitU32(max_dim);
+  if (msb < 0) return 0;
+  return msb;
+}

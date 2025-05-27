@@ -66,10 +66,10 @@ GPU_BATCH_TargetMatch :: (a: GPU_BATCH_Target, b: GPU_BATCH_Target) -> bool
   if (a.type == b.type)
   {
     if (a.type == .MeshVertices)
-      return MATERIAL_KeyMatch(a.material_key, b.material_key);
+      return MATERIAL_MatchKey(a.material_key, b.material_key);
 
     if (a.type == .ModelInstances)
-      return MODEL_KeyMatch(a.model_key, b.model_key);
+      return MODEL_MatchKey(a.model_key, b.model_key);
   }
   return false;
 }
@@ -232,7 +232,7 @@ GPU_BATCH_UploadBatch :: (copy_pass: *SDL_GPUCopyPass, batch: *GPU_Batch)
       else
         usage |= SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
 
-      batch.buffer = GPU_BATCH_AllocBuffer(U32_CeilPow2(batch.total_used*2), usage);
+      batch.buffer = GPU_BATCH_AllocBuffer(CeilPow2(batch.total_used*2), usage);
     }
 
     // Transfers -> Buffer

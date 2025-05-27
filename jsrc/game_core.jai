@@ -1,9 +1,11 @@
 GAME_State :: struct {
   // core game state
   in_shutdown: bool;
+  frame_number: u64;
 
   // component states
   gpu: GPU_State;
+  ast: ASSET_State;
 
   // SDL, window stuff
   window: *SDL_Window;
@@ -30,6 +32,8 @@ G: GAME_State;
 
 GAME_Init :: ()
 {
+  G.frame_number = 1024;
+
   if !G.headless
   {
     GPU_Init();
@@ -96,4 +100,4 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 #load "game_render_world.jai";
 #load "game_render_ui.jai";
 #load "game_precompiled_shaders_tmp.jai";
-
+#load "pie_file_format.jai";
