@@ -79,7 +79,7 @@ GPU_BATCH_FindBundle :: (target: GPU_BATCH_Target) -> *GPU_Batch
   batch: *GPU_Batch;
   for 0..G.gpu.mem.batches_count-1
   {
-    search := *G.gpu.mem.batches[i];
+    search := *G.gpu.mem.batches[it];
     if (GPU_BATCH_TargetMatch(search.target, target))
     {
       batch = search;
@@ -121,19 +121,18 @@ GPU_BATCH_TransferCreate :: (batch: *GPU_Batch, size: u32) -> *GPU_BATCH_Transfe
 
   // Reclaim GPU_BATCH_TransferStorage from free list or allocate a new one
   // Zero initialize it
-  GPU_BATCH_Transfer *result = G.gpu.mem.free_transfers;
+  result := G.gpu.mem.free_transfers;
   {
     if (result)
       G.gpu.mem.free_transfers = G.gpu.mem.free_transfers.next;
     else
-      result = Alloc(G.gpu.mem.arena, GPU_BATCH_Transfer, 1);
-
-    Memclear(result, sizeof(*result));
+      result = PoolAlloc(*G.gpu.mem.pool, GPU_BATCH_Transfer);
+    Initialize(result);
   }
 
   // GPU alloc new transfer buffer and map it
-  transfer_info = SDL_GPUTransferBufferCreateInfo.{
-    usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+  transfer_info := SDL_GPUTransferBufferCreateInfo.{
+    usage = .SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
     size = alloc_size
   };
   result.handle = SDL_CreateGPUTransferBuffer(G.gpu.device, *transfer_info);
@@ -158,22 +157,21 @@ GPU_BATCH_TransferGetMappedMemory :: (batch: *GPU_Batch, size: u32, elem_count: 
 {
   batch.element_count += elem_count;
 
-  GPU_BATCH_Transfer *transfer = batch.transfer_last;
-
+  transfer := batch.transfer_last;
   if (transfer)
   {
-    Assert(transfer.cap > transfer.used);
+    assert(transfer.cap > transfer.used);
     if (transfer.cap - transfer.used < size)
     {
       GPU_BATCH_TransferUnmap(transfer);
-      transfer = 0;
+      transfer = null;
     }
   }
 
   if (!transfer)
     transfer = GPU_BATCH_TransferCreate(batch, size);
 
-  void *result = cast(*u8) transfer.mapped_memory + transfer.used;
+  result := cast(*u8) transfer.mapped_memory + transfer.used;
   batch.total_used += size;
   transfer.used += size;
   return result;
@@ -181,24 +179,23 @@ GPU_BATCH_TransferGetMappedMemory :: (batch: *GPU_Batch, size: u32, elem_count: 
 
 GPU_BATCH_TransferUploadBytes :: (batch: *GPU_Batch, data: *void, size: u32, elem_count: u32)
 {
-  void *dest = GPU_BATCH_TransferGetMappedMemory(batch, size, elem_count);
-  Memcpy(dest, data, size);
+  dst := GPU_BATCH_TransferGetMappedMemory(batch, size, elem_count);
+  memcpy(dst, data, size);
 }
 
 //
 GPU_BATCH_AllocBuffer :: (alloc_size: u32, usage: SDL_GPUBufferUsageFlags ) -> *GPU_BATCH_Buffer
 {
-  GPU_BATCH_Buffer *buffer = G.gpu.mem.free_buffers;
+  buffer := G.gpu.mem.free_buffers;
   {
-    if (buffer)
+    if buffer
       G.gpu.mem.free_buffers = G.gpu.mem.free_buffers.next;
     else
-      buffer = Alloc(G.gpu.mem.arena, GPU_BATCH_Buffer, 1);
-
-    Memclear(buffer, sizeof(*buffer));
+      buffer = PoolAlloc(*G.gpu.mem.pool, GPU_BATCH_Buffer);
+    Initialize(buffer);
   }
 
-  buffer_info = SDL_GPUBufferCreateInfo.{usage = usage, size = alloc_size};
+  buffer_info := SDL_GPUBufferCreateInfo.{usage = usage, size = alloc_size};
   buffer.handle = SDL_CreateGPUBuffer(G.gpu.device, *buffer_info);
   buffer.cap = alloc_size;
   return buffer;
@@ -242,7 +239,7 @@ GPU_BATCH_UploadBatch :: (copy_pass: *SDL_GPUCopyPass, batch: *GPU_Batch)
       while (transfer)
       {
         source := SDL_GPUTransferBufferLocation.{ transfer_buffer = transfer.handle };
-        destination = SDL_GPUBufferRegion.{
+        destination := SDL_GPUBufferRegion.{
           buffer = batch.buffer.handle,
           offset = offset,
           size = transfer.used
@@ -255,10 +252,10 @@ GPU_BATCH_UploadBatch :: (copy_pass: *SDL_GPUCopyPass, batch: *GPU_Batch)
     }
 
     // Free transfers
-    GPU_BATCH_Transfer *transfer = batch.transfer_first;
+    transfer := batch.transfer_first;
     while (transfer)
     {
-      GPU_BATCH_Transfer *next = transfer.next;
+      next := transfer.next;
 
       SDL_ReleaseGPUTransferBuffer(G.gpu.device, transfer.handle);
       transfer.next = G.gpu.mem.free_transfers;
@@ -268,8 +265,8 @@ GPU_BATCH_UploadBatch :: (copy_pass: *SDL_GPUCopyPass, batch: *GPU_Batch)
     }
 
     // clear batch transfer links
-    batch.transfer_first = 0;
-    batch.transfer_last = 0;
+    batch.transfer_first = null;
+    batch.transfer_last = null;
   }
 }
 

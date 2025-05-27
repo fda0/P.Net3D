@@ -100,4 +100,5 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 #load "game_render_world.jai";
 #load "game_render_ui.jai";
 #load "game_precompiled_shaders_tmp.jai";
+#load "game_pie_loader.jai";
 #load "pie_file_format.jai";

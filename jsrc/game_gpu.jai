@@ -183,10 +183,12 @@ GPU_Init :: ()
     pipeline.vertex_input_state.num_vertex_buffers = vbd.count;
     pipeline.vertex_input_state.vertex_buffer_descriptions = *vbd[0];
 
+    some_str := "p - this should be an compile time error";
+
     va := SDL_GPUVertexAttribute.[
       .{format = .SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
         location = 0,
-        offset = #run offset_of(WORLD_Vertex, "p"), // 0
+        offset = xx offset_of(WORLD_Vertex, some_str), // 0
       },
       .{format = .SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
         location = 1,
@@ -417,37 +419,36 @@ GPU_Iter :: ()
       // bind instance storage buffer
       storage_bufs := *SDL_GPUBuffer.[
         gpu_instances.buffer.handle,
-        GPU_MEM_GetPosesBatch().buffer.handle,
+        GPU_BATCH_GetPosesBatch().buffer.handle,
       ];
-      SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs, ArrayCount(storage_bufs));
+      SDL_BindGPUVertexStorageBuffers(pass, 0, *storage_bufs[0], storage_bufs.count);
 
-      for mesh_index: 0..model.meshes_count-1
+      for mesh: model.meshes
       {
-        ASSET_Mesh *mesh = model.meshes + mesh_index;
-        ASSET_Material *material = ASSET_GetMaterial(mesh.material);
+        material := ASSET_GetMaterial(mesh.material);
 
         // Uniforms
         WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material);
-        G.gpu.world_uniform.flags |= WORLD_FLAG_UseInstanceBuffer;
-        if (model.is_skinned) G.gpu.world_uniform.flags |= WORLD_FLAG_DoMeshSkinning;
-        if (MODEL_KeyMatch(model.key, MODEL_CreateKey(S8Lit("Tree"))))
+        G.gpu.world_uniform.flags |= .UseInstanceBuffer;
+        if (model.is_skinned) G.gpu.world_uniform.flags |= .DoMeshSkinning;
+        if (MODEL_MatchKey(model.key, MODEL_CreateKey("Tree")))
         {
-          //G.gpu.world_uniform.flags |= WORLD_Flag_LessShadows;
+          //G.gpu.world_uniform.flags |= .LessShadows;
         }
         GPU_UpdateWorldUniform(cmd, G.gpu.world_uniform);
 
         // Bind texture
         if material.has_texture
         {
-          binding_sampl = SDL_GPUTextureSamplerBinding.{
-            .texture = material.tex,
-            .sampler = G.gpu.mesh_tex_sampler,
+          binding_sampl := SDL_GPUTextureSamplerBinding.{
+            texture = material.tex,
+            sampler = G.gpu.mesh_tex_sampler,
           };
           SDL_BindGPUFragmentSamplers(pass, 1, *binding_sampl, 1);
         }
 
         SDL_DrawGPUIndexedPrimitives(pass, mesh.indices_count, gpu_instances.element_count,
-          mesh.indices_start_index, mesh.vertices_start_index, 0);
+          mesh.indices_start_index, xx mesh.vertices_start_index, 0);
       }
     }
   }

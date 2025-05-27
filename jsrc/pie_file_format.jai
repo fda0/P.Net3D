@@ -13,7 +13,7 @@ PIE_List :: struct
 
 PIE_ListT :: struct($T: Type)
 {
-  using l: PIE_List;
+  using #as l: PIE_List;
 }
 
 PIE_TransformType :: enum u32
@@ -105,7 +105,7 @@ PIE_Material :: struct
   name: PIE_ListT(u8);
   params: PIE_MaterialParams;
 
-  tex :: struct {
+  tex: struct {
     format: PIE_TexFormat;
     width: u32;
     height: u32;

@@ -68,8 +68,10 @@ ASSET_Material :: struct
 {
   stream: ASSET_Streamable;
   key: MATERIAL_Key;
-  // params: PIE_MaterialParams;
+
+  params: PIE_MaterialParams;
   has_texture: bool;
+  texture_layers: u32;
   tex: *SDL_GPUTexture;
 };
 
@@ -93,9 +95,10 @@ ASSET_PieFile :: struct
 {
   pool: Flat_Pool;
   file: string;
+  err: bool;
+
   header: *PIE_Header;
   links: *PIE_Links;
-
   models: [] PIE_Model;
   materials: [] PIE_Material;
 };
@@ -161,43 +164,41 @@ ASSET_InitMaterials :: ()
     G.ast.nil_material.has_texture = true;
     G.ast.nil_material.texture_layers = 1;
 
-    dim := 512;
-    tex_size := dim * dim * size_of(u32);
-    and_mask := (1 << 6);
+    dim: u32 = 512;
+    tex_size: u32 = dim * dim * size_of(u32);
+    and_mask: u32 = (1 << 6);
 
-    SDL_GPUTextureCreateInfo tex_info =
-    {
-      .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-      .format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-      .width = dim,
-      .height = dim,
-      .layer_count_or_depth = 1,
-      .num_levels = CalculateMipMapCount(dim, dim),
-      .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
+    tex_info := SDL_GPUTextureCreateInfo.{
+      type = .SDL_GPU_TEXTURETYPE_2D_ARRAY,
+      format = .SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+      width = dim,
+      height = dim,
+      layer_count_or_depth = 1,
+      num_levels = CalculateMipMapCount(dim, dim),
+      usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
     };
-    SDL_GPUTexture *texture = SDL_CreateGPUTexture(G.gpu.device, &tex_info);
+    texture := SDL_CreateGPUTexture(G.gpu.device, *tex_info);
     SDL_SetGPUTextureName(G.gpu.device, texture, "Fallback texture");
     G.ast.nil_material.tex = texture;
 
     // Fill texture
     {
-      SDL_GPUTransferBufferCreateInfo trans_desc =
-      {
-        .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-        .size = tex_size
+      trans_desc := SDL_GPUTransferBufferCreateInfo.{
+        usage = .SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        size = tex_size,
       };
-      SDL_GPUTransferBuffer *trans_buf = SDL_CreateGPUTransferBuffer(G.gpu.device, &trans_desc);
-      Assert(trans_buf);
+      trans_buf := SDL_CreateGPUTransferBuffer(G.gpu.device, *trans_desc);
+      assert(!!trans_buf, "@todo handle this error? or remove assert");
 
       // Fill GPU memory
       {
-        U32 *map = SDL_MapGPUTransferBuffer(G.gpu.device, trans_buf, false);
-        U32 *pixel = map;
-        ForI32(y, dim)
+        map: *u32 = SDL_MapGPUTransferBuffer(G.gpu.device, trans_buf, false);
+        pixel := map;
+        for y: 0..dim-1
         {
-          ForI32(x, dim)
+          for x: 0..dim-1
           {
-            pixel[0] = (x & y & and_mask) ? 0xff000000 : 0xffFF00FF;
+            pixel[0] = xx ifx x & y & and_mask then 0xff000000 else 0xffFF00FF;
             pixel += 1;
           }
         }
@@ -206,18 +207,17 @@ ASSET_InitMaterials :: ()
 
       // GPU memory -> GPU buffers
       {
-        SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(G.gpu.device);
-        SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+        cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
+        copy_pass := SDL_BeginGPUCopyPass(cmd);
 
-        SDL_GPUTextureTransferInfo trans_info = { .transfer_buffer = trans_buf };
-        SDL_GPUTextureRegion dst_region =
-        {
-          .texture = texture,
-          .w = dim,
-          .h = dim,
-          .d = 1,
+        trans_info := SDL_GPUTextureTransferInfo.{transfer_buffer = trans_buf};
+        dst_region := SDL_GPUTextureRegion.{
+          texture = texture,
+          w = dim,
+          h = dim,
+          d = 1,
         };
-        SDL_UploadToGPUTexture(copy_pass, &trans_info, &dst_region, false);
+        SDL_UploadToGPUTexture(copy_pass, *trans_info, *dst_region, false);
 
         SDL_EndGPUCopyPass(copy_pass);
         SDL_SubmitGPUCommandBuffer(cmd);
@@ -227,32 +227,54 @@ ASSET_InitMaterials :: ()
 
     // Generate texture mipmap
     {
-      SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(G.gpu.device);
+      cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
       SDL_GenerateMipmapsForGPUTexture(cmd, texture);
       SDL_SubmitGPUCommandBuffer(cmd);
     }
   }
 
-  ASSET_PieFile *pie = &G.ast.pie;
-
-  G.ast.materials_count = pie->materials_count;
-  G.ast.materials = AllocZeroed(pie->arena, ASSET_Material, pie->materials_count);
-
-  ForU32(i, G.ast.materials_count)
+  // Init material array
   {
-    PIE_Material *pie_material = pie->materials + i;
-    ASSET_Material *asset = G.ast.materials + i;
+    pie := *G.ast.pie;
 
-    asset->key = MATERIAL_CreateKey(PIE_ListToS8(pie_material->name));
-    asset->params = pie_material->params;
-    asset->has_texture = !!pie_material->tex.format;
-    asset->texture_layers = pie_material->tex.layers;
-    if (!asset->has_texture)
+    G.ast.materials = PoolAllocArray(*pie.pool, ASSET_Material, pie.materials.count, true);
+    for *G.ast.materials
     {
-      // no texture = asset is already fully loaded
-      asset->b.loaded = true;
-      asset->b.loaded_t = 1.f;
+      pie_material := *pie.materials[it_index];
+      it.key = MATERIAL_CreateKey(PIE_LOAD_ListToString(pie_material.name));
+      it.params = pie_material.params;
+      it.has_texture = pie_material.tex.format != .Empty;
+      it.texture_layers = pie_material.tex.layers;
+      if (!it.has_texture)
+      {
+        // no texture = it is already fully loaded
+        it.stream.flags |= .Loaded;
+        it.stream.loaded_t = 1;
+      }
+      it.tex = G.ast.nil_material.tex; // fallback texture as default in case anybody tries to use it
     }
-    asset->tex = G.ast.nil_material.tex; // fallback texture as default in case anybody tries to use it
   }
+}
+
+//
+// Model
+//
+ASSET_ModelIsNil :: (a: *ASSET_Model) -> bool
+{
+  return a == *G.ast.nil_model;
+}
+
+ASSET_GetModel :: (key: MODEL_Key) -> *ASSET_Model
+{
+  // @speed hash table lookup in the future
+  asset := *G.ast.nil_model;
+  for *G.ast.models
+  {
+    if (MODEL_MatchKey(it.key, key))
+    {
+      asset = it;
+      break;
+    }
+  }
+  return asset;
 }
