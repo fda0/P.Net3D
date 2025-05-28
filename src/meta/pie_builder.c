@@ -76,7 +76,8 @@ static PIE_Builder PIE_CreateBuilder(Arena *a, U32 max_file_size)
   bb.skeletons = Pr_Alloc(a, tiny_size);
   bb.materials = Pr_Alloc(a, tiny_size);
 
-  Pr_ReserveBytes(&bb.file, sizeof(PIE_Header)); // reserve space for header
+  void *header_bytes = Pr_ReserveBytes(&bb.file, sizeof(PIE_Header)); // reserve space for header
+  Memclear(header_bytes, sizeof(PIE_Header));
   return bb;
 }
 
