@@ -5,8 +5,8 @@
 
 PIE_List :: struct
 {
-  type: u32;
-  count: u32;
+  type: u32; // @todo simplify: remove this
+  count: u32; // @todo simplify: remove this
   offset: u32;
   size: u32;
 };

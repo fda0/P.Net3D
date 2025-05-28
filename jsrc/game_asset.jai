@@ -106,6 +106,7 @@ ASSET_PieFile :: struct
 ASSET_State :: struct
 {
   pie: ASSET_PieFile;
+  arena: Arena;
 
   // Materials
   nil_material: ASSET_Material;
@@ -325,7 +326,32 @@ ASSET_InitModels :: ()
   }
 }
 
+ASSET_LoadPieFile :: (file_path: string)
+{
+  pie := *G.ast.pie;
+  file, ok := read_entire_file(file_path);
+  // @todo this is really critical error (and easy to encounter if user deletes the file) - create a popup window with a message
+
+  if ok
+  {
+    pie.file = file;
+    // @todo
+
+  }
+
+  pie.err |= !ok;
+}
 
 ASSET_Init :: ()
 {
+  init(*G.ast.arena);
+  new_context := context;
+  new_context.allocator = G.ast.arena;
+  push_context new_context
+  {
+    ASSET_LoadPieFile("data.pie");
+    ASSET_InitSkeletons();
+    ASSET_InitMaterials();
+    ASSET_InitModels();
+  }
 }
