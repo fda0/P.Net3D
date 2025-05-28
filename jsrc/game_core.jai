@@ -37,6 +37,8 @@ GAME_Init :: ()
   if !G.headless
   {
     GPU_Init();
+    GPU_BATCH_Init();
+    ASSET_Init();
   }
 }
 

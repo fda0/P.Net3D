@@ -278,3 +278,54 @@ ASSET_GetModel :: (key: MODEL_Key) -> *ASSET_Model
   }
   return asset;
 }
+
+ASSET_InitModels :: ()
+{
+  pie := *G.ast.pie;
+
+  // Load meshes
+  {
+    G.ast.model_vertices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_VERTEX,
+      pie.links.models.vertices.size,
+      "WORLD vertices");
+    G.ast.model_indices = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX,
+      pie.links.models.indices.size,
+      "Model indices");
+
+    vertices_string := PIE_LOAD_ListToString(pie.links.models.vertices);
+    indices_string := PIE_LOAD_ListToString(pie.links.models.indices);
+
+    GPU_TransferBuffer(G.ast.model_vertices, vertices_string.data, xx vertices_string.count);
+    GPU_TransferBuffer(G.ast.model_indices, indices_string.data, xx indices_string.count);
+  }
+
+  G.ast.models = PoolAllocArray(*pie.pool, ASSET_Model, pie.models.count, true);
+
+  for *model: G.ast.models
+  {
+    pie_model := *pie.models[it_index];
+
+    model.key = MODEL_CreateKey(PIE_LOAD_ListToString(pie_model.name));
+    model.is_skinned = !!pie_model.is_skinned;
+    model.skeleton = *G.ast.skeletons[pie_model.skeleton_index];
+    model.meshes = PoolAllocArray(*pie.pool, ASSET_Mesh, pie_model.meshes.count, true);
+
+    pie_meshes := PIE_LOAD_ListToArray(pie_model.meshes, PIE_Mesh);
+    for *mesh: model.meshes
+    {
+      pie_mesh := *pie_meshes[it_index];
+
+      if pie_mesh.material_index < G.ast.materials.count
+        mesh.material = G.ast.materials[pie_mesh.material_index].key;
+
+      mesh.vertices_start_index = pie_mesh.vertices_start_index;
+      mesh.indices_start_index = pie_mesh.indices_start_index;
+      mesh.indices_count = pie_mesh.indices_count;
+    }
+  }
+}
+
+
+ASSET_Init :: ()
+{
+}

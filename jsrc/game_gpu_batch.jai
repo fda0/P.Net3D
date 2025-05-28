@@ -302,6 +302,7 @@ GPU_BATCH_GetPosesBatch :: () -> *GPU_Batch
 
 GPU_BATCH_Init :: ()
 {
+  init(*G.gpu.mem.pool);
   // reserve poses batch
   G.gpu.mem.batches_count += 1;
   G.gpu.mem.batches[0].target.type = .Poses;

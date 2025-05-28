@@ -173,22 +173,20 @@ GPU_Init :: ()
       props = 0
     };
 
-    vbd := SDL_GPUVertexBufferDescription.[
+    VERTEX_BUFFERS :: SDL_GPUVertexBufferDescription.[
       .{slot = 0,
         pitch = size_of(type_of(WORLD_Vertex)),
         input_rate = .SDL_GPU_VERTEXINPUTRATE_VERTEX,
         instance_step_rate = 0,
       },
     ];
-    pipeline.vertex_input_state.num_vertex_buffers = vbd.count;
-    pipeline.vertex_input_state.vertex_buffer_descriptions = *vbd[0];
+    pipeline.vertex_input_state.num_vertex_buffers = VERTEX_BUFFERS.count;
+    pipeline.vertex_input_state.vertex_buffer_descriptions = *VERTEX_BUFFERS[0];
 
-    some_str := "p - this should be an compile time error";
-
-    va := SDL_GPUVertexAttribute.[
+    VERTEX_ATTRIBS :: SDL_GPUVertexAttribute.[
       .{format = .SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
         location = 0,
-        offset = xx offset_of(WORLD_Vertex, some_str), // 0
+        offset = #run offset_of(WORLD_Vertex, "p"), // 0
       },
       .{format = .SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
         location = 1,
@@ -207,8 +205,8 @@ GPU_Init :: ()
         offset = #run offset_of(WORLD_Vertex, "joint_weights"),
       },
     ];
-    pipeline.vertex_input_state.num_vertex_attributes = va.count;
-    pipeline.vertex_input_state.vertex_attributes = *va[0];
+    pipeline.vertex_input_state.num_vertex_attributes = VERTEX_ATTRIBS.count;
+    pipeline.vertex_input_state.vertex_attributes = *VERTEX_ATTRIBS[0];
 
     // Create main pipeline
     G.gpu.world_pipelines[0] = SDL_CreateGPUGraphicsPipeline(G.gpu.device, *pipeline);

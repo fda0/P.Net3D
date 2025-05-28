@@ -21,14 +21,6 @@ Kilobyte :: v => v * 1024;
 Megabyte :: v => v * 1024 * 1024;
 Gigabyte :: v => v * 1024 * 1024 * 1024;
 
-offset_of :: ($T: Type, member: string) -> int #compile_time {
-  for type_info(T).members {
-    if it.name == member return it.offset_in_bytes;
-  }
-  assert(false, "Type '%' does not have member '%'", T, member);
-  return -1;
-}
-
 // One-shot, less optimal API
 Hash64 :: (seed: u64, input: *void, size: u32) -> u64
 {
@@ -135,4 +127,63 @@ IsPointerAligned :: (ptr: *void, alignment: s64) -> bool
   ptr_val := cast(s64) ptr;
   missaligned := ptr_val % alignment;
   return missaligned == 0;
+}
+
+offset_of :: (ti: *Type_Info, member: string) -> int
+{
+  assert(ti.type == .STRUCT, "offset_of can be used on structs only");
+  ts := cast(*Type_Info_Struct) ti;
+
+  for ts.members {
+    if it.name == member return it.offset_in_bytes;
+  }
+  assert(false, "Struct type info '%' does contain member '%'", ts, member);
+  return -1;
+}
+offset_of :: ($T: Type, $member: string) -> int #expand
+{
+  return #run offset_of(type_info(T), member);
+}
+
+// align_of implementation by shwa
+align_of :: (ti: *Type_Info) -> int
+{
+  if ti.type == {
+    case .INTEGER;       return ti.runtime_size;
+    case .FLOAT;         return ti.runtime_size;
+    case .BOOL;          return ti.runtime_size;
+    case .STRING;        return 8;
+    case .POINTER;       return 8;
+    case .PROCEDURE;     return 8;
+    case .STRUCT;
+    {
+      dti := cast(*Type_Info_Struct)ti;
+      m: int;
+      for member: dti.members
+      m = max(m, align_of(member.type));
+      return m;
+    }
+    case .ARRAY;
+    {
+      dti := cast(*Type_Info_Array)ti;
+      if dti.array_type ==
+      {
+        case .FIXED;     return align_of(dti.element_type);
+        case .VIEW;      return 8;
+        case .RESIZABLE; return 8;
+        case; assert(false);
+      }
+    }
+    case .ANY;           return 8;
+    case .ENUM;          return ti.runtime_size;
+    case .TYPE;          return ti.runtime_size;
+    case .VARIANT;       return align_of((cast(*Type_Info_Variant)ti).variant_of);
+    case; assert(false, "%", ti.type);
+  }
+  assert(false, "Unhandled align_of case - %", ti.*);
+  return -1;
+}
+align_of :: ($T: Type) -> int #expand
+{
+  return #run align_of(type_info(T));
 }
