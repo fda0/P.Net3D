@@ -25,10 +25,7 @@ MODEL_Key ::  #type,isa ASSET_Key;
 
 ASSET_CreateKey :: (type: ASSET_Type, name: string /* EXTERNALLY OWNED STRING */) -> ASSET_Key
 {
-  hash_state := Hash64_Init(0xdead_beef_1234_5678);
-  Hash64_UpdateT(*hash_state, type);
-  Hash64_Update(*hash_state, name);
-  hash := Hash64_Digest(*hash_state);
+  hash := Hash64Any(type, name);
 
   res: ASSET_Key;
   res.type4_hash60 = (cast(u64) type) | (hash << 4);

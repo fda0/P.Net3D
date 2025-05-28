@@ -1,10 +1,10 @@
 #import "Basic";
 #import "Math";
-#import "xxHash";
 #import "Bit_Operations";
 #import "File";
 #load "base_string.jai";
 #load "base_arena.jai";
+#load "base_hash.jai";
 
 V2 :: Vector2;
 V3 :: Vector3;
@@ -21,48 +21,6 @@ Range :: struct ($T: Type)
 Kilobyte :: v => v * 1024;
 Megabyte :: v => v * 1024 * 1024;
 Gigabyte :: v => v * 1024 * 1024 * 1024;
-
-// One-shot, less optimal API
-Hash64 :: (seed: u64, input: *void, size: u32) -> u64
-{
-  state: XXH64_state_t = ---;
-  XXH64_reset(*state, seed);
-  XXH64_update(*state, input, size);
-  return XXH64_digest(*state);
-}
-Hash64 :: (seed: u64, input_str: string) -> u64
-{
-  return Hash64(seed, input_str.data, cast(u32) input_str.count);
-}
-Hash64T :: (seed: u64, input: $T) -> u64
-{
-  return Hash64(seed, *input, size_of(T));
-}
-
-// Init, Update, Digest API
-Hash64_State :: XXH64_state_t;
-Hash64_Init :: (seed: u64) -> Hash64_State
-{
-  state: Hash64_State = ---;
-  XXH64_reset(*state, seed);
-  return state;
-}
-Hash64_Update :: (state: *Hash64_State, input: *void, size: u32)
-{
-  XXH64_update(state, input, size);
-}
-Hash64_Update :: (state: *Hash64_State, input_str: string)
-{
-  XXH64_update(state, input_str.data, cast(u32) input_str.count);
-}
-Hash64_UpdateT :: (state: *Hash64_State, input: $T)
-{
-  XXH64_update(state, *input, size_of(T));
-}
-Hash64_Digest :: (state: *Hash64_State) -> u64
-{
-  return XXH64_digest(state);
-}
 
 // Flat_Pool
 PoolAlloc :: (pool: *Flat_Pool, $T: Type, $init := false) -> *T

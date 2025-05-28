@@ -592,7 +592,7 @@ GPU_TransferBuffer :: (gpu_buffer: *SDL_GPUBuffer, data: *void, data_size: u32)
 
 GPU_UpdateWorldUniform :: (cmd: *SDL_GPUCommandBuffer, uniform: WORLD_Uniform)
 {
-  uniform_hash := Hash64T(0, uniform);
+  uniform_hash := Hash64Any(uniform);
   if (G.gpu.bound_uniform_hash != uniform_hash)
   {
     G.gpu.bound_uniform_hash = uniform_hash;
@@ -603,7 +603,7 @@ GPU_UpdateWorldUniform :: (cmd: *SDL_GPUCommandBuffer, uniform: WORLD_Uniform)
 
 GPU_UpdateUIUniform :: (cmd: *SDL_GPUCommandBuffer, uniform: UI_Uniform)
 {
-  uniform_hash := Hash64T(0, uniform);
+  uniform_hash := Hash64Any(uniform);
   if (G.gpu.bound_uniform_hash != uniform_hash)
   {
     G.gpu.bound_uniform_hash = uniform_hash;

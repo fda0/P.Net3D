@@ -172,7 +172,7 @@ ASSET_LoadPieFile :: (file_path: string)
   pie.header = *header[0];
 
   hashable := STR_Skip(PIE_LOAD_File(), size_of(type_of(pie.header.file_hash)));
-  calculated_hash := Hash64(PIE_MAGIC_HASH_SEED, hashable);
+  calculated_hash := Hash64Any(PIE_MAGIC_HASH_SEED, hashable);
   PIE_LOAD_Check(calculated_hash == pie.header.file_hash,
     tprint("Calculated hash (%) doesn't match file hash (%).", calculated_hash, pie.header.file_hash));
   if err return;
