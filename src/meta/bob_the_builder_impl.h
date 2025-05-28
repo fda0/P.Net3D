@@ -391,7 +391,7 @@ static void BOB_BuildCommand(Printer *cmd, BOB_BuildConfig config)
   }
 }
 
-static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths)
+static void BOB_ModTimePathsHashInner(HashState *hash_state, I32 paths_count, const char **paths)
 {
   ForI32(path_index, paths_count)
   {
@@ -419,29 +419,35 @@ static U64 BOB_ModTimePathsHash(U64 seed, I32 paths_count, const char **paths)
           S8 dir_name = S8_FromCstr(data.cFileName);
           if (!S8_StartsWith(dir_name, S8Lit("."), 0)) // skips ".", ".." and directories starting with "."
           {
-            seed = S8_Hash(seed, dir_name);
-            seed = U64_Hash(seed, &data.ftLastWriteTime, sizeof(data.ftLastWriteTime));
+            S8_HashAbsorb(hash_state, dir_name);
+            U64_HashAbsorb(hash_state, &data.ftLastWriteTime, sizeof(data.ftLastWriteTime));
 
             Pr_Reset(&p);
             Pr_S8(&p, dir_name);
             Pr_Cstr(&p, "/*");
             const char *wildcard_dir = Pr_AsCstr(&p);
-            seed = BOB_ModTimePathsHash(seed, 1, &wildcard_dir);
+            BOB_ModTimePathsHashInner(hash_state, 1, &wildcard_dir);
           }
         }
         else
         {
           // Is file
           S8 file_name = S8_FromCstr(data.cFileName);
-          seed = S8_Hash(seed, file_name);
-          seed = U64_Hash(seed, &data.ftLastWriteTime, sizeof(data.ftLastWriteTime));
+          S8_HashAbsorb(hash_state, file_name);
+          U64_HashAbsorb(hash_state, &data.ftLastWriteTime, sizeof(data.ftLastWriteTime));
         }
       } while (FindNextFileA(handle, &data) != 0);
 
       FindClose(handle);
     }
   }
-  return seed;
+}
+
+static U64 BOB_ModTimePathsHash(I32 paths_count, const char **paths)
+{
+  HashState hs = HashBegin();
+  BOB_ModTimePathsHashInner(&hs, paths_count, paths);
+  return HashEnd(&hs);
 }
 
 static U64 BOB_LoadCacheHash(const char *file_name)
@@ -521,7 +527,7 @@ static void BOB_MarkSection(const char *name, BOB_Compilation comp, BOB_SectionC
 
     U64 current_hash = 0;
     if (!config.force_invalidate_cache)
-      current_hash = BOB_ModTimePathsHash(0, config.cache_paths_count, config.cache_paths);
+      current_hash = BOB_ModTimePathsHash(config.cache_paths_count, config.cache_paths);
     BOB_SaveCacheHash(name, current_hash);
 
     bool is_cached = (from_file_hash && from_file_hash == current_hash);

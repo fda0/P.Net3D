@@ -124,7 +124,13 @@ static void PIE_FinalizeBuilder()
   //
   S8 whole_file = Pr_AsS8(&build->file);
   S8 hashable_file = S8_Skip(whole_file, sizeof(header->file_hash));
-  header->file_hash = S8_Hash(PIE_MAGIC_HASH_SEED, hashable_file);
+  {
+    HashState hs = HashBegin();
+    U64 magic = PIE_MAGIC_HASH_SEED;
+    U64_HashAbsorb(&hs, &magic, sizeof(magic));
+    S8_HashAbsorb(&hs, hashable_file);
+    header->file_hash = HashEnd(&hs);
+  }
 
   build->finalized = true;
 }
