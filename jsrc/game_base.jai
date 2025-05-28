@@ -73,13 +73,9 @@ CalculateMipMapCount :: (width: $T, height: T) -> T // @todo test
 #modify { return (cast(*Type_Info) T).type == .INTEGER, "Argument is not of an integer type."; }
 {
   max_dim := max(width, height);
-  msb := bit_scan_reverse(max_dim);
-  if (msb == 0) return 0;
-
-  T_bits := size_of(T)*8;
-  return cast(T) T_bits - cast(T) msb;
+  msb_plus_one := bit_scan_reverse(max_dim);
+  return cast(T) msb_plus_one;
 }
-#run print("CMMC debug: %\n", CalculateMipMapCount(1, 1));
 
 IsPointerAligned :: (ptr: *void, alignment: s64) -> bool
 {
