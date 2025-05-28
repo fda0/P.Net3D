@@ -80,11 +80,42 @@ ASSET_Mesh :: struct
   indices_count: u32;
 };
 
+ASSET_AnimationChannel :: struct
+{
+  type: PIE_AnimationChannelType;
+  joint_index: u32;
+  inputs: [] float;
+  outputs: [] float; // .count = inputs.count * (ifx type == .Rotation then 4 else 3);
+};
+
+ASSET_Animation :: struct
+{
+  name: string;
+  t_min, t_max: float;
+  channels: [] ASSET_AnimationChannel;
+};
+
+ASSET_Skeleton :: struct
+{
+  root_transform: Mat4;
+  animations: [] ASSET_Animation;
+
+  joints_count: u32; // all arrays below have count equal to joints_count
+  joint_names: [] string;
+  inverse_matrices: [] Mat4; // inverse bind matrices
+  child_index_buffer: [] u32;
+  child_index_ranges: [] Range(u32);
+
+  bind_translations: [] V3;
+  bind_rotations: [] Quat;
+  bind_scales: [] V3;
+};
+
 ASSET_Model :: struct
 {
   key: MODEL_Key;
   is_skinned: bool;
-  skeleton: *ANIM_Skeleton; // can be null
+  skeleton: *ASSET_Skeleton; // can be null
   meshes: [] ASSET_Mesh;
 };
 
@@ -117,7 +148,7 @@ ASSET_State :: struct
   models: [] ASSET_Model;
   model_vertices: *SDL_GPUBuffer;
   model_indices: *SDL_GPUBuffer;
-  skeletons: [] ANIM_Skeleton;
+  skeletons: [] ASSET_Skeleton;
 };
 
 ASSET_MaterialIsNil :: (a: *ASSET_Material) -> bool

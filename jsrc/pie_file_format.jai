@@ -16,11 +16,11 @@ PIE_ListT :: struct($T: Type)
   using #as l: PIE_List;
 }
 
-PIE_TransformType :: enum u32
+PIE_AnimationChannelType :: enum u32
 {
-  ANIM_Translation;
-  ANIM_Rotation;
-  ANIM_Scale;
+  Translation;
+  Rotation;
+  Scale;
 };
 
 PIE_AnimationChannel :: struct
