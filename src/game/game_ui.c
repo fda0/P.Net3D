@@ -138,7 +138,7 @@ static void UI_RenderSlider(Clay_String label, UI_SliderConfig config)
             });
 
 
-      Clay_ElementId overlay_id = Clay__HashString(label, config.index, (U32)S8_Hash(0, S8Lit("RenderSliderOverlay")));
+      Clay_ElementId overlay_id = Clay__HashString(label, config.index, (U32)S8_Hash(S8Lit("RenderSliderOverlay")));
       CLAY({.id = overlay_id,
             .layout = {.sizing = {.width = CLAY_SIZING_GROW(),
                                   .height = CLAY_SIZING_GROW()},

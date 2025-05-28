@@ -21,7 +21,13 @@ static void ASSET_LoadPieFile(const char *pie_file_path)
   // Validate hash
   {
     S8 hashable = S8_Skip(PIE_File(), sizeof(pie->header->file_hash));
-    U64 calculated_hash = S8_Hash(PIE_MAGIC_HASH_SEED, hashable);
+
+    HashState hs = HashBegin();
+    U64 magic = PIE_MAGIC_HASH_SEED;
+    U64_HashAbsorb(&hs, &magic, sizeof(magic));
+    S8_HashAbsorb(&hs, hashable);
+    U64 calculated_hash = HashEnd(&hs);
+
     Assert(pie->header->file_hash == calculated_hash);
   }
   // Links

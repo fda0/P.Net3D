@@ -468,7 +468,7 @@ static void GPU_Deinit()
 
 static void GPU_UpdateWorldUniform(SDL_GPUCommandBuffer *cmd, WORLD_Uniform uniform)
 {
-  U64 uniform_hash = U64_Hash(sizeof(uniform), &uniform, sizeof(uniform));
+  U64 uniform_hash = U64_Hash(&uniform, sizeof(uniform));
   if (APP.gpu.bound_uniform_hash != uniform_hash)
   {
     APP.gpu.bound_uniform_hash = uniform_hash;
@@ -479,7 +479,7 @@ static void GPU_UpdateWorldUniform(SDL_GPUCommandBuffer *cmd, WORLD_Uniform unif
 
 static void GPU_UpdateUIUniform(SDL_GPUCommandBuffer *cmd, UI_Uniform uniform)
 {
-  U64 uniform_hash = U64_Hash(sizeof(uniform), &uniform, sizeof(uniform));
+  U64 uniform_hash = U64_Hash(&uniform, sizeof(uniform));
   if (APP.gpu.bound_uniform_hash != uniform_hash)
   {
     APP.gpu.bound_uniform_hash = uniform_hash;

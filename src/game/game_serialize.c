@@ -11,12 +11,13 @@ typedef struct
 
 static U64 SERIAL_CalculateHash(SERIAL_Item *items, U32 items_count)
 {
-  U64 hash = 0;
+  HashState hs = HashBegin();
   ForU32(i, items_count)
   {
     SERIAL_Item item = items[i];
-    hash = U64_Hash(hash, item.ptr, TYPE_GetSize(item.type));
+    U64_HashAbsorb(&hs, item.ptr, TYPE_GetSize(item.type));
   }
+  U64 hash = HashEnd(&hs);
   return hash;
 }
 

@@ -70,7 +70,7 @@ static void NET_RecalculatePacketHeader()
 {
   S8 payload = S8_Make(APP.net.packet_payload_buf, APP.net.payload_used);
   APP.net.packet_header.magic_value = NET_MAGIC_VALUE;
-  APP.net.packet_header.payload_hash = (U16)S8_Hash(0, payload);
+  APP.net.packet_header.payload_hash = (U16)S8_Hash(payload);
 }
 
 static S8 NET_GetPacketString()
@@ -516,7 +516,7 @@ static void NET_ReceivePacket(U16 player_id, S8 packet)
   }
 
   // validate hash
-  U64 hash64 = S8_Hash(0, packet);
+  U64 hash64 = S8_Hash(packet);
   U16 hash16 = (U16)hash64;
   if (hash16 != header.payload_hash)
   {

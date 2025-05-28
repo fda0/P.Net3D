@@ -6,8 +6,12 @@ static U64 FONT_TextHash(FONT_Type font, S8 text)
 {
   AssertBounds(font, APP.font.ttfs);
   float point_size = TTF_GetFontSize(APP.font.ttfs[font][0]);
-  U64 hash = U64_Hash(font, &point_size, sizeof(point_size));
-  hash = S8_Hash(hash, text);
+
+  HashState hs = HashBegin();
+  U64_HashAbsorb(&hs, &font, sizeof(font));
+  U64_HashAbsorb(&hs, &point_size, sizeof(point_size));
+  S8_HashAbsorb(&hs, text);
+  U64 hash = HashEnd(&hs);
   return hash;
 }
 

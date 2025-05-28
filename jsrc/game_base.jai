@@ -69,8 +69,14 @@ CeilPow2 :: (v: u32) -> u32
   return v;
 }
 
+IsInteger :: (T: Type) -> bool
+{
+  ti := cast(*Type_Info) T;
+  return ti.type == .INTEGER;
+}
+
 CalculateMipMapCount :: (width: $T, height: T) -> T // @todo test
-#modify { return (cast(*Type_Info) T).type == .INTEGER, "Argument is not of an integer type."; }
+#modify { return IsInteger(T), "Argument is not of an integer type."; }
 {
   max_dim := max(width, height);
   msb_plus_one := bit_scan_reverse(max_dim);

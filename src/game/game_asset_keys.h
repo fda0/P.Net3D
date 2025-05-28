@@ -1,8 +1,10 @@
 // MATERIAL
 static U64 MATERIAL_Hash(S8 name)
 {
-  U64 hash = S8_Hash(0, S8Lit("MATERIAL_KEY:"));
-  hash = S8_Hash(hash, name);
+  HashState hs = HashBegin();
+  S8_HashAbsorb(&hs, S8Lit("MATERIAL_KEY:"));
+  S8_HashAbsorb(&hs, name);
+  U64 hash = HashEnd(&hs);
   return hash;
 }
 static U64 MATERIAL_HashCstr(const char *name)
@@ -44,8 +46,10 @@ static bool MATERIAL_KeyIsZero(MATERIAL_Key a)
 // MODEL
 static U64 MODEL_Hash(S8 name)
 {
-  U64 hash = S8_Hash(0, S8Lit("MODEL_KEY:"));
-  hash = S8_Hash(hash, name);
+  HashState hs = HashBegin();
+  S8_HashAbsorb(&hs, S8Lit("MODEL_KEY:"));
+  S8_HashAbsorb(&hs, name);
+  U64 hash = HashEnd(&hs);
   return hash;
 }
 static U64 MODEL_HashCstr(const char *name)
