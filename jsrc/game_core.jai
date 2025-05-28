@@ -97,6 +97,7 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 #load "game_key.jai";
 #load "game_animation.jai";
 #load "game_asset.jai";
+#load "game_asset_loading.jai";
 #load "game_gpu.jai";
 #load "game_gpu_batch.jai";
 #load "game_render_world.jai";

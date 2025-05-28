@@ -120,7 +120,7 @@ PIE_Links :: struct
 {
   models: struct
   {
-    vertices:  PIE_ListT(WORLD_Vertex);
+    vertices: PIE_ListT(WORLD_Vertex);
     indices: PIE_ListT(u16);
     list: PIE_ListT(PIE_Model);
   };
