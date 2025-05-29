@@ -5,6 +5,7 @@
 #load "base_string.jai";
 #load "base_arena.jai";
 #load "base_hash.jai";
+#load "base_vector.jai";
 
 V2 :: Vector2;
 V3 :: Vector3;
@@ -21,34 +22,6 @@ Range :: struct ($T: Type)
 Kilobyte :: v => v * 1024;
 Megabyte :: v => v * 1024 * 1024;
 Gigabyte :: v => v * 1024 * 1024 * 1024;
-
-// Flat_Pool
-PoolAlloc :: (pool: *Flat_Pool, $T: Type, $init := false) -> *T
-{
-  data: *T = get(pool, size_of(T));
-  #if init  Initialize(data);
-  return data;
-}
-
-PoolAllocArray :: (pool: *Flat_Pool, $T: Type, count: s64, $init := false) -> [] T
-{
-  alloc_size := size_of(T)*count;
-  data: *T = get(pool, alloc_size);
-
-  #if init
-  {
-    ini :: initializer_of(T);
-    if ini
-      for 0..count-1  Initialize(*data[it]);
-    else
-      memclear(data, alloc_size);
-  }
-
-  array: [] T;
-  array.count = count;
-  array.data = data;
-  return array;
-}
 
 //
 memclear :: (dst: *void, count: s64)
@@ -106,8 +79,8 @@ offset_of :: ($T: Type, $member: string) -> int #expand
   return #run offset_of(type_info(T), member);
 }
 
-// 200iq align_of implementation from Judah
-align_of :: ($T: Type) -> int #expand {
+align_of :: ($T: Type) -> int #expand
+{
   return #run -> int {
     info := type_info(struct{ p: u8; t: T; });
     return info.members[1].offset_in_bytes.(int);

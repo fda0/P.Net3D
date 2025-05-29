@@ -6,6 +6,7 @@ GAME_State :: struct {
   // component states
   gpu: GPU_State;
   ast: ASSET_State;
+  font: FONT_State;
 
   // SDL, window stuff
   window: *SDL_Window;
@@ -27,6 +28,22 @@ GAME_State :: struct {
   world_mouse_valid: bool;
   world_mouse: V2;
   keys: [KEY_Code.COUNT] Key;
+
+  // sun
+  sun_dir: V3; // normalized
+  sun_camera_p: V3;
+  sun_camera_transform: Mat4;
+
+  // camera
+  camera_p: V3;
+  camera_angles: V3;
+  camera_fov_y: float;
+  camera_transform: Mat4;
+
+  debug: struct
+  {
+    sun_camera: bool;
+  };
 }
 G: GAME_State;
 
@@ -42,9 +59,37 @@ GAME_Init :: ()
   }
 }
 
-GAME_Iter :: ()
+GAME_Iterate :: ()
 {
+  // pre frame logic
+  {
+    G.frame_number += 1;
+    // @todo
+  }
 
+  // pre frame calls
+  if !G.headless
+  {
+    GPU_ProcessWindowResize(false);
+  }
+
+  // frame interate calls
+  GPU_Iterate();
+
+  // post frame calls
+  GPU_BATCH_PostFrame();
+
+  // post frame logic
+  reset_temporary_storage();
+
+  if G.headless
+  {
+    // Since we don't wait for v-sync in headless mode
+    // we will wait here to avoid using 100% of the CPU.
+    // This should be solved in a better way (waiting on network msg or something)
+    // once scheduling and multithreading is further along.
+    SDL_Delay(16);
+  }
 }
 
 GAME_ParseCommandLineArguments :: (args: [] string)
@@ -94,6 +139,7 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 
 // Includes and stuff
 #load "game_base.jai";
+#load "game_color.jai";
 #load "game_key.jai";
 #load "game_animation.jai";
 #load "game_asset.jai";
@@ -102,6 +148,7 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 #load "game_gpu_batch.jai";
 #load "game_render_world.jai";
 #load "game_render_ui.jai";
+#load "game_font.jai";
 #load "game_precompiled_shaders_tmp.jai";
 #load "game_pie_loader.jai";
 #load "pie_file_format.jai";

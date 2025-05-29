@@ -51,7 +51,7 @@ GPU_Batch :: struct
 
 GPU_BATCH_State :: struct
 {
-  pool: Flat_Pool; // for allocating GPU_TransferStorage, GPU_BufferStorage
+  arena: Arena; // for allocating GPU_TransferStorage, GPU_BufferStorage
 
   // these free list don't hold any GPU resources, just a way to reuse CPU memory
   free_transfers: *GPU_BATCH_Transfer;
@@ -123,10 +123,8 @@ GPU_BATCH_TransferCreate :: (batch: *GPU_Batch, size: u32) -> *GPU_BATCH_Transfe
   // Zero initialize it
   result := G.gpu.mem.free_transfers;
   {
-    if (result)
-      G.gpu.mem.free_transfers = G.gpu.mem.free_transfers.next;
-    else
-      result = PoolAlloc(*G.gpu.mem.pool, GPU_BATCH_Transfer);
+    if result  G.gpu.mem.free_transfers = G.gpu.mem.free_transfers.next;
+    else       result = New(GPU_BATCH_Transfer, initialized=false,, G.gpu.mem.arena);
     Initialize(result);
   }
 
@@ -188,10 +186,8 @@ GPU_BATCH_AllocBuffer :: (alloc_size: u32, usage: SDL_GPUBufferUsageFlags ) -> *
 {
   buffer := G.gpu.mem.free_buffers;
   {
-    if buffer
-      G.gpu.mem.free_buffers = G.gpu.mem.free_buffers.next;
-    else
-      buffer = PoolAlloc(*G.gpu.mem.pool, GPU_BATCH_Buffer);
+    if buffer  G.gpu.mem.free_buffers = G.gpu.mem.free_buffers.next;
+    else       buffer = New(GPU_BATCH_Buffer, initialized=false,, G.gpu.mem.arena);
     Initialize(buffer);
   }
 
@@ -302,7 +298,7 @@ GPU_BATCH_GetPosesBatch :: () -> *GPU_Batch
 
 GPU_BATCH_Init :: ()
 {
-  init(*G.gpu.mem.pool);
+  init(*G.gpu.mem.arena);
   // reserve poses batch
   G.gpu.mem.batches_count += 1;
   G.gpu.mem.batches[0].target.type = .Poses;

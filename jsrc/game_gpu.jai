@@ -40,8 +40,9 @@ GPU_State :: struct
     gpu_shape_buffer: *SDL_GPUBuffer;
     gpu_clip_buffer: *SDL_GPUBuffer;
 
+    // @todo move some of these things to game_render_ui.jai and use GPU_BATCH?
     indices: [1024 * 8] s32;
-    indices_count: s32;
+    indices_count: u32;
 
     shapes: [1024 * 2] UI_Shape;
     shapes_count: s32;
@@ -64,22 +65,22 @@ GPU_Init :: ()
   {
     G.gpu.clear_depth_props = SDL_CreateProperties();
     SDL_SetFloatProperty(G.gpu.clear_depth_props,
-                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_DEPTH_FLOAT,
-                         GPU_CLEAR_DEPTH_FLOAT);
+      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_DEPTH_FLOAT,
+      GPU_CLEAR_DEPTH_FLOAT);
 
     G.gpu.clear_color_props = SDL_CreateProperties();
     SDL_SetFloatProperty(G.gpu.clear_color_props,
-                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_R_FLOAT,
-                         GPU_CLEAR_COLOR_R);
+      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_R_FLOAT,
+      GPU_CLEAR_COLOR_R);
     SDL_SetFloatProperty(G.gpu.clear_color_props,
-                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_G_FLOAT,
-                         GPU_CLEAR_COLOR_G);
+      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_G_FLOAT,
+      GPU_CLEAR_COLOR_G);
     SDL_SetFloatProperty(G.gpu.clear_color_props,
-                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_B_FLOAT,
-                         GPU_CLEAR_COLOR_B);
+      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_B_FLOAT,
+      GPU_CLEAR_COLOR_B);
     SDL_SetFloatProperty(G.gpu.clear_color_props,
-                         SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_A_FLOAT,
-                         GPU_CLEAR_COLOR_A);
+      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_A_FLOAT,
+      GPU_CLEAR_COLOR_A);
   }
 
   // check for msaa 4 support
@@ -89,7 +90,7 @@ GPU_Init :: ()
     tex_format := SDL_GetGPUSwapchainTextureFormat(G.gpu.device, G.window);
     supports_msaa := SDL_GPUTextureSupportsSampleCount(G.gpu.device, tex_format, .SDL_GPU_SAMPLECOUNT_4);
     if (supports_msaa)
-      G.gpu.sample_count = .SDL_GPU_SAMPLECOUNT_4;
+    G.gpu.sample_count = .SDL_GPU_SAMPLECOUNT_4;
   }
 
   color_desc := SDL_GPUColorTargetDescription.{
@@ -227,7 +228,7 @@ GPU_Init :: ()
   }
 
   G.gpu.dummy_instance_buffer = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-                                                 xx Kilobyte(1), "Dummy instance storage buffer");
+    xx Kilobyte(1), "Dummy instance storage buffer");
 
   // Shadow map
   {
@@ -259,11 +260,11 @@ GPU_Init :: ()
   // UI buffers
   {
     G.gpu.ui.gpu_indices =
-      GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, size_of(type_of(G.gpu.ui.indices)), "UI Index Buffer");
+    GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, size_of(type_of(G.gpu.ui.indices)), "UI Index Buffer");
     G.gpu.ui.gpu_shape_buffer =
-      GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, size_of(type_of(G.gpu.ui.shapes)), "UI Shapes Storage Buffer");
+    GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, size_of(type_of(G.gpu.ui.shapes)), "UI Shapes Storage Buffer");
     G.gpu.ui.gpu_clip_buffer =
-      GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, size_of(type_of(G.gpu.ui.clips)), "UI Clips Storage Buffer");
+    GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, size_of(type_of(G.gpu.ui.clips)), "UI Clips Storage Buffer");
   }
 
   // UI pipeline
@@ -334,7 +335,7 @@ GPU_Init :: ()
   GPU_ProcessWindowResize(true);
 }
 
-GPU_Iter :: ()
+GPU_Iterate :: ()
 {
   GPU_RenderWorld :: (cmd: *SDL_GPUCommandBuffer, pass: *SDL_GPURenderPass, is_depth_prepass: bool)
   {
@@ -352,7 +353,7 @@ GPU_Iter :: ()
 
     // Bind dummy buffers
     {
-       storage_bufs := *SDL_GPUBuffer.[
+      storage_bufs := *SDL_GPUBuffer.[
         G.gpu.dummy_instance_buffer,
         GPU_BATCH_GetPosesBatch().buffer.handle,
       ];
@@ -428,8 +429,8 @@ GPU_Iter :: ()
         // Uniforms
         WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material);
         G.gpu.world_uniform.flags |= .UseInstanceBuffer;
-        if (model.is_skinned) G.gpu.world_uniform.flags |= .DoMeshSkinning;
-        if (MODEL_MatchKey(model.key, MODEL_CreateKey("Tree")))
+        if model.is_skinned  G.gpu.world_uniform.flags |= .DoMeshSkinning;
+        if MODEL_MatchKey(model.key, MODEL_CreateKey("Tree"))
         {
           //G.gpu.world_uniform.flags |= .LessShadows;
         }
@@ -451,7 +452,171 @@ GPU_Iter :: ()
     }
   }
 
-  // @todo
+  cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
+  swapchain_tex: *SDL_GPUTexture;
+  draw_width, draw_height: u32;
+  SDL_WaitAndAcquireGPUSwapchainTexture(cmd, G.window, *swapchain_tex, *draw_width, *draw_height);
+
+  if !swapchain_tex
+  {
+    SDL_CancelGPUCommandBuffer(cmd);
+    return;
+  }
+
+  GPU_BATCH_UploadAllBatches(cmd);
+
+  depth_target := SDL_GPUDepthStencilTargetInfo.{
+    clear_depth = GPU_CLEAR_DEPTH_FLOAT,
+    load_op = .SDL_GPU_LOADOP_CLEAR,
+    store_op = .SDL_GPU_STOREOP_DONT_CARE,
+    stencil_load_op = .SDL_GPU_LOADOP_DONT_CARE,
+    stencil_store_op = .SDL_GPU_STOREOP_DONT_CARE,
+    cycle = true,
+  };
+
+  G.gpu.world_uniform = WORLD_Uniform.{
+    camera_transform = G.sun_camera_transform,
+    shadow_transform = G.sun_camera_transform,
+    camera_position = G.camera_p,
+    sun_dir = G.sun_dir,
+
+    fog_color = Color32_RGBf(GPU_CLEAR_COLOR_R, GPU_CLEAR_COLOR_G, GPU_CLEAR_COLOR_B),
+    sky_ambient  = Color32_RGBf(0.50, 0.45, 0.40),
+    sun_diffuse  = Color32_RGBf(1.00, 0.95, 0.90),
+    sun_specular = Color32_RGBf(1.00, 0.90, 0.85),
+  };
+
+  // Sun shadow map render pass
+  {
+    depth_target.texture = G.gpu.shadow_tex;
+    pass := SDL_BeginGPURenderPass(cmd, null, 0, *depth_target);
+    GPU_RenderWorld(cmd, pass, true);
+    SDL_EndGPURenderPass(pass);
+  }
+
+  // World render pass
+  {
+    G.gpu.world_uniform.camera_transform = G.camera_transform;
+    if G.debug.sun_camera
+    {
+      G.gpu.world_uniform.camera_transform = G.sun_camera_transform;
+      G.gpu.world_uniform.camera_position = G.sun_camera_p;
+    }
+
+    depth_target.texture = G.gpu.tex_depth;
+
+    color_target := SDL_GPUColorTargetInfo.{
+      clear_color = .{
+        r = GPU_CLEAR_COLOR_R,
+        g = GPU_CLEAR_COLOR_G,
+        b = GPU_CLEAR_COLOR_B,
+        a = GPU_CLEAR_COLOR_A,
+      },
+      load_op = .SDL_GPU_LOADOP_CLEAR,
+    };
+
+    if G.gpu.tex_msaa
+    {
+      color_target.store_op = .SDL_GPU_STOREOP_RESOLVE;
+      color_target.texture = G.gpu.tex_msaa;
+      color_target.resolve_texture = G.gpu.tex_resolve;
+      color_target.cycle = true;
+      color_target.cycle_resolve_texture = true;
+    }
+    else
+    {
+      color_target.load_op = .SDL_GPU_LOADOP_CLEAR;
+      color_target.store_op = .SDL_GPU_STOREOP_STORE;
+      color_target.texture = swapchain_tex;
+    }
+
+    pass := SDL_BeginGPURenderPass(cmd, *color_target, 1, *depth_target);
+    GPU_RenderWorld(cmd, pass, false);
+    SDL_EndGPURenderPass(pass);
+  }
+
+  if G.gpu.sample_count > .SDL_GPU_SAMPLECOUNT_1
+  {
+    blit := SDL_GPUBlitInfo.{
+      source = .{
+        texture = G.gpu.tex_resolve,
+        w = xx G.window_dim.x,
+        h = xx G.window_dim.y,
+      },
+      destination = .{
+        texture = swapchain_tex,
+        w = draw_width,
+        h = draw_height,
+      },
+      load_op = .SDL_GPU_LOADOP_DONT_CARE,
+      filter = .SDL_GPU_FILTER_LINEAR,
+    };
+    SDL_BlitGPUTexture(cmd, *blit);
+  }
+
+  // UI render pass
+  if G.gpu.ui.indices_count
+  {
+    // Upload uniform
+    uniform := UI_Uniform.{
+      window_dim = G.window_dim,
+      texture_dim = V2.{xx G.font.texture_dim, xx G.font.texture_dim},
+    };
+    GPU_UpdateUIUniform(cmd, uniform);
+
+    // Upload buffers to GPU
+    {
+      transfer_size := size_of(type_of(G.gpu.ui.indices[0])) * G.gpu.ui.indices_count;
+      GPU_TransferBuffer(G.gpu.ui.gpu_indices, *G.gpu.ui.indices[0], xx transfer_size);
+    }
+    if (G.gpu.ui.shapes_count)
+    {
+      transfer_size := size_of(type_of(G.gpu.ui.shapes[0])) * G.gpu.ui.shapes_count;
+      GPU_TransferBuffer(G.gpu.ui.gpu_shape_buffer, *G.gpu.ui.shapes[0], xx transfer_size);
+    }
+    if (G.gpu.ui.clips_count)
+    {
+      transfer_size := size_of(type_of(G.gpu.ui.clips[0])) * G.gpu.ui.clips_count;
+      GPU_TransferBuffer(G.gpu.ui.gpu_clip_buffer, *G.gpu.ui.clips[0], xx transfer_size);
+    }
+
+    // Start pass
+    color_target := SDL_GPUColorTargetInfo.{
+      load_op = .SDL_GPU_LOADOP_LOAD,
+      store_op = .SDL_GPU_STOREOP_STORE,
+      texture = swapchain_tex,
+    };
+    pass := SDL_BeginGPURenderPass(cmd, *color_target, 1, null);
+
+    // Bind texture & sampler
+    sampler_binding := SDL_GPUTextureSamplerBinding.{
+      texture = G.gpu.ui.gpu_atlas_texture,
+      sampler = G.gpu.ui.gpu_atlas_sampler,
+    };
+    SDL_BindGPUFragmentSamplers(pass, 0, *sampler_binding, 1);
+
+    // Bind pipeline
+    SDL_BindGPUGraphicsPipeline(pass, G.gpu.ui_pipeline);
+
+    // Bind storage buffers
+    storage_bufs := *SDL_GPUBuffer.[
+      G.gpu.ui.gpu_shape_buffer,
+      G.gpu.ui.gpu_clip_buffer,
+    ];
+    SDL_BindGPUVertexStorageBuffers(pass, 0, *storage_bufs[0], storage_bufs.count);
+
+    // Bind index buffer
+    binding_ind := SDL_GPUBufferBinding.{buffer = G.gpu.ui.gpu_indices};
+    SDL_BindGPUIndexBuffer(pass, *binding_ind, .SDL_GPU_INDEXELEMENTSIZE_32BIT);
+
+    // Draw
+    SDL_DrawGPUIndexedPrimitives(pass, G.gpu.ui.indices_count, 1, 0, 0, 0);
+
+    // End pass
+    SDL_EndGPURenderPass(pass);
+  }
+
+  SDL_SubmitGPUCommandBuffer(cmd);
 }
 
 
@@ -477,7 +642,7 @@ GPU_CreateBuffer :: (usage: SDL_GPUBufferUsageFlags, size: u32, name: string) ->
   result := SDL_CreateGPUBuffer(G.gpu.device, *desc);
   assert(!!result);
   if (name.count)
-    SDL_SetGPUBufferName(G.gpu.device, result, temp_c_string(name));
+  SDL_SetGPUBufferName(G.gpu.device, result, temp_c_string(name));
   return result;
 }
 
@@ -509,7 +674,7 @@ GPU_CreateDepthTexture :: (width: u32, height: u32, used_in_sampler: bool) -> *S
 GPU_CreateMSAATexture :: (width: u32, height: u32) -> *SDL_GPUTexture
 {
   if (G.gpu.sample_count == .SDL_GPU_SAMPLECOUNT_1)
-    return null;
+  return null;
 
   info := SDL_GPUTextureCreateInfo.{
     type = .SDL_GPU_TEXTURETYPE_2D,
@@ -531,7 +696,7 @@ GPU_CreateMSAATexture :: (width: u32, height: u32) -> *SDL_GPUTexture
 GPU_CreateResolveTexture :: (width: u32, height: u32) -> *SDL_GPUTexture
 {
   if (G.gpu.sample_count == .SDL_GPU_SAMPLECOUNT_1)
-    return null;
+  return null;
 
   info := SDL_GPUTextureCreateInfo.{
     type = .SDL_GPU_TEXTURETYPE_2D,

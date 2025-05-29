@@ -1,7 +1,7 @@
 main :: ()
 {
   PLATFORM_Init();
-  PLATFORM_Iter();
+  PLATFORM_Iterate();
   PLATFORM_Deinit();
 }
 
@@ -70,7 +70,7 @@ PLATFORM_Init :: ()
   }
 }
 
-PLATFORM_Iter :: ()
+PLATFORM_Iterate :: ()
 {
   while !G.in_shutdown
   {
@@ -114,7 +114,7 @@ PLATFORM_Iter :: ()
         KEY_Update(xx it, key_states[it]);
     }
 
-    // GAME_Iterate();
+    GAME_Iterate();
 
     // Poll input cleanup
     {

@@ -49,12 +49,12 @@ static void GAME_Iterate()
     APP.at = FWrap(0.f, 1000.f, APP.at + APP.dt);
   }
 
-  GPU_ProcessWindowResize(false);
-  FONT_ProcessWindowResize(false);
-  UI_ProcessWindowAndFontResize();
-
   if (!APP.headless)
   {
+    GPU_ProcessWindowResize(false);
+    FONT_ProcessWindowResize(false);
+    UI_ProcessWindowAndFontResize();
+
     UI_StartFrame();
     UI_BuildUILayoutElements();
   }
