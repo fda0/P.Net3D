@@ -36,9 +36,9 @@ PIE_LOAD_OffsetSizeToArray :: (offset: s64, size: s64, $T: Type) -> [] T
   PIE_LOAD_Check(size > 0, tprint("Size (%) has to be > 0", size));
 
   T_align := align_of(T);
+  T_size := size_of(T);
   PIE_LOAD_Check(offset % T_align == 0, tprint("Offset (%) is unaligned for type % (align=%).", offset, T, T_align));
 
-  T_size := size_of(T);
   count := size / T_size;
   PIE_LOAD_Check(size % T_size == 0, tprint("Size (%) isn't divisible by size of type % (size=%).", size, T_size, T));
 

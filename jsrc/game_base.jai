@@ -106,7 +106,7 @@ offset_of :: ($T: Type, $member: string) -> int #expand
   return #run offset_of(type_info(T), member);
 }
 
-// align_of implementation by shwa
+// align_of implementation by shwa with a bugfix by me
 align_of :: (ti: *Type_Info) -> int
 {
   if ti.type == {
@@ -121,7 +121,10 @@ align_of :: (ti: *Type_Info) -> int
       dti := cast(*Type_Info_Struct)ti;
       m: int;
       for member: dti.members
-      m = max(m, align_of(member.type));
+      {
+        if !(member.flags & .CONSTANT)
+          m = max(m, align_of(member.type));
+      }
       return m;
     }
     case .ARRAY;
