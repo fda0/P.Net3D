@@ -106,48 +106,10 @@ offset_of :: ($T: Type, $member: string) -> int #expand
   return #run offset_of(type_info(T), member);
 }
 
-// align_of implementation by shwa with a bugfix by me
-align_of :: (ti: *Type_Info) -> int
-{
-  if ti.type == {
-    case .INTEGER;       return ti.runtime_size;
-    case .FLOAT;         return ti.runtime_size;
-    case .BOOL;          return ti.runtime_size;
-    case .STRING;        return 8;
-    case .POINTER;       return 8;
-    case .PROCEDURE;     return 8;
-    case .STRUCT;
-    {
-      dti := cast(*Type_Info_Struct)ti;
-      m: int;
-      for member: dti.members
-      {
-        if !(member.flags & .CONSTANT)
-          m = max(m, align_of(member.type));
-      }
-      return m;
-    }
-    case .ARRAY;
-    {
-      dti := cast(*Type_Info_Array)ti;
-      if dti.array_type ==
-      {
-        case .FIXED;     return align_of(dti.element_type);
-        case .VIEW;      return 8;
-        case .RESIZABLE; return 8;
-        case; assert(false);
-      }
-    }
-    case .ANY;           return 8;
-    case .ENUM;          return ti.runtime_size;
-    case .TYPE;          return ti.runtime_size;
-    case .VARIANT;       return align_of((cast(*Type_Info_Variant)ti).variant_of);
-    case; assert(false, "%", ti.type);
-  }
-  assert(false, "Unhandled align_of case - %", ti.*);
-  return -1;
-}
-align_of :: ($T: Type) -> int #expand
-{
-  return #run align_of(type_info(T));
+// 200iq align_of implementation from Judah
+align_of :: ($T: Type) -> int #expand {
+  return #run -> int {
+    info := type_info(struct{ p: u8; t: T; });
+    return info.members[1].offset_in_bytes.(int);
+  };
 }
