@@ -41,3 +41,8 @@ FONT_State :: struct
   layers: [FONT_ATLAS_LAYERS] FONT_Layer;
   active_layer: u32;
 };
+
+FONT_Init :: ()
+{
+  // @todo
+}

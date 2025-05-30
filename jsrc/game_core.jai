@@ -1,12 +1,17 @@
+G: GAME_State; // Global GAME_State variable
+
 GAME_State :: struct {
   // core game state
   in_shutdown: bool;
   frame_number: u64;
+  timestamp: u64;
+  tick_number: u64 = NET_CLIENT_MAX_SNAPSHOTS;
 
   // component states
   gpu: GPU_State;
   ast: ASSET_State;
   font: FONT_State;
+  obj: OBJ_State;
 
   // SDL, window stuff
   window: *SDL_Window;
@@ -45,18 +50,26 @@ GAME_State :: struct {
     sun_camera: bool;
   };
 }
-G: GAME_State;
 
 GAME_Init :: ()
 {
   G.frame_number = 1024;
+  G.timestamp = SDL_GetTicks();
+  G.camera_fov_y = 0.111;
+  G.camera_p = V3.{-4, 0, 1};
+  G.camera_angles = V3.{0, 0, 0};
 
   if !G.headless
   {
     GPU_Init();
     GPU_BATCH_Init();
     ASSET_Init();
+    FONT_Init();
   }
+
+  NET_Init();
+
+  OBJ_Init();
 }
 
 GAME_Iterate :: ()
@@ -144,6 +157,10 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 #load "game_animation.jai";
 #load "game_asset.jai";
 #load "game_asset_loading.jai";
+#load "game_object.jai";
+#load "game_object_collider.jai";
+#load "game_network.jai";
+#load "game_tick.jai";
 #load "game_gpu.jai";
 #load "game_gpu_batch.jai";
 #load "game_render_world.jai";

@@ -1,3 +1,24 @@
+ASSET_State :: struct
+{
+  pie: ASSET_PieFile;
+  arena: Arena;
+
+  // Materials
+  nil_material: ASSET_Material;
+  materials: [] ASSET_Material;
+
+  // Texture loading thread
+  tex_load_needed: bool;
+  tex_sem: *SDL_Semaphore;
+
+  // Models
+  nil_model: ASSET_Model;
+  models: [] ASSET_Model;
+  model_vertices: *SDL_GPUBuffer;
+  model_indices: *SDL_GPUBuffer;
+  skeletons: [] ASSET_Skeleton;
+};
+
 ASSET_Type :: enum
 {
   Material;
@@ -128,27 +149,6 @@ ASSET_PieFile :: struct
   links: *PIE_Links;
   models: [] PIE_Model;
   materials: [] PIE_Material;
-};
-
-ASSET_State :: struct
-{
-  pie: ASSET_PieFile;
-  arena: Arena;
-
-  // Materials
-  nil_material: ASSET_Material;
-  materials: [] ASSET_Material;
-
-  // Texture loading thread
-  tex_load_needed: bool;
-  tex_sem: *SDL_Semaphore;
-
-  // Models
-  nil_model: ASSET_Model;
-  models: [] ASSET_Model;
-  model_vertices: *SDL_GPUBuffer;
-  model_indices: *SDL_GPUBuffer;
-  skeletons: [] ASSET_Skeleton;
 };
 
 ASSET_MaterialIsNil :: (a: *ASSET_Material) -> bool
