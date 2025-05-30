@@ -3,15 +3,18 @@ G: GAME_State; // Global GAME_State variable
 GAME_State :: struct {
   // core game state
   in_shutdown: bool;
-  frame_number: u64;
+  frame_number: u64 = 1024;
   timestamp: u64;
   tick_number: u64 = NET_CLIENT_MAX_SNAPSHOTS;
+  dt: float = 1.0 / 60.0; // frame delta time
+  at: float; // animation time
 
   // component states
   gpu: GPU_State;
   ast: ASSET_State;
   font: FONT_State;
   obj: OBJ_State;
+  client: CLIENT_State;
 
   // SDL, window stuff
   window: *SDL_Window;
@@ -40,24 +43,23 @@ GAME_State :: struct {
   sun_camera_transform: Mat4;
 
   // camera
-  camera_p: V3;
+  camera_p: V3 = .{-4, 0, 1};
   camera_angles: V3;
-  camera_fov_y: float;
+  camera_fov_y: float = 0.111;
   camera_transform: Mat4;
 
   debug: struct
   {
     sun_camera: bool;
+    noclip_camera: bool;
+    click_id: u64; // old UI thing, delete?
+    show_debug_window: bool;
   };
 }
 
 GAME_Init :: ()
 {
-  G.frame_number = 1024;
   G.timestamp = SDL_GetTicks();
-  G.camera_fov_y = 0.111;
-  G.camera_p = V3.{-4, 0, 1};
-  G.camera_angles = V3.{0, 0, 0};
 
   if !G.headless
   {
@@ -68,7 +70,6 @@ GAME_Init :: ()
   }
 
   NET_Init();
-
   OBJ_Init();
 }
 
@@ -86,13 +87,157 @@ GAME_Iterate :: ()
     GPU_ProcessWindowResize(false);
   }
 
-  // frame interate calls
-  GPU_Iterate();
+  if !G.headless
+  {
+    if (KEY_Pressed(.SDL_SCANCODE_GRAVE))
+    G.debug.show_debug_window = !G.debug.show_debug_window;
 
-  // post frame calls
-  GPU_BATCH_PostFrame();
+    if (KEY_Pressed(.SDL_SCANCODE_RETURN))
+    G.debug.noclip_camera = !G.debug.noclip_camera;
 
-  // post frame logic
+    if (KEY_Pressed(.SDL_SCANCODE_BACKSPACE))
+    G.debug.sun_camera = !G.debug.sun_camera;
+
+    // move camera; calculate camera scale
+    if (G.debug.noclip_camera)
+    {
+      if (KEY_Held(.MouseLeft) && !G.debug.click_id)
+      {
+        rot_speed := 0.0004;
+        G.camera_angles.z += rot_speed * G.mouse_delta.x;
+        G.camera_angles.y += rot_speed * G.mouse_delta.y * (-2.0 / 3.0);
+        G.camera_angles.z = WrapFloat(-0.5, 0.5, G.camera_angles.z);
+        G.camera_angles.y = clamp(-0.2, 0.2, G.camera_angles.y);
+      }
+
+      move_dir: V3;
+      if (KEY_Held(.SDL_SCANCODE_W)) move_dir.x += 1;
+      if (KEY_Held(.SDL_SCANCODE_S)) move_dir.x -= 1;
+      if (KEY_Held(.SDL_SCANCODE_A)) move_dir.y += 1;
+      if (KEY_Held(.SDL_SCANCODE_D)) move_dir.y -= 1;
+      if (KEY_Held(.SDL_SCANCODE_SPACE)) move_dir.z += 1;
+      if (KEY_Held(.SDL_SCANCODE_LSHIFT) || KEY_Held(.SDL_SCANCODE_RSHIFT)) move_dir.z -= 1;
+      move_dir = normalize(move_dir);
+      move_dir = Math.rotate(move_dir, RotationAroundAxis(-ToVec(.Z)/* @todo why negation fixes things? */, G.camera_angles.z));
+      G.camera_p += move_dir * 4.0;
+    }
+    else
+    {
+      player := OBJ_Get(G.client.player_key, .NETWORK);
+      if (!OBJ_IsNil(player))
+      {
+        G.camera_p = player.s.p;
+        G.camera_p.z += 12.5;
+        G.camera_p.x -= 9.8;
+        G.camera_angles = V3.{0, -0.138, 0};
+      }
+    }
+
+    // Sun things
+    {
+      // Move sun
+      sun_time := G.at*4.0;
+      sun_time = 6.0;
+
+      sun_x := Sin(0.5 + sun_time * 0.03);
+      sun_y := Cos(0.5 + sun_time * 0.03);
+      towards_sun_dir := normalize(V3.{sun_x, sun_y, 2.0});
+      G.sun_dir = -towards_sun_dir;
+
+      sun_dist := towards_sun_dir * 40.0;
+      sun_obj_p := G.camera_p * sun_dist;
+      OBJ_Get(G.obj.sun, .OFFLINE).s.p = sun_obj_p;
+
+      // Camera to sun
+      G.sun_camera_p = OBJ_GetAny(G.obj.sun).s.p;
+      transl := TranslationMatrix(-G.sun_camera_p);
+
+      dim := 20.0;
+      projection := OrthographicMatrix(-dim, dim, -dim, dim, 30.0, 100.0);
+      rot := RotationMatrix(RotationFromPair(G.sun_dir, ToVec(.X)));
+      G.sun_camera_transform = projection * (rot * transl);
+    }
+
+    // calculate camera transform matrices
+    {
+      transl := TranslationMatrix(-G.camera_p);
+      rot := RotationMatrixAroundAxis(ToVec(.X), G.camera_angles.x);
+      rot = RotationMatrixAroundAxis(ToVec(.Y), G.camera_angles.z) * rot;
+      rot = RotationMatrixAroundAxis(ToVec(.Z), G.camera_angles.y) * rot;
+      aspect := G.window_dim.x / G.window_dim.y;
+      projection := PerspectiveMatrix(G.camera_fov_y, aspect, 0.25, 25.0);
+      G.camera_transform = projection * (rot * transl);
+    }
+
+    // calculate mouse in screen space -> mouse in world space (at Z == 0)
+    {
+      view_mouse := V2.{
+        (G.mouse.x / G.window_dim.x) *  2.0 - 1.0,
+        (G.mouse.y / G.window_dim.y) * -2.0 + 1.0,
+      };
+
+      plane_origin: V3;
+      plane_normal := V3.{0,0,1};
+
+      aspect := G.window_dim.x / G.window_dim.y;
+      tan := Tan(G.camera_fov_y * 0.5);
+      aspect *= aspect;
+      tan    *= tan;
+
+      x := tan * view_mouse.x * aspect;
+      y := tan * view_mouse.y;
+      aim_dir := V3.{
+        x * G.camera_transform.coef[0][0] + y * G.camera_transform.coef[0][1] + G.camera_transform.coef[0][2],
+        x * G.camera_transform.coef[1][0] + y * G.camera_transform.coef[1][1] + G.camera_transform.coef[1][2],
+        x * G.camera_transform.coef[2][0] + y * G.camera_transform.coef[2][1] + G.camera_transform.coef[2][2],
+      };
+
+      t_numerator := dot(plane_origin - G.camera_p, plane_normal);
+      t_denominator := dot(aim_dir, plane_normal);
+
+      G.world_mouse_valid = t_denominator < 0.0;
+      if G.world_mouse_valid
+      {
+        t := t_numerator / t_denominator;
+        world_off := aim_dir * t;
+        world_mouse := G.camera_p + world_off;
+        G.world_mouse = world_mouse.xy;
+      }
+    }
+
+    ANIM_AnimateObjects();
+
+    marker := OBJ_Get(G.obj.pathing_marker, .OFFLINE);
+    if (!OBJ_IsNil(marker))
+    {
+      if (!G.debug.noclip_camera && KEY_Held(.W, .S, .A, .D))
+        marker.s.p.z = -2.0;
+
+      if (KEY_Held(.MouseRight) && G.world_mouse_valid)
+      {
+        marker.s.flags |= .DRAW_MODEL;
+        marker.s.model = MODEL_CreateKey("Flag");
+        marker.s.p = V3.{xy=G.world_mouse};
+
+        marker.l.animated_p.x = marker.s.p.x;
+        marker.l.animated_p.y = marker.s.p.y;
+        if KEY_Pressed(.MouseRight)
+          marker.l.animated_p.z = 0.5;
+
+        G.obj.pathing_marker_set = true;
+      }
+    }
+
+    WORLD_DrawObjects();
+    GPU_Iterate();
+
+    // Post frame calls
+    GPU_BATCH_PostFrame();
+    // UI_PostFrame();
+    // ASSET_PostFrame();
+  }
+
+  // Post frame logic
   reset_temporary_storage();
 
   if G.headless
@@ -160,6 +305,7 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 #load "game_object.jai";
 #load "game_object_collider.jai";
 #load "game_network.jai";
+#load "game_client.jai";
 #load "game_tick.jai";
 #load "game_gpu.jai";
 #load "game_gpu_batch.jai";

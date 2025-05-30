@@ -7,12 +7,6 @@
 #load "base_vector.jai";
 #load "base_math.jai";
 
-V2 :: Vector2;
-V3 :: Vector3;
-V4 :: Vector4;
-Quat :: #type,distinct Vector4;
-Mat4 :: Matrix4;
-
 // Range
 Range :: struct ($T: Type)
 {
@@ -27,19 +21,6 @@ Gigabyte :: v => v * 1024 * 1024 * 1024;
 memclear :: (dst: *void, count: s64)
 {
   memset(dst, 0, count);
-}
-
-CeilPow2 :: (v: u32) -> u32
-{
-  if (!v) return 0;
-  v -= 1;
-  v |= v >> 1;
-  v |= v >> 2;
-  v |= v >> 4;
-  v |= v >> 8;
-  v |= v >> 16;
-  v += 1;
-  return v;
 }
 
 IsInteger :: (T: Type) -> bool

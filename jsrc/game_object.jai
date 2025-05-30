@@ -1,6 +1,6 @@
 OBJ_MAX_NETWORK_OBJECTS :: 24;
 OBJ_MAX_OFFLINE_OBJECTS :: 512;
-OBJ_MAX_ALL_OBJECTS :: (OBJ_MAX_NETWORK_OBJECTS + OBJ_MAX_OFFLINE_OBJECTS);
+OBJ_MAX_ALL_OBJECTS :: OBJ_MAX_NETWORK_OBJECTS + OBJ_MAX_OFFLINE_OBJECTS;
 OBJ_MAX_ANIMATIONS :: 4;
 OBJ_MAX_COLLIDER_VERTS :: 4;
 OBJ_NIL :: Object.{};
@@ -17,6 +17,7 @@ OBJ_State :: struct
   // special objects
   sun: OBJ_Key;
   pathing_marker: OBJ_Key;
+  pathing_marker_set: bool;
 };
 
 OBJ_Flags :: enum_flags u32
@@ -349,7 +350,7 @@ OBJ_CreatePlayer :: (model: MODEL_Key) -> *Object
 
     obj.s.model = model;
     obj.s.color = Color32_Grayf(1);
-    obj.s.rotation = RotationAroundAxis(.Z, -0.5);
+    obj.s.rotation = RotationAroundAxis(ToVec(.Z), -0.5);
   }
   return obj;
 }

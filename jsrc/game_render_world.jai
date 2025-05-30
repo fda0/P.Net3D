@@ -48,3 +48,8 @@ WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Mater
 {
   assert(false, "@impl");
 }
+
+WORLD_DrawObjects :: ()
+{
+  // @impl
+}

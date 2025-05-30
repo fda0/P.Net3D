@@ -1,0 +1,4 @@
+ANIM_AnimateObjects :: ()
+{
+  // @todo
+}
