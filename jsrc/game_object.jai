@@ -52,7 +52,7 @@ OBJ_Sync :: struct
 {
   // Object data that's synced with the server
   key: OBJ_Key;
-  flags: u32;
+  flags: OBJ_Flags;
   init: bool;
   p: V3; // XY center, Z at bottom
   desired_dp: V3; // move that Object wanted to make
@@ -117,9 +117,9 @@ OBJ_Init :: ()
   }
 
   {
-    thickness = 0.2;
-    length = 8.;
-    off = length*0.5 - thickness*0.5;
+    thickness := 0.2;
+    length := 8.0;
+    off := length*0.5 - thickness*0.5;
     OBJ_CreateWall(V2.{ off, 0}, V2.{thickness, length}, 0.8);
     OBJ_CreateWall(V2.{-off, 0}, V2.{thickness, length}, 2.);
     OBJ_CreateWall(V2.{0,  off}, V2.{length, thickness}, 1.6);
@@ -127,13 +127,13 @@ OBJ_Init :: ()
 
     {
       rotated_wall := OBJ_CreateWall(V2.{0.75*off, -0.5*off}, V2.{thickness, 5.*thickness}, 1);
-      OBJ_RotateColliderVertices(*rotated_wall.s.collider_vertices, 0.1);
+      OBJ_RotateCollider(*rotated_wall.s.collider_vertices, 0.1);
     }
 
     {
-      flying_cube := OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision);
+      flying_cube := OBJ_Create(.OFFLINE, .DRAW_COLLISION);
       flying_cube.s.p = V3.{0.5, 1.2, 1.};
-      flying_cube.s.material = MATERIAL_CreateKey(S8Lit("tex.Tiles101"));
+      flying_cube.s.material = MATERIAL_CreateKey("tex.Tiles101");
       flying_cube.s.texture_texels_per_m = 1.;
       flying_cube.s.height = 0.3;
       flying_cube.s.collider_vertices = OBJ_GetColliderFromRect2D(V2.{1., 1.});
@@ -151,8 +151,8 @@ OBJ_Init :: ()
         x := ifx wall <= 1 then i else (ifx wall == 2 then 0 else len);
         y := ifx wall >= 2 then i else (ifx wall == 0 then 0 else len);
 
-        block := OBJ_Create(OBJ_Offline, ObjFlag_DrawCollision|ObjFlag_Collide);
-        if !OBJ_IsNill(block)
+        block := OBJ_Create(.OFFLINE, .DRAW_COLLISION|.COLLIDE);
+        if !OBJ_IsNil(block)
         {
           block.s.p = V3.{d*x - len*0.5*d, d*y - len*0.5*d, 0};
           OBJ_SetColliderFromCube(block, V3.{d,d,d});
@@ -174,7 +174,7 @@ OBJ_Init :: ()
         x_half_count := x_count/2;
         y_half_count := y_count/2;
 
-        pos = V3.{};
+        pos: V3;
         if ((x^y)&1) pos.x = 4.70;
         else         pos.y = 6.90;
 
@@ -184,11 +184,11 @@ OBJ_Init :: ()
         pos.x *= ifx x < x_half_count then -1 else 1;
         pos.y *= ifx y < y_half_count then -1 else 1;
 
-        tree := OBJ_Create(OBJ_Offline, ObjFlag_DrawModel);
+        tree := OBJ_Create(.OFFLINE, .DRAW_MODEL);
         if !OBJ_IsNil(tree)
         {
           tree.s.p = pos;
-          tree.s.model = MODEL_CreateKey(S8Lit("Tree"));
+          tree.s.model = MODEL_CreateKey("Tree");
         }
       }
     }
@@ -252,11 +252,11 @@ OBJ_HasData :: (obj: Object) -> bool
   return !!obj.s.flags;
 }
 
-OBJ_HasAnyFlag :: (obj: Object, flag: u32) -> bool
+OBJ_HasAnyFlag :: (obj: Object, flag: OBJ_Flags) -> bool
 {
   return !!(obj.s.flags & flag);
 }
-OBJ_HasAllFlags :: (obj: Object, flags: u32) -> bool
+OBJ_HasAllFlags :: (obj: Object, flags: OBJ_Flags) -> bool
 {
   return (obj.s.flags & flags) == flags;
 }
@@ -277,11 +277,11 @@ OBJ_Create :: (storage: OBJ_Storage, flags: OBJ_Flags) -> *Object
   if storage & .OFFLINE
   {
     matched_storages += 1;
-    for G.obj.offline_objects
+    for *G.obj.offline_objects
     {
       if !OBJ_SyncIsInit(it.s)
       {
-        obj = search;
+        obj = it;
         break;
       }
     }
@@ -289,11 +289,11 @@ OBJ_Create :: (storage: OBJ_Storage, flags: OBJ_Flags) -> *Object
   if storage & .NETWORK
   {
     matched_storages += 1;
-    for G.obj.network_objects
+    for *G.obj.network_objects
     {
       if !OBJ_SyncIsInit(it.s)
       {
-        obj = search;
+        obj = it;
         break;
       }
     }
@@ -313,7 +313,7 @@ OBJ_Create :: (storage: OBJ_Storage, flags: OBJ_Flags) -> *Object
 
   obj.s.key.serial_number = G.obj.serial_counter;
   G.obj.serial_counter = max(G.obj.serial_counter + 1, 1);
-  obj.s.key.index = cast(u32)((cast(u64)obj - cast(u64)APP.all_objects) / size_of(Object));
+  obj.s.key.index = cast(u32)((cast(u64)obj - cast(u64)*G.obj.all_objects[0]) / size_of(Object));
 
   obj.s.flags = flags;
   obj.s.init = true;
@@ -326,7 +326,7 @@ OBJ_CreateWall :: (p: V2, dim: V2, height: float) -> *Object
   obj := OBJ_Create(.OFFLINE, .DRAW_COLLISION|.COLLIDE);
   if !OBJ_IsNil(obj)
   {
-    obj.s.p = V3_From_XY_Z(p, 0);
+    obj.s.p = V3.{xy = p};
     obj.s.collider_vertices = OBJ_GetColliderFromRect2D(dim);
     obj.s.material = MATERIAL_CreateKey("tex.Bricks071");
     obj.s.texture_texels_per_m = 1;
