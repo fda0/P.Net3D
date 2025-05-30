@@ -64,10 +64,17 @@ ASSET_KeyType :: (key: ASSET_Key) -> ASSET_Type
   return cast(ASSET_Type) (key.type4_hash60 & 0b1111);
 }
 
+ASSET_IsZeroKey :: (key: ASSET_Key) -> bool
+{
+  return !key.type4_hash60;
+}
+
 MATERIAL_CreateKey :: (name: string) -> MATERIAL_Key { return cast(MATERIAL_Key) ASSET_CreateKey(.Material, name); }
 MODEL_CreateKey    :: (name: string) -> MODEL_Key    { return cast(MODEL_Key)    ASSET_CreateKey(.Model, name); }
 MATERIAL_MatchKey :: (a: MATERIAL_Key, b: MATERIAL_Key) -> bool { return ASSET_MatchKey(a, b); }
 MODEL_MatchKey    :: (a: MODEL_Key, b: MODEL_Key)       -> bool { return ASSET_MatchKey(a, b); }
+MATERIAL_IsZeroKey :: ASSET_IsZeroKey;
+MODEL_IsZeroKey    :: ASSET_IsZeroKey;
 
 ASSET_Streamable :: struct
 {

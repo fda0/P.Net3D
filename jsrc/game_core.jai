@@ -52,6 +52,7 @@ GAME_State :: struct {
   {
     sun_camera: bool;
     noclip_camera: bool;
+    draw_model_collision: bool;
     click_id: u64; // old UI thing, delete?
     show_debug_window: bool;
   };
