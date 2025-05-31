@@ -2,7 +2,19 @@ V2 :: Vector2;
 V3 :: Vector3;
 V4 :: Vector4;
 Quat :: Quaternion;
-Mat4 :: Matrix4;
+
+Mat4 :: struct
+{
+  // column-major Matrix 4x4
+  _11, _21, _31, _41 : float;
+  _12, _22, _32, _42 : float;
+  _13, _23, _33, _43 : float;
+  _14, _24, _34, _44 : float;
+
+  #place _11; flat: [16]   float = ---;
+  #place _11; elem: [4][4] float = ---;
+  #place _11; cols: [4]    V4    = ---;
+};
 
 // AXIS MATH
 Axis3 :: enum
@@ -11,7 +23,7 @@ Axis3 :: enum
   Y;
   Z;
 };
-ToVec :: (axis: Axis3) -> V3
+AxisV3 :: (axis: Axis3) -> V3
 {
   if axis == {
     case; #through;
@@ -110,44 +122,44 @@ RotationMatrix :: (q: Quat) -> Mat4
   wz := norm.w * norm.z;
 
   res: Mat4 = ---;
-  res.coef[0][0] = 1.0 - 2.0 * (yy + zz);
-  res.coef[0][1] = 2.0 * (xy + wz);
-  res.coef[0][2] = 2.0 * (xz - wy);
-  res.coef[0][3] = 0.0;
+  res.elem[0][0] = 1.0 - 2.0 * (yy + zz);
+  res.elem[0][1] = 2.0 * (xy + wz);
+  res.elem[0][2] = 2.0 * (xz - wy);
+  res.elem[0][3] = 0.0;
 
-  res.coef[1][0] = 2.0 * (xy - wz);
-  res.coef[1][1] = 1.0 - 2.0 * (xx + zz);
-  res.coef[1][2] = 2.0 * (yz + wx);
-  res.coef[1][3] = 0.0;
+  res.elem[1][0] = 2.0 * (xy - wz);
+  res.elem[1][1] = 1.0 - 2.0 * (xx + zz);
+  res.elem[1][2] = 2.0 * (yz + wx);
+  res.elem[1][3] = 0.0;
 
-  res.coef[2][0] = 2.0 * (xz + wy);
-  res.coef[2][1] = 2.0 * (yz - wx);
-  res.coef[2][2] = 1.0 - 2.0 * (xx_ + yy);
-  res.coef[2][3] = 0.0;
+  res.elem[2][0] = 2.0 * (xz + wy);
+  res.elem[2][1] = 2.0 * (yz - wx);
+  res.elem[2][2] = 1.0 - 2.0 * (xx_ + yy);
+  res.elem[2][3] = 0.0;
 
-  res.coef[3][0] = 0.0;
-  res.coef[3][1] = 0.0;
-  res.coef[3][2] = 0.0;
-  res.coef[3][3] = 1.0;
+  res.elem[3][0] = 0.0;
+  res.elem[3][1] = 0.0;
+  res.elem[3][2] = 0.0;
+  res.elem[3][3] = 1.0;
   return res;
 }
 
 DiagonalMatrix :: (value: float = 1) -> Mat4
 {
   res: Mat4;
-  res.coef[0][0] = value;
-  res.coef[1][1] = value;
-  res.coef[2][2] = value;
-  res.coef[3][3] = value;
+  res.elem[0][0] = value;
+  res.elem[1][1] = value;
+  res.elem[2][2] = value;
+  res.elem[3][3] = value;
   return res;
 }
 
 TranslationMatrix :: (move: V3) -> Mat4
 {
   res := DiagonalMatrix();
-  res.coef[3][0] = move.x;
-  res.coef[3][1] = move.y;
-  res.coef[3][2] = move.z;
+  res.elem[3][0] = move.x;
+  res.elem[3][1] = move.y;
+  res.elem[3][2] = move.z;
   return res;
 }
 
@@ -158,17 +170,17 @@ RotationMatrixAroundAxis :: (axis_: V3, turns: float) -> Mat4
   c1 := 1.0 - tc;
 
   res := DiagonalMatrix();
-  res.coef[0][0] = (axis.x * axis.x * c1) + tc;
-  res.coef[0][1] = (axis.x * axis.y * c1) + (axis.z * ts);
-  res.coef[0][2] = (axis.x * axis.z * c1) - (axis.y * ts);
+  res.elem[0][0] = (axis.x * axis.x * c1) + tc;
+  res.elem[0][1] = (axis.x * axis.y * c1) + (axis.z * ts);
+  res.elem[0][2] = (axis.x * axis.z * c1) - (axis.y * ts);
 
-  res.coef[1][0] = (axis.y * axis.x * c1) - (axis.z * ts);
-  res.coef[1][1] = (axis.y * axis.y * c1) + tc;
-  res.coef[1][2] = (axis.y * axis.z * c1) + (axis.x * ts);
+  res.elem[1][0] = (axis.y * axis.x * c1) - (axis.z * ts);
+  res.elem[1][1] = (axis.y * axis.y * c1) + tc;
+  res.elem[1][2] = (axis.y * axis.z * c1) + (axis.x * ts);
 
-  res.coef[2][0] = (axis.z * axis.x * c1) + (axis.y * ts);
-  res.coef[2][1] = (axis.z * axis.y * c1) - (axis.x * ts);
-  res.coef[2][2] = (axis.z * axis.z * c1) + tc;
+  res.elem[2][0] = (axis.z * axis.x * c1) + (axis.y * ts);
+  res.elem[2][1] = (axis.z * axis.y * c1) - (axis.x * ts);
+  res.elem[2][2] = (axis.z * axis.z * c1) + tc;
   return res;
 }
 
@@ -177,28 +189,66 @@ PerspectiveMatrix :: (fov_y: float, aspect_ratio: float, near: float, far: float
   // Modified to work with +x fordward, -y right, +z up coordinate system (same as Source engine).
   cotangent := 1.0 / Tan(fov_y * 0.5);
   res: Mat4;
-  res.coef[0][2] = -far / (near - far); // X -> -Z
-  res.coef[0][3] = 1.0; // X -> W
-  res.coef[1][0] = -cotangent / aspect_ratio; // -Y -> X
-  res.coef[2][1] = cotangent; // Z -> Y
-  res.coef[3][2] = (near * far) / (near - far); // W -> Z
+  res.elem[0][2] = -far / (near - far); // X -> -Z
+  res.elem[0][3] = 1.0; // X -> W
+  res.elem[1][0] = -cotangent / aspect_ratio; // -Y -> X
+  res.elem[2][1] = cotangent; // Z -> Y
+  res.elem[3][2] = (near * far) / (near - far); // W -> Z
   return res;
 }
 
 OrthographicMatrix :: (left: float, right: float, bottom: float, top: float, near: float, far: float) -> Mat4
 {
   res: Mat4;
-  res.coef[0][2] = -1.0 / (near - far); // X -> -Z
-  res.coef[1][0] = -2.0 / (right - left); // -Y -> X
-  res.coef[2][1] = 2.0 / (top - bottom); // Z -> Y
-  res.coef[3][3] = 1.0; // W -> W
+  res.elem[0][2] = -1.0 / (near - far); // X -> -Z
+  res.elem[1][0] = -2.0 / (right - left); // -Y -> X
+  res.elem[2][1] = 2.0 / (top - bottom); // Z -> Y
+  res.elem[3][3] = 1.0; // W -> W
 
-  res.coef[3][0] = (left + right) / (left - right); // W -> X
-  res.coef[3][1] = (bottom + top) / (bottom - top); // W -> Y
-  res.coef[3][2] = near / (near - far); // W -> Z
+  res.elem[3][0] = (left + right) / (left - right); // W -> X
+  res.elem[3][1] = (bottom + top) / (bottom - top); // W -> Y
+  res.elem[3][2] = near / (near - far); // W -> Z
   return res;
 }
 
+multiply :: (m: Mat4, n: Mat4) -> Mat4
+{
+  result: Mat4 = ---;
+
+  result._11 = m._11*n._11 + m._12*n._21 + m._13*n._31 + m._14*n._41;
+  result._21 = m._21*n._11 + m._22*n._21 + m._23*n._31 + m._24*n._41;
+  result._31 = m._31*n._11 + m._32*n._21 + m._33*n._31 + m._34*n._41;
+  result._41 = m._41*n._11 + m._42*n._21 + m._43*n._31 + m._44*n._41;
+
+  result._12 = m._11*n._12 + m._12*n._22 + m._13*n._32 + m._14*n._42;
+  result._22 = m._21*n._12 + m._22*n._22 + m._23*n._32 + m._24*n._42;
+  result._32 = m._31*n._12 + m._32*n._22 + m._33*n._32 + m._34*n._42;
+  result._42 = m._41*n._12 + m._42*n._22 + m._43*n._32 + m._44*n._42;
+
+  result._13 = m._11*n._13 + m._12*n._23 + m._13*n._33 + m._14*n._43;
+  result._23 = m._21*n._13 + m._22*n._23 + m._23*n._33 + m._24*n._43;
+  result._33 = m._31*n._13 + m._32*n._23 + m._33*n._33 + m._34*n._43;
+  result._43 = m._41*n._13 + m._42*n._23 + m._43*n._33 + m._44*n._43;
+
+  result._14 = m._11*n._14 + m._12*n._24 + m._13*n._34 + m._14*n._44;
+  result._24 = m._21*n._14 + m._22*n._24 + m._23*n._34 + m._24*n._44;
+  result._34 = m._31*n._14 + m._32*n._24 + m._33*n._34 + m._34*n._44;
+  result._44 = m._41*n._14 + m._42*n._24 + m._43*n._34 + m._44*n._44;
+
+  return result;
+}
+
+operator * :: (a: Mat4, b: Mat4) -> Mat4
+{
+  return inline multiply(a, b);
+}
+
+
+// VEC2 - generic impl (allows for T != float)
+Vec2 :: struct($T: Type)
+{
+  x, y: T;
+};
 
 
 // We wrap some math operations here to change its units from radians to turns.

@@ -350,7 +350,7 @@ OBJ_CreatePlayer :: (model: MODEL_Key) -> *Object
 
     obj.s.model = model;
     obj.s.color = Color32_Grayf(1);
-    obj.s.rotation = RotationAroundAxis(ToVec(.Z), -0.5);
+    obj.s.rotation = RotationAroundAxis(AxisV3(.Z), -0.5);
   }
   return obj;
 }

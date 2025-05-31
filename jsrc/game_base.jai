@@ -4,7 +4,6 @@
 #load "base_string.jai";
 #load "base_arena.jai";
 #load "base_hash.jai";
-#load "base_vector.jai";
 #load "base_math.jai";
 
 // Range

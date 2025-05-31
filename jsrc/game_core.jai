@@ -112,15 +112,15 @@ GAME_Iterate :: ()
       }
 
       move_dir: V3;
-      if (KEY_Held(.SDL_SCANCODE_W)) move_dir.x += 1;
-      if (KEY_Held(.SDL_SCANCODE_S)) move_dir.x -= 1;
-      if (KEY_Held(.SDL_SCANCODE_A)) move_dir.y += 1;
-      if (KEY_Held(.SDL_SCANCODE_D)) move_dir.y -= 1;
+      if (KEY_Held(.W)) move_dir.x += 1;
+      if (KEY_Held(.S)) move_dir.x -= 1;
+      if (KEY_Held(.A)) move_dir.y += 1;
+      if (KEY_Held(.D)) move_dir.y -= 1;
       if (KEY_Held(.SDL_SCANCODE_SPACE)) move_dir.z += 1;
       if (KEY_Held(.SDL_SCANCODE_LSHIFT) || KEY_Held(.SDL_SCANCODE_RSHIFT)) move_dir.z -= 1;
       move_dir = normalize(move_dir);
-      move_dir = Math.rotate(move_dir, RotationAroundAxis(-ToVec(.Z)/* @todo why negation fixes things? */, G.camera_angles.z));
-      G.camera_p += move_dir * 4.0;
+      move_dir = Math.rotate(move_dir, RotationAroundAxis(-AxisV3(.Z)/* @todo why negation fixes things? */, G.camera_angles.z));
+      G.camera_p += move_dir * 4.0 * G.dt;
     }
     else
     {
@@ -150,22 +150,22 @@ GAME_Iterate :: ()
       OBJ_Get(G.obj.sun, .OFFLINE).s.p = G.sun_camera_p;
 
       transl := TranslationMatrix(-G.sun_camera_p);
-      rot := RotationMatrix(RotationFromPair(G.sun_dir, ToVec(.X)));
+      rot := RotationMatrix(RotationFromPair(G.sun_dir, AxisV3(.X)));
 
       dim := 20.0;
       projection := OrthographicMatrix(-dim, dim, -dim, dim, 30.0, 100.0);
-      G.sun_camera_transform = transl * rot * projection;
+      G.sun_camera_transform = projection * (rot * transl);
     }
 
     // calculate camera transform matrices
     {
       transl := TranslationMatrix(-G.camera_p);
-      rot := RotationMatrixAroundAxis(ToVec(.X), G.camera_angles.x);
-      rot *= RotationMatrixAroundAxis(ToVec(.Y), G.camera_angles.z);
-      rot *= RotationMatrixAroundAxis(ToVec(.Z), G.camera_angles.y);
+      rot := RotationMatrixAroundAxis(AxisV3(.X), G.camera_angles.x);
+      rot = RotationMatrixAroundAxis(AxisV3(.Z), G.camera_angles.z) * rot;
+      rot = RotationMatrixAroundAxis(AxisV3(.Y), G.camera_angles.y) * rot;
       aspect := G.window_dim.x / G.window_dim.y;
       projection := PerspectiveMatrix(G.camera_fov_y, aspect, 0.25, 25.0);
-      G.camera_transform = transl * rot * projection;
+      G.camera_transform =  projection * (rot * transl);
     }
 
     // calculate mouse in screen space -> mouse in world space (at Z == 0)
@@ -186,9 +186,9 @@ GAME_Iterate :: ()
       x := tan * view_mouse.x * aspect;
       y := tan * view_mouse.y;
       aim_dir := V3.{
-        x * G.camera_transform.coef[0][0] + y * G.camera_transform.coef[0][1] + G.camera_transform.coef[0][2],
-        x * G.camera_transform.coef[1][0] + y * G.camera_transform.coef[1][1] + G.camera_transform.coef[1][2],
-        x * G.camera_transform.coef[2][0] + y * G.camera_transform.coef[2][1] + G.camera_transform.coef[2][2],
+        x * G.camera_transform.elem[0][0] + y * G.camera_transform.elem[0][1] + G.camera_transform.elem[0][2],
+        x * G.camera_transform.elem[1][0] + y * G.camera_transform.elem[1][1] + G.camera_transform.elem[1][2],
+        x * G.camera_transform.elem[2][0] + y * G.camera_transform.elem[2][1] + G.camera_transform.elem[2][2],
       };
 
       t_numerator := dot(plane_origin - G.camera_p, plane_normal);
