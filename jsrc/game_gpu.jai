@@ -446,8 +446,8 @@ GPU_Iterate :: ()
           SDL_BindGPUFragmentSamplers(pass, 1, *binding_sampl, 1);
         }
 
-        SDL_DrawGPUIndexedPrimitives(pass, mesh.indices_count, gpu_instances.element_count,
-          mesh.indices_start_index, xx mesh.vertices_start_index, 0);
+        SDL_DrawGPUIndexedPrimitives(pass, xx mesh.indices_count, gpu_instances.element_count,
+          xx mesh.indices_start_index, mesh.vertices_start_index, 0);
       }
     }
   }

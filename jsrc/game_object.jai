@@ -80,7 +80,7 @@ OBJ_Local :: struct
   animated_rot: Quat; // animates towards rotation
   animated_p: V3; // animates towards (V3){p.x, p.y, p.z}
 
-  animation_index: u32;
+  animation_index: s32;
   animation_t: float;
 
   collider_normals_are_updated: bool;

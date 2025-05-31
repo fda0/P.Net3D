@@ -49,7 +49,7 @@ ANIM_AnimateObjects :: ()
   }
 }
 
-ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: u32, time: float) -> [] Mat4
+ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> [] Mat4
 {
   poses_result := NewArray(skeleton.joints_count, Mat4,, temp);
 
@@ -141,7 +141,7 @@ ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: u32, time: floa
   return poses_result;
 }
 
-ANIM_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: u32, time: float) -> float
+ANIM_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> float
 {
   if anim_index < skeleton.animations.count
   {
@@ -155,7 +155,7 @@ ANIM_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: u32, time: floa
   return time;
 }
 
-ANIM_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] Mat4, joint_index: u32, parent_transform: Mat4)
+ANIM_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] Mat4, joint_index: s32, parent_transform: Mat4)
 {
   if (joint_index >= skeleton.joints_count)
   {

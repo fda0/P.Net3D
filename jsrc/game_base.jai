@@ -2,7 +2,7 @@
 #import "Bit_Operations";
 #import "File";
 #load "base_string.jai";
-#load "base_arena.jai";
+#load "base_memory.jai";
 #load "base_hash.jai";
 #load "base_math.jai";
 

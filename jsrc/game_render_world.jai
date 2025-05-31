@@ -71,7 +71,7 @@ WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Mater
   }
 }
 
-WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, color: Color32, animation_index: u32, animation_t: float)
+WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, color: Color32, animation_index: s32, animation_t: float)
 {
   instance := WORLD_InstanceModel.{transform = transform, color = color};
   model := ASSET_GetModel(model_key);

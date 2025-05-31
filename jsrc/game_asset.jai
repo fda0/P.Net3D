@@ -96,22 +96,22 @@ ASSET_Material :: struct
 
   params: PIE_MaterialParams;
   has_texture: bool;
-  texture_layers: u32;
+  texture_layers: s32;
   tex: *SDL_GPUTexture;
 };
 
 ASSET_Mesh :: struct
 {
   material: MATERIAL_Key;
-  vertices_start_index: u32;
-  indices_start_index: u32;
-  indices_count: u32;
+  vertices_start_index: s32;
+  indices_start_index: s32;
+  indices_count: s32;
 };
 
 ASSET_AnimationChannel :: struct
 {
   type: PIE_AnimationChannelType;
-  joint_index: u32;
+  joint_index: s32;
   inputs: [] float;
   outputs: [] float; // .count = inputs.count * (ifx type == .Rotation then 4 else 3);
 };
@@ -128,11 +128,11 @@ ASSET_Skeleton :: struct
   root_transform: Mat4;
   animations: [] ASSET_Animation;
 
-  joints_count: u32; // all arrays below have count equal to joints_count
+  joints_count: s32; // all arrays below have count equal to joints_count
   joint_names: [] string;
   inverse_matrices: [] Mat4; // inverse bind matrices
-  child_index_buffer: [] u32;
-  child_index_ranges: [] Range(u32);
+  child_index_buffer: [] s32;
+  child_index_ranges: [] Range(s32);
 
   bind_translations: [] V3;
   bind_rotations: [] Quat;
@@ -212,7 +212,7 @@ ASSET_GetModel :: (key: MODEL_Key) -> *ASSET_Model
 }
 
 // Animation
-ASSET_AnimNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index:u32, found:bool // @todo delete this func in the future
+ASSET_AnimNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index:s32, found:bool // @todo delete this func in the future
 {
   for skeleton.animations
   {

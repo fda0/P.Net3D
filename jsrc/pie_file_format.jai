@@ -40,9 +40,9 @@ PIE_Animation :: struct
 PIE_Skeleton :: struct
 {
   // each of these has the same count of elements (joints_count)
-  inv_bind_mats: PIE_ListT(Mat4);
-  child_index_buf: PIE_ListT(u32);
-  child_index_ranges: PIE_ListT(Range(u32));
+  inverse_matrices: PIE_ListT(Mat4);
+  child_index_buffer: PIE_ListT(s32);
+  child_index_ranges: PIE_ListT(Range(s32));
   translations: PIE_ListT(V3);
   rotations: PIE_ListT(Quat);
   scales: PIE_ListT(V3);
@@ -56,9 +56,9 @@ PIE_Mesh :: struct
 {
   material_index: u32;
 
-  vertices_start_index: u32;
-  indices_start_index: u32;
-  indices_count: u32;
+  vertices_start_index: s32;
+  indices_start_index: s32;
+  indices_count: s32;
 };
 
 PIE_Model :: struct
@@ -107,10 +107,10 @@ PIE_Material :: struct
 
   tex: struct {
     format: PIE_TexFormat;
-    width: u32;
-    height: u32;
-    lods: u32;
-    layers: u32;
+    width: s32;
+    height: s32;
+    lods: s32;
+    layers: s32;
     full_data: PIE_ListT(u8);
     sections: PIE_ListT(PIE_MaterialTexSection);
   };

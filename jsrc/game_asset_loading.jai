@@ -174,10 +174,10 @@ ASSET_InitSkeletons :: ()
     pie_skel := *pie_skeletons[it_index];
     skel.root_transform = pie_skel.root_transform;
 
-    skel.joints_count       = pie_skel.inv_bind_mats.count;
-    skel.inverse_matrices   = PIE_LOAD_ListToArray(pie_skel.inv_bind_mats, Mat4);
-    skel.child_index_buffer = PIE_LOAD_ListToArray(pie_skel.child_index_buf, u32);
-    skel.child_index_ranges = PIE_LOAD_ListToArray(pie_skel.child_index_ranges, Range(u32));
+    skel.joints_count       = xx pie_skel.inverse_matrices.count;
+    skel.inverse_matrices   = PIE_LOAD_ListToArray(pie_skel.inverse_matrices, Mat4);
+    skel.child_index_buffer = PIE_LOAD_ListToArray(pie_skel.child_index_buffer, s32);
+    skel.child_index_ranges = PIE_LOAD_ListToArray(pie_skel.child_index_ranges, Range(s32));
     skel.bind_translations  = PIE_LOAD_ListToArray(pie_skel.translations, V3);
     skel.bind_rotations     = PIE_LOAD_ListToArray(pie_skel.rotations, Quat);
     skel.bind_scales        = PIE_LOAD_ListToArray(pie_skel.scales, V3);
@@ -214,7 +214,7 @@ ASSET_InitSkeletons :: ()
       {
         pie_chan := *pie_channels[it_index];
 
-        pie_joint_index := (pie_chan.joint_index30_type2 << 2) >> 2;
+        pie_joint_index := ((pie_chan.joint_index30_type2 << 2) >> 2).(s32);
         pie_transform_type := cast(PIE_AnimationChannelType) (pie_chan.joint_index30_type2 >> 30);
         chan.joint_index = pie_joint_index;
         chan.type = pie_transform_type;
