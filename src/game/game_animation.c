@@ -141,17 +141,6 @@ static ANIM_Pose ANIM_PoseFromAnimation(ASSET_Skeleton *skeleton, U32 anim_index
 //
 //
 //
-static float ANIM_AnimationEndTime(ASSET_Skeleton *skel, U32 anim_index)
-{
-  float res = 0.f;
-  if (anim_index < skel->anims_count)
-  {
-    ASSET_Animation *anim = skel->anims + anim_index;
-    res = anim->t_max;
-  }
-  return res;
-}
-
 static void ANIM_AnimateObjects()
 {
   ForArray(obj_index, APP.all_objects)

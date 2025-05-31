@@ -113,7 +113,39 @@ RotationFromPair :: (a: V3, b: V3) -> Quat
   return RotationFromNormalizedPair(normalize(a), normalize(b));
 }
 
+Mix :: (a: Quat, b: Quat, weight_a: float, weight_b: float) -> Quat
+{
+  res := Quat.{
+    a.x*weight_a + b.x*weight_b,
+    a.y*weight_a + b.y*weight_b,
+    a.z*weight_a + b.z*weight_b,
+    a.w*weight_a + b.w*weight_b,
+  };
+  return res;
+}
+
+
 // MATRIX MATH
+ScaleMatrix :: (scale: V3) -> Mat4
+{
+  res: Mat4;
+  res.elem[0][0] = scale.x;
+  res.elem[1][1] = scale.y;
+  res.elem[2][2] = scale.z;
+  res.elem[3][3] = 1.0;
+  return res;
+}
+
+ScaleMatrix :: (scale: float) -> Mat4
+{
+  res: Mat4;
+  res.elem[0][0] = scale;
+  res.elem[1][1] = scale;
+  res.elem[2][2] = scale;
+  res.elem[3][3] = 1.0;
+  return res;
+}
+
 RotationMatrix :: (q: Quat) -> Mat4
 {
   norm := normalize(q);

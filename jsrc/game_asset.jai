@@ -210,3 +210,14 @@ ASSET_GetModel :: (key: MODEL_Key) -> *ASSET_Model
   }
   return asset;
 }
+
+// Animation
+ASSET_AnimNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index:u32, found:bool // @todo delete this func in the future
+{
+  for skeleton.animations
+  {
+    if name == it.name
+      return xx it_index, true;
+  }
+  return 0, false;
+}
