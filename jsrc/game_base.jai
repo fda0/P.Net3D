@@ -44,20 +44,25 @@ IsPointerAligned :: (ptr: *void, alignment: s64) -> bool
   return missaligned == 0;
 }
 
-offset_of :: (ti: *Type_Info, member: string) -> int
+offset_of :: ($T: Type, $member: string, $debug_print := false) -> int #expand
 {
-  assert(ti.type == .STRUCT, "offset_of can be used on structs only");
-  ts := cast(*Type_Info_Struct) ti;
+  return #run -> int {
+    ti := type_info(T);
+    assert(ti.type == .STRUCT, "offset_of(%, %) can be used on structs only.", T, member);
+    ts := cast(*Type_Info_Struct) ti;
 
-  for ts.members {
-    if it.name == member return it.offset_in_bytes;
-  }
-  assert(false, "Struct type info '%' does contain member '%'", ts, member);
-  return -1;
-}
-offset_of :: ($T: Type, $member: string) -> int #expand
-{
-  return #run offset_of(type_info(T), member);
+    for ts.members
+    {
+      if it.name == member
+      {
+        if debug_print print("offset_of(%, %) returned %.\n", T, member, it.offset_in_bytes);
+        return it.offset_in_bytes;
+      }
+    }
+
+    assert(false, "Struct member can't be found for call offset_of(%, %).", T, member);
+    return -1;
+  };
 }
 
 align_of :: ($T: Type) -> int #expand

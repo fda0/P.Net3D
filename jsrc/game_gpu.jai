@@ -176,7 +176,7 @@ GPU_Init :: ()
 
     VERTEX_BUFFERS :: SDL_GPUVertexBufferDescription.[
       .{slot = 0,
-        pitch = size_of(type_of(WORLD_Vertex)),
+        pitch = size_of(WORLD_Vertex),
         input_rate = .SDL_GPU_VERTEXINPUTRATE_VERTEX,
         instance_step_rate = 0,
       },

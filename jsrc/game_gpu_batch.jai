@@ -182,7 +182,7 @@ GPU_BATCH_TransferUploadBytes :: (batch: *GPU_Batch, data: *void, size: u32, ele
 }
 
 //
-GPU_BATCH_AllocBuffer :: (alloc_size: u32, usage: SDL_GPUBufferUsageFlags ) -> *GPU_BATCH_Buffer
+GPU_BATCH_AllocBuffer :: (alloc_size: u32, usage: SDL_GPUBufferUsageFlags) -> *GPU_BATCH_Buffer
 {
   buffer := G.gpu.mem.free_buffers;
   {

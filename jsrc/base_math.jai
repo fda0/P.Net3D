@@ -96,7 +96,41 @@ RotationFromPair :: (a: V3, b: V3) -> Quat
 }
 
 // MATRIX MATH
-RotationMatrix :: (q: Quat) -> Mat4 { return Math.rotation_matrix(Mat4, q); }
+RotationMatrix :: (q: Quat) -> Mat4
+{
+  norm := normalize(q);
+  xx_ := norm.x * norm.x;
+  yy := norm.y * norm.y;
+  zz := norm.z * norm.z;
+  xy := norm.x * norm.y;
+  xz := norm.x * norm.z;
+  yz := norm.y * norm.z;
+  wx := norm.w * norm.x;
+  wy := norm.w * norm.y;
+  wz := norm.w * norm.z;
+
+  res: Mat4 = ---;
+  res.coef[0][0] = 1.0 - 2.0 * (yy + zz);
+  res.coef[0][1] = 2.0 * (xy + wz);
+  res.coef[0][2] = 2.0 * (xz - wy);
+  res.coef[0][3] = 0.0;
+
+  res.coef[1][0] = 2.0 * (xy - wz);
+  res.coef[1][1] = 1.0 - 2.0 * (xx + zz);
+  res.coef[1][2] = 2.0 * (yz + wx);
+  res.coef[1][3] = 0.0;
+
+  res.coef[2][0] = 2.0 * (xz + wy);
+  res.coef[2][1] = 2.0 * (yz - wx);
+  res.coef[2][2] = 1.0 - 2.0 * (xx_ + yy);
+  res.coef[2][3] = 0.0;
+
+  res.coef[3][0] = 0.0;
+  res.coef[3][1] = 0.0;
+  res.coef[3][2] = 0.0;
+  res.coef[3][3] = 1.0;
+  return res;
+}
 
 DiagonalMatrix :: (value: float = 1) -> Mat4
 {
@@ -173,7 +207,7 @@ OrthographicMatrix :: (left: float, right: float, bottom: float, top: float, nea
 using,except(sin,cos,rotate,translate,rotation_matrix) Math :: #import "Math";
 
 TURNS_TO_RAD :: TAU;
-RAD_TO_TURNS :: 1 / TAU;
+RAD_TO_TURNS :: 1.0 / TAU;
 
 SinCos :: (turns: float) -> sin:float, cos:float
 {
@@ -187,13 +221,13 @@ SinCos :: (turns: float) -> sin:float, cos:float
 Sin :: (turns: float) -> float
 {
   rad := TURNS_TO_RAD * turns;
-  return Math.sin(turns);
+  return Math.sin(rad);
 }
 
 Cos :: (turns: float) -> float
 {
   rad := TURNS_TO_RAD * turns;
-  return Math.cos(turns);
+  return Math.cos(rad);
 }
 
 //

@@ -340,7 +340,7 @@ OBJ_CreateWall :: (p: V2, dim: V2, height: float) -> *Object
 OBJ_CreatePlayer :: (model: MODEL_Key) -> *Object
 {
   obj := OBJ_Create(.NETWORK,
-    .MOVE | .COLLIDE | .DRAW_MODEL|
+    .MOVE | .COLLIDE | .DRAW_MODEL |
     .ANIMATE_ROTATION | .ANIMATE_TRACKS);
 
   if !OBJ_IsNil(obj)

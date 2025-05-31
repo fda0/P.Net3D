@@ -146,28 +146,26 @@ GAME_Iterate :: ()
       G.sun_dir = -towards_sun_dir;
 
       sun_dist := towards_sun_dir * 40.0;
-      sun_obj_p := G.camera_p * sun_dist;
-      OBJ_Get(G.obj.sun, .OFFLINE).s.p = sun_obj_p;
+      G.sun_camera_p = G.camera_p + sun_dist;
+      OBJ_Get(G.obj.sun, .OFFLINE).s.p = G.sun_camera_p;
 
-      // Camera to sun
-      G.sun_camera_p = OBJ_GetAny(G.obj.sun).s.p;
       transl := TranslationMatrix(-G.sun_camera_p);
+      rot := RotationMatrix(RotationFromPair(G.sun_dir, ToVec(.X)));
 
       dim := 20.0;
       projection := OrthographicMatrix(-dim, dim, -dim, dim, 30.0, 100.0);
-      rot := RotationMatrix(RotationFromPair(G.sun_dir, ToVec(.X)));
-      G.sun_camera_transform = projection * (rot * transl);
+      G.sun_camera_transform = transl * rot * projection;
     }
 
     // calculate camera transform matrices
     {
       transl := TranslationMatrix(-G.camera_p);
       rot := RotationMatrixAroundAxis(ToVec(.X), G.camera_angles.x);
-      rot = RotationMatrixAroundAxis(ToVec(.Y), G.camera_angles.z) * rot;
-      rot = RotationMatrixAroundAxis(ToVec(.Z), G.camera_angles.y) * rot;
+      rot *= RotationMatrixAroundAxis(ToVec(.Y), G.camera_angles.z);
+      rot *= RotationMatrixAroundAxis(ToVec(.Z), G.camera_angles.y);
       aspect := G.window_dim.x / G.window_dim.y;
       projection := PerspectiveMatrix(G.camera_fov_y, aspect, 0.25, 25.0);
-      G.camera_transform = projection * (rot * transl);
+      G.camera_transform = transl * rot * projection;
     }
 
     // calculate mouse in screen space -> mouse in world space (at Z == 0)
