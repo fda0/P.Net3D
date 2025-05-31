@@ -3,9 +3,15 @@ V3 :: Vector3;
 V4 :: Vector4;
 Quat :: Quaternion;
 
-Mat4 :: struct
+Mat4 :: struct // @todo move to row-major matrices in the future
 {
   // column-major Matrix 4x4
+  // 0 4 8 c
+  // 1 5 9 d
+  // 2 6 a e
+  // 3 7 b f
+
+  // _yx
   _11, _21, _31, _41 : float;
   _12, _22, _32, _42 : float;
   _13, _23, _33, _43 : float;
@@ -242,6 +248,16 @@ operator * :: (a: Mat4, b: Mat4) -> Mat4
 {
   return inline multiply(a, b);
 }
+
+transpose :: (m: Mat4) -> Mat4
+{
+    r: Mat4 = ---;
+    for i: 0..3 for j: 0..3 {
+        r.elem[i][j] = m.elem[j][i];
+    }
+    return r;
+}
+
 
 
 // VEC2 - generic impl (allows for T != float)

@@ -165,7 +165,7 @@ GAME_Iterate :: ()
       rot = RotationMatrixAroundAxis(AxisV3(.Y), G.camera_angles.y) * rot;
       aspect := G.window_dim.x / G.window_dim.y;
       projection := PerspectiveMatrix(G.camera_fov_y, aspect, 0.25, 25.0);
-      G.camera_transform =  projection * (rot * transl);
+      G.camera_transform = projection * (rot * transl);
     }
 
     // calculate mouse in screen space -> mouse in world space (at Z == 0)
