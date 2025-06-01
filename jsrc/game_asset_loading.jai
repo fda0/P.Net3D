@@ -1,3 +1,198 @@
+ASSET_Init :: ()
+{
+  using,only(err) G.ast.pie;
+
+  init(*G.ast.arena);
+  new_context := context;
+  new_context.allocator = G.ast.arena;
+  push_context new_context
+  {
+    if !err  ASSET_LoadPieFile("data.pie");
+    if !err  ASSET_InitSkeletons();
+    if !err  ASSET_InitMaterials();
+    if !err  ASSET_InitModels();
+  }
+
+  // Texture thread init
+  if !err
+  {
+    using G.ast;
+    init(*tex_semaphore);
+    thread_init(*tex_thread, ASSET_TextureThread);
+    thread_start(*tex_thread);
+  }
+}
+
+ASSET_PostFrame :: ()
+{
+  // Wake up texture asset loading thread
+  if G.ast.tex_load_needed
+  {
+    signal(*G.ast.tex_semaphore);
+    G.ast.tex_load_needed = false;
+  }
+
+  // Increment loaded_t
+  for *G.ast.materials
+  {
+    LOAD_T_SPEED :: 10.0;
+    using it.stream;
+    if flags & .LOADED
+      loaded_t = min(1.0, loaded_t + G.dt * LOAD_T_SPEED);
+  }
+}
+
+// TEXTURE THREAD
+ASSET_TextureThread :: (thread: *Thread) -> s64
+{
+  // This thread just touched the same global data as the main thread.
+  // Any false-sharing etc wasn't a concern when making this and it could be improved.
+  while true
+  {
+    wait_for(*G.ast.tex_semaphore);
+
+    // Just load any texture that was used in the last 2 frames.
+    // Do something smarter when texture eviction is added.
+    min_load_frame := max(1, G.frame_number - 2);
+
+    for *G.ast.materials
+    {
+      if it.stream.last_touched_frame >= min_load_frame
+        ASSET_LoadTextureFromPieToGPU(it, it_index);
+    }
+
+    reset_temporary_storage();
+  }
+  return 0;
+}
+
+ASSET_LoadTextureFromPieToGPU :: (material: *ASSET_Material, material_index: s64)
+{
+  if material.stream.flags & (.LOADED | .ERROR)
+    return;
+
+  // Material from .pie - it contains a big buffer that needs to uploaded to GPU
+  using,only(pie) G.ast;
+  pie_material := *pie.materials[material_index];
+  gpu_full_data := PIE_LOAD_ListToString(pie_material.tex.full_data);
+
+  // MaterialTextures - it contains a mapping from big buffer to individual pieces of texture layers and lods
+  pie_texture_sections := PIE_LOAD_ListToArray(pie_material.tex.sections, PIE_MaterialTexSection);
+
+  lods_count := pie_material.tex.lods;
+  generate_lods := false;
+  if (lods_count == 1 && pie_material.tex.format != .BC7_RGBA)
+  {
+    lods_count = CalculateMipMapCount(pie_material.tex.width, pie_material.tex.height);
+    generate_lods = true;
+  }
+
+
+  // Create texture and transfer CPU memory -> GPU memory -> GPU texture
+  texture: *SDL_GPUTexture;
+  {
+    transfer_create_info := SDL_GPUTransferBufferCreateInfo.{
+      usage = .SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+      size = xx (gpu_full_data.count * 4) // @todo why *4?
+    };
+    transfer := SDL_CreateGPUTransferBuffer(G.gpu.device, *transfer_create_info);
+
+    // CPU -> GPU
+    {
+      gpu_mapped := SDL_MapGPUTransferBuffer(G.gpu.device, transfer, false);
+      memcpy(gpu_mapped, gpu_full_data.data, gpu_full_data.count);
+      SDL_UnmapGPUTransferBuffer(G.gpu.device, transfer);
+    }
+
+    // Create texture
+    {
+      sdl_format: SDL_GPUTextureFormat = ifx pie_material.tex.format == .R8G8B8A8 then .R8G8B8A8_UNORM else .BC7_RGBA_UNORM;
+
+      texture_info := SDL_GPUTextureCreateInfo.{
+        type = .SDL_GPU_TEXTURETYPE_2D_ARRAY,
+        format = sdl_format,
+        width = xx pie_material.tex.width,
+        height = xx pie_material.tex.height,
+        layer_count_or_depth = xx pie_material.tex.layers,
+        num_levels = xx lods_count,
+        usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
+      };
+
+      if (generate_lods)
+        texture_info.usage |= SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+
+      texture = SDL_CreateGPUTexture(G.gpu.device, *texture_info);
+      debug_texture_name := tprint("PIE_TEX: %\0", PIE_LOAD_ListToString(pie_material.name));
+      SDL_SetGPUTextureName(G.gpu.device, texture, debug_texture_name.data);
+    }
+
+    // GPU memory -> GPU texture
+    {
+      cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
+      copy_pass := SDL_BeginGPUCopyPass(cmd);
+
+      for pie_texture_sections
+      {
+        source := SDL_GPUTextureTransferInfo.{
+          transfer_buffer = transfer,
+          offset = it.data_offset,
+          pixels_per_row = it.width,
+        };
+        destination := SDL_GPUTextureRegion.{
+          texture = texture,
+          mip_level = it.lod,
+          layer = it.layer,
+          w = it.width,
+          h = it.height,
+          d = 1,
+        };
+        SDL_UploadToGPUTexture(copy_pass, *source, *destination, false);
+      }
+
+      SDL_EndGPUCopyPass(copy_pass);
+      if (generate_lods) SDL_GenerateMipmapsForGPUTexture(cmd, texture);
+      SDL_SubmitGPUCommandBuffer(cmd);
+    }
+
+    SDL_ReleaseGPUTransferBuffer(G.gpu.device, transfer);
+  }
+
+  material.tex = texture;
+  material.stream.flags |= .LOADED;
+}
+
+// LOAD .PIE
+ASSET_LoadPieFile :: (file_path: string)
+{
+  using,only(pie) G.ast;
+  using,only(err) pie;
+
+  file, read_success := read_entire_file(file_path);
+  err |= !read_success;
+  if err return;
+  pie.file = file;
+
+  header := PIE_LOAD_OffsetSizeToArray(0, size_of(PIE_Header), PIE_Header);
+  if err return;
+  pie.header = *header[0];
+
+  hashable := STR_Skip(PIE_LOAD_File(), size_of(type_of(pie.header.file_hash)));
+  calculated_hash := Hash64Any(PIE_MAGIC_HASH_SEED, hashable);
+  PIE_LOAD_Check(calculated_hash == pie.header.file_hash,
+    tprint("Calculated hash (%) doesn't match file hash (%).", calculated_hash, pie.header.file_hash));
+  if err return;
+
+  links := PIE_LOAD_ListToArray(pie.header.links, PIE_Links);
+  if err return;
+  pie.links = *links[0];
+
+  models := PIE_LOAD_ListToArray(pie.links.models.list, PIE_Model);
+  materials := PIE_LOAD_ListToArray(pie.links.materials, PIE_Material);
+  if err return;
+  pie.models = models;
+  pie.materials = materials;
+}
+
 // MATERIALS
 ASSET_InitMaterials :: ()
 {
@@ -72,7 +267,7 @@ ASSET_InitMaterials :: ()
 
     // Fill nil_material data
     {
-      G.ast.nil_material.stream.flags |= .Loaded;
+      G.ast.nil_material.stream.flags |= .LOADED;
       G.ast.nil_material.stream.loaded_t = 1;
       G.ast.nil_material.has_texture = true;
       G.ast.nil_material.texture_layers = 1;
@@ -95,7 +290,7 @@ ASSET_InitMaterials :: ()
       if (!it.has_texture)
       {
         // no texture = it is already fully loaded
-        it.stream.flags |= .Loaded;
+        it.stream.flags |= .LOADED;
         it.stream.loaded_t = 1;
       }
       it.tex = G.ast.nil_material.tex; // fallback texture as default in case anybody tries to use it
@@ -226,53 +421,5 @@ ASSET_InitSkeletons :: ()
         chan.outputs = PIE_LOAD_ListToArray(pie_chan.outputs, float);
       }
     }
-  }
-}
-
-// LOAD .PIE
-ASSET_LoadPieFile :: (file_path: string)
-{
-  using,only(pie) G.ast;
-  using,only(err) pie;
-
-  file, read_success := read_entire_file(file_path);
-  err |= !read_success;
-  if err return;
-  pie.file = file;
-
-  header := PIE_LOAD_OffsetSizeToArray(0, size_of(PIE_Header), PIE_Header);
-  if err return;
-  pie.header = *header[0];
-
-  hashable := STR_Skip(PIE_LOAD_File(), size_of(type_of(pie.header.file_hash)));
-  calculated_hash := Hash64Any(PIE_MAGIC_HASH_SEED, hashable);
-  PIE_LOAD_Check(calculated_hash == pie.header.file_hash,
-    tprint("Calculated hash (%) doesn't match file hash (%).", calculated_hash, pie.header.file_hash));
-  if err return;
-
-  links := PIE_LOAD_ListToArray(pie.header.links, PIE_Links);
-  if err return;
-  pie.links = *links[0];
-
-  models := PIE_LOAD_ListToArray(pie.links.models.list, PIE_Model);
-  materials := PIE_LOAD_ListToArray(pie.links.materials, PIE_Material);
-  if err return;
-  pie.models = models;
-  pie.materials = materials;
-}
-
-// MAIN INIT
-ASSET_Init :: ()
-{
-  init(*G.ast.arena);
-  new_context := context;
-  new_context.allocator = G.ast.arena;
-  push_context new_context
-  {
-    using,only(err) G.ast.pie;
-    if !err  ASSET_LoadPieFile("data.pie");
-    if !err  ASSET_InitSkeletons();
-    if !err  ASSET_InitMaterials();
-    if !err  ASSET_InitModels();
   }
 }

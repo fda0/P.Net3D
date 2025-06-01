@@ -345,7 +345,6 @@ static void GAME_Init()
 
   // blocks thing
   {
-
     ForU32(wall, 4)
     {
       U32 len = 32;

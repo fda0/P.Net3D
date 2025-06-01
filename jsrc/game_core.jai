@@ -3,7 +3,7 @@ G: GAME_State; // Global GAME_State variable
 GAME_State :: struct {
   // core game state
   in_shutdown: bool;
-  frame_number: u64 = 1024;
+  frame_number: s64;
   timestamp: u64;
   tick_number: u64 = NET_CLIENT_MAX_SNAPSHOTS;
   dt: float = 1.0 / 60.0; // frame delta time
@@ -233,7 +233,7 @@ GAME_Iterate :: ()
     // Post frame calls
     GPU_BATCH_PostFrame();
     // UI_PostFrame();
-    // ASSET_PostFrame();
+    ASSET_PostFrame();
   }
 
   // Post frame logic

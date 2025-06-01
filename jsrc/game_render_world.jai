@@ -63,7 +63,7 @@ WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Mater
   uniform.material_roughness = material.params.roughness;
 
   uniform.flags = .ApplyShadows;
-  if material.has_texture && 0
+  if material.has_texture
   {
     if material.texture_layers >= 1  uniform.flags |= .SampleTexDiffuse;
     if material.texture_layers >= 2  uniform.flags |= .SampleTexNormal;

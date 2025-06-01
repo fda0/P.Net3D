@@ -3,19 +3,20 @@ PIE_LOAD_File :: () -> string
   return G.ast.pie.file;
 }
 
-PIE_LOAD_Check :: (expr: bool, msg: string, critical := true) -> bool
+PIE_LOAD_Check :: (expr: bool, msg_code: Code, critical := true) -> bool #expand
 {
+  // msg_code is passed as Code so we construct error message only when error did occur
+
   if !expr
   {
-    if critical
+    if !G.ast.pie.err
     {
-      // @todo Create a popup window error when asset file failed to load.
-      if !G.ast.pie.err
-        log_error(".PIE CRITICAL ERROR: %", msg);
-      G.ast.pie.err = true;
+      msg: string = #insert msg_code;
+      log_error(".PIE CRITICAL ERROR: %", msg);
     }
-    else
-      log_error(".PIE ERROR: %", msg);
+
+    // @todo Create a popup window error when asset file failed to load.
+    if critical  G.ast.pie.err = true;
   }
   return expr;
 }

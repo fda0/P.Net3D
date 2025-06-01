@@ -1,6 +1,7 @@
 #import "Basic";
 #import "Bit_Operations";
 #import "File";
+#import "Thread";
 #load "base_string.jai";
 #load "base_memory.jai";
 #load "base_hash.jai";

@@ -9,7 +9,8 @@ ASSET_State :: struct
 
   // Texture loading thread
   tex_load_needed: bool;
-  tex_sem: *SDL_Semaphore;
+  tex_semaphore: Semaphore;
+  tex_thread: Thread;
 
   // Models
   nil_model: ASSET_Model;
@@ -78,14 +79,14 @@ MODEL_IsZeroKey    :: ASSET_IsZeroKey;
 
 ASSET_Streamable :: struct
 {
-  last_touched_frame: u64;
+  last_touched_frame: s64;
   loaded_t: float;
   flags: Flags;
 
   Flags :: enum_flags
   {
-    Error;
-    Loaded;
+    ERROR;
+    LOADED;
   };
 }
 
@@ -179,7 +180,7 @@ ASSET_GetMaterial :: (key: MATERIAL_Key) -> *ASSET_Material
   if !ASSET_MaterialIsNil(asset)
   {
     asset.stream.last_touched_frame = G.frame_number;
-    if (!asset.stream.flags & .Loaded) G.ast.tex_load_needed = true;
+    if !(asset.stream.flags & .LOADED)  G.ast.tex_load_needed = true;
   }
 
   return asset;
