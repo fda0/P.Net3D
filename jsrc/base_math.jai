@@ -124,7 +124,6 @@ Mix :: (a: Quat, b: Quat, weight_a: float, weight_b: float) -> Quat
   return res;
 }
 
-
 // MATRIX MATH
 ScaleMatrix :: (scale: V3) -> Mat4
 {
@@ -166,7 +165,7 @@ RotationMatrix :: (q: Quat) -> Mat4
   res.elem[0][3] = 0.0;
 
   res.elem[1][0] = 2.0 * (xy - wz);
-  res.elem[1][1] = 1.0 - 2.0 * (xx + zz);
+  res.elem[1][1] = 1.0 - 2.0 * (xx_ + zz);
   res.elem[1][2] = 2.0 * (yz + wx);
   res.elem[1][3] = 0.0;
 

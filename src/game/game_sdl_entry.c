@@ -13,8 +13,8 @@
 #include <SDL3_net/SDL_net.h>
 #include <SDL3_image/SDL_image.h>
 
-#define INIT_WINDOW_HEIGHT 1600
-#define INIT_WINDOW_WIDTH 900
+#define INIT_WINDOW_WIDTH 1600
+#define INIT_WINDOW_HEIGHT 900
 
 #include "base_types.h"
 #include "base_math.h"

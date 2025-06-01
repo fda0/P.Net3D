@@ -194,6 +194,11 @@ OBJ_Init :: ()
       }
     }
   }
+
+  {
+    experiment := OBJ_Create(.OFFLINE, .DRAW_MODEL | .ANIMATE_TRACKS);
+    experiment.s.model = MODEL_CreateKey("Dude");
+  }
 }
 
 OBJ_GetNil :: () -> *Object

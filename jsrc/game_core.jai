@@ -215,8 +215,7 @@ GAME_Iterate :: ()
       if (KEY_Held(.MouseRight) && G.world_mouse_valid)
       {
         marker.s.flags |= .DRAW_MODEL;
-        // marker.s.model = MODEL_CreateKey("Flag");
-        marker.s.model = MODEL_CreateKey("Dude");
+        marker.s.model = MODEL_CreateKey("Flag");
         marker.s.p = V3.{xy=G.world_mouse};
 
         marker.l.animated_p.x = marker.s.p.x;
