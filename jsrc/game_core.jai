@@ -6,7 +6,8 @@ GAME_State :: struct {
   frame_number: s64;
   timestamp: u64;
   tick_number: u64 = NET_CLIENT_MAX_SNAPSHOTS;
-  dt: float = 1.0 / 60.0; // frame delta time
+  tick_timestamp_accumulator: u64;
+  dt: float; // frame delta time
   at: float; // animation time
 
   // component states
@@ -78,8 +79,14 @@ GAME_Iterate :: ()
 {
   // pre frame logic
   {
+    new_timestamp := SDL_GetTicks();
+    delta_timestamp := min(new_timestamp - G.timestamp, 100); // clamp dt to 100ms (10fps)
+
     G.frame_number += 1;
-    // @todo
+    G.timestamp = new_timestamp;
+    G.tick_timestamp_accumulator += delta_timestamp;
+    G.dt = delta_timestamp * 0.001;
+    G.at = WrapFloat(0, 1000, G.at + G.dt);
   }
 
   // pre frame calls
@@ -87,6 +94,11 @@ GAME_Iterate :: ()
   {
     GPU_ProcessWindowResize(false);
   }
+
+  NET_IterateReceive();
+  TICK_Iterate();
+  NET_IterateTimeoutUsers();
+  NET_IterateSend();
 
   if !G.headless
   {

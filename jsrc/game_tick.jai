@@ -7,3 +7,8 @@ TICK_Input :: struct
   is_pathing: bool;
   pathing_world_p: V2;
 };
+
+TICK_Iterate :: ()
+{
+  // @impl
+}

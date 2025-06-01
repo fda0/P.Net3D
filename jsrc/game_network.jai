@@ -75,5 +75,20 @@ NET_PacketHeader :: struct
 
 NET_Init :: ()
 {
-  // @todo
+  // @impl
+}
+
+NET_IterateReceive :: ()
+{
+  // @impl
+}
+
+NET_IterateSend :: ()
+{
+  // @impl
+}
+
+NET_IterateTimeoutUsers :: ()
+{
+  // @impl
 }
