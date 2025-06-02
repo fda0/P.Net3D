@@ -1,6 +1,6 @@
 TICK_RATE :: 100;
 
-TICK_Input :: struct
+TICK_PlayerInput :: struct
 {
   move_dir: V2;
   // action buttons etc will be added here

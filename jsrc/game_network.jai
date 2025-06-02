@@ -36,7 +36,7 @@ NET_SendHeader :: struct
 
 NET_SendInputs :: struct
 {
-  inputs: [NET_MAX_INPUT_TICKS] TICK_Input;
+  inputs: [NET_MAX_INPUT_TICKS] TICK_PlayerInput;
   input_count: u16;
 };
 
