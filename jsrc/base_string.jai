@@ -33,7 +33,7 @@ STR_Skip :: (str: string, distance: s64) -> string
   res.count -= distance;
   return res;
 }
-S8_Chop :: (str: string, distance_from_end: s64) -> string
+STR_Chop :: (str: string, distance_from_end: s64) -> string
 {
   distance_from_end = clamp(distance_from_end, 0, str.count);
 
@@ -41,7 +41,7 @@ S8_Chop :: (str: string, distance_from_end: s64) -> string
   res.count -= distance_from_end;
   return res;
 }
-S8_Prefix :: (str: string, count: s64) -> string
+STR_Prefix :: (str: string, count: s64) -> string
 {
   count = clamp(count, 0, str.count);
 
@@ -49,7 +49,7 @@ S8_Prefix :: (str: string, count: s64) -> string
   res.count = count;
   return res;
 }
-S8_Suffix :: (str: string, count: s64) -> string
+STR_Suffix :: (str: string, count: s64) -> string
 {
   count = clamp(count, 0, str.count);
   distance := str.count - count;
@@ -93,7 +93,7 @@ STR_Match :: (a: string, b: string, flags: STR_MatchFlags) -> bool
 
 STR_StartsWith :: (haystack: string, needle: string, flags: STR_MatchFlags = 0) -> bool
 {
-  h := S8_Prefix(haystack, needle.count);
+  h := STR_Prefix(haystack, needle.count);
   return STR_Match(h, needle, flags);
 }
 

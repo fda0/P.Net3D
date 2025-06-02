@@ -13,14 +13,59 @@ Range :: struct ($T: Type)
   min, max: T;
 };
 
+Range_CountSat :: (rng: Range($T)) -> u64
+{
+  if (rng.max < rng.min)
+    return 0;
+  return (rng.max - rng.min).(u64);
+}
+
+Open :: (x: $T) -> Range(T)
+{
+  return Range(T).{max = x};
+}
+
+MakeRange :: (min: $T, max: T) -> Range(T)
+{
+  return Range(T).{min, max};
+}
+
+for_expansion :: (range: Range($T), body: Code, flags: For_Flags) #expand {
+  #assert !(flags & (.REVERSE | .POINTER));
+
+  loop_iteration := 0;
+  loop_it := range.min;
+  loop_end := range.max;
+  while true
+  {
+    if loop_it >= loop_end  break;
+    `it := loop_it;
+    `it_index := loop_iteration;
+    defer loop_it += 1;
+    defer loop_iteration += 1;
+    #insert body;
+  }
+}
+
 Kilobyte :: v => v * 1024;
 Megabyte :: v => v * 1024 * 1024;
 Gigabyte :: v => v * 1024 * 1024 * 1024;
 
 //
-memclear :: (dst: *void, count: s64)
+ClearAddress :: (dst: *void, count: s64)
 {
   memset(dst, 0, count);
+}
+
+ClearArray :: (arr: [] $T)
+{
+  if arr.count
+    memset(*arr[0], 0, size_of(T)*arr.count);
+}
+
+ClearType :: (ptr: *$T)
+{
+  memset(ptr, 0, size_of(T));
 }
 
 IsInteger :: (T: Type) -> bool

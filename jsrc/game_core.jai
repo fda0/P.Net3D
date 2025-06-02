@@ -17,6 +17,7 @@ GAME_State :: struct {
   obj: OBJ_State;
   net: NET_State;
   client: CLIENT_State;
+  server: SERVER_State;
 
   // SDL, window stuff
   window: *SDL_Window;
@@ -307,6 +308,12 @@ GAME_ParseCommandLineArguments :: (args: [] string)
   }
 }
 
+GAME_AutoLayoutApply :: (code: ..Code) #expand
+{
+  // @impl
+}
+
+
 // Includes and stuff
 #load "game_base.jai";
 #load "game_color.jai";
@@ -318,12 +325,14 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 #load "game_object_collider.jai";
 #load "game_network.jai";
 #load "game_client.jai";
+#load "game_server.jai";
 #load "game_tick.jai";
 #load "game_gpu.jai";
 #load "game_gpu_batch.jai";
 #load "game_render_world.jai";
 #load "game_render_ui.jai";
 #load "game_font.jai";
+#load "game_util.jai";
 #load "game_precompiled_shaders_tmp.jai";
 #load "game_pie_loader.jai";
 #load "pie_file_format.jai";

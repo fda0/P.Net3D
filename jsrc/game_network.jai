@@ -30,6 +30,12 @@ NET_State :: struct
 // @impl
 LOG_NetInfo :: 0;
 LOG_NetDatagram :: 1;
+LOG_NetPacket :: 2;
+LOG_NetPayload :: 3;
+LOG_NetClient :: 4;
+LOG_NetCatchup :: 5;
+LOG_NetCatchup :: 6;
+LOG_NetTick :: 6;
 
 Nlog :: (net_category: s64 /* @todo use user flags instead in the future */, format_string: string, args: .. Any, loc := #caller_location, flags := Log_Flags.NONE, user_flags : u32 = 0, section : *Log_Section = null)
 {
@@ -210,7 +216,6 @@ NET_IterateReceive :: ()
       NET_ReceivePacket(player_id, packet);
     }
 
-    datagram_cleanup:
     SDLNet_DestroyDatagram(dgram);
   }
 }
@@ -241,34 +246,152 @@ NET_UserMatchAddrPort :: (user: *NET_User, address: *SDLNet_Address, port: u16) 
 
 NET_FindUser :: (address: *SDLNet_Address, port: u16) -> *NET_User
 {
-  // @impl
   // @todo move to SV_ prefix?
-  // for G.server.users
-  // {
-  //   if (NET_UserMatchAddrPort(it, address, port))
-  //     return user;
-  // }
+  for * G.server.users
+  {
+    if (NET_UserMatchAddrPort(it, address, port))
+      return user;
+  }
   return null;
 }
 
 NET_AddUser :: (address: *SDLNet_Address, port: u16) -> *NET_User
 {
-  // @impl
   // @todo move to SV_ prefix?
   new_user_slot: *NET_User;
-  // for G.server.users
-  // {
-  //   if (!it.address)
-  //   {
-  //     new_user_slot = it;
-  //     break;
-  //   }
-  // }
+  for * G.server.users
+  {
+    if (!it.address)
+    {
+      new_user_slot = it;
+      break;
+    }
+  }
 
-  // if (new_user_slot)
-  // {
-  //   new_user_slot.address = SDLNet_RefAddress(address);
-  //   new_user_slot.port = port;
-  // }
+  if (new_user_slot)
+  {
+    new_user_slot.address = SDLNet_RefAddress(address);
+    new_user_slot.port = port;
+  }
   return new_user_slot;
+}
+
+NET_Consume:: ($T: Type, packet: *string) -> T
+{
+  value: T;
+  to_copy := STR_Prefix(packet.*, size_of(T));
+  memcpy(*value, to_copy.data, to_copy.count);
+  packet.* = STR_Skip(packet.*, to_copy.count);
+  return value;
+}
+
+NET_ReceivePacket :: (player_id: u16, original_packet: string)
+{
+  packet := original_packet;
+
+  if G.net.is_server && player_id >= NET_MAX_PLAYERS
+    return;
+
+  if packet.count < size_of(NET_PacketHeader)
+  {
+    Nlog(LOG_NetPacket, "packet rejected - it's too small, size: %llu", packet.count);
+    return;
+  }
+
+  header := NET_Consume(NET_PacketHeader, *packet);
+
+  if (!packet.count)
+  {
+    Nlog(LOG_NetPacket, "packet rejected - empty payload",);
+    return;
+  }
+
+  if (header.magic_value != NET_MAGIC_VALUE)
+  {
+    Nlog(LOG_NetPacket, "packet rejected - invalid magic value: %; expected: %", header.magic_value, NET_MAGIC_VALUE);
+    return;
+  }
+
+  // validate hash
+  hash64 := Hash64Any(packet);
+  hash16 := cast,no_check(u16) hash64;
+  if (hash16 != header.payload_hash)
+  {
+    Nlog(LOG_NetPacket, "packet rejected - invalid hash: %; calculated: %", header.payload_hash, hash16);
+    return;
+  }
+
+  NET_ProcessReceivedPayload(player_id, packet);
+}
+
+NET_ProcessReceivedPayload :: (player_id: u16, full_message: string)
+{
+  msg := full_message;
+  while msg.count
+  {
+    head := NET_Consume(NET_SendHeader, *msg);
+
+    if head.kind == .Ping
+    {
+      ping := NET_Consume(NET_SendPing, *msg);
+    }
+    else if (head.kind == .ObjUpdate ||
+             head.kind == .ObjEmpty)
+    {
+      update: NET_SendObjSync;
+      if (head.kind == .ObjUpdate)
+      {
+        update = NET_Consume(NET_SendObjSync, *msg);
+      }
+      else
+      {
+        empty := NET_Consume(NET_SendObjEmpty, *msg);
+        update.net_index = empty.net_index;
+        update.sync.init = true;
+      }
+
+      if update.net_index >= OBJ_MAX_NETWORK_OBJECTS
+      {
+        Nlog(LOG_NetPayload, "Rejecting payload(%) - net index overflow: %", head.kind, update.net_index);
+        continue;
+      }
+
+      if G.client.next_playback_tick > head.tick_id
+      {
+        Nlog(LOG_NetPayload, "Rejecting payload(%) - head tick at: % < next playback tick: %",
+            head.kind, head.tick_id, G.client.next_playback_tick);
+        continue;
+      }
+
+      snap := *G.client.snaps_of_objs[update.net_index];
+      CLIENT_InsertSnapshot(snap, head.tick_id, update.sync);
+    }
+    else if head.kind == .Inputs
+    {
+      in_net := NET_Consume(NET_SendInputs, *msg);
+      pi := *G.server.player_inputs[player_id];
+      SERVER_InsertPlayerInput(pi, *in_net, head.tick_id);
+    }
+    else if head.kind == .AssignPlayerKey
+    {
+      assign := NET_Consume(NET_SendAssignPlayerKey, *msg);
+
+      if G.client.player_key_latest_tick_id < head.tick_id
+      {
+        G.client.player_key = assign.player_key;
+        G.client.player_key_latest_tick_id = head.tick_id;
+      }
+    }
+    else if head.kind == .WindowLayout
+    {
+      layout := NET_Consume(NET_SendWindowLayout, *msg);
+      if G.window_autolayout
+        GAME_AutoLayoutApply(layout.user_count, layout.px, layout.py, layout.w, layout.h);
+    }
+    else
+    {
+      Nlog(LOG_NetPayload, "Unsupported payload head kind: %d", head.kind);
+      return;
+    }
+  }
 }

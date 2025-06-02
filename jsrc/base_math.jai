@@ -53,6 +53,18 @@ CeilPow2 :: (v: u32) -> u32
   return v;
 }
 
+CastSaturate :: ($Tdst: Type, value: $Tstr) -> Tdst
+#modify { return IsInteger(Tdst) && IsInteger(Tstr), "Both arguments have to be of an integer type."; }
+{
+  #assert type_info(Tdst).runtime_size < type_info(Tstr).runtime_size;
+
+  #if Tdst == u32
+    return cast,trunc(Tdst) min(value, U32_MAX);
+  else
+    #assert "CastSaturate doesn't support this destination type yet";
+  return 0;
+}
+
 // FLOAT MATH
 WrapFloat :: (min: float, max: float, value: float) -> float
 {
