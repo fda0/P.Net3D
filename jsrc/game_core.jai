@@ -15,6 +15,7 @@ GAME_State :: struct {
   ast: ASSET_State;
   font: FONT_State;
   obj: OBJ_State;
+  net: NET_State;
   client: CLIENT_State;
 
   // SDL, window stuff

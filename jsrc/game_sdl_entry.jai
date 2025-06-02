@@ -29,6 +29,9 @@ PLATFORM_Init :: ()
     }
   }
 
+  if ok
+    ok = SDLNet_Init();
+
   if ok && !G.headless
   {
     G.gpu.device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL, debug_mode = true, name = null);
@@ -153,6 +156,32 @@ PLATFORM_Deinit :: ()
 * \sa SDL_GetRelativeMouseState
 SDL_MouseButtonFlags :: Uint32;
 */
+
+// @todo improve generator so you don't need to define these here:
 SDL_BUTTON_LMASK : SDL_MouseButtonFlags : (1 << 0);
 SDL_BUTTON_RMASK : SDL_MouseButtonFlags : (1 << 2);
-#import,file "libs/jai-sdl3/module.jai"; // @todo how to overwrite SDL_ASSERT_LEVEL :: 2; in sdl3 module?
+// @todo how to overwrite SDL_ASSERT_LEVEL :: 2; in sdl3 module?
+
+using,map(ImportMapForSDL) SDL :: #import,file "libs/jai-sdl3/module.jai";
+ImportMapForSDL :: (names: [] string)
+{
+  S :: #import,file "base_string.jai";
+  B :: #import "Basic";
+
+  for *names
+  {
+    name := it.*;
+    new_name: string;
+
+    if S.STR_StartsWith(name, "NET_")
+      new_name = B.tprint("SDLNet_%", S.STR_Skip(name, 4));
+    else if !S.STR_StartsWith(name, "SDL")
+      new_name = B.tprint("SDL%", name);
+
+    if new_name.count
+    {
+      // B.print("SDL RENAME % -> %\n", name, new_name);
+      it.* = new_name;
+    }
+  }
+}

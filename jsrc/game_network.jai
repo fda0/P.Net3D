@@ -9,9 +9,38 @@ NET_SIMULATE_PACKETLOSS :: 0; // doesn't seem to work on localhost
 NET_INACTIVE_MS :: 100;
 NET_TIMEOUT_DISCONNECT_MS :: 250;
 
+NET_State :: struct
+{
+  err: bool; // tracks if network is in error state
+  is_server: bool;
+  socket: *SDLNet_DatagramSocket;
+
+  hacky_last_receive_timestamp: u64;
+
+  server_user: NET_User;
+
+  // msg payload
+  packet_err: bool; // set on internal buffer overflow errors etc
+  packet_header: NET_PacketHeader;
+  packet_payload_buf: [1024 * 1024 * 1] u8; // 1 MB scratch buffer for network payload construction
+  payload_used: u32;
+};
+
+
+// @impl
+LOG_NetInfo :: 0;
+LOG_NetDatagram :: 1;
+
+Nlog :: (net_category: s64 /* @todo use user flags instead in the future */, format_string: string, args: .. Any, loc := #caller_location, flags := Log_Flags.NONE, user_flags : u32 = 0, section : *Log_Section = null)
+{
+  // @todo do something with net_category and logging in general
+  // @todo add "NET_Label()" before every net log?, or do that for logs globally
+  log(format_string, ..args, loc, flags, user_flags, section);
+} @PrintLike
+
 NET_User :: struct
 {
-  // address: *SDLNet_Address;
+  address: *SDLNet_Address;
   port: u16;
   last_msg_timestamp: u64;
 };
@@ -75,12 +104,115 @@ NET_PacketHeader :: struct
 
 NET_Init :: ()
 {
-  // @impl
+  is_server := G.net.is_server;
+  is_client := !G.net.is_server;
+
+  Nlog(LOG_NetInfo, ifx is_server then "Launching as server" else "Launching as client");
+
+  if is_client
+  {
+    hostname := "localhost";
+    Nlog(LOG_NetInfo, "Resolving server hostname '%s' ...", hostname);
+    G.net.server_user.address = SDLNet_ResolveHostname(temp_c_string(hostname));
+    G.net.server_user.port = NET_DEFAULT_SEVER_PORT;
+    if G.net.server_user.address
+    {
+      if SDLNet_WaitUntilResolved(G.net.server_user.address, -1) < 0
+      {
+        SDLNet_UnrefAddress(G.net.server_user.address);
+        G.net.server_user.address = null;
+      }
+    }
+
+    if !G.net.server_user.address
+    {
+      G.net.err = true;
+      Nlog(LOG_NetInfo, "Failed to resolve server hostname '%s'", hostname);
+    }
+  }
+
+  port: u16 = xx ifx is_server then NET_DEFAULT_SEVER_PORT else 0;
+  G.net.socket = SDLNet_CreateDatagramSocket(null, port);
+  if !G.net.socket
+  {
+    G.net.err = true;
+    Nlog(LOG_NetInfo, "Failed to create socket");
+  }
+  else
+  {
+    Nlog(LOG_NetInfo, "Created socket");
+
+    #if NET_SIMULATE_PACKETLOSS
+    {
+      SDLNet_SimulateDatagramPacketLoss(G.net.socket, NET_SIMULATE_PACKETLOSS);
+      Nlog(LOG_NetInfo, "%s: Simulating packetloss: %d", NET_SIMULATE_PACKETLOSS);
+    }
+  }
 }
 
 NET_IterateReceive :: ()
 {
-  // @impl
+  is_server := G.net.is_server;
+  is_client := !G.net.is_server;
+  if G.net.err return;
+
+  {
+    // hacky temporary network activity rate-limitting
+    if (G.timestamp < G.net.hacky_last_receive_timestamp + 8) return;
+    G.net.hacky_last_receive_timestamp = G.timestamp;
+  }
+
+  while true
+  {
+    dgram: *SDLNet_Datagram;
+    receive := SDLNet_ReceiveDatagram(G.net.socket, *dgram);
+    if !receive break;
+    if !dgram   break;
+
+    Nlog(LOG_NetDatagram, "got %-byte datagram from %:%",
+      dgram.buflen, SDLNet_GetAddressString(dgram.addr), dgram.port);
+
+    dgram_error := false;
+    if is_client
+    {
+      if !NET_UserMatchAddrPort(*G.net.server_user, dgram.addr, dgram.port)
+      {
+        dgram_error = true;
+        Nlog(LOG_NetDatagram, "dgram rejected - received from non-server address %:%",
+          SDLNet_GetAddressString(dgram.addr), dgram.port);
+      }
+    }
+
+    if !dgram_error
+    {
+      player_id: u16 = NET_MAX_PLAYERS;
+
+      // save user
+      if is_server
+      {
+        user := NET_FindUser(dgram.addr, dgram.port);
+        if (!user)
+        {
+          Nlog(LOG_NetInfo, "saving user with port: %", dgram.port);
+          user = NET_AddUser(dgram.addr, dgram.port);
+        }
+
+        if (user)
+        {
+          user.last_msg_timestamp = G.timestamp;
+
+          user_id: u64 = (user.(u64) - (*G.server.users[0]).(u64)) / size_of(NET_User);
+          player_id = user_id.(u16);
+        }
+      }
+
+      packet := string.{dgram.buflen, dgram.buf};
+      NET_ReceivePacket(player_id, packet);
+    }
+
+    datagram_cleanup:
+    SDLNet_DestroyDatagram(dgram);
+  }
 }
 
 NET_IterateSend :: ()
@@ -91,4 +223,52 @@ NET_IterateSend :: ()
 NET_IterateTimeoutUsers :: ()
 {
   // @impl
+}
+
+
+NET_UserMatch :: (a: *NET_User, b: *NET_User) -> bool
+{
+  return (a.port == b.port && SDLNet_CompareAddresses(a.address, b.address) == 0);
+}
+
+NET_UserMatchAddrPort :: (user: *NET_User, address: *SDLNet_Address, port: u16) -> bool
+{
+  if (!user.address)
+    return false;
+
+  return (user.port == port && SDLNet_CompareAddresses(user.address, address) == 0);
+}
+
+NET_FindUser :: (address: *SDLNet_Address, port: u16) -> *NET_User
+{
+  // @impl
+  // @todo move to SV_ prefix?
+  // for G.server.users
+  // {
+  //   if (NET_UserMatchAddrPort(it, address, port))
+  //     return user;
+  // }
+  return null;
+}
+
+NET_AddUser :: (address: *SDLNet_Address, port: u16) -> *NET_User
+{
+  // @impl
+  // @todo move to SV_ prefix?
+  new_user_slot: *NET_User;
+  // for G.server.users
+  // {
+  //   if (!it.address)
+  //   {
+  //     new_user_slot = it;
+  //     break;
+  //   }
+  // }
+
+  // if (new_user_slot)
+  // {
+  //   new_user_slot.address = SDLNet_RefAddress(address);
+  //   new_user_slot.port = port;
+  // }
+  return new_user_slot;
 }

@@ -122,8 +122,8 @@ ASSET_LoadTextureFromPieToGPU :: (material: *ASSET_Material, material_index: s64
         texture_info.usage |= SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
 
       texture = SDL_CreateGPUTexture(G.gpu.device, *texture_info);
-      debug_texture_name := tprint("PIE_TEX: %\0", PIE_LOAD_ListToString(pie_material.name));
-      SDL_SetGPUTextureName(G.gpu.device, texture, debug_texture_name.data);
+      debug_texture_name := tprint("PIE_TEX: %", PIE_LOAD_ListToString(pie_material.name));
+      SDL_SetGPUTextureName(G.gpu.device, texture, temp_c_string(debug_texture_name));
     }
 
     // GPU memory -> GPU texture

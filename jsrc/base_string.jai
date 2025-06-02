@@ -59,3 +59,43 @@ S8_Suffix :: (str: string, count: s64) -> string
   res.count = count;
   return res;
 }
+
+STR_Match :: (a: string, b: string, flags: STR_MatchFlags) -> bool
+{
+  result := false;
+  if (a.count == b.count || flags & .RightSideSloppy)
+  {
+    result = true;
+
+    i := 0;
+    while true
+    {
+      if !(i < a.count && i < b.count) break;
+      defer i += 1;
+
+      match := (a.data[i] == b.data[i]);
+
+      // if (flags & .CaseInsensitive)
+      //   match |= (ByteToLower(a.data[i]) == ByteToLower(b.data[i]));
+
+      // if (flags & .SlashInsensitive)
+      //   match |= (ByteToForwardSlash(a.data[i]) == ByteToForwardSlash(b.data[i]));
+
+      if !match
+      {
+        result = false;
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+STR_StartsWith :: (haystack: string, needle: string, flags: STR_MatchFlags = 0) -> bool
+{
+  h := S8_Prefix(haystack, needle.count);
+  return STR_Match(h, needle, flags);
+}
+
+#scope_file
+#import "Basic"; // for clamp

@@ -1,7 +1,7 @@
 //
 // This file was auto-generated using the following command:
 //
-// jai generate.jai
+// jai ./generate.jai
 //
 
 /*
@@ -251,9 +251,11 @@ SDL_GL_CONTEXT_RESET_LOSE_CONTEXT :: 0x0001;
 
 SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN :: "SDL.display.HDR_enabled";
 SDL_PROP_DISPLAY_KMSDRM_PANEL_ORIENTATION_NUMBER :: "SDL.display.KMSDRM.panel_orientation";
+SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_POINTER :: "SDL.display.wayland.wl_output";
 
 SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN :: "SDL.window.create.always_on_top";
 SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN :: "SDL.window.create.borderless";
+SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN :: "SDL.window.create.constrain_popup";
 SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN :: "SDL.window.create.focusable";
 SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN :: "SDL.window.create.external_graphics_context";
 SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER :: "SDL.window.create.flags";
@@ -286,6 +288,8 @@ SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER :: "SDL.window.create.wayland.
 SDL_PROP_WINDOW_CREATE_WIN32_HWND_POINTER :: "SDL.window.create.win32.hwnd";
 SDL_PROP_WINDOW_CREATE_WIN32_PIXEL_FORMAT_HWND_POINTER :: "SDL.window.create.win32.pixel_format_hwnd";
 SDL_PROP_WINDOW_CREATE_X11_WINDOW_NUMBER :: "SDL.window.create.x11.window";
+SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_CANVAS_ID_STRING :: "SDL.window.create.emscripten.canvas_id";
+SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING :: "SDL.window.create.emscripten.keyboard_element";
 
 SDL_PROP_WINDOW_SHAPE_POINTER :: "SDL.window.shape";
 SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN :: "SDL.window.HDR_enabled";
@@ -303,7 +307,7 @@ SDL_PROP_WINDOW_KMSDRM_DRM_FD_NUMBER :: "SDL.window.kmsdrm.drm_fd";
 SDL_PROP_WINDOW_KMSDRM_GBM_DEVICE_POINTER :: "SDL.window.kmsdrm.gbm_dev";
 SDL_PROP_WINDOW_COCOA_WINDOW_POINTER :: "SDL.window.cocoa.window";
 SDL_PROP_WINDOW_COCOA_METAL_VIEW_TAG_NUMBER :: "SDL.window.cocoa.metal_view_tag";
-SDL_PROP_WINDOW_OPENVR_OVERLAY_ID :: "SDL.window.openvr.overlay_id";
+SDL_PROP_WINDOW_OPENVR_OVERLAY_ID_NUMBER :: "SDL.window.openvr.overlay_id";
 SDL_PROP_WINDOW_VIVANTE_DISPLAY_POINTER :: "SDL.window.vivante.display";
 SDL_PROP_WINDOW_VIVANTE_WINDOW_POINTER :: "SDL.window.vivante.window";
 SDL_PROP_WINDOW_VIVANTE_SURFACE_POINTER :: "SDL.window.vivante.surface";
@@ -322,6 +326,8 @@ SDL_PROP_WINDOW_WAYLAND_XDG_POSITIONER_POINTER :: "SDL.window.wayland.xdg_positi
 SDL_PROP_WINDOW_X11_DISPLAY_POINTER :: "SDL.window.x11.display";
 SDL_PROP_WINDOW_X11_SCREEN_NUMBER :: "SDL.window.x11.screen";
 SDL_PROP_WINDOW_X11_WINDOW_NUMBER :: "SDL.window.x11.window";
+SDL_PROP_WINDOW_EMSCRIPTEN_CANVAS_ID_STRING :: "SDL.window.emscripten.canvas_id";
+SDL_PROP_WINDOW_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING :: "SDL.window.emscripten.keyboard_element";
 
 SDL_WINDOW_SURFACE_VSYNC_DISABLED :: 0;
 SDL_WINDOW_SURFACE_VSYNC_ADAPTIVE :: -1;
@@ -702,6 +708,7 @@ SDL_GPU_COLORCOMPONENT_A :: 1 << 3;
 
 SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN :: "SDL.gpu.device.create.debugmode";
 SDL_PROP_GPU_DEVICE_CREATE_PREFERLOWPOWER_BOOLEAN :: "SDL.gpu.device.create.preferlowpower";
+SDL_PROP_GPU_DEVICE_CREATE_VERBOSE_BOOLEAN :: "SDL.gpu.device.create.verbose";
 SDL_PROP_GPU_DEVICE_CREATE_NAME_STRING :: "SDL.gpu.device.create.name";
 SDL_PROP_GPU_DEVICE_CREATE_SHADERS_PRIVATE_BOOLEAN :: "SDL.gpu.device.create.shaders.private";
 SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN :: "SDL.gpu.device.create.shaders.spirv";
@@ -710,6 +717,15 @@ SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN :: "SDL.gpu.device.create.shader
 SDL_PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN :: "SDL.gpu.device.create.shaders.msl";
 SDL_PROP_GPU_DEVICE_CREATE_SHADERS_METALLIB_BOOLEAN :: "SDL.gpu.device.create.shaders.metallib";
 SDL_PROP_GPU_DEVICE_CREATE_D3D12_SEMANTIC_NAME_STRING :: "SDL.gpu.device.create.d3d12.semantic";
+SDL_PROP_GPU_DEVICE_CREATE_VULKAN_SHADERCLIPDISTANCE_BOOLEAN :: "SDL.gpu.device.create.vulkan.shaderclipdistance";
+SDL_PROP_GPU_DEVICE_CREATE_VULKAN_DEPTHCLAMP_BOOLEAN :: "SDL.gpu.device.create.vulkan.depthclamp";
+SDL_PROP_GPU_DEVICE_CREATE_VULKAN_DRAWINDIRECTFIRST_BOOLEAN :: "SDL.gpu.device.create.vulkan.drawindirectfirstinstance";
+SDL_PROP_GPU_DEVICE_CREATE_VULKAN_SAMPLERANISOTROPY_BOOLEAN :: "SDL.gpu.device.create.vulkan.sampleranisotropy";
+
+SDL_PROP_GPU_DEVICE_NAME_STRING :: "SDL.gpu.device.name";
+SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING :: "SDL.gpu.device.driver_name";
+SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING :: "SDL.gpu.device.driver_version";
+SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING :: "SDL.gpu.device.driver_info";
 
 SDL_PROP_GPU_COMPUTEPIPELINE_CREATE_NAME_STRING :: "SDL.gpu.computepipeline.create.name";
 
@@ -730,6 +746,8 @@ SDL_PROP_GPU_TEXTURE_CREATE_NAME_STRING :: "SDL.gpu.texture.create.name";
 SDL_PROP_GPU_BUFFER_CREATE_NAME_STRING :: "SDL.gpu.buffer.create.name";
 
 SDL_PROP_GPU_TRANSFERBUFFER_CREATE_NAME_STRING :: "SDL.gpu.transferbuffer.create.name";
+
+SDL_HAPTIC_INFINITY :: 4294967295;
 
 SDL_HAPTIC_CONSTANT :: 1<<0;
 
@@ -778,8 +796,6 @@ SDL_HAPTIC_CARTESIAN :: 1;
 SDL_HAPTIC_SPHERICAL :: 2;
 
 SDL_HAPTIC_STEERING_AXIS :: 3;
-
-SDL_HAPTIC_INFINITY :: 4294967295;
 
 SDL_HINT_ALLOW_ALT_TAB_WHILE_GRABBED :: "SDL_ALLOW_ALT_TAB_WHILE_GRABBED";
 
@@ -967,6 +983,12 @@ SDL_HINT_JOYSTICK_HIDAPI_STEAMDECK :: "SDL_JOYSTICK_HIDAPI_STEAMDECK";
 
 SDL_HINT_JOYSTICK_HIDAPI_STEAM_HORI :: "SDL_JOYSTICK_HIDAPI_STEAM_HORI";
 
+SDL_HINT_JOYSTICK_HIDAPI_LG4FF :: "SDL_JOYSTICK_HIDAPI_LG4FF";
+
+SDL_HINT_JOYSTICK_HIDAPI_8BITDO :: "SDL_JOYSTICK_HIDAPI_8BITDO";
+
+SDL_HINT_JOYSTICK_HIDAPI_FLYDIGI :: "SDL_JOYSTICK_HIDAPI_FLYDIGI";
+
 SDL_HINT_JOYSTICK_HIDAPI_SWITCH :: "SDL_JOYSTICK_HIDAPI_SWITCH";
 
 SDL_HINT_JOYSTICK_HIDAPI_SWITCH_HOME_LED :: "SDL_JOYSTICK_HIDAPI_SWITCH_HOME_LED";
@@ -990,6 +1012,10 @@ SDL_HINT_JOYSTICK_HIDAPI_XBOX_360_WIRELESS :: "SDL_JOYSTICK_HIDAPI_XBOX_360_WIRE
 SDL_HINT_JOYSTICK_HIDAPI_XBOX_ONE :: "SDL_JOYSTICK_HIDAPI_XBOX_ONE";
 
 SDL_HINT_JOYSTICK_HIDAPI_XBOX_ONE_HOME_LED :: "SDL_JOYSTICK_HIDAPI_XBOX_ONE_HOME_LED";
+
+SDL_HINT_JOYSTICK_HIDAPI_GIP :: "SDL_JOYSTICK_HIDAPI_GIP";
+
+SDL_HINT_JOYSTICK_HIDAPI_GIP_RESET_FOR_METADATA :: "SDL_JOYSTICK_HIDAPI_GIP_RESET_FOR_METADATA";
 
 SDL_HINT_JOYSTICK_IOKIT :: "SDL_JOYSTICK_IOKIT";
 
@@ -1155,6 +1181,8 @@ SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES :: "SDL_VIDEO_MAC_FULLSCREEN_SPACES";
 
 SDL_HINT_VIDEO_MAC_FULLSCREEN_MENU_VISIBILITY :: "SDL_VIDEO_MAC_FULLSCREEN_MENU_VISIBILITY";
 
+SDL_HINT_VIDEO_MATCH_EXCLUSIVE_MODE_ON_MOVE :: "SDL_VIDEO_MATCH_EXCLUSIVE_MODE_ON_MOVE";
+
 SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS :: "SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS";
 
 SDL_HINT_VIDEO_OFFSCREEN_SAVE_FRAMES :: "SDL_VIDEO_OFFSCREEN_SAVE_FRAMES";
@@ -1285,6 +1313,7 @@ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT :: 0x00000002;
 
 SDL_PROP_PROCESS_CREATE_ARGS_POINTER :: "SDL.process.create.args";
 SDL_PROP_PROCESS_CREATE_ENVIRONMENT_POINTER :: "SDL.process.create.environment";
+SDL_PROP_PROCESS_CREATE_WORKING_DIRECTORY_STRING :: "SDL.process.create.working_directory";
 SDL_PROP_PROCESS_CREATE_STDIN_NUMBER :: "SDL.process.create.stdin_option";
 SDL_PROP_PROCESS_CREATE_STDIN_POINTER :: "SDL.process.create.stdin_source";
 SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER :: "SDL.process.create.stdout_option";
@@ -1293,6 +1322,7 @@ SDL_PROP_PROCESS_CREATE_STDERR_NUMBER :: "SDL.process.create.stderr_option";
 SDL_PROP_PROCESS_CREATE_STDERR_POINTER :: "SDL.process.create.stderr_source";
 SDL_PROP_PROCESS_CREATE_STDERR_TO_STDOUT_BOOLEAN :: "SDL.process.create.stderr_to_stdout";
 SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN :: "SDL.process.create.background";
+SDL_PROP_PROCESS_CREATE_CMDLINE_STRING :: "SDL.process.create.cmdline";
 
 SDL_PROP_PROCESS_PID_NUMBER :: "SDL.process.pid";
 SDL_PROP_PROCESS_STDIN_POINTER :: "SDL.process.stdin";
@@ -1307,6 +1337,9 @@ SDL_PROP_RENDERER_CREATE_WINDOW_POINTER :: "SDL.renderer.create.window";
 SDL_PROP_RENDERER_CREATE_SURFACE_POINTER :: "SDL.renderer.create.surface";
 SDL_PROP_RENDERER_CREATE_OUTPUT_COLORSPACE_NUMBER :: "SDL.renderer.create.output_colorspace";
 SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER :: "SDL.renderer.create.present_vsync";
+SDL_PROP_RENDERER_CREATE_GPU_SHADERS_SPIRV_BOOLEAN :: "SDL.renderer.create.gpu.shaders_spirv";
+SDL_PROP_RENDERER_CREATE_GPU_SHADERS_DXIL_BOOLEAN :: "SDL.renderer.create.gpu.shaders_dxil";
+SDL_PROP_RENDERER_CREATE_GPU_SHADERS_MSL_BOOLEAN :: "SDL.renderer.create.gpu.shaders_msl";
 SDL_PROP_RENDERER_CREATE_VULKAN_INSTANCE_POINTER :: "SDL.renderer.create.vulkan.instance";
 SDL_PROP_RENDERER_CREATE_VULKAN_SURFACE_NUMBER :: "SDL.renderer.create.vulkan.surface";
 SDL_PROP_RENDERER_CREATE_VULKAN_PHYSICAL_DEVICE_POINTER :: "SDL.renderer.create.vulkan.physical_device";
@@ -1413,9 +1446,15 @@ SDL_TRAYENTRY_CHECKED :: 0x40000000;
 
 SDL_MAJOR_VERSION :: 3;
 
-SDL_MINOR_VERSION :: 2;
+SDL_MINOR_VERSION :: 3;
 
-SDL_MICRO_VERSION :: 14;
+SDL_MICRO_VERSION :: 0;
+
+SDL_NET_MAJOR_VERSION :: 3;
+
+SDL_NET_MINOR_VERSION :: 0;
+
+SDL_NET_MICRO_VERSION :: 0;
 
 /**
 * A signed 8-bit integer type.
@@ -4573,7 +4612,7 @@ SDL_atanf :: (x: float) -> float #foreign sdl3;
 *
 * Domain: `-INF <= x <= INF`, `-INF <= y <= INF`
 *
-* Range: `-Pi/2 <= y <= Pi/2`
+* Range: `-Pi <= y <= Pi`
 *
 * This function operates on double-precision floating point values, use
 * SDL_atan2f for single-precision floats.
@@ -4609,7 +4648,7 @@ SDL_atan2 :: (y: float64, x: float64) -> float64 #foreign sdl3;
 *
 * Domain: `-INF <= x <= INF`, `-INF <= y <= INF`
 *
-* Range: `-Pi/2 <= y <= Pi/2`
+* Range: `-Pi <= y <= Pi`
 *
 * This function operates on single-precision floating point values, use
 * SDL_atan2 for double-precision floats.
@@ -8261,7 +8300,7 @@ SDL_InitStatus :: enum s32 {
 * Here is an example of using this:
 *
 * ```c
-*    static SDL_AtomicInitState init;
+*    static SDL_InitState init;
 *
 *    bool InitSystem(void)
 *    {
@@ -10660,6 +10699,136 @@ SDL_SetAudioStreamOutputChannelMap :: (stream: *SDL_AudioStream, chmap: *s32, co
 SDL_PutAudioStreamData :: (stream: *SDL_AudioStream, buf: *void, len: s32) -> bool #foreign sdl3;
 
 /**
+* A callback that fires for completed SDL_PutAudioStreamDataNoCopy() data.
+*
+* When using SDL_PutAudioStreamDataNoCopy() to provide data to an
+* SDL_AudioStream, it's not safe to dispose of the data until the stream has
+* completely consumed it. Often times it's difficult to know exactly when
+* this has happened.
+*
+* This callback fires once when the stream no longer needs the buffer,
+* allowing the app to easily free or reuse it.
+*
+* \param userdata an opaque pointer provided by the app for their personal
+*                 use.
+* \param buf the pointer provided to SDL_PutAudioStreamDataNoCopy().
+* \param buflen the size of buffer, in bytes, provided to
+*               SDL_PutAudioStreamDataNoCopy().
+*
+* \threadsafety This callbacks may run from any thread, so if you need to
+*               protect shared data, you should use SDL_LockAudioStream to
+*               serialize access; this lock will be held before your callback
+*               is called, so your callback does not need to manage the lock
+*               explicitly.
+*
+* \since This datatype is available since SDL 3.4.0.
+*
+* \sa SDL_SetAudioStreamGetCallback
+* \sa SDL_SetAudioStreamPutCallback
+*/
+SDL_AudioStreamDataCompleteCallback :: #type (userdata: *void, buf: *void, buflen: s32) -> void #c_call;
+
+/**
+* Add external data to an audio stream without copying it.
+*
+* Unlike SDL_PutAudioStreamData(), this function does not make a copy of the
+* provided data, instead storing the provided pointer. This means that the
+* put operation does not need to allocate and copy the data, but the original
+* data must remain available until the stream is done with it, either by
+* being read from the stream in its entirety, or a call to
+* SDL_ClearAudioStream() or SDL_DestroyAudioStream().
+*
+* The data must match the format/channels/samplerate specified in the latest
+* call to SDL_SetAudioStreamFormat, or the format specified when creating the
+* stream if it hasn't been changed.
+*
+* An optional callback may be provided, which is called when the stream no
+* longer needs the data. Once this callback fires, the stream will not access
+* the data again. This callback will fire for any reason the data is no
+* longer needed, including clearing or destroying the stream.
+*
+* Note that there is still an allocation to store tracking information, so
+* this function is more efficient for larger blocks of data. If you're
+* planning to put a few samples at a time, it will be more efficient to use
+* SDL_PutAudioStreamData(), which allocates and buffers in blocks.
+*
+* \param stream the stream the audio data is being added to.
+* \param buf a pointer to the audio data to add.
+* \param len the number of bytes to add to the stream.
+* \param callback the callback function to call when the data is no longer
+*                 needed by the stream. May be NULL.
+* \param userdata an opaque pointer provided to the callback for its own
+*                 personal use.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety It is safe to call this function from any thread, but if the
+*               stream has a callback set, the caller might need to manage
+*               extra locking.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_ClearAudioStream
+* \sa SDL_FlushAudioStream
+* \sa SDL_GetAudioStreamData
+* \sa SDL_GetAudioStreamQueued
+*/
+SDL_PutAudioStreamDataNoCopy :: (stream: *SDL_AudioStream, buf: *void, len: s32, callback: SDL_AudioStreamDataCompleteCallback, userdata: *void) -> bool #foreign sdl3;
+
+/**
+* Add data to the stream with each channel in a separate array.
+*
+* This data must match the format/channels/samplerate specified in the latest
+* call to SDL_SetAudioStreamFormat, or the format specified when creating the
+* stream if it hasn't been changed.
+*
+* The data will be interleaved and queued. Note that SDL_AudioStream only
+* operates on interleaved data, so this is simply a convenience function for
+* easily queueing data from sources that provide separate arrays. There is no
+* equivalent function to retrieve planar data.
+*
+* The arrays in `channel_buffers` are ordered as they are to be interleaved;
+* the first array will be the first sample in the interleaved data. Any
+* individual array may be NULL; in this case, silence will be interleaved for
+* that channel.
+*
+* `num_channels` specifies how many arrays are in `channel_buffers`. This can
+* be used as a safety to prevent overflow, in case the stream format has
+* changed elsewhere. If more channels are specified than the current input
+* spec, they are ignored. If less channels are specified, the missing arrays
+* are treated as if they are NULL (silence is written to those channels). If
+* the count is -1, SDL will assume the array count matches the current input
+* spec.
+*
+* Note that `num_samples` is the number of _samples per array_. This can also
+* be thought of as the number of _sample frames_ to be queued. A value of 1
+* with stereo arrays will queue two samples to the stream. This is different
+* than SDL_PutAudioStreamData, which wants the size of a single array in
+* bytes.
+*
+* \param stream the stream the audio data is being added to.
+* \param channel_buffers a pointer to an array of arrays, one array per
+*                        channel.
+* \param num_channels the number of arrays in `channel_buffers` or -1.
+* \param num_samples the number of _samples_ per array to write to the
+*                    stream.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety It is safe to call this function from any thread, but if the
+*               stream has a callback set, the caller might need to manage
+*               extra locking.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_ClearAudioStream
+* \sa SDL_FlushAudioStream
+* \sa SDL_GetAudioStreamData
+* \sa SDL_GetAudioStreamQueued
+*/
+SDL_PutAudioStreamPlanarData :: (stream: *SDL_AudioStream, channel_buffers: **void, num_channels: s32, num_samples: s32) -> bool #foreign sdl3;
+
+/**
 * Get converted/resampled data from the stream.
 *
 * The input/output data format/channels/samplerate is specified when creating
@@ -10826,8 +10995,8 @@ SDL_PauseAudioStreamDevice :: (stream: *SDL_AudioStream) -> bool #foreign sdl3;
 * previously been paused. Once unpaused, any bound audio streams will begin
 * to progress again, and audio can be generated.
 *
-* Remember, SDL_OpenAudioDeviceStream opens device in a paused state, so this
-* function call is required for audio playback to begin on such device.
+* SDL_OpenAudioDeviceStream opens audio devices in a paused state, so this
+* function call is required for audio playback to begin on such devices.
 *
 * \param stream the audio stream associated with the audio device to resume.
 * \returns true on success or false on failure; call SDL_GetError() for more
@@ -11080,7 +11249,7 @@ SDL_DestroyAudioStream :: (stream: *SDL_AudioStream) -> void #foreign sdl3;
 * Also unlike other functions, the audio device begins paused. This is to map
 * more closely to SDL2-style behavior, since there is no extra step here to
 * bind a stream to begin audio flowing. The audio device should be resumed
-* with `SDL_ResumeAudioStreamDevice(stream);`
+* with SDL_ResumeAudioStreamDevice().
 *
 * This function works with both playback and recording devices.
 *
@@ -11125,6 +11294,85 @@ SDL_DestroyAudioStream :: (stream: *SDL_AudioStream) -> void #foreign sdl3;
 * \sa SDL_ResumeAudioStreamDevice
 */
 SDL_OpenAudioDeviceStream :: (devid: SDL_AudioDeviceID, spec: *SDL_AudioSpec, callback: SDL_AudioStreamCallback, userdata: *void) -> *SDL_AudioStream #foreign sdl3;
+
+/**
+* A callback that fires around an audio device's processing work.
+*
+* This callback fires when a logical audio device is about to start accessing
+* its bound audio streams, and fires again when it has finished accessing
+* them. It covers the range of one "iteration" of the audio device.
+*
+* It can be useful to use this callback to update state that must apply to
+* all bound audio streams atomically: to make sure state changes don't happen
+* while half of the streams are already processed for the latest audio
+* buffer.
+*
+* This callback should run as quickly as possible and not block for any
+* significant time, as this callback delays submission of data to the audio
+* device, which can cause audio playback problems. This callback delays all
+* audio processing across a single physical audio device: all its logical
+* devices and all bound audio streams. Use it carefully.
+*
+* \param userdata a pointer provided by the app through
+*                 SDL_SetAudioPostmixCallback, for its own use.
+* \param devid the audio device this callback is running for.
+* \param start true if this is the start of the iteration, false if the end.
+*
+* \threadsafety This will run from a background thread owned by SDL. The
+*               application is responsible for locking resources the callback
+*               touches that need to be protected.
+*
+* \since This datatype is available since SDL 3.4.0.
+*
+* \sa SDL_SetAudioIterationCallbacks
+*/
+SDL_AudioIterationCallback :: #type (userdata: *void, devid: SDL_AudioDeviceID, start: bool) -> void #c_call;
+
+/**
+* Set callbacks that fire around a new iteration of audio device processing.
+*
+* Two callbacks are provided here: one that runs when a device is about to
+* process its bound audio streams, and another that runs when the device has
+* finished processing them.
+*
+* These callbacks can run at any time, and from any thread; if you need to
+* serialize access to your app's data, you should provide and use a mutex or
+* other synchronization device.
+*
+* Generally these callbacks are used to apply state that applies to multiple
+* bound audio streams, with a guarantee that the audio device's thread isn't
+* halfway through processing them. Generally a finer-grained lock through
+* SDL_LockAudioStream() is more appropriate.
+*
+* The callbacks are extremely time-sensitive; the callback should do the
+* least amount of work possible and return as quickly as it can. The longer
+* the callback runs, the higher the risk of audio dropouts or other problems.
+*
+* This function will block until the audio device is in between iterations,
+* so any existing callback that might be running will finish before this
+* function sets the new callback and returns.
+*
+* Physical devices do not accept these callbacks, only logical devices
+* created through SDL_OpenAudioDevice() can be.
+*
+* Setting a NULL callback function disables any previously-set callback.
+* Either callback may be NULL, and the same callback is permitted to be used
+* for both.
+*
+* \param devid the ID of an opened audio device.
+* \param start a callback function to be called at the start of an iteration.
+*              Can be NULL.
+* \param end a callback function to be called at the end of an iteration. Can
+*            be NULL.
+* \param userdata app-controlled pointer passed to callback. Can be NULL.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_SetAudioIterationCallbacks :: (devid: SDL_AudioDeviceID, start: SDL_AudioIterationCallback, end: SDL_AudioIterationCallback, userdata: *void) -> bool #foreign sdl3;
 
 /**
 * A callback that fires when data is about to be fed to an audio device.
@@ -11722,7 +11970,7 @@ SDL_PackedLayout :: enum s32 {
 *   ABGR32, define a platform-independent encoding into bytes in the order
 *   specified. For example, in RGB24 data, each pixel is encoded in 3 bytes
 *   (red, green, blue) in that order, and in ABGR32 data, each pixel is
-*   encoded in 4 bytes alpha, blue, green, red) in that order. Use these
+*   encoded in 4 bytes (alpha, blue, green, red) in that order. Use these
 *   names if the property of a format that is important to you is the order
 *   of the bytes in memory or on disk.
 * - Names with a bit count per component, such as ARGB8888 and XRGB1555, are
@@ -12547,7 +12795,7 @@ SDL_MapRGBA :: (format: *SDL_PixelFormatDetails, palette: *SDL_Palette, r: Uint8
 * (e.g., a completely white pixel in 16-bit RGB565 format would return [0xff,
 * 0xff, 0xff] not [0xf8, 0xfc, 0xf8]).
 *
-* \param pixel a pixel value.
+* \param pixelvalue a pixel value.
 * \param format a pointer to SDL_PixelFormatDetails describing the pixel
 *               format.
 * \param palette an optional palette for indexed formats, may be NULL.
@@ -12565,7 +12813,7 @@ SDL_MapRGBA :: (format: *SDL_PixelFormatDetails, palette: *SDL_Palette, r: Uint8
 * \sa SDL_MapRGB
 * \sa SDL_MapRGBA
 */
-SDL_GetRGB :: (pixel: Uint32, format: *SDL_PixelFormatDetails, palette: *SDL_Palette, r: *Uint8, g: *Uint8, b: *Uint8) -> void #foreign sdl3;
+SDL_GetRGB :: (pixelvalue: Uint32, format: *SDL_PixelFormatDetails, palette: *SDL_Palette, r: *Uint8, g: *Uint8, b: *Uint8) -> void #foreign sdl3;
 
 /**
 * Get RGBA values from a pixel in the specified format.
@@ -12578,7 +12826,7 @@ SDL_GetRGB :: (pixel: Uint32, format: *SDL_PixelFormatDetails, palette: *SDL_Pal
 * If the surface has no alpha component, the alpha will be returned as 0xff
 * (100% opaque).
 *
-* \param pixel a pixel value.
+* \param pixelvalue a pixel value.
 * \param format a pointer to SDL_PixelFormatDetails describing the pixel
 *               format.
 * \param palette an optional palette for indexed formats, may be NULL.
@@ -12597,7 +12845,7 @@ SDL_GetRGB :: (pixel: Uint32, format: *SDL_PixelFormatDetails, palette: *SDL_Pal
 * \sa SDL_MapRGB
 * \sa SDL_MapRGBA
 */
-SDL_GetRGBA :: (pixel: Uint32, format: *SDL_PixelFormatDetails, palette: *SDL_Palette, r: *Uint8, g: *Uint8, b: *Uint8, a: *Uint8) -> void #foreign sdl3;
+SDL_GetRGBA :: (pixelvalue: Uint32, format: *SDL_PixelFormatDetails, palette: *SDL_Palette, r: *Uint8, g: *Uint8, b: *Uint8, a: *Uint8) -> void #foreign sdl3;
 
 /**
 * The structure that defines a point (using integers).
@@ -12857,13 +13105,15 @@ SDL_SurfaceFlags :: Uint32;
 * \since This enum is available since SDL 3.2.0.
 */
 SDL_ScaleMode :: enum s32 {
-    INVALID :: -1;
-    NEAREST :: 0;
-    LINEAR  :: 1;
+    INVALID  :: -1;
+    NEAREST  :: 0;
+    LINEAR   :: 1;
+    PIXELART :: 2;
 
-    SDL_SCALEMODE_INVALID :: INVALID;
-    SDL_SCALEMODE_NEAREST :: NEAREST;
-    SDL_SCALEMODE_LINEAR  :: LINEAR;
+    SDL_SCALEMODE_INVALID  :: INVALID;
+    SDL_SCALEMODE_NEAREST  :: NEAREST;
+    SDL_SCALEMODE_LINEAR   :: LINEAR;
+    SDL_SCALEMODE_PIXELART :: PIXELART;
 }
 
 /**
@@ -14048,10 +14298,11 @@ SDL_BlitSurfaceUncheckedScaled :: (src: *SDL_Surface, srcrect: *SDL_Rect, dst: *
 *
 * \param src the SDL_Surface structure to be copied from.
 * \param srcrect the SDL_Rect structure representing the rectangle to be
-*                copied, may not be NULL.
+*                copied, or NULL to copy the entire surface.
 * \param dst the SDL_Surface structure that is the blit target.
 * \param dstrect the SDL_Rect structure representing the target rectangle in
-*                the destination surface, may not be NULL.
+*                the destination surface, or NULL to fill the entire
+*                destination surface.
 * \param scaleMode the SDL_ScaleMode to be used.
 * \returns true on success or false on failure; call SDL_GetError() for more
 *          information.
@@ -15380,6 +15631,27 @@ SDL_FlashOperation :: enum s32 {
     SDL_FLASH_UNTIL_FOCUSED :: UNTIL_FOCUSED;
 }
 
+/**
+* Window progress state
+*
+* \since This enum is available since SDL 3.2.8.
+*/
+SDL_ProgressState :: enum s32 {
+    INVALID       :: -1;
+    NONE          :: 0;
+    INDETERMINATE :: 1;
+    NORMAL        :: 2;
+    PAUSED        :: 3;
+    ERROR         :: 4;
+
+    SDL_PROGRESS_STATE_INVALID       :: INVALID;
+    SDL_PROGRESS_STATE_NONE          :: NONE;
+    SDL_PROGRESS_STATE_INDETERMINATE :: INDETERMINATE;
+    SDL_PROGRESS_STATE_NORMAL        :: NORMAL;
+    SDL_PROGRESS_STATE_PAUSED        :: PAUSED;
+    SDL_PROGRESS_STATE_ERROR         :: ERROR;
+}
+
 SDL_GLContextState :: struct {}
 /**
 * An opaque handle to an OpenGL context.
@@ -15697,6 +15969,11 @@ SDL_GetPrimaryDisplay :: () -> SDL_DisplayID #foreign sdl3;
 *   Note that this is provided only as a hint, and the application is
 *   responsible for any coordinate transformations needed to conform to the
 *   requested display orientation.
+*
+* On Wayland:
+*
+* - `SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_POINTER`: the wl_output associated
+*   with the display
 *
 * \param displayID the instance ID of the display to query.
 * \returns a valid property ID on success or 0 on failure; call
@@ -16245,6 +16522,16 @@ SDL_CreateWindow :: (title: *u8, w: s32, h: s32, flags: SDL_WindowFlags) -> *SDL
 * Popup windows implicitly do not have a border/decorations and do not appear
 * on the taskbar/dock or in lists of windows such as alt-tab menus.
 *
+* By default, popup window positions will automatically be constrained to
+* keep the entire window within display bounds. This can be overridden with
+* the `SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN` property.
+*
+* By default, popup menus will automatically grab keyboard focus from the
+* parent when shown. This behavior can be overridden by setting the
+* `SDL_WINDOW_NOT_FOCUSABLE` flag, setting the
+* `SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN` property to false, or toggling
+* it after creation via the `SDL_SetWindowFocusable()` function.
+*
 * If a parent window is hidden or destroyed, any child popup windows will be
 * recursively hidden or destroyed as well. Child popup windows not explicitly
 * hidden will be restored when the parent is shown.
@@ -16285,6 +16572,10 @@ SDL_CreatePopupWindow :: (parent: *SDL_Window, offset_x: s32, offset_y: s32, w: 
 *   be always on top
 * - `SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN`: true if the window has no
 *   window decoration
+* - `SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN`: true if the "tooltip"
+*   and "menu" window types should be automatically constrained to be
+*   entirely within display bounds (default), false if no constraints on the
+*   position are desired.
 * - `SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN`: true if the
 *   window will be used with an externally managed graphics context.
 * - `SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN`: true if the window should
@@ -16346,7 +16637,7 @@ SDL_CreatePopupWindow :: (parent: *SDL_Window, offset_x: s32, offset_y: s32, w: 
 * - `SDL_PROP_WINDOW_CREATE_WAYLAND_SURFACE_ROLE_CUSTOM_BOOLEAN` - true if
 *   the application wants to use the Wayland surface for a custom role and
 *   does not want it attached to an XDG toplevel window. See
-*   [README/wayland](README/wayland) for more information on using custom
+*   [README-wayland](README-wayland) for more information on using custom
 *   surfaces.
 * - `SDL_PROP_WINDOW_CREATE_WAYLAND_CREATE_EGL_WINDOW_BOOLEAN` - true if the
 *   application wants an associated `wl_egl_window` object to be created and
@@ -16354,7 +16645,7 @@ SDL_CreatePopupWindow :: (parent: *SDL_Window, offset_x: s32, offset_y: s32, w: 
 *   property or `SDL_WINDOW_OPENGL` flag set.
 * - `SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER` - the wl_surface
 *   associated with the window, if you want to wrap an existing window. See
-*   [README/wayland](README/wayland) for more information.
+*   [README-wayland](README-wayland) for more information.
 *
 * These are additional supported properties on Windows:
 *
@@ -16370,8 +16661,22 @@ SDL_CreatePopupWindow :: (parent: *SDL_Window, offset_x: s32, offset_y: s32, w: 
 *
 * The window is implicitly shown if the "hidden" property is not set.
 *
-* Windows with the "tooltip" and "menu" properties are popup windows and have
-* the behaviors and guidelines outlined in SDL_CreatePopupWindow().
+* These are additional supported properties with Emscripten:
+*
+* - `SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_CANVAS_ID_STRING`: the id given to the
+*   canvas element. This should start with a '#' sign
+* - `SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING`: override the
+*   binding element for keyboard inputs for this canvas. The variable can be
+*   one of:
+* - "#window": the javascript window object (default)
+* - "#document": the javascript document object
+* - "#screen": the javascript window.screen object
+* - "#canvas": the WebGL canvas element
+* - "#none": Don't bind anything at all
+* - any other string without a leading # sign applies to the element on the
+*   page with that ID. Windows with the "tooltip" and "menu" properties are
+*   popup windows and have the behaviors and guidelines outlined in
+*   SDL_CreatePopupWindow().
 *
 * If this window is being created to be used with an SDL_Renderer, you should
 * not add a graphics API specific property
@@ -16507,8 +16812,8 @@ SDL_GetWindowParent :: (window: *SDL_Window) -> *SDL_Window #foreign sdl3;
 *
 * On OpenVR:
 *
-* - `SDL_PROP_WINDOW_OPENVR_OVERLAY_ID`: the OpenVR Overlay Handle ID for the
-*   associated overlay window.
+* - `SDL_PROP_WINDOW_OPENVR_OVERLAY_ID_NUMBER`: the OpenVR Overlay Handle ID
+*   for the associated overlay window.
 *
 * On Vivante:
 *
@@ -16559,6 +16864,13 @@ SDL_GetWindowParent :: (window: *SDL_Window) -> *SDL_Window #foreign sdl3;
 *   the window
 * - `SDL_PROP_WINDOW_X11_WINDOW_NUMBER`: the X11 Window associated with the
 *   window
+*
+* On Emscripten:
+*
+* - `SDL_PROP_WINDOW_EMSCRIPTEN_CANVAS_ID_STRING`: the id the canvas element
+*   will have
+* - `SDL_PROP_WINDOW_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING`: the keyboard
+*   element that associates keyboard events to this window
 *
 * \param window the window to query.
 * \returns a valid property ID on success or 0 on failure; call
@@ -17461,7 +17773,6 @@ SDL_SetWindowKeyboardGrab :: (window: *SDL_Window, grabbed: bool) -> bool #forei
 *
 * \sa SDL_GetWindowMouseRect
 * \sa SDL_SetWindowMouseRect
-* \sa SDL_SetWindowMouseGrab
 * \sa SDL_SetWindowKeyboardGrab
 */
 SDL_SetWindowMouseGrab :: (window: *SDL_Window, grabbed: bool) -> bool #foreign sdl3;
@@ -17812,6 +18123,62 @@ SDL_SetWindowShape :: (window: *SDL_Window, shape: *SDL_Surface) -> bool #foreig
 * \since This function is available since SDL 3.2.0.
 */
 SDL_FlashWindow :: (window: *SDL_Window, operation: SDL_FlashOperation) -> bool #foreign sdl3;
+
+/**
+* Sets the state of the progress bar for the given window’s taskbar icon.
+*
+* \param window the window whose progress state is to be modified.
+* \param state the progress state. `SDL_PROGRESS_STATE_NONE` stops displaying
+*              the progress bar.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety This function should only be called on the main thread.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_SetWindowProgressState :: (window: *SDL_Window, state: SDL_ProgressState) -> bool #foreign sdl3;
+
+/**
+* Get the state of the progress bar for the given window’s taskbar icon.
+*
+* \param window the window to get the current progress state from.
+* \returns the progress state, or `SDL_PROGRESS_STATE_INVALID` on failure;
+*          call SDL_GetError() for more information.
+*
+* \threadsafety This function should only be called on the main thread.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_GetWindowProgressState :: (window: *SDL_Window) -> SDL_ProgressState #foreign sdl3;
+
+/**
+* Sets the value of the progress bar for the given window’s taskbar icon.
+*
+* \param window the window whose progress value is to be modified.
+* \param value the progress value in the range of [0.0f - 1.0f]. If the value
+*              is outside the valid range, it gets clamped.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety This function should only be called on the main thread.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_SetWindowProgressValue :: (window: *SDL_Window, value: float) -> bool #foreign sdl3;
+
+/**
+* Get the value of the progress bar for the given window’s taskbar icon.
+*
+* \param window the window to get the current progress value from.
+* \returns the progress value in the range of [0.0f - 1.0f], or -1.0f on
+*          failure; call SDL_GetError() for more information.
+*
+* \threadsafety This function should only be called on the main thread.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_GetWindowProgressValue :: (window: *SDL_Window) -> float #foreign sdl3;
 
 /**
 * Destroy a window.
@@ -18950,6 +19317,10 @@ SDL_JoystickID :: Uint32;
 * This is by no means a complete list of everything that can be plugged into
 * a computer.
 *
+* You may refer to
+* [XInput Controller Types](https://learn.microsoft.com/en-us/windows/win32/xinput/xinput-and-controller-subtypes)
+* table for a general understanding of each joystick type.
+*
 * \since This enum is available since SDL 3.2.0.
 */
 SDL_JoystickType :: enum s32 {
@@ -20026,7 +20397,8 @@ SDL_GamepadType :: enum s32 {
     NINTENDO_SWITCH_JOYCON_LEFT  :: 8;
     NINTENDO_SWITCH_JOYCON_RIGHT :: 9;
     NINTENDO_SWITCH_JOYCON_PAIR  :: 10;
-    COUNT                        :: 11;
+    GAMECUBE                     :: 11;
+    COUNT                        :: 12;
 
     SDL_GAMEPAD_TYPE_UNKNOWN                      :: UNKNOWN;
     SDL_GAMEPAD_TYPE_STANDARD                     :: STANDARD;
@@ -20039,6 +20411,7 @@ SDL_GamepadType :: enum s32 {
     SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT  :: NINTENDO_SWITCH_JOYCON_LEFT;
     SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT :: NINTENDO_SWITCH_JOYCON_RIGHT;
     SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR  :: NINTENDO_SWITCH_JOYCON_PAIR;
+    SDL_GAMEPAD_TYPE_GAMECUBE                     :: GAMECUBE;
     SDL_GAMEPAD_TYPE_COUNT                        :: COUNT;
 }
 
@@ -20048,8 +20421,9 @@ SDL_GamepadType :: enum s32 {
 * For controllers that use a diamond pattern for the face buttons, the
 * south/east/west/north buttons below correspond to the locations in the
 * diamond pattern. For Xbox controllers, this would be A/B/X/Y, for Nintendo
-* Switch controllers, this would be B/A/Y/X, for PlayStation controllers this
-* would be Cross/Circle/Square/Triangle.
+* Switch controllers, this would be B/A/Y/X, for GameCube controllers this
+* would be A/X/B/Y, for PlayStation controllers this would be
+* Cross/Circle/Square/Triangle.
 *
 * For controllers that don't use a diamond pattern for the face buttons, the
 * south/east/west/north buttons indicate the buttons labeled A, B, C, D, or
@@ -21111,10 +21485,12 @@ SDL_GamepadHasAxis :: (gamepad: *SDL_Gamepad, axis: SDL_GamepadAxis) -> bool #fo
 * return a negative value. Note that this differs from the value reported by
 * the lower-level SDL_GetJoystickAxis(), which normally uses the full range.
 *
+* Note that for invalid gamepads or axes, this will return 0. Zero is also a
+* valid value in normal operation; usually it means a centered axis.
+*
 * \param gamepad a gamepad.
 * \param axis an axis index (one of the SDL_GamepadAxis values).
-* \returns axis state (including 0) on success or 0 (also) on failure; call
-*          SDL_GetError() for more information.
+* \returns axis state.
 *
 * \since This function is available since SDL 3.2.0.
 *
@@ -22715,6 +23091,39 @@ SDL_MouseWheelDirection :: enum s32 {
 SDL_MouseButtonFlags :: Uint32;
 
 /**
+* A callback used to transform mouse motion delta from raw values.
+*
+* This is called during SDL's handling of platform mouse events to scale the
+* values of the resulting motion delta.
+*
+* \param userdata what was passed as `userdata` to
+*                 SDL_SetRelativeMouseTransform().
+* \param timestamp the associated time at which this mouse motion event was
+*                  received.
+* \param window the associated window to which this mouse motion event was
+*               addressed.
+* \param mouseID the associated mouse from which this mouse motion event was
+*                emitted.
+* \param x pointer to a variable that will be treated as the resulting x-axis
+*          motion.
+* \param y pointer to a variable that will be treated as the resulting y-axis
+*          motion.
+*
+* \threadsafety This callback is called by SDL's internal mouse input
+*               processing procedure, which may be a thread separate from the
+*               main event loop that is run at realtime priority. Stalling
+*               this thread with too much work in the callback can therefore
+*               potentially freeze the entire system. Care should be taken
+*               with proper synchronization practices when adding other side
+*               effects beyond mutation of the x and y values.
+*
+* \since This datatype is available since SDL 3.4.0.
+*
+* \sa SDL_SetRelativeMouseTransform
+*/
+SDL_MouseMotionTransformCallback :: #type (userdata: *void, timestamp: Uint64, window: *SDL_Window, mouseID: SDL_MouseID, x: *float, y: *float) -> void #c_call;
+
+/**
 * Return whether a mouse is currently connected.
 *
 * \returns true if a mouse is connected, false otherwise.
@@ -22929,6 +23338,24 @@ SDL_WarpMouseInWindow :: (window: *SDL_Window, x: float, y: float) -> void #fore
 * \sa SDL_WarpMouseInWindow
 */
 SDL_WarpMouseGlobal :: (x: float, y: float) -> bool #foreign sdl3;
+
+/**
+* Set a user-defined function by which to transform relative mouse inputs.
+*
+* This overrides the relative system scale and relative speed scale hints.
+* Should be called prior to enabling relative mouse mode, fails otherwise.
+*
+* \param callback a callback used to transform relative mouse motion, or NULL
+*                 for default behavior.
+* \param userdata a pointer that will be passed to `callback`.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety This function should only be called on the main thread.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_SetRelativeMouseTransform :: (callback: SDL_MouseMotionTransformCallback, userdata: *void) -> bool #foreign sdl3;
 
 /**
 * Set relative mouse mode for a window.
@@ -24172,7 +24599,7 @@ SDL_TouchFingerEvent :: struct {
 }
 
 /**
-* Pressure-sensitive pen proximity event structure (event.pmotion.*)
+* Pressure-sensitive pen proximity event structure (event.pproximity.*)
 *
 * When a pen becomes visible to the system (it is close enough to a tablet,
 * etc), SDL will send an SDL_EVENT_PEN_PROXIMITY_IN event with the new pen's
@@ -24411,9 +24838,9 @@ SDL_Event :: union {
     architectures) for this union, and GCC will use the alignment of the
     largest datatype within the union, which is 8 bytes on 64-bit
     architectures.
-    
+
     So... we'll add padding to force the size to be the same for both.
-    
+
     On architectures where pointers are 16 bytes, this needs rounding up to
     the next multiple of 16, 64, and on architectures where pointers are
     even larger the size of SDL_UserEvent will dominate as being 3 pointers.
@@ -24938,6 +25365,38 @@ SDL_RegisterEvents :: (numevents: s32) -> Uint32 #foreign sdl3;
 * \sa SDL_WaitEventTimeout
 */
 SDL_GetWindowFromEvent :: (event: *SDL_Event) -> *SDL_Window #foreign sdl3;
+
+/**
+* Generate a human-readable description of an event.
+*
+* This will fill `buf` with a null-terminated string that might look
+* something like this:
+*
+* ```
+* SDL_EVENT_MOUSE_MOTION (timestamp=1140256324 windowid=2 which=0 state=0 x=492.99 y=139.09 xrel=52 yrel=6)
+* ```
+*
+* The exact format of the string is not guaranteed; it is intended for
+* logging purposes, to be read by a human, and not parsed by a computer.
+*
+* The returned value follows the same rules as SDL_snprintf(): `buf` will
+* always be NULL-terminated (unless `buflen` is zero), and will be truncated
+* if `buflen` is too small. The return code is the number of bytes needed for
+* the complete string, not counting the NULL-terminator, whether the string
+* was truncated or not. Unlike SDL_snprintf(), though, this function never
+* returns -1.
+*
+* \param event an event to describe. May be NULL.
+* \param buf the buffer to fill with the description string. May be NULL.
+* \param buflen the maximum bytes that can be written to `buf`.
+* \returns number of bytes needed for the full string, not counting the
+*          null-terminator byte.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_GetEventDescription :: (event: *SDL_Event, buf: *u8, buflen: s32) -> s32 #foreign sdl3;
 
 /**
 * Get the directory where the application was run from.
@@ -26426,6 +26885,17 @@ SDL_GPUViewport :: struct {
 * A structure specifying parameters related to transferring data to or from a
 * texture.
 *
+* If either of `pixels_per_row` or `rows_per_layer` is zero, then width and
+* height of passed SDL_GPUTextureRegion to SDL_UploadToGPUTexture or
+* SDL_DownloadFromGPUTexture are used as default values respectively and data
+* is considered to be tightly packed.
+*
+* **WARNING**: Direct3D 12 requires texture data row pitch to be 256 byte
+* aligned, and offsets to be aligned to 512 bytes. If they are not, SDL will
+* make a temporary copy of the data that is properly aligned, but this adds
+* overhead to the transfer process. Apps can avoid this by aligning their
+* data appropriately, or using a different GPU backend than Direct3D 12.
+*
 * \since This struct is available since SDL 3.2.0.
 *
 * \sa SDL_UploadToGPUTexture
@@ -26712,6 +27182,9 @@ SDL_GPUStencilOpState :: struct {
 * \since This struct is available since SDL 3.2.0.
 *
 * \sa SDL_GPUColorTargetDescription
+* \sa SDL_GPUBlendFactor
+* \sa SDL_GPUBlendOp
+* \sa SDL_GPUColorComponentFlags
 */
 SDL_GPUColorTargetBlendState :: struct {
     src_color_blendfactor:   SDL_GPUBlendFactor; /**< The value to be multiplied by the source RGB value. */
@@ -26733,6 +27206,8 @@ SDL_GPUColorTargetBlendState :: struct {
 * \since This struct is available since SDL 3.2.0.
 *
 * \sa SDL_CreateGPUShader
+* \sa SDL_GPUShaderFormat
+* \sa SDL_GPUShaderStage
 */
 SDL_GPUShaderCreateInfo :: struct {
     code_size:            u64; /**< The size in bytes of the code pointed to. */
@@ -26846,12 +27321,12 @@ SDL_GPURasterizerState :: struct {
 * \sa SDL_GPUGraphicsPipelineCreateInfo
 */
 SDL_GPUMultisampleState :: struct {
-    sample_count: SDL_GPUSampleCount; /**< The number of samples to be used in rasterization. */
-    sample_mask:  Uint32; /**< Reserved for future use. Must be set to 0. */
-    enable_mask:  bool; /**< Reserved for future use. Must be set to false. */
-    padding1:     Uint8;
-    padding2:     Uint8;
-    padding3:     Uint8;
+    sample_count:             SDL_GPUSampleCount; /**< The number of samples to be used in rasterization. */
+    sample_mask:              Uint32; /**< Reserved for future use. Must be set to 0. */
+    enable_mask:              bool; /**< Reserved for future use. Must be set to false. */
+    enable_alpha_to_coverage: bool; /**< true enables the alpha-to-coverage feature. */
+    padding2:                 Uint8;
+    padding3:                 Uint8;
 }
 
 /**
@@ -27180,6 +27655,13 @@ SDL_GPUSupportsProperties :: (props: SDL_PropertiesID) -> bool #foreign sdl3;
 /**
 * Creates a GPU context.
 *
+* The GPU driver name can be one of the following:
+*
+* - "vulkan": [Vulkan](CategoryGPU#vulkan)
+* - "direct3d12": [D3D12](CategoryGPU#d3d12)
+* - "metal": [Metal](CategoryGPU#metal)
+* - NULL: let SDL pick the optimal driver
+*
 * \param format_flags a bitflag indicating which shader formats the app is
 *                     able to provide.
 * \param debug_mode enable debug mode properties and validations.
@@ -27190,6 +27672,7 @@ SDL_GPUSupportsProperties :: (props: SDL_PropertiesID) -> bool #foreign sdl3;
 *
 * \since This function is available since SDL 3.2.0.
 *
+* \sa SDL_CreateGPUDeviceWithProperties
 * \sa SDL_GetGPUShaderFormats
 * \sa SDL_GetGPUDeviceDriver
 * \sa SDL_DestroyGPUDevice
@@ -27206,6 +27689,8 @@ SDL_CreateGPUDevice :: (format_flags: SDL_GPUShaderFormat, debug_mode: bool, nam
 *   properties and validations, defaults to true.
 * - `SDL_PROP_GPU_DEVICE_CREATE_PREFERLOWPOWER_BOOLEAN`: enable to prefer
 *   energy efficiency over maximum GPU performance, defaults to false.
+* - `SDL_PROP_GPU_DEVICE_CREATE_VERBOSE_BOOLEAN`: enable to automatically log
+*   useful debug information on device creation, defaults to true.
 * - `SDL_PROP_GPU_DEVICE_CREATE_NAME_STRING`: the name of the GPU driver to
 *   use, if a specific one is desired.
 *
@@ -27228,6 +27713,25 @@ SDL_CreateGPUDevice :: (format_flags: SDL_GPUShaderFormat, debug_mode: bool, nam
 *
 * - `SDL_PROP_GPU_DEVICE_CREATE_D3D12_SEMANTIC_NAME_STRING`: the prefix to
 *   use for all vertex semantics, default is "TEXCOORD".
+*
+* With the Vulkan renderer:
+*
+* - `SDL_PROP_GPU_DEVICE_CREATE_VULKAN_SHADERCLIPDISTANCE_BOOLEAN`: Enable
+*   device feature shaderClipDistance. If disabled, clip distances are not
+*   supported in shader code: gl_ClipDistance[] built-ins of GLSL,
+*   SV_ClipDistance0/1 semantics of HLSL and [[clip_distance]] attribute of
+*   Metal. Defaults to true.
+* - `SDL_PROP_GPU_DEVICE_CREATE_VULKAN_DEPTHCLAMP_BOOLEAN`: Enable device
+*   feature depthClamp. If disabled, there is no depth clamp support and
+*   enable_depth_clip in SDL_GPURasterizerState must always be set to true.
+*   Defaults to true.
+* - `SDL_PROP_GPU_DEVICE_CREATE_VULKAN_DRAWINDIRECTFIRST_BOOLEAN`: Enable
+*   device feature drawIndirectFirstInstance. If disabled, the argument
+*   first_instance of SDL_GPUIndirectDrawCommand must be set to zero.
+*   Defaults to true.
+* - `SDL_PROP_GPU_DEVICE_CREATE_VULKAN_SAMPLERANISOTROPY_BOOLEAN`: Enable
+*   device feature samplerAnisotropy. If disabled, enable_anisotropy of
+*   SDL_GPUSamplerCreateInfo must be set to false. Defaults to true.
 *
 * \param props the properties to use.
 * \returns a GPU context on success or NULL on failure; call SDL_GetError()
@@ -27303,6 +27807,110 @@ SDL_GetGPUDeviceDriver :: (device: *SDL_GPUDevice) -> *u8 #foreign sdl3;
 * \since This function is available since SDL 3.2.0.
 */
 SDL_GetGPUShaderFormats :: (device: *SDL_GPUDevice) -> SDL_GPUShaderFormat #foreign sdl3;
+
+/**
+* Get the properties associated with a GPU device.
+*
+* All properties are optional and may differ between GPU backends and SDL
+* versions.
+*
+* The following properties are provided by SDL:
+*
+* `SDL_PROP_GPU_DEVICE_NAME_STRING`: Contains the name of the underlying
+* device as reported by the system driver. This string has no standardized
+* format, is highly inconsistent between hardware devices and drivers, and is
+* able to change at any time. Do not attempt to parse this string as it is
+* bound to fail at some point in the future when system drivers are updated,
+* new hardware devices are introduced, or when SDL adds new GPU backends or
+* modifies existing ones.
+*
+* Strings that have been found in the wild include:
+*
+* - GTX 970
+* - GeForce GTX 970
+* - NVIDIA GeForce GTX 970
+* - Microsoft Direct3D12 (NVIDIA GeForce GTX 970)
+* - NVIDIA Graphics Device
+* - GeForce GPU
+* - P106-100
+* - AMD 15D8:C9
+* - AMD Custom GPU 0405
+* - AMD Radeon (TM) Graphics
+* - ASUS Radeon RX 470 Series
+* - Intel(R) Arc(tm) A380 Graphics (DG2)
+* - Virtio-GPU Venus (NVIDIA TITAN V)
+* - SwiftShader Device (LLVM 16.0.0)
+* - llvmpipe (LLVM 15.0.4, 256 bits)
+* - Microsoft Basic Render Driver
+* - unknown device
+*
+* The above list shows that the same device can have different formats, the
+* vendor name may or may not appear in the string, the included vendor name
+* may not be the vendor of the chipset on the device, some manufacturers
+* include pseudo-legal marks while others don't, some devices may not use a
+* marketing name in the string, the device string may be wrapped by the name
+* of a translation interface, the device may be emulated in software, or the
+* string may contain generic text that does not identify the device at all.
+*
+* `SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING`: Contains the self-reported name
+* of the underlying system driver.
+*
+* Strings that have been found in the wild include:
+*
+* - Intel Corporation
+* - Intel open-source Mesa driver
+* - Qualcomm Technologies Inc. Adreno Vulkan Driver
+* - MoltenVK
+* - Mali-G715
+* - venus
+*
+* `SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING`: Contains the self-reported
+* version of the underlying system driver. This is a relatively short version
+* string in an unspecified format. If SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING
+* is available then that property should be preferred over this one as it may
+* contain additional information that is useful for identifying the exact
+* driver version used.
+*
+* Strings that have been found in the wild include:
+*
+* - 53.0.0
+* - 0.405.2463
+* - 32.0.15.6614
+*
+* `SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING`: Contains the detailed version
+* information of the underlying system driver as reported by the driver. This
+* is an arbitrary string with no standardized format and it may contain
+* newlines. This property should be preferred over
+* SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING if it is available as it usually
+* contains the same information but in a format that is easier to read.
+*
+* Strings that have been found in the wild include:
+*
+* - 101.6559
+* - 1.2.11
+* - Mesa 21.2.2 (LLVM 12.0.1)
+* - Mesa 22.2.0-devel (git-f226222 2022-04-14 impish-oibaf-ppa)
+* - v1.r53p0-00eac0.824c4f31403fb1fbf8ee1042422c2129
+*
+* This string has also been observed to be a multiline string (which has a
+* trailing newline):
+*
+* ```
+* Driver Build: 85da404, I46ff5fc46f, 1606794520
+* Date: 11/30/20
+* Compiler Version: EV031.31.04.01
+* Driver Branch: promo490_3_Google
+* ```
+*
+* \param device a GPU context to query.
+* \returns a valid property ID on success or 0 on failure; call
+*          SDL_GetError() for more information.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_GetGPUDeviceProperties :: (device: *SDL_GPUDevice) -> SDL_PropertiesID #foreign sdl3;
 
 /**
 * Creates a pipeline object to be used in a compute workflow.
@@ -27807,6 +28415,9 @@ SDL_AcquireGPUCommandBuffer :: (device: *SDL_GPUDevice) -> *SDL_GPUCommandBuffer
 * The data being pushed must respect std140 layout conventions. In practical
 * terms this means you must ensure that vec3 and vec4 fields are 16-byte
 * aligned.
+*
+* For detailed information about accessing uniform data from a shader, please
+* refer to SDL_CreateGPUShader.
 *
 * \param command_buffer a command buffer.
 * \param slot_index the vertex uniform slot to push data to.
@@ -28598,7 +29209,7 @@ SDL_ReleaseWindowFromGPUDevice :: (device: *SDL_GPUDevice, window: *SDL_Window) 
 * supported via SDL_WindowSupportsGPUPresentMode /
 * SDL_WindowSupportsGPUSwapchainComposition prior to calling this function.
 *
-* SDL_GPU_PRESENTMODE_VSYNC with SDL_GPU_SWAPCHAINCOMPOSITION_SDR are always
+* SDL_GPU_PRESENTMODE_VSYNC with SDL_GPU_SWAPCHAINCOMPOSITION_SDR is always
 * supported.
 *
 * \param device a GPU context.
@@ -28664,7 +29275,9 @@ SDL_GetGPUSwapchainTextureFormat :: (device: *SDL_GPUDevice, window: *SDL_Window
 * buffer used to acquire it.
 *
 * This function will fill the swapchain texture handle with NULL if too many
-* frames are in flight. This is not an error.
+* frames are in flight. This is not an error. This NULL pointer should not be
+* passed back into SDL. Instead, it should be considered as an indication to
+* wait until the swapchain is available.
 *
 * If you use this function, it is possible to create a situation where many
 * command buffers are allocated while the rendering context waits for the GPU
@@ -28951,6 +29564,25 @@ SDL_CalculateGPUTextureFormatSize :: (format: SDL_GPUTextureFormat, width: Uint3
 SDL_Haptic :: struct {}
 
 /**
+* Type of haptic effect.
+*/
+SDL_HapticEffectType :: Uint16;
+
+/**
+* Type of coordinates used for haptic direction.
+*/
+SDL_HapticDirectionType :: Uint8;
+
+/**
+* ID for haptic effects.
+*
+* This is -1 if the ID is invalid.
+*
+* \sa SDL_CreateHapticEffect
+*/
+SDL_HapticEffectID :: s32;
+
+/**
 * Structure that represents a haptic direction.
 *
 * This is the direction where the force comes from, instead of the direction
@@ -29054,7 +29686,7 @@ SDL_Haptic :: struct {}
 * \sa SDL_GetNumHapticAxes
 */
 SDL_HapticDirection :: struct {
-    type: Uint8; /**< The type of encoding. */
+    type: SDL_HapticDirectionType; /**< The type of encoding. */
     dir:  [3] Sint32; /**< The encoded direction. */
 }
 
@@ -29072,7 +29704,7 @@ SDL_HapticDirection :: struct {
 * \sa SDL_HapticEffect
 */
 SDL_HapticConstant :: struct {
-    type:          Uint16; /**< SDL_HAPTIC_CONSTANT */
+    type:          SDL_HapticEffectType; /**< SDL_HAPTIC_CONSTANT */
     direction:     SDL_HapticDirection; /**< Direction of the effect. */
 
     length:        Uint32; /**< Duration of the effect. */
@@ -29155,7 +29787,7 @@ SDL_HapticPeriodic :: struct {
     /**< SDL_HAPTIC_SINE, SDL_HAPTIC_SQUARE
     SDL_HAPTIC_TRIANGLE, SDL_HAPTIC_SAWTOOTHUP or
     SDL_HAPTIC_SAWTOOTHDOWN */
-    type:          Uint16;
+    type:          SDL_HapticEffectType;
 
     direction:     SDL_HapticDirection; /**< Direction of the effect. */
 
@@ -29206,7 +29838,7 @@ SDL_HapticPeriodic :: struct {
 SDL_HapticCondition :: struct {
     /**< SDL_HAPTIC_SPRING, SDL_HAPTIC_DAMPER,
     SDL_HAPTIC_INERTIA or SDL_HAPTIC_FRICTION */
-    type:        Uint16;
+    type:        SDL_HapticEffectType;
 
     direction:   SDL_HapticDirection; /**< Direction of the effect. */
 
@@ -29240,7 +29872,7 @@ SDL_HapticCondition :: struct {
 * \sa SDL_HapticEffect
 */
 SDL_HapticRamp :: struct {
-    type:          Uint16; /**< SDL_HAPTIC_RAMP */
+    type:          SDL_HapticEffectType; /**< SDL_HAPTIC_RAMP */
     direction:     SDL_HapticDirection; /**< Direction of the effect. */
 
     length:        Uint32; /**< Duration of the effect. */
@@ -29273,7 +29905,7 @@ SDL_HapticRamp :: struct {
 * \sa SDL_HapticEffect
 */
 SDL_HapticLeftRight :: struct {
-    type:            Uint16; /**< SDL_HAPTIC_LEFTRIGHT */
+    type:            SDL_HapticEffectType; /**< SDL_HAPTIC_LEFTRIGHT */
 
     length:          Uint32; /**< Duration of the effect in milliseconds. */
 
@@ -29299,7 +29931,7 @@ SDL_HapticLeftRight :: struct {
 * \sa SDL_HapticEffect
 */
 SDL_HapticCustom :: struct {
-    type:          Uint16; /**< SDL_HAPTIC_CUSTOM */
+    type:          SDL_HapticEffectType; /**< SDL_HAPTIC_CUSTOM */
     direction:     SDL_HapticDirection; /**< Direction of the effect. */
 
     length:        Uint32; /**< Duration of the effect. */
@@ -29392,7 +30024,7 @@ SDL_HapticCustom :: struct {
 * \sa SDL_HapticCustom
 */
 SDL_HapticEffect :: union {
-    type:      Uint16; /**< Effect type. */
+    type:      SDL_HapticEffectType; /**< Effect type. */
     constant:  SDL_HapticConstant; /**< Constant effect. */
     periodic:  SDL_HapticPeriodic; /**< Periodic effect. */
     condition: SDL_HapticCondition; /**< Condition effect. */
@@ -29666,7 +30298,7 @@ SDL_HapticEffectSupported :: (haptic: *SDL_Haptic, effect: *SDL_HapticEffect) ->
 * \sa SDL_RunHapticEffect
 * \sa SDL_UpdateHapticEffect
 */
-SDL_CreateHapticEffect :: (haptic: *SDL_Haptic, effect: *SDL_HapticEffect) -> s32 #foreign sdl3;
+SDL_CreateHapticEffect :: (haptic: *SDL_Haptic, effect: *SDL_HapticEffect) -> SDL_HapticEffectID #foreign sdl3;
 
 /**
 * Update the properties of an effect.
@@ -29688,7 +30320,7 @@ SDL_CreateHapticEffect :: (haptic: *SDL_Haptic, effect: *SDL_HapticEffect) -> s3
 * \sa SDL_CreateHapticEffect
 * \sa SDL_RunHapticEffect
 */
-SDL_UpdateHapticEffect :: (haptic: *SDL_Haptic, effect: s32, data: *SDL_HapticEffect) -> bool #foreign sdl3;
+SDL_UpdateHapticEffect :: (haptic: *SDL_Haptic, effect: SDL_HapticEffectID, data: *SDL_HapticEffect) -> bool #foreign sdl3;
 
 /**
 * Run the haptic effect on its associated haptic device.
@@ -29712,7 +30344,7 @@ SDL_UpdateHapticEffect :: (haptic: *SDL_Haptic, effect: s32, data: *SDL_HapticEf
 * \sa SDL_StopHapticEffect
 * \sa SDL_StopHapticEffects
 */
-SDL_RunHapticEffect :: (haptic: *SDL_Haptic, effect: s32, iterations: Uint32) -> bool #foreign sdl3;
+SDL_RunHapticEffect :: (haptic: *SDL_Haptic, effect: SDL_HapticEffectID, iterations: Uint32) -> bool #foreign sdl3;
 
 /**
 * Stop the haptic effect on its associated haptic device.
@@ -29727,7 +30359,7 @@ SDL_RunHapticEffect :: (haptic: *SDL_Haptic, effect: s32, iterations: Uint32) ->
 * \sa SDL_RunHapticEffect
 * \sa SDL_StopHapticEffects
 */
-SDL_StopHapticEffect :: (haptic: *SDL_Haptic, effect: s32) -> bool #foreign sdl3;
+SDL_StopHapticEffect :: (haptic: *SDL_Haptic, effect: SDL_HapticEffectID) -> bool #foreign sdl3;
 
 /**
 * Destroy a haptic effect on the device.
@@ -29742,7 +30374,7 @@ SDL_StopHapticEffect :: (haptic: *SDL_Haptic, effect: s32) -> bool #foreign sdl3
 *
 * \sa SDL_CreateHapticEffect
 */
-SDL_DestroyHapticEffect :: (haptic: *SDL_Haptic, effect: s32) -> void #foreign sdl3;
+SDL_DestroyHapticEffect :: (haptic: *SDL_Haptic, effect: SDL_HapticEffectID) -> void #foreign sdl3;
 
 /**
 * Get the status of the current effect on the specified haptic device.
@@ -29758,7 +30390,7 @@ SDL_DestroyHapticEffect :: (haptic: *SDL_Haptic, effect: s32) -> void #foreign s
 *
 * \sa SDL_GetHapticFeatures
 */
-SDL_GetHapticEffectStatus :: (haptic: *SDL_Haptic, effect: s32) -> bool #foreign sdl3;
+SDL_GetHapticEffectStatus :: (haptic: *SDL_Haptic, effect: SDL_HapticEffectID) -> bool #foreign sdl3;
 
 /**
 * Set the global gain of the specified haptic device.
@@ -29972,7 +30604,7 @@ SDL_hid_device_info :: struct {
 
     /** The USB interface which this logical device
     represents.
-    
+
     Valid only if the device is a USB HID device.
     Set to -1 in all other cases.
     */
@@ -30600,7 +31232,7 @@ SDL_InitFlags :: Uint32;
 * to run.
 *
 * See
-* [Main callbacks in SDL3](https://wiki.libsdl.org/SDL3/README/main-functions#main-callbacks-in-sdl3)
+* [Main callbacks in SDL3](https://wiki.libsdl.org/SDL3/README-main-functions#main-callbacks-in-sdl3)
 * for complete details.
 *
 * \since This enum is available since SDL 3.2.0.
@@ -31251,6 +31883,9 @@ SDL_ResetLogPriorities :: () -> void #foreign sdl3;
 * By default SDL_LOG_PRIORITY_INFO and below have no prefix, and
 * SDL_LOG_PRIORITY_WARN and higher have a prefix showing their priority, e.g.
 * "WARNING: ".
+*
+* This function makes a copy of its string argument, **prefix**, so it is not
+* necessary to keep the value of **prefix** alive after the call returns.
 *
 * \param priority the SDL_LogPriority to modify.
 * \param prefix the prefix to use for that log priority, or NULL to use no
@@ -31989,6 +32624,9 @@ SDL_ProcessIO :: enum s32 {
 * - `SDL_PROP_PROCESS_CREATE_ENVIRONMENT_POINTER`: an SDL_Environment
 *   pointer. If this property is set, it will be the entire environment for
 *   the process, otherwise the current environment is used.
+* - `SDL_PROP_PROCESS_CREATE_WORKING_DIRECTORY_STRING`: a UTF-8 encoded
+*   string representing the working directory for the process, defaults to
+*   the current working directory.
 * - `SDL_PROP_PROCESS_CREATE_STDIN_NUMBER`: an SDL_ProcessIO value describing
 *   where standard input for the process comes from, defaults to
 *   `SDL_PROCESS_STDIO_NULL`.
@@ -32015,6 +32653,12 @@ SDL_ProcessIO :: enum s32 {
 *   run in the background. In this case the default input and output is
 *   `SDL_PROCESS_STDIO_NULL` and the exitcode of the process is not
 *   available, and will always be 0.
+* - `SDL_PROP_PROCESS_CREATE_CMDLINE_STRING`: a string containing the program
+*   to run and any parameters. This string is passed directly to
+*   `CreateProcess` on Windows, and does nothing on other platforms. This
+*   property is only important if you want to start programs that does
+*   non-standard command-line processing, and in most cases using
+*   `SDL_PROP_PROCESS_CREATE_ARGS_POINTER` is sufficient.
 *
 * On POSIX platforms, wait() and waitpid(-1, ...) should not be called, and
 * SIGCHLD should not be ignored or handled because those would prevent SDL
@@ -32254,6 +32898,25 @@ SDL_TextureAccess :: enum s32 {
 }
 
 /**
+* The addressing mode for a texture when used in SDL_RenderGeometry().
+*
+* This affects how texture coordinates are interpreted outside of [0, 1]
+*
+* \since This enum is available since SDL 3.4.0.
+*/
+SDL_TextureAddressMode :: enum s32 {
+    INVALID :: -1;
+    AUTO    :: 0;
+    CLAMP   :: 1;
+    WRAP    :: 2;
+
+    SDL_TEXTURE_ADDRESS_INVALID :: INVALID;
+    SDL_TEXTURE_ADDRESS_AUTO    :: AUTO;
+    SDL_TEXTURE_ADDRESS_CLAMP   :: CLAMP;
+    SDL_TEXTURE_ADDRESS_WRAP    :: WRAP;
+}
+
+/**
 * How the logical size is mapped to the output.
 *
 * \since This enum is available since SDL 3.2.0.
@@ -32415,6 +33078,15 @@ SDL_CreateRenderer :: (window: *SDL_Window, name: *u8) -> *SDL_Renderer #foreign
 *   present synchronized with the refresh rate. This property can take any
 *   value that is supported by SDL_SetRenderVSync() for the renderer.
 *
+* With the SDL GPU renderer:
+*
+* - `SDL_PROP_RENDERER_CREATE_GPU_SHADERS_SPIRV_BOOLEAN`: the app is able to
+*   provide SPIR-V shaders to SDL_GPURenderState, optional.
+* - `SDL_PROP_RENDERER_CREATE_GPU_SHADERS_DXIL_BOOLEAN`: the app is able to
+*   provide DXIL shaders to SDL_GPURenderState, optional.
+* - `SDL_PROP_RENDERER_CREATE_GPU_SHADERS_MSL_BOOLEAN`: the app is able to
+*   provide MSL shaders to SDL_GPURenderState, optional.
+*
 * With the vulkan renderer:
 *
 * - `SDL_PROP_RENDERER_CREATE_VULKAN_INSTANCE_POINTER`: the VkInstance to use
@@ -32445,6 +33117,37 @@ SDL_CreateRenderer :: (window: *SDL_Window, name: *u8) -> *SDL_Renderer #foreign
 * \sa SDL_GetRendererName
 */
 SDL_CreateRendererWithProperties :: (props: SDL_PropertiesID) -> *SDL_Renderer #foreign sdl3;
+
+/**
+* Create a 2D GPU rendering context for a window, with support for the
+* specified shader format.
+*
+* This is a convenience function to create a SDL GPU backed renderer,
+* intended to be used with SDL_GPURenderState. The resulting renderer will
+* support shaders in one of the specified shader formats.
+*
+* If no available GPU driver supports any of the specified shader formats,
+* this function will fail.
+*
+* \param window the window where rendering is displayed.
+* \param format_flags a bitflag indicating which shader formats the app is
+*                     able to provide.
+* \param device a pointer filled with the associated GPU device, or NULL on
+*               error.
+* \returns a valid rendering context or NULL if there was an error; call
+*          SDL_GetError() for more information.
+*
+* \threadsafety This function should only be called on the main thread.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_CreateRendererWithProperties
+* \sa SDL_GetGPUShaderFormats
+* \sa SDL_CreateGPUShader
+* \sa SDL_CreateGPURenderState
+* \sa SDL_SetRenderGPUState
+*/
+SDL_CreateGPURenderer :: (window: *SDL_Window, format_flags: SDL_GPUShaderFormat, device: **SDL_GPUDevice) -> *SDL_Renderer #foreign sdl3;
 
 /**
 * Create a 2D software rendering context for a surface.
@@ -34279,6 +34982,43 @@ SDL_RenderTextureTiled :: (renderer: *SDL_Renderer, texture: *SDL_Texture, srcre
 SDL_RenderTexture9Grid :: (renderer: *SDL_Renderer, texture: *SDL_Texture, srcrect: *SDL_FRect, left_width: float, right_width: float, top_height: float, bottom_height: float, scale: float, dstrect: *SDL_FRect) -> bool #foreign sdl3;
 
 /**
+* Perform a scaled copy using the 9-grid algorithm to the current rendering
+* target at subpixel precision.
+*
+* The pixels in the texture are split into a 3x3 grid, using the different
+* corner sizes for each corner, and the sides and center making up the
+* remaining pixels. The corners are then scaled using `scale` and fit into
+* the corners of the destination rectangle. The sides and center are then
+* tiled into place to cover the remaining destination rectangle.
+*
+* \param renderer the renderer which should copy parts of a texture.
+* \param texture the source texture.
+* \param srcrect the SDL_Rect structure representing the rectangle to be used
+*                for the 9-grid, or NULL to use the entire texture.
+* \param left_width the width, in pixels, of the left corners in `srcrect`.
+* \param right_width the width, in pixels, of the right corners in `srcrect`.
+* \param top_height the height, in pixels, of the top corners in `srcrect`.
+* \param bottom_height the height, in pixels, of the bottom corners in
+*                      `srcrect`.
+* \param scale the scale used to transform the corner of `srcrect` into the
+*              corner of `dstrect`, or 0.0f for an unscaled copy.
+* \param dstrect a pointer to the destination rectangle, or NULL for the
+*                entire rendering target.
+* \param tileScale the scale used to transform the borders and center of
+*                  `srcrect` into the borders and middle of `dstrect`, or
+*                  1.0f for an unscaled copy.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety This function should only be called on the main thread.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_RenderTexture
+*/
+SDL_RenderTexture9GridTiled :: (renderer: *SDL_Renderer, texture: *SDL_Texture, srcrect: *SDL_FRect, left_width: float, right_width: float, top_height: float, bottom_height: float, scale: float, dstrect: *SDL_FRect, tileScale: float) -> bool #foreign sdl3;
+
+/**
 * Render a list of triangles, optionally using a texture and indices into the
 * vertex array Color and alpha modulation is done per vertex
 * (SDL_SetTextureColorMod and SDL_SetTextureAlphaMod are ignored).
@@ -34299,6 +35039,7 @@ SDL_RenderTexture9Grid :: (renderer: *SDL_Renderer, texture: *SDL_Texture, srcre
 * \since This function is available since SDL 3.2.0.
 *
 * \sa SDL_RenderGeometryRaw
+* \sa SDL_SetRenderTextureAddressMode
 */
 SDL_RenderGeometry :: (renderer: *SDL_Renderer, texture: *SDL_Texture, vertices: *SDL_Vertex, num_vertices: s32, indices: *s32, num_indices: s32) -> bool #foreign sdl3;
 
@@ -34328,8 +35069,47 @@ SDL_RenderGeometry :: (renderer: *SDL_Renderer, texture: *SDL_Texture, vertices:
 * \since This function is available since SDL 3.2.0.
 *
 * \sa SDL_RenderGeometry
+* \sa SDL_SetRenderTextureAddressMode
 */
 SDL_RenderGeometryRaw :: (renderer: *SDL_Renderer, texture: *SDL_Texture, xy: *float, xy_stride: s32, color: *SDL_FColor, color_stride: s32, uv: *float, uv_stride: s32, num_vertices: s32, indices: *void, num_indices: s32, size_indices: s32) -> bool #foreign sdl3;
+
+/**
+* Set the texture addressing mode used in SDL_RenderGeometry().
+*
+* \param renderer the rendering context.
+* \param u_mode the SDL_TextureAddressMode to use for horizontal texture
+*               coordinates in SDL_RenderGeometry().
+* \param v_mode the SDL_TextureAddressMode to use for vertical texture
+*               coordinates in SDL_RenderGeometry().
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_RenderGeometry
+* \sa SDL_RenderGeometryRaw
+* \sa SDL_GetRenderTextureAddressMode
+*/
+SDL_SetRenderTextureAddressMode :: (renderer: *SDL_Renderer, u_mode: SDL_TextureAddressMode, v_mode: SDL_TextureAddressMode) -> bool #foreign sdl3;
+
+/**
+* Get the texture addressing mode used in SDL_RenderGeometry().
+*
+* \param renderer the rendering context.
+* \param u_mode a pointer filled in with the SDL_TextureAddressMode to use
+*               for horizontal texture coordinates in SDL_RenderGeometry(),
+*               may be NULL.
+* \param v_mode a pointer filled in with the SDL_TextureAddressMode to use
+*               for vertical texture coordinates in SDL_RenderGeometry(), may
+*               be NULL.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_SetRenderTextureAddressMode
+*/
+SDL_GetRenderTextureAddressMode :: (renderer: *SDL_Renderer, u_mode: *SDL_TextureAddressMode, v_mode: *SDL_TextureAddressMode) -> bool #foreign sdl3;
 
 /**
 * Read pixels from the current rendering target.
@@ -34382,8 +35162,7 @@ SDL_RenderReadPixels :: (renderer: *SDL_Renderer, rect: *SDL_Rect) -> *SDL_Surfa
 * should not be done; you are only required to change back the rendering
 * target to default via `SDL_SetRenderTarget(renderer, NULL)` afterwards, as
 * textures by themselves do not have a concept of backbuffers. Calling
-* SDL_RenderPresent while rendering to a texture will still update the screen
-* with any current drawing that has been done _to the window itself_.
+* SDL_RenderPresent while rendering to a texture will fail.
 *
 * \param renderer the rendering context.
 * \returns true on success or false on failure; call SDL_GetError() for more
@@ -34665,6 +35444,140 @@ SDL_RenderDebugTextFormat :: (renderer: *SDL_Renderer, x: float, y: float, fmt: 
 } @PrintLike
 
 /**
+* Set default scale mode for new textures for given renderer.
+*
+* When a renderer is created, scale_mode defaults to SDL_SCALEMODE_LINEAR.
+*
+* \param renderer the renderer to update.
+* \param scale_mode the scale mode to change to for new textures.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety This function should only be called on the main thread.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_GetDefaultTextureScaleMode
+*/
+SDL_SetDefaultTextureScaleMode :: (renderer: *SDL_Renderer, scale_mode: SDL_ScaleMode) -> bool #foreign sdl3;
+
+/**
+* Get default texture scale mode of the given renderer.
+*
+* \param renderer the renderer to get data from.
+* \param scale_mode a SDL_ScaleMode filled with current default scale mode.
+*                   See SDL_SetDefaultTextureScaleMode() for the meaning of
+*                   the value.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety This function should only be called on the main thread.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_SetDefaultTextureScaleMode
+*/
+SDL_GetDefaultTextureScaleMode :: (renderer: *SDL_Renderer, scale_mode: *SDL_ScaleMode) -> bool #foreign sdl3;
+
+/**
+* GPU render state description.
+*
+* This structure should be initialized using SDL_INIT_INTERFACE().
+*
+* \since This struct is available since SDL 3.4.0.
+*
+* \sa SDL_CreateGPURenderState
+*/
+SDL_GPURenderStateDesc :: struct {
+    version:              Uint32; /**< the version of this interface */
+
+    fragment_shader:      *SDL_GPUShader; /**< The fragment shader to use when this render state is active */
+
+    num_sampler_bindings: Sint32; /**< The number of additional fragment samplers to bind when this render state is active */
+    sampler_bindings:     *SDL_GPUTextureSamplerBinding; /**< Additional fragment samplers to bind when this render state is active */
+
+    num_storage_textures: Sint32; /**< The number of storage textures to bind when this render state is active */
+    storage_textures:     **SDL_GPUTexture; /**< Storage textures to bind when this render state is active */
+
+    num_storage_buffers:  Sint32; /**< The number of storage buffers to bind when this render state is active */
+    storage_buffers:      **SDL_GPUBuffer; /**< Storage buffers to bind when this render state is active */
+}
+
+SDL_GPURenderState :: struct {}
+
+/**
+* Create custom GPU render state.
+*
+* \param renderer the renderer to use.
+* \param desc GPU render state description, initialized using
+*             SDL_INIT_INTERFACE().
+* \returns a custom GPU render state or NULL on failure; call SDL_GetError()
+*          for more information.
+*
+* \threadsafety This function should be called on the thread that created the
+*               renderer.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_SetGPURenderStateFragmentUniforms
+* \sa SDL_SetRenderGPUState
+* \sa SDL_DestroyGPURenderState
+*/
+SDL_CreateGPURenderState :: (renderer: *SDL_Renderer, desc: *SDL_GPURenderStateDesc) -> *SDL_GPURenderState #foreign sdl3;
+
+/**
+* Set fragment shader uniform variables in a custom GPU render state.
+*
+* The data is copied and will be pushed using
+* SDL_PushGPUFragmentUniformData() during draw call execution.
+*
+* \param state the state to modify.
+* \param slot_index the fragment uniform slot to push data to.
+* \param data client data to write.
+* \param length the length of the data to write.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety This function should be called on the thread that created the
+*               renderer.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_SetGPURenderStateFragmentUniforms :: (state: *SDL_GPURenderState, slot_index: Uint32, data: *void, length: Uint32) -> bool #foreign sdl3;
+
+/**
+* Set custom GPU render state.
+*
+* This function sets custom GPU render state for subsequent draw calls. This
+* allows using custom shaders with the GPU renderer.
+*
+* \param renderer the renderer to use.
+* \param state the state to to use, or NULL to clear custom GPU render state.
+* \returns true on success or false on failure; call SDL_GetError() for more
+*          information.
+*
+* \threadsafety This function should be called on the thread that created the
+*               renderer.
+*
+* \since This function is available since SDL 3.4.0.
+*/
+SDL_SetRenderGPUState :: (renderer: *SDL_Renderer, state: *SDL_GPURenderState) -> bool #foreign sdl3;
+
+/**
+* Destroy custom GPU render state.
+*
+* \param state the state to destroy.
+*
+* \threadsafety This function should be called on the thread that created the
+*               renderer.
+*
+* \since This function is available since SDL 3.4.0.
+*
+* \sa SDL_CreateGPURenderState
+*/
+SDL_DestroyGPURenderState :: (state: *SDL_GPURenderState) -> void #foreign sdl3;
+
+/**
 * Function interface for SDL_Storage.
 *
 * Apps that want to supply a custom implementation of SDL_Storage will fill
@@ -34722,6 +35635,10 @@ SDL_Storage :: struct {}
 
 /**
 * Opens up a read-only container for the application's filesystem.
+*
+* By default, SDL_OpenTitleStorage uses the generic storage implementation.
+* When the path override is not provided, the generic implementation will use
+* the output of SDL_GetBasePath as the base path.
 *
 * \param override a path to override the backend's default title root.
 * \param props a property list that may contain backend-specific information.
@@ -35510,10 +36427,12 @@ SDL_GetDayOfYear :: (year: s32, month: s32, day: s32) -> s32 #foreign sdl3;
 SDL_GetDayOfWeek :: (year: s32, month: s32, day: s32) -> s32 #foreign sdl3;
 
 /**
-* Get the number of milliseconds since SDL library initialization.
+* Get the number of milliseconds that have elapsed since the SDL library
+* initialization.
 *
-* \returns an unsigned 64-bit value representing the number of milliseconds
-*          since the SDL library initialized.
+* \returns an unsigned 64‑bit integer that represents the number of
+*          milliseconds that have elapsed since the SDL library was
+*          initialized (typically via a call to SDL_Init).
 *
 * \threadsafety It is safe to call this function from any thread.
 *
@@ -36255,13 +37174,14 @@ SDL_UpdateTrays :: () -> void #foreign sdl3;
 SDL_GetVersion :: () -> s32 #foreign sdl3;
 
 /**
-* Get the code revision of SDL that is linked against your program.
+* Get the code revision of the SDL library that is linked against your
+* program.
 *
-* This value is the revision of the code you are linked with and may be
+* This value is the revision of the code you are linking against and may be
 * different from the code you are compiling with, which is found in the
 * constant SDL_REVISION.
 *
-* The revision is arbitrary string (a hash value) uniquely identifying the
+* The revision is an arbitrary string (a hash value) uniquely identifying the
 * exact revision of the SDL library in use, and is only useful in comparing
 * against other revisions. It is NOT an incrementing number.
 *
@@ -36280,8 +37200,1185 @@ SDL_GetVersion :: () -> s32 #foreign sdl3;
 */
 SDL_GetRevision :: () -> *u8 #foreign sdl3;
 
+/**
+* This function gets the version of the dynamically linked SDL_net library.
+*
+* \returns SDL_net version.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_GetVersion :: () -> s32 #foreign sdl3_net;
+
+/**
+* Initialize the SDL_net library.
+*
+* This must be successfully called once before (almost) any other SDL_net
+* function can be used.
+*
+* It is safe to call this multiple times; the library will only initialize
+* once, and won't deinitialize until NET_Quit() has been called a matching
+* number of times. Extra attempts to init report success.
+*
+* \returns true on success, false on error; call SDL_GetError() for details.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_Quit
+*/
+NET_Init :: () -> bool #foreign sdl3_net;
+
+/**
+* Deinitialize the SDL_net library.
+*
+* This must be called when done with the library, probably at the end of your
+* program.
+*
+* It is safe to call this multiple times; the library will only deinitialize
+* once, when this function is called the same number of times as NET_Init was
+* successfully called.
+*
+* Once you have successfully deinitialized the library, it is safe to call
+* NET_Init to reinitialize it for further use.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_Init
+*/
+NET_Quit :: () -> void #foreign sdl3_net;
+
+NET_Address :: struct {}
+
+/**
+* Resolve a human-readable hostname.
+*
+* SDL_net doesn't operate on human-readable hostnames (like `www.libsdl.org`
+* but on computer-readable addresses. This function converts from one to the
+* other. This process is known as "resolving" an address.
+*
+* You can also use this to turn IP address strings (like "159.203.69.7") into
+* NET_Address objects.
+*
+* Note that resolving an address is an asynchronous operation, since the
+* library will need to ask a server on the internet to get the information it
+* needs, and this can take time (and possibly fail later). This function will
+* not block. It either returns NULL (catastrophic failure) or an unresolved
+* NET_Address. Until the address resolves, it can't be used.
+*
+* If you want to block until the resolution is finished, you can call
+* NET_WaitUntilResolved(). Otherwise, you can do a non-blocking check with
+* NET_GetAddressStatus().
+*
+* When you are done with the returned NET_Address, call NET_UnrefAddress() to
+* dispose of it. You need to do this even if resolution later fails
+* asynchronously.
+*
+* \param host The hostname to resolve.
+* \returns A new NET_Address on success, NULL on error; call SDL_GetError()
+*          for details.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_WaitUntilResolved
+* \sa NET_GetAddressStatus
+* \sa NET_RefAddress
+* \sa NET_UnrefAddress
+*/
+NET_ResolveHostname :: (host: *u8) -> *NET_Address #foreign sdl3_net;
+
+/**
+* Block until an address is resolved.
+*
+* The NET_Address objects returned by NET_ResolveHostname take time to do
+* their work, so it does so _asynchronously_ instead of making your program
+* wait an indefinite amount of time.
+*
+* However, if you want your program to sleep until the address resolution is
+* complete, you can call this function.
+*
+* This function takes a timeout value, represented in milliseconds, of how
+* long to wait for resolution to complete. Specifying a timeout of -1
+* instructs the library to wait indefinitely, and a timeout of 0 just checks
+* the current status and returns immediately (and is functionally equivalent
+* to calling NET_GetAddressStatus).
+*
+* Resolution can fail after some time (DNS server took awhile to reply that
+* the hostname isn't recognized, etc), so be sure to check the result of this
+* function instead of assuming it worked!
+*
+* Once an address is successfully resolved, it can be used to connect to the
+* host represented by the address.
+*
+* If you don't want your program to block, you can call NET_GetAddressStatus
+* from time to time until you get a non-zero result.
+*
+* \param address The NET_Address object to wait on.
+* \param timeout Number of milliseconds to wait for resolution to complete.
+*                -1 to wait indefinitely, 0 to check once without waiting.
+* \returns 1 if successfully resolved, -1 if resolution failed, 0 if still
+*          resolving (this function timed out without resolution); if -1,
+*          call SDL_GetError() for details.
+*
+* \threadsafety It is safe to call this function from any thread, and several
+*               threads can block on the same address simultaneously.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_GetAddressStatus
+*/
+NET_WaitUntilResolved :: (address: *NET_Address, timeout: Sint32) -> s32 #foreign sdl3_net;
+
+/**
+* Check if an address is resolved, without blocking.
+*
+* The NET_Address objects returned by NET_ResolveHostname take time to do
+* their work, so it does so _asynchronously_ instead of making your program
+* wait an indefinite amount of time.
+*
+* This function allows you to check the progress of that work without
+* blocking.
+*
+* Resolution can fail after some time (DNS server took awhile to reply that
+* the hostname isn't recognized, etc), so be sure to check the result of this
+* function instead of assuming it worked because it's non-zero!
+*
+* Once an address is successfully resolved, it can be used to connect to the
+* host represented by the address.
+*
+* \param address The NET_Address to query.
+* \returns 1 if successfully resolved, -1 if resolution failed, 0 if still
+*          resolving; if -1, call SDL_GetError() for details.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_WaitUntilResolved
+*/
+NET_GetAddressStatus :: (address: *NET_Address) -> s32 #foreign sdl3_net;
+
+/**
+* Get a human-readable string from a resolved address.
+*
+* This returns a string that's "human-readable", in that it's probably a
+* string of numbers and symbols, like "159.203.69.7" or
+* "2604:a880:800:a1::71f:3001". It won't be the original hostname (like
+* "icculus.org"), but it's suitable for writing to a log file, etc.
+*
+* Do not free or modify the returned string; it belongs to the NET_Address
+* that was queried, and is valid as long as the object lives. Either make
+* sure the address has a reference as long as you need this or make a copy of
+* the string.
+*
+* This will return NULL if resolution is still in progress, or if resolution
+* failed. You can use NET_GetAddressStatus() or NET_WaitUntilResolved() to
+* make sure resolution has successfully completed before calling this.
+*
+* \param address The NET_Address to query.
+* \returns a string, or NULL on error; call SDL_GetError() for details.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_GetAddressStatus
+* \sa NET_WaitUntilResolved
+*/
+NET_GetAddressString :: (address: *NET_Address) -> *u8 #foreign sdl3_net;
+
+/**
+* Add a reference to an NET_Address.
+*
+* Since several pieces of the library might share a single NET_Address,
+* including a background thread that's working on resolving, these objects
+* are referenced counted. This allows everything that's using it to declare
+* they still want it, and drop their reference to the address when they are
+* done with it. The object's resources are freed when the last reference is
+* dropped.
+*
+* This function adds a reference to an NET_Address, increasing its reference
+* count by one.
+*
+* The documentation will tell you when the app has to explicitly unref an
+* address. For example, NET_ResolveHostname() creates addresses that are
+* already referenced, so the caller needs to unref it when done.
+*
+* Generally you only have to explicit ref an address when you have different
+* parts of your own app that will be sharing an address. In normal usage, you
+* only have to unref things you've created once (like you might free()
+* something), but you are free to add extra refs if it makes sense.
+*
+* This returns the same address passed as a parameter, which makes it easy to
+* ref and assign in one step:
+*
+* ```c
+* myAddr = NET_RefAddress(yourAddr);
+* ```
+*
+* \param address The NET_Address to add a reference to.
+* \returns the same address that was passed as a parameter.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_RefAddress :: (address: *NET_Address) -> *NET_Address #foreign sdl3_net;
+
+/**
+* Drop a reference to an NET_Address.
+*
+* Since several pieces of the library might share a single NET_Address,
+* including a background thread that's working on resolving, these objects
+* are referenced counted. This allows everything that's using it to declare
+* they still want it, and drop their reference to the address when they are
+* done with it. The object's resources are freed when the last reference is
+* dropped.
+*
+* This function drops a reference to an NET_Address, decreasing its reference
+* count by one.
+*
+* The documentation will tell you when the app has to explicitly unref an
+* address. For example, NET_ResolveHostname() creates addresses that are
+* already referenced, so the caller needs to unref it when done.
+*
+* \param address The NET_Address to drop a reference to.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_UnrefAddress :: (address: *NET_Address) -> void #foreign sdl3_net;
+
+/**
+* Enable simulated address resolution failures.
+*
+* Often times, testing a networked app on your development machine--which
+* might have a wired connection to a fast, reliable network service--won't
+* expose bugs that happen when networks intermittently fail in the real
+* world, when the wifi is flakey and firewalls get in the way.
+*
+* This function allows you to tell the library to pretend that some
+* percentage of address resolutions will fail.
+*
+* The higher the percentage, the more resolutions will fail and/or take
+* longer for resolution to complete.
+*
+* Setting this to zero (the default) will disable the simulation. Setting to
+* 100 means _everything_ fails unconditionally. At what percent the system
+* merely borders on unusable is left as an exercise to the app developer.
+*
+* This is intended for debugging purposes, to simulate real-world conditions
+* that are various degrees of terrible. You probably should _not_ call this
+* in production code, where you'll likely see real failures anyhow.
+*
+* \param percent_loss A number between 0 and 100. Higher means more failures.
+*                     Zero to disable.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_SimulateAddressResolutionLoss :: (percent_loss: s32) -> void #foreign sdl3_net;
+
+/**
+* Compare two NET_Address objects.
+*
+* This compares two addresses, returning a value that is useful for qsort (or
+* SDL_qsort).
+*
+* \param a first address to compare.
+* \param b second address to compare.
+* \returns -1 if `a` is "less than" `b`, 1 if "greater than", 0 if equal.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_CompareAddresses :: (a: *NET_Address, b: *NET_Address) -> s32 #foreign sdl3_net;
+
+/**
+* Obtain a list of local addresses on the system.
+*
+* This returns addresses that you can theoretically bind a socket to, to
+* accept connections from other machines at that address.
+*
+* You almost never need this function; first, it's hard to tell _what_ is a
+* good address to bind to, without asking the user (who will likely find it
+* equally hard to decide). Second, most machines will have lots of _private_
+* addresses that are accessible on the same LAN, but not public ones that are
+* accessible from the outside Internet.
+*
+* Usually it's better to use NET_CreateServer() or NET_CreateDatagramSocket()
+* with a NULL address, to say "bind to all interfaces."
+*
+* The array of addresses returned from this is guaranteed to be
+* NULL-terminated. You can also pass a pointer to an int, which will return
+* the final count, not counting the NULL at the end of the array.
+*
+* Pass the returned array to NET_FreeLocalAddresses when you are done with
+* it. It is safe to keep any addresses you want from this array even after
+* calling that function, as long as you called NET_RefAddress() on them.
+*
+* \param num_addresses on exit, will be set to the number of addresses
+*                      returned. Can be NULL.
+* \returns A NULL-terminated array of NET_Address pointers, one for each
+*          bindable address on the system, or NULL on error; call
+*          SDL_GetError() for details.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_GetLocalAddresses :: (num_addresses: *s32) -> **NET_Address #foreign sdl3_net;
+
+/**
+* Free the results from NET_GetLocalAddresses.
+*
+* This will unref all addresses in the array and free the array itself.
+*
+* Since addresses are reference counted, it is safe to keep any addresses you
+* want from this array even after calling this function, as long as you
+* called NET_RefAddress() on them first.
+*
+* It is safe to pass a NULL in here, it will be ignored.
+*
+* \param addresses A pointer returned by NET_GetLocalAddresses().
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_FreeLocalAddresses :: (addresses: **NET_Address) -> void #foreign sdl3_net;
+
+NET_StreamSocket :: struct {}
+
+/**
+* Begin connecting a socket as a client to a remote server.
+*
+* Each NET_StreamSocket represents a single connection between systems.
+* Usually, a client app will have one connection to a server app on a
+* different computer, and the server app might have many connections from
+* different clients. Each of these connections communicate over a separate
+* stream socket.
+*
+* Connecting is an asynchronous operation; this function does not block, and
+* will return before the connection is complete. One has to then use
+* NET_WaitUntilConnected() or NET_GetConnectionStatus() to see when the
+* operation has completed, and if it was successful.
+*
+* Once connected, you can read and write data to the returned socket. Stream
+* sockets are a mode of _reliable_ transmission, which means data will be
+* received as a stream of bytes in the order you sent it. If there are
+* problems in transmission, the system will deal with protocol negotiation
+* and retransmission as necessary, transparent to your app, but this means
+* until data is available in the order sent, the remote side will not get any
+* new data. This is the tradeoff vs datagram sockets, where data can arrive
+* in any order, or not arrive at all, without waiting, but the sender will
+* not know.
+*
+* Stream sockets don't employ any protocol (above the TCP level), so they can
+* connect to servers that aren't using SDL_net, but if you want to speak any
+* protocol beyond an abritrary stream of bytes, such as HTTP, you'll have to
+* implement that yourself on top of the stream socket.
+*
+* This function will fail if `address` is not finished resolving.
+*
+* When you are done with this connection (whether it failed to connect or
+* not), you must dispose of it with NET_DestroyStreamSocket().
+*
+* Unlike BSD sockets or WinSock, you specify the port as a normal integer;
+* you do not have to byteswap it into "network order," as the library will
+* handle that for you.
+*
+* \param address the address of the remote server to connect to.
+* \param port the port on the remote server to connect to.
+* \returns a new NET_StreamSocket, pending connection, or NULL on error; call
+*          SDL_GetError() for details.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_WaitUntilConnected
+* \sa NET_GetConnectionStatus
+* \sa NET_DestroyStreamSocket
+*/
+NET_CreateClient :: (address: *NET_Address, port: Uint16) -> *NET_StreamSocket #foreign sdl3_net;
+
+/**
+* Block until a stream socket has connected to a server.
+*
+* The NET_StreamSocket objects returned by NET_CreateClient take time to do
+* their work, so it does so _asynchronously_ instead of making your program
+* wait an indefinite amount of time.
+*
+* However, if you want your program to sleep until the connection is
+* complete, you can call this function.
+*
+* This function takes a timeout value, represented in milliseconds, of how
+* long to wait for resolution to complete. Specifying a timeout of -1
+* instructs the library to wait indefinitely, and a timeout of 0 just checks
+* the current status and returns immediately (and is functionally equivalent
+* to calling NET_GetConnectionStatus).
+*
+* Connections can fail after some time (server took awhile to respond at all,
+* and then refused the connection outright), so be sure to check the result
+* of this function instead of assuming it worked!
+*
+* Once a connection is successfully made, the socket may read data from, or
+* write data to, the connected server.
+*
+* If you don't want your program to block, you can call
+* NET_GetConnectionStatus() from time to time until you get a non-zero
+* result.
+*
+* \param sock The NET_StreamSocket object to wait on.
+* \param timeout Number of milliseconds to wait for resolution to complete.
+*                -1 to wait indefinitely, 0 to check once without waiting.
+* \returns 1 if successfully connected, -1 if connection failed, 0 if still
+*          connecting (this function timed out without resolution); if -1,
+*          call SDL_GetError() for details.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               socket at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_GetConnectionStatus
+*/
+NET_WaitUntilConnected :: (sock: *NET_StreamSocket, timeout: Sint32) -> s32 #foreign sdl3_net;
+
+NET_Server :: struct {}
+
+/**
+* Create a server, which listens for connections to accept.
+*
+* An app that initiates connection to a remote computer is called a "client,"
+* and the thing the client connects to is called a "server."
+*
+* Servers listen for and accept connections from clients, which spawns a new
+* stream socket on the server's end, which it can then send/receive data on.
+*
+* Use this function to create a server that will accept connections from
+* other systems.
+*
+* This function does not block, and is not asynchronous, as the system can
+* decide immediately if it can create a server or not. If this returns
+* success, you can immediately start accepting connections.
+*
+* You can specify an address to listen for connections on; this address must
+* be local to the system, and probably one returned by
+* NET_GetLocalAddresses(), but almost always you just want to specify NULL
+* here, to listen on any address available to the app.
+*
+* After creating a server, you get stream sockets to talk to incoming client
+* connections by calling NET_AcceptClient().
+*
+* Stream sockets don't employ any protocol (above the TCP level), so they can
+* accept connections from clients that aren't using SDL_net, but if you want
+* to speak any protocol beyond an abritrary stream of bytes, such as HTTP,
+* you'll have to implement that yourself on top of the stream socket.
+*
+* Unlike BSD sockets or WinSock, you specify the port as a normal integer;
+* you do not have to byteswap it into "network order," as the library will
+* handle that for you.
+*
+* \param addr the _local_ address to listen for connections on, or NULL.
+* \param port the port on the local address to listen for connections on.
+* \returns a new NET_Server, or NULL on error; call SDL_GetError() for
+*          details.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_GetLocalAddresses
+* \sa NET_AcceptClient
+* \sa NET_DestroyServer
+*/
+NET_CreateServer :: (addr: *NET_Address, port: Uint16) -> *NET_Server #foreign sdl3_net;
+
+/**
+* Create a stream socket for the next pending client connection.
+*
+* When a client connects to a server, their connection will be pending until
+* the server _accepts_ the connection. Once accepted, the server will be
+* given a stream socket to communicate with the client, and they can send
+* data to, and receive data from, each other.
+*
+* Unlike NET_CreateClient, stream sockets returned from this function are
+* already connected and do not have to wait for the connection to complete,
+* as server acceptance is the final step of connecting.
+*
+* This function does not block. If there are no new connections pending, this
+* function will return true (for success, but `*client_stream` will be set to
+* NULL. This is not an error and a common condition the app should expect. In
+* fact, this function should be called in a loop until this condition occurs,
+* so all pending connections are accepted in a single batch.
+*
+* If you want the server to sleep until there's a new connection, you can use
+* NET_WaitUntilInputAvailable().
+*
+* When done with the newly-accepted client, you can disconnect and dispose of
+* the stream socket by calling NET_DestroyStreamSocket().
+*
+* \param server the server object to check for pending connections.
+* \param client_stream Will be set to a new stream socket if a connection was
+*                      pending, NULL otherwise.
+* \returns true on success (even if no new connections were pending), false
+*          on error; call SDL_GetError() for details.
+*
+* \threadsafety You should not operate on the same server from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               servers at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_WaitUntilInputAvailable
+* \sa NET_DestroyStreamSocket
+*/
+NET_AcceptClient :: (server: *NET_Server, client_stream: **NET_StreamSocket) -> bool #foreign sdl3_net;
+
+/**
+* Dispose of a previously-created server.
+*
+* This will immediately disconnect any pending client connections that had
+* not yet been accepted, but will not disconnect any existing accepted
+* connections (which can still be used and must be destroyed separately).
+* Further attempts to make new connections to this server will fail on the
+* client side.
+*
+* \param server server to destroy.
+*
+* \threadsafety You should not operate on the same server from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               servers at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_CreateServer
+*/
+NET_DestroyServer :: (server: *NET_Server) -> void #foreign sdl3_net;
+
+/**
+* Get the remote address of a stream socket.
+*
+* This reports the address of the remote side of a stream socket, which might
+* still be pending connnection.
+*
+* This adds a reference to the address; the caller _must_ call
+* NET_UnrefAddress() when done with it.
+*
+* \param sock the stream socket to query.
+* \returns the socket's remote address, or NULL on error; call SDL_GetError()
+*          for details.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_GetStreamSocketAddress :: (sock: *NET_StreamSocket) -> *NET_Address #foreign sdl3_net;
+
+/**
+* Check if a stream socket is connected, without blocking.
+*
+* The NET_StreamSocket objects returned by NET_CreateClient take time to do
+* negotiate a connection to a server, so it does so _asynchronously_ instead
+* of making your program wait an indefinite amount of time.
+*
+* This function allows you to check the progress of that work without
+* blocking.
+*
+* Connection can fail after some time (server took a while to respond, and
+* then rejected the connection), so be sure to check the result of this
+* function instead of assuming it worked because it's non-zero!
+*
+* Once a connection is successfully made, the stream socket can be used to
+* send and receive data with the server.
+*
+* Note that if the connection succeeds, but later the connection is dropped,
+* this will still report the connection as successful, as it only deals with
+* the initial asynchronous work of getting connected; you'll know the
+* connection dropped later when your reads and writes report failures.
+*
+* \param sock the stream socket to query.
+* \returns 1 if successfully connected, -1 if connection failed, 0 if still
+*          connecting; if -1, call SDL_GetError() for details.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_WaitUntilConnected
+*/
+NET_GetConnectionStatus :: (sock: *NET_StreamSocket) -> s32 #foreign sdl3_net;
+
+/**
+* Send bytes over a stream socket to a remote system.
+*
+* Stream sockets are _reliable_, which means data sent over them will arrive
+* in the order it was transmitted, and the system will retransmit data as
+* necessary to ensure its delivery. Which is to say, short of catastrophic
+* failure, data will arrive, possibly with severe delays. Also, "catastrophic
+* failure" isn't an uncommon event.
+*
+* (This is opposed to Datagram sockets, which send chunks of data that might
+* arrive in any order, or not arrive at all, but you never wait for missing
+* chunks to show up.)
+*
+* Stream sockets are _bidirectional_; you can read and write from the same
+* stream, and the other end of the connection can, too.
+*
+* This call never blocks; if it can't send the data immediately, the library
+* will queue it for later transmission. You can use
+* NET_GetStreamSocketPendingWrites() to see how much is still queued for
+* later transmission, or NET_WaitUntilStreamSocketDrained() to block until
+* all pending data has been sent.
+*
+* If the connection has failed (remote side dropped us, or one of a million
+* other networking failures occurred), this function will report failure by
+* returning false. Stream sockets only report failure for unrecoverable
+* conditions; once a stream socket fails, you should assume it is no longer
+* usable and should destroy it with NET_DestroyStreamSocket().
+*
+* \param sock the stream socket to send data through.
+* \param buf a pointer to the data to send.
+* \param buflen the size of the data to send, in bytes.
+* \returns true if data sent or queued for transmission, false on failure;
+*          call SDL_GetError() for details.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_GetStreamSocketPendingWrites
+* \sa NET_WaitUntilStreamSocketDrained
+* \sa NET_ReadFromStreamSocket
+*/
+NET_WriteToStreamSocket :: (sock: *NET_StreamSocket, buf: *void, buflen: s32) -> bool #foreign sdl3_net;
+
+/**
+* Query bytes still pending transmission on a stream socket.
+*
+* If NET_WriteToStreamSocket() couldn't send all its data immediately, it
+* will queue it to be sent later. This function lets the app see how much of
+* that queue is still pending to be sent.
+*
+* The library will try to send more queued data before reporting what's left,
+* but it will not block to do so.
+*
+* If the connection has failed (remote side dropped us, or one of a million
+* other networking failures occurred), this function will report failure by
+* returning -1. Stream sockets only report failure for unrecoverable
+* conditions; once a stream socket fails, you should assume it is no longer
+* usable and should destroy it with NET_DestroyStreamSocket().
+*
+* \param sock the stream socket to query.
+* \returns number of bytes still pending transmission, -1 on failure; call
+*          SDL_GetError() for details.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_WriteToStreamSocket
+* \sa NET_WaitUntilStreamSocketDrained
+*/
+NET_GetStreamSocketPendingWrites :: (sock: *NET_StreamSocket) -> s32 #foreign sdl3_net;
+
+/**
+* Block until all of a stream socket's pending data is sent.
+*
+* If NET_WriteToStreamSocket() couldn't send all its data immediately, it
+* will queue it to be sent later. This function lets the app sleep until all
+* the data is transmitted.
+*
+* This function takes a timeout value, represented in milliseconds, of how
+* long to wait for transmission to complete. Specifying a timeout of -1
+* instructs the library to wait indefinitely, and a timeout of 0 just checks
+* the current status and returns immediately (and is functionally equivalent
+* to calling NET_GetStreamSocketPendingWrites).
+*
+* If you don't want your program to block, you can call
+* NET_GetStreamSocketPendingWrites from time to time until you get a result
+* <= 0.
+*
+* If the connection has failed (remote side dropped us, or one of a million
+* other networking failures occurred), this function will report failure by
+* returning -1. Stream sockets only report failure for unrecoverable
+* conditions; once a stream socket fails, you should assume it is no longer
+* usable and should destroy it with NET_DestroyStreamSocket().
+*
+* \param sock the stream socket to wait on.
+* \param timeout Number of milliseconds to wait for draining to complete. -1
+*                to wait indefinitely, 0 to check once without waiting.
+* \returns number of bytes still pending transmission, -1 on failure; call
+*          SDL_GetError() for details.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_WriteToStreamSocket
+* \sa NET_GetStreamSocketPendingWrites
+*/
+NET_WaitUntilStreamSocketDrained :: (sock: *NET_StreamSocket, timeout: Sint32) -> s32 #foreign sdl3_net;
+
+/**
+* Receive bytes that a remote system sent to a stream socket.
+*
+* Stream sockets are _reliable_, which means data sent over them will arrive
+* in the order it was transmitted, and the system will retransmit data as
+* necessary to ensure its delivery. Which is to say, short of catastrophic
+* failure, data will arrive, possibly with severe delays. Also, "catastrophic
+* failure" isn't an uncommon event.
+*
+* (This is opposed to Datagram sockets, which send chunks of data that might
+* arrive in any order, or not arrive at all, but you never wait for missing
+* chunks to show up.)
+*
+* Stream sockets are _bidirectional_; you can read and write from the same
+* stream, and the other end of the connection can, too.
+*
+* This function returns data that has arrived for the stream socket that
+* hasn't been read yet. Data is provided in the order it was sent on the
+* remote side. This function may return less data than requested, depending
+* on what is available at the time, and also the app isn't required to read
+* all available data at once.
+*
+* This call never blocks; if no new data isn't available at the time of the
+* call, it returns 0 immediately. The caller can try again later.
+*
+* If the connection has failed (remote side dropped us, or one of a million
+* other networking failures occurred), this function will report failure by
+* returning -1. Stream sockets only report failure for unrecoverable
+* conditions; once a stream socket fails, you should assume it is no longer
+* usable and should destroy it with NET_DestroyStreamSocket().
+*
+* \param sock the stream socket to receive data from.
+* \param buf a pointer to a buffer where received data will be collected.
+* \param buflen the size of the buffer pointed to by `buf`, in bytes. This is
+*               the maximum that will be read from the stream socket.
+* \returns number of bytes read from the stream socket (which can be less
+*          than `buflen` or zero if none available), -1 on failure; call
+*          SDL_GetError() for details.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_WriteToStreamSocket
+*/
+NET_ReadFromStreamSocket :: (sock: *NET_StreamSocket, buf: *void, buflen: s32) -> s32 #foreign sdl3_net;
+
+/**
+* Enable simulated stream socket failures.
+*
+* Often times, testing a networked app on your development machine--which
+* might have a wired connection to a fast, reliable network service--won't
+* expose bugs that happen when networks intermittently fail in the real
+* world, when the wifi is flakey and firewalls get in the way.
+*
+* This function allows you to tell the library to pretend that some
+* percentage of stream socket data transmission will fail.
+*
+* Since stream sockets are reliable, failure in this case pretends that
+* packets are getting lost on the network, making the stream retransmit to
+* deal with it. To simulate this, the library will introduce some amount of
+* delay before it sends or receives data on the socket. The higher the
+* percentage, the more delay is introduced for bytes to make their way to
+* their final destination. The library may also decide to drop connections at
+* random, to simulate disasterous network conditions.
+*
+* Setting this to zero (the default) will disable the simulation. Setting to
+* 100 means _everything_ fails unconditionally and no further data will get
+* through (and perhaps your sockets eventually fail). At what percent the
+* system merely borders on unusable is left as an exercise to the app
+* developer.
+*
+* This is intended for debugging purposes, to simulate real-world conditions
+* that are various degrees of terrible. You probably should _not_ call this
+* in production code, where you'll likely see real failures anyhow.
+*
+* \param sock The socket to set a failure rate on.
+* \param percent_loss A number between 0 and 100. Higher means more failures.
+*                     Zero to disable.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_SimulateStreamPacketLoss :: (sock: *NET_StreamSocket, percent_loss: s32) -> void #foreign sdl3_net;
+
+/**
+* Dispose of a previously-created stream socket.
+*
+* This will immediately disconnect the other side of the connection, if
+* necessary. Further attempts to read or write the socket on the remote end
+* will fail.
+*
+* This will _abandon_ any data queued for sending that hasn't made it to the
+* socket. If you need this data to arrive, you should wait for it to transmit
+* before destroying the socket with NET_GetStreamSocketPendingWrites() or
+* NET_WaitUntilStreamSocketDrained(). Any data that has arrived from the
+* remote end of the connection that hasn't been read yet is lost.
+*
+* \param sock stream socket to destroy.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_CreateClient
+* \sa NET_AcceptClient
+* \sa NET_GetStreamSocketPendingWrites
+* \sa NET_WaitUntilStreamSocketDrained
+*/
+NET_DestroyStreamSocket :: (sock: *NET_StreamSocket) -> void #foreign sdl3_net;
+
+NET_DatagramSocket :: struct {}
+
+/**
+* The data provided for new incoming packets from NET_ReceiveDatagram().
+*
+* \since This datatype is available since SDL_net 3.0.0.
+*
+* \sa NET_ReceiveDatagram
+* \sa NET_DestroyDatagram
+*/
+NET_Datagram :: struct {
+    addr:   *NET_Address; /**< this is unref'd by NET_DestroyDatagram. You only need to ref it if you want to keep it. */
+    port:   Uint16; /**< these do not have to come from the same port the receiver is bound to. These are in host byte order, don't byteswap them! */
+    buf:    *Uint8; /**< the payload of this datagram. */
+    buflen: s32; /**< the number of bytes available at `buf`. */
+}
+
+/**
+* Create and bind a new datagram socket.
+*
+* Datagram sockets follow different rules than stream sockets. They are not a
+* reliable stream of bytes but rather packets, they are not limited to
+* talking to a single other remote system, they do not maintain a single
+* "connection" that can be dropped, and they are more nimble about network
+* failures at the expense of being more complex to use. What makes sense for
+* your app depends entirely on what your app is trying to accomplish.
+*
+* Generally the idea of a datagram socket is that you send data one chunk
+* ("packet") at a time to any address you want, and it arrives whenever it
+* gets there, even if later packets get there first, and maybe it doesn't get
+* there at all, and you don't know when anything of this happens by default.
+*
+* This function creates a new datagram socket.
+*
+* This function does not block, and is not asynchronous, as the system can
+* decide immediately if it can create a socket or not. If this returns
+* success, you can immediately start talking to the network.
+*
+* You can specify an address to listen for connections on; this address must
+* be local to the system, and probably one returned by
+* NET_GetLocalAddresses(), but almost always you just want to specify NULL
+* here, to listen on any address available to the app.
+*
+* If you need to bind to a specific port (like a server), you should specify
+* it in the `port` argument; datagram servers should do this, so they can be
+* reached at a well-known port. If you only plan to initiate communications
+* (like a client), you should specify 0 and let the system pick an unused
+* port. Only one process can bind to a specific port at a time, so if you
+* aren't acting as a server, you should choose 0. Datagram sockets can send
+* individual packets to any port, so this just declares where data will
+* arrive for your socket.
+*
+* Datagram sockets don't employ any protocol (above the UDP level), so they
+* can talk to apps that aren't using SDL_net, but if you want to speak any
+* protocol beyond arbitrary packets of bytes, such as WebRTC, you'll have to
+* implement that yourself on top of the stream socket.
+*
+* Unlike BSD sockets or WinSock, you specify the port as a normal integer;
+* you do not have to byteswap it into "network order," as the library will
+* handle that for you.
+*
+* \param addr the local address to listen for connections on, or NULL to
+*             listen on all available local addresses.
+* \param port the port on the local address to listen for connections on, or
+*             zero for the system to decide.
+* \returns a new NET_DatagramSocket, or NULL on error; call SDL_GetError()
+*          for details.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_GetLocalAddresses
+* \sa NET_DestroyDatagramSocket
+*/
+NET_CreateDatagramSocket :: (addr: *NET_Address, port: Uint16) -> *NET_DatagramSocket #foreign sdl3_net;
+
+/**
+* Send a new packet over a datagram socket to a remote system.
+*
+* Datagram sockets send packets of data. They either arrive as complete
+* packets or they don't arrive at all, as opposed to stream sockets, where
+* individual bytes might trickle in as they attempt to reliably deliver a
+* stream of data.
+*
+* Datagram packets might arrive in a different order than you sent them, or
+* they may just be lost while travelling across the network. You have to plan
+* for this.
+*
+* You can send to any address and port on the network, but there has to be a
+* datagram socket waiting for the data on the other side for the packet not
+* to be lost.
+*
+* General wisdom is that you shouldn't send a packet larger than 1500 bytes
+* over the Internet, as bad routers might fragment or lose larger ones, but
+* this limit is not hardcoded into SDL_net and in good conditions you might
+* be able to send significantly more.
+*
+* This call never blocks; if it can't send the data immediately, the library
+* will queue it for later transmission. There is no query to see what is
+* still queued, as datagram transmission is unreliable, so you should never
+* assume anything about queued data.
+*
+* If there's a fatal error, this function will return false. Datagram sockets
+* generally won't report failures, because there is no state like a
+* "connection" to fail at this level, but may report failure for
+* unrecoverable system-level conditions; once a datagram socket fails, you
+* should assume it is no longer usable and should destroy it with
+* SDL_DestroyDatagramSocket().
+*
+* \param sock the datagram socket to send data through.
+* \param address the NET_Address object address.
+* \param port the address port.
+* \param buf a pointer to the data to send as a single packet.
+* \param buflen the size of the data to send, in bytes.
+* \returns true if data sent or queued for transmission, false on failure;
+*          call SDL_GetError() for details.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_ReceiveDatagram
+*/
+NET_SendDatagram :: (sock: *NET_DatagramSocket, address: *NET_Address, port: Uint16, buf: *void, buflen: s32) -> bool #foreign sdl3_net;
+
+/**
+* Receive a new packet that a remote system sent to a datagram socket.
+*
+* Datagram sockets send packets of data. They either arrive as complete
+* packets or they don't arrive at all, so you'll never receive half a packet.
+*
+* This call never blocks; if no new data isn't available at the time of the
+* call, it returns true immediately. The caller can try again later.
+*
+* On a successful call to this function, it returns true, even if no new
+* packets are available, so you should check for a successful return and a
+* non-NULL value in `*dgram` to decide if a new packet is available.
+*
+* You must pass received packets to NET_DestroyDatagram when you are done
+* with them. If you want to save the sender's address past this time, it is
+* safe to call NET_RefAddress() on the address and hold onto the pointer, so
+* long as you call NET_UnrefAddress() on it when you are done with it.
+*
+* Since datagrams can arrive from any address or port on the network without
+* prior warning, this information is available in the NET_Datagram object
+* that is provided by this function, and this is the only way to know who to
+* reply to. Even if you aren't acting as a "server," packets can still arrive
+* at your socket if someone sends one.
+*
+* If there's a fatal error, this function will return false. Datagram sockets
+* generally won't report failures, because there is no state like a
+* "connection" to fail at this level, but may report failure for
+* unrecoverable system-level conditions; once a datagram socket fails, you
+* should assume it is no longer usable and should destroy it with
+* SDL_DestroyDatagramSocket().
+*
+* \param sock the datagram socket to send data through.
+* \param dgram a pointer to the datagram packet pointer.
+* \returns true if data sent or queued for transmission, false on failure;
+*          call SDL_GetError() for details.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_SendDatagram
+* \sa NET_DestroyDatagram
+*/
+NET_ReceiveDatagram :: (sock: *NET_DatagramSocket, dgram: **NET_Datagram) -> bool #foreign sdl3_net;
+
+/**
+* Dispose of a datagram packet previously received.
+*
+* You must pass packets received through NET_ReceiveDatagram to this function
+* when you are done with them. This will free resources used by this packet
+* and unref its NET_Address.
+*
+* If you want to save the sender's address from the packet past this time, it
+* is safe to call NET_RefAddress() on the address and hold onto its pointer,
+* so long as you call NET_UnrefAddress() on it when you are done with it.
+*
+* Once you call this function, the datagram pointer becomes invalid and
+* should not be used again by the app.
+*
+* \param dgram the datagram packet to destroy.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_DestroyDatagram :: (dgram: *NET_Datagram) -> void #foreign sdl3_net;
+
+/**
+* Enable simulated datagram socket failures.
+*
+* Often times, testing a networked app on your development machine--which
+* might have a wired connection to a fast, reliable network service--won't
+* expose bugs that happen when networks intermittently fail in the real
+* world, when the wifi is flakey and firewalls get in the way.
+*
+* This function allows you to tell the library to pretend that some
+* percentage of datagram socket data transmission will fail.
+*
+* The library will randomly lose packets (both incoming and outgoing) at an
+* average matching `percent_loss`. Setting this to zero (the default) will
+* disable the simulation. Setting to 100 means _everything_ fails
+* unconditionally and no further data will get through. At what percent the
+* system merely borders on unusable is left as an exercise to the app
+* developer.
+*
+* This is intended for debugging purposes, to simulate real-world conditions
+* that are various degrees of terrible. You probably should _not_ call this
+* in production code, where you'll likely see real failures anyhow.
+*
+* \param sock The socket to set a failure rate on.
+* \param percent_loss A number between 0 and 100. Higher means more failures.
+*                     Zero to disable.
+*
+* \threadsafety It is safe to call this function from any thread.
+*
+* \since This function is available since SDL_net 3.0.0.
+*/
+NET_SimulateDatagramPacketLoss :: (sock: *NET_DatagramSocket, percent_loss: s32) -> void #foreign sdl3_net;
+
+/**
+* Dispose of a previously-created datagram socket.
+*
+* This will _abandon_ any data queued for sending that hasn't made it to the
+* socket. If you need this data to arrive, you should wait for confirmation
+* from the remote computer in some form that you devise yourself. Queued data
+* is not guaranteed to arrive even if the library made efforts to transmit it
+* here.
+*
+* Any data that has arrived from the remote end of the connection that hasn't
+* been read yet is lost.
+*
+* \param sock datagram socket to destroy.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_CreateDatagramSocket
+* \sa NET_SendDatagram
+* \sa NET_ReceiveDatagram
+*/
+NET_DestroyDatagramSocket :: (sock: *NET_DatagramSocket) -> void #foreign sdl3_net;
+
+/**
+* Block on multiple sockets until at least one has data available.
+*
+* This is a complex function that most apps won't need, but it could be used
+* to implement a more efficient server or i/o thread in some cases.
+*
+* This allows you to give it a list of objects and wait for new input to
+* become available on any of them. The calling thread is put to sleep until
+* such a time.
+*
+* The following things can be specified in the `vsockets` array, cast to
+* `void *`:
+*
+* - NET_Server (reports new input when a connection is ready to be accepted
+*   with NET_AcceptClient())
+* - NET_StreamSocket (reports new input when the remote end has sent more
+*   bytes of data to be read with NET_ReadFromStreamSocket).
+* - NET_DatagramSocket (reports new input when a new packet arrives that can
+*   be read with NET_ReceiveDatagram).
+*
+* This function takes a timeout value, represented in milliseconds, of how
+* long to wait for resolution to complete. Specifying a timeout of -1
+* instructs the library to wait indefinitely, and a timeout of 0 just checks
+* the current status and returns immediately.
+*
+* This returns the number of items that have new input, but it does not tell
+* you which ones; since access to them is non-blocking, you can just try to
+* read from each of them and see which are ready. If nothing is ready and the
+* timeout is reached, this returns zero. On error, this returns -1.
+*
+* \param vsockets an array of pointers to various objects that can be waited
+*                 on, each cast to a void pointer.
+* \param numsockets the number of pointers in the `vsockets` array.
+* \param timeout Number of milliseconds to wait for new input to become
+*                available. -1 to wait indefinitely, 0 to check once without
+*                waiting.
+* \returns the number of items that have new input, or -1 on error.
+*
+* \threadsafety You should not operate on the same socket from multiple
+*               threads at the same time without supplying a serialization
+*               mechanism. However, different threads may access different
+*               sockets at the same time without problems.
+*
+* \since This function is available since SDL_net 3.0.0.
+*
+* \sa NET_CreateDatagramSocket
+* \sa NET_SendDatagram
+* \sa NET_ReceiveDatagram
+*/
+NET_WaitUntilInputAvailable :: (vsockets: **void, numsockets: s32, timeout: Sint32) -> s32 #foreign sdl3_net;
+
 #scope_file
 
 #import "Basic"; // For push_context
 
-sdl3 :: #library,no_dll "bin/x64/SDL3";
+#if CPU == .X64 {
+    sdl3 :: #library,no_dll "bin/x64/SDL3";
+    sdl3_net :: #library,no_dll "bin/x64/SDL3_net";
+} else #if CPU == .ARM64 {
+    sdl3 :: #library,no_dll "bin/arm64/SDL3";
+}
