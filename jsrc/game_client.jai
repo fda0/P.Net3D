@@ -57,18 +57,18 @@ CLIENT_LerpObjSync :: (net_index: u32, tick_id: u64) -> OBJ_Sync
       break;
   }
 
-  OBJ_Sync *prev = CLIENT_ObjSyncAtTick(snaps, prev_id);
-  OBJ_Sync *next = CLIENT_ObjSyncAtTick(snaps, next_id);
+  prev := CLIENT_ObjSyncAtTick(snaps, prev_id);
+  next := CLIENT_ObjSyncAtTick(snaps, next_id);
 
   // handle cases where we can't interpolate
   if (!OBJ_SyncIsInit(prev) && !OBJ_SyncIsInit(next)) // disaster
-    return *exact_obj;
+    return exact_obj.*;
 
   if (!OBJ_SyncIsInit(prev))
-    return *next;
+    return next.*;
 
   if (!OBJ_SyncIsInit(next))
-    return *prev;
+    return prev.*;
 
   // lock lerp range; new packets in this range will be rejected
   snaps.recent_lerp_start_tick = prev_id;
@@ -77,8 +77,8 @@ CLIENT_LerpObjSync :: (net_index: u32, tick_id: u64) -> OBJ_Sync
   // do the interpolation
   id_range := next_id - prev_id;
   id_offset := tick_id - prev_id;
-  t = id_offset.(float) / id_range.(float);
-  result := OBJ_SyncLerp(*prev, *next, t);
+  t := id_offset.(float) / id_range.(float);
+  result := lerp(prev, next, t);
   return result;
 }
 

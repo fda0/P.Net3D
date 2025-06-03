@@ -295,7 +295,7 @@ GAME_ParseCommandLineArguments :: (args: [] string)
         case "-borderless"; G.window_borderless = true;
         case "-top";        G.window_on_top = true;
         case "-autolayout"; G.window_autolayout = true;
-        // case "-server";     G.net.is_server = true;
+        case "-server";     G.net.is_server = true;
         // case "-exit-;on-dc" G.server.exit_on_disconnect = true;
 
         case;

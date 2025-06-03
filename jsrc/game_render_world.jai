@@ -28,13 +28,13 @@ WORLD_Uniform :: struct
   sun_dir: V3 #align 16;
   flags: WORLD_ShaderFlags;
 
-  fog_color: u32; // RGBA
-  sky_ambient: u32; // RGBA
-  sun_diffuse: u32; // RGBA
-  sun_specular: u32; // RGBA
+  fog_color: Color32; // RGBA
+  sky_ambient: Color32; // RGBA
+  sun_diffuse: Color32; // RGBA
+  sun_specular: Color32; // RGBA
 
-  material_diffuse: u32; // RGBA
-  material_specular: u32; // RGBA
+  material_diffuse: Color32; // RGBA
+  material_specular: Color32; // RGBA
   material_roughness: float;
   material_loaded_t: float;
 };
@@ -51,16 +51,16 @@ WORLD_Vertex :: struct
 WORLD_InstanceModel :: struct
 {
   transform: Mat4;
-  color: u32;
+  color: Color32;
   pose_offset: u32; // in indices; unused for rigid
 };
 
 WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Material)
 {
   uniform.material_loaded_t = material.stream.loaded_t;
-  uniform.material_diffuse = material.params.diffuse;
-  uniform.material_specular = material.params.specular;
-  uniform.material_roughness = material.params.roughness;
+  uniform.material_diffuse = xx material.params.diffuse;
+  uniform.material_specular = xx material.params.specular;
+  uniform.material_roughness = xx material.params.roughness;
 
   uniform.flags = .ApplyShadows;
   if material.has_texture

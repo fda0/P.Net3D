@@ -12,3 +12,13 @@ TICK_Iterate :: ()
 {
   // @impl
 }
+
+TICK_NormalizeInput:: (input: TICK_PlayerInput) -> TICK_PlayerInput
+{
+  res := input;
+  for * res.move_dir.component
+    if isnan(it.*)  it.* = 0.0;
+
+  res.move_dir = normalize(res.move_dir);
+  return res;
+}

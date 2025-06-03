@@ -1,11 +1,11 @@
-Color32 :: u32;
+Color32 :: #type,distinct u32;
 
 Color32_RGBAi :: (r: u32, g: u32, b: u32, a: u32) -> Color32
 {
   res := ((a << 24) |
     (b << 16) |
     (g << 8) |
-    r);
+    r).(Color32);
   return res;
 }
 
@@ -33,7 +33,7 @@ Color32_Grayf :: (rgb: float) -> Color32 { return Color32_RGBf(rgb, rgb, rgb); }
 Color32_V3 :: (color: V3) -> Color32 { return Color32_RGBf(color.x, color.y, color.z); }
 Color32_V4 :: (color: V4) -> Color32 { return Color32_RGBAf(color.x, color.y, color.z, color.w); }
 
-Color32_Lerp :: (c0: Color32, c1: Color32, t: float) -> Color32
+lerp :: (c0: Color32, c1: Color32, t: float) -> Color32
 {
   // @todo Do a lerp in a different color space - like Oklab or something
   // https://raphlinus.github.io/color/2021/01/18/oklab-critique.html

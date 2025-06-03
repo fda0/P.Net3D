@@ -201,6 +201,17 @@ OBJ_Init :: ()
   }
 }
 
+lerp :: (prev: OBJ_Sync, next: OBJ_Sync, t: float) -> OBJ_Sync
+{
+  res := prev;
+  res.p = lerp(prev.p, next.p, t);
+  res.desired_dp = lerp(prev.desired_dp, next.desired_dp, t);
+  res.moved_dp = lerp(prev.moved_dp, next.moved_dp, t);
+  res.color = lerp(prev.color, next.color, t);
+  res.rotation = lerp(prev.rotation, next.rotation, t);
+  return res;
+}
+
 OBJ_GetNil :: () -> *Object
 {
   return *OBJ_NIL;

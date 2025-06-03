@@ -76,7 +76,7 @@ Q_Peek :: (arr: [] $T, range: *Range(u64)) -> *T
     return null;
 
   current_index := range.min % arr.count.(u64);
-  res = *arr[current_index];
+  res := *arr[current_index];
   return res;
 }
 

@@ -34,13 +34,13 @@ LOG_NetPacket :: 2;
 LOG_NetPayload :: 3;
 LOG_NetClient :: 4;
 LOG_NetCatchup :: 5;
-LOG_NetCatchup :: 6;
 LOG_NetTick :: 6;
 
 Nlog :: (net_category: s64 /* @todo use user flags instead in the future */, format_string: string, args: .. Any, loc := #caller_location, flags := Log_Flags.NONE, user_flags : u32 = 0, section : *Log_Section = null)
 {
   // @todo do something with net_category and logging in general
   // @todo add "NET_Label()" before every net log?, or do that for logs globally
+  log(ifx G.net.is_server then "[SERVER]" else "[CLIENT]");
   log(format_string, ..args, loc, flags, user_flags, section);
 } @PrintLike
 
@@ -250,7 +250,7 @@ NET_FindUser :: (address: *SDLNet_Address, port: u16) -> *NET_User
   for * G.server.users
   {
     if (NET_UserMatchAddrPort(it, address, port))
-      return user;
+      return it;
   }
   return null;
 }
