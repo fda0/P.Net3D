@@ -2,50 +2,11 @@
 #import "Bit_Operations";
 #import "File";
 #import "Thread";
+String :: #import "String";
 #load "base_string.jai";
 #load "base_memory.jai";
 #load "base_hash.jai";
 #load "base_math.jai";
-
-// Range
-Range :: struct ($T: Type)
-{
-  min, max: T;
-};
-
-Range_CountSat :: (rng: Range($T)) -> u64
-{
-  if (rng.max < rng.min)
-    return 0;
-  return (rng.max - rng.min).(u64);
-}
-
-Open :: (x: $T) -> Range(T)
-{
-  return Range(T).{max = x};
-}
-
-MakeRange :: (min: $T, max: T) -> Range(T)
-{
-  return Range(T).{min, max};
-}
-
-for_expansion :: (range: Range($T), body: Code, flags: For_Flags) #expand {
-  #assert !(flags & (.REVERSE | .POINTER));
-
-  loop_iteration := 0;
-  loop_it := range.min;
-  loop_end := range.max;
-  while true
-  {
-    if loop_it >= loop_end  break;
-    `it := loop_it;
-    `it_index := loop_iteration;
-    defer loop_it += 1;
-    defer loop_iteration += 1;
-    #insert body;
-  }
-}
 
 Kilobyte :: v => v * 1024;
 Megabyte :: v => v * 1024 * 1024;
@@ -73,6 +34,7 @@ IsInteger :: (T: Type) -> bool
   ti := cast(*Type_Info) T;
   return ti.type == .INTEGER;
 }
+VectorTypes :: Type.[V2, V3, V4];
 
 CalculateMipMapCount :: (width: $T, height: T) -> T // @todo test
 #modify { return IsInteger(T), "Argument is not of an integer type."; }

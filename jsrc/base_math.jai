@@ -3,7 +3,7 @@ V3 :: Vector3;
 V4 :: Vector4;
 Quat :: Quaternion;
 
-Mat4 :: struct // @todo move to row-major matrices in the future
+Mat4 :: struct // @todo change to row-major matrices in the future?
 {
   // column-major Matrix 4x4
   // 0 4 8 c
@@ -39,7 +39,68 @@ AxisV3 :: (axis: Axis3) -> V3
   }
 }
 
-// INT MATH
+// RANGE MATH
+Range :: struct ($T: Type)
+{
+  min: T;
+  max: T; // exclusive (open) range.
+  // Values are valid for `min <= x < max`.
+};
+
+Range_CountSat :: (rng: Range($T)) -> T
+{
+  if rng.max < rng.min
+    return 0;
+  return rng.max - rng.min;
+}
+
+Range_MaxDistance :: (a: Range($T), b: Range(T)) -> T
+{
+  d0 := b.min - a.max;
+  d1 := a.min - b.max;
+  return max(d0, d1);
+}
+
+MakeRange :: (max: $T) -> Range(T)
+{
+  return Range(T).{max = max};
+}
+Open :: MakeRange; // @todo delete
+MakeRange :: (min: $T, max: T) -> Range(T)
+{
+  return Range(T).{min, max};
+}
+
+for_expansion :: (range: Range($T), body: Code, flags: For_Flags) #expand {
+  #assert !(flags & (.REVERSE | .POINTER));
+
+  loop_iteration := 0;
+  loop_it := range.min;
+  loop_end := range.max;
+  while true
+  {
+    if loop_it >= loop_end  break;
+    `it := loop_it;
+    `it_index := loop_iteration;
+    defer loop_it += 1;
+    defer loop_iteration += 1;
+    #insert body;
+  }
+}
+
+// SCALAR MATH
+CastSaturate :: ($Tdst: Type, value: $Tstr) -> Tdst
+#modify { return IsInteger(Tdst) && IsInteger(Tstr), "Both arguments have to be of an integer type."; }
+{
+  #assert type_info(Tdst).runtime_size < type_info(Tstr).runtime_size;
+
+  #if Tdst == u32
+    return cast,trunc(Tdst) min(value, U32_MAX);
+  else
+    #assert "CastSaturate doesn't support this destination type yet";
+  return 0;
+}
+
 CeilPow2 :: (v: u32) -> u32
 {
   if (!v) return 0;
@@ -53,25 +114,14 @@ CeilPow2 :: (v: u32) -> u32
   return v;
 }
 
-CastSaturate :: ($Tdst: Type, value: $Tstr) -> Tdst
-#modify { return IsInteger(Tdst) && IsInteger(Tstr), "Both arguments have to be of an integer type."; }
-{
-  #assert type_info(Tdst).runtime_size < type_info(Tstr).runtime_size;
-
-  #if Tdst == u32
-    return cast,trunc(Tdst) min(value, U32_MAX);
-  else
-    #assert "CastSaturate doesn't support this destination type yet";
-  return 0;
-}
-
-// FLOAT MATH
 WrapFloat :: (min: float, max: float, value: float) -> float
 {
   range := max - min;
   offset := value - min;
   return (offset - (floor(offset / range) * range) + min);
 }
+
+invsqrt :: inline (x: float) -> float { return 1.0 / sqrt(x); }
 
 // VECTOR2 MATH
 Rotate :: (v: V2, turns: float) -> V2
@@ -84,12 +134,22 @@ Rotate :: (v: V2, turns: float) -> V2
   return res;
 }
 
+HasLength :: (vec: $T/VectorTypes) -> bool
+{
+  for vec.component if it != 0.0 return true;
+  return false;
+}
+
 Tan :: (turns: float) -> float
 {
-  r64 := tan(turns * TURNS_TO_RAD);
+  r64 := Math.tan(turns * TURNS_TO_RAD);
   r32 := cast(float32)r64;
   return r32;
 }
+
+Atan2 :: (x: float, y: float) -> float { return Math.atan2(x, y)*RAD_TO_TURNS; }
+Atan2 :: (vec: V2) -> float { return Atan2(vec.x, vec.y); }
+
 
 NormalFromSegment :: (a: V2, b: V2) -> V2
 {
@@ -313,7 +373,7 @@ Vec2 :: struct($T: Type)
 // We wrap some math operations here to change its units from radians to turns.
 // For now there is a bunch of needless unit conversions which will be eliminated
 // once I create my own math implementations (by forking modules/Math).
-using,except(sin,cos,rotate,translate,rotation_matrix) Math :: #import "Math";
+using,except(sin,cos,tan,atan,atan2,rotate,translate,rotation_matrix) Math :: #import "Math";
 
 TURNS_TO_RAD :: TAU;
 RAD_TO_TURNS :: 1.0 / TAU;

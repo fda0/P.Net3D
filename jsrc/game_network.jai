@@ -395,3 +395,12 @@ NET_ProcessReceivedPayload :: (player_id: u16, full_message: string)
     }
   }
 }
+
+NET_IsServer :: () -> bool
+{
+  return G.net.is_server;
+}
+NET_IsClient :: () -> bool
+{
+  return !G.net.is_server;
+}
