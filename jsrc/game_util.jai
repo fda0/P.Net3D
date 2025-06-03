@@ -91,16 +91,16 @@ Q_Pop :: (arr: [] $T, range: *Range(u64)) -> *T
   return res;
 }
 
-Q_PeekAt :: (arr: [] $T, range: *Range(u64), peek_index: u64) -> * T
+Q_PeekAt :: (arr: [] $T, range: *Range(u64), peek_index: u64) -> *T
 {
   assert(range.min <= range.max);
   if range.min >= range.max
-    return 0;
+    return null;
 
   if !(peek_index >= range.min && peek_index < range.max)
-    return 0;
+    return null;
 
-  index := peek_index % arr.count;
+  index := peek_index % xx arr.count;
   res := *arr[index];
   return res;
 }

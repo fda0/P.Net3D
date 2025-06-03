@@ -16,6 +16,7 @@ NET_State :: struct
   socket: *SDLNet_DatagramSocket;
 
   hacky_last_receive_timestamp: u64;
+  hacky_last_send_timestamp: u64;
 
   server_user: NET_User;
 
@@ -35,9 +36,11 @@ LOG_NetPayload :: 3;
 LOG_NetClient :: 4;
 LOG_NetCatchup :: 5;
 LOG_NetTick :: 6;
+LOG_NetSend :: 7;
 
 Nlog :: (net_category: s64 /* @todo use user flags instead in the future */, format_string: string, args: .. Any, loc := #caller_location, flags := Log_Flags.NONE, user_flags : u32 = 0, section : *Log_Section = null)
 {
+  return;
   // @todo do something with net_category and logging in general
   // @todo add "NET_Label()" before every net log?, or do that for logs globally
   log(ifx G.net.is_server then "[SERVER]" else "[CLIENT]");
@@ -222,8 +225,306 @@ NET_IterateReceive :: ()
 
 NET_IterateSend :: ()
 {
-  // @impl
+  is_server := G.net.is_server;
+  is_client := !G.net.is_server;
+  if G.net.err return;
+
+  {
+    // hacky temporary network activity rate-limitting
+    if (G.timestamp < G.net.hacky_last_send_timestamp + 16)
+      return;
+    G.net.hacky_last_send_timestamp = G.timestamp;
+  }
+
+  if (is_server)
+  {
+    client_count := 0;
+    for G.server.users
+      if it.address client_count += 1;
+
+    // iterate over connected users
+    player_number := 0;
+    for user, user_index: G.server.users
+    {
+      if !user.address continue;
+      player_number += 1;
+
+      // create player characters and send them to users
+      {
+        player_key := *G.server.player_keys[user_index];
+
+        if !player_key.serial_number
+        {
+          model_keys := MODEL_Key.[
+            MODEL_CreateKey("Dude"),
+            // MODEL_CreateKey("Worker"),
+            // MODEL_CreateKey("Formal"),
+            // MODEL_CreateKey("Casual"),
+          ];
+
+          model := model_keys[user_index % model_keys.count];
+          player := OBJ_CreatePlayer(model);
+          if !OBJ_IsNil(player)
+          {
+            player.s.p.y = -1.5 + user_index * 0.7;
+            r := ifx user_index & 4 then 0.3 else 0.8;
+            g := ifx user_index & 2 then 0.3 else 0.8;
+            b := ifx user_index & 1 then 0.3 else 0.8;
+            player.s.color = Color32_RGBf(r, g, b);
+          }
+          player_key.* = player.s.key;
+        }
+
+        head: NET_SendHeader;
+        head.tick_id = G.tick_number;
+        head.kind = .AssignPlayerKey;
+        NET_PayloadAppendType(head);
+
+        assign: NET_SendAssignPlayerKey;
+        assign.player_key = player_key.*;
+        NET_PayloadAppendType(assign);
+
+        NET_PacketSendAndResetPayload(user);
+      }
+
+      // calculate autolayout for clients
+      // @todo this doesn't have to be done on iterate send
+      if G.window_autolayout
+      {
+        window_count := 1 + client_count;
+
+        rows := 1;
+        cols := 1;
+        for 0..15
+        {
+          total_slots := rows * cols;
+          if (total_slots >= window_count)
+            break;
+
+          if (rows > cols) cols += 1;
+          else rows += 1;
+        }
+
+        #if 0 // @impl
+        {
+          win_x := G.init_window_px;
+          win_y := G.init_window_py;
+          win_w := G.init_window_width / cols;
+          win_h := G.init_window_height / rows;
+
+          // calc server window
+          GAME_AutoLayoutApply(client_count, win_x, win_y, win_w, win_h);
+
+          // calc client window
+          {
+            window_index := player_number;
+            x := window_index / rows;
+            y := window_index % rows;
+
+            head: NET_SendHeader;
+            head.tick_id = G.tick_id;
+            head.kind = .WindowLayout;
+            NET_PayloadMemcpy(*head, sizeof(head));
+
+            body: NET_SendWindowLayout;
+            body.user_count = client_count;
+            body.px = win_x + x*win_w;
+            body.py = win_y + y*win_h;
+            body.w = win_w;
+            body.h = win_h;
+            NET_PayloadMemcpy(*body, sizeof(body));
+
+            NET_PacketSendAndResetPayload(user);
+          }
+        }
+      }
+    }
+
+    // iterate over network objects
+    for G.obj.network_objects
+    {
+      if OBJ_HasData(it)
+      {
+        head: NET_SendHeader;
+        head.tick_id = G.tick_number;
+        head.kind = .ObjUpdate;
+        NET_PayloadAppendType(head);
+
+        update: NET_SendObjSync;
+        update.net_index = xx it_index;
+        update.sync = it.s;
+        NET_PayloadAppendType(update);
+      }
+      else
+      {
+        head: NET_SendHeader;
+        head.tick_id = G.tick_number;
+        head.kind = .ObjEmpty;
+        NET_PayloadAppendType(head);
+
+        update: NET_SendObjEmpty;
+        update.net_index = xx it_index;
+        NET_PayloadAppendType(update);
+      }
+
+      NET_PacketSendAndResetPayloadBroadcast();
+    }
+  }
+
+  if (is_client)
+  {
+    {
+      head: NET_SendHeader;
+      head.tick_id = G.tick_number;
+      head.kind = .Ping;
+      NET_PayloadAppendType(head);
+
+      ping: NET_SendPing;
+      NET_PayloadAppendType(ping);
+      NET_PacketSendAndResetPayloadToServer();
+    }
+
+    {
+      CLIENT_PollInput();
+
+      head: NET_SendHeader;
+      head.tick_id = G.tick_number;
+      head.kind = .Inputs;
+      NET_PayloadAppendType(head);
+
+      inputs: NET_SendInputs;
+      input_counter: u16;
+
+      for G.client.inputs_range
+      {
+        if (input_counter >= inputs.inputs.count)
+        {
+          assert(false);
+          break;
+        }
+
+        peek := Q_PeekAt(G.client.inputs_qbuf, *G.client.inputs_range, it);
+        if (!peek)
+        {
+          assert(false);
+          break;
+        }
+
+        inputs.inputs[input_counter] = peek;
+        input_counter += 1;
+      }
+
+      inputs.input_count = input_counter;
+
+      NET_PayloadAppendType(inputs);
+      NET_PacketSendAndResetPayloadToServer();
+    }
+  }
 }
+
+NET_PayloadAlloc :: (size: u32) -> *u8
+{
+  buf_start := *G.net.packet_payload_buf[0];
+
+  if G.net.payload_used + size > G.net.packet_payload_buf.count
+  {
+    assert(false);
+    G.net.packet_err = true;
+    return buf_start;
+  }
+
+  result := buf_start + G.net.payload_used;
+  G.net.payload_used += size;
+  return result;
+}
+
+NET_PayloadMemcpy :: (data: *void, size: u32) -> *u8
+{
+  result := NET_PayloadAlloc(size);
+  memcpy(result, data, size);
+  return result;
+}
+
+NET_PayloadAppendType :: (value: $T)
+{
+  NET_PayloadMemcpy(*value, size_of(T));
+}
+
+NET_RecalculatePacketHeader :: ()
+{
+  using G.net;
+  payload := string.{payload_used, *packet_payload_buf[0]};
+  packet_header.magic_value = NET_MAGIC_VALUE;
+  packet_header.payload_hash = Hash64Any(payload).(u16, trunc);
+}
+
+NET_GetPacketString :: () -> string
+{
+  // there should be no padding between these
+  #assert(offset_of(NET_State, "packet_header") + size_of(type_of(G.net.packet_header)) == offset_of(NET_State, "packet_payload_buf"));
+
+  total_size := size_of(type_of(G.net.packet_header)) + G.net.payload_used;
+  result := string.{total_size, (*G.net.packet_header).(*u8)};
+  return result;
+}
+
+NET_UserIsInactive :: (user: NET_User) -> bool
+{
+  return user.last_msg_timestamp + NET_INACTIVE_MS < G.timestamp;
+}
+
+NET_SendString :: (destination: NET_User, msg: string)
+{
+  assert(msg.count < 1280); // that seems to be a realistic reasonable max size? https://gafferongames.com/post/packet_fragmentation_and_reassembly/
+
+  if G.net.is_server && NET_UserIsInactive(destination)
+    return;
+
+  send_res := SDLNet_SendDatagram(G.net.socket, destination.address, destination.port, msg.data, xx msg.count);
+  if !send_res
+  {
+    Nlog(LOG_NetSend, "Sending buffer of size %lluB to %s:%d; %s",
+        msg.count, SDLNet_GetAddressString(destination.address),
+        destination.port, ifx send_res then "success" else "fail");
+  }
+}
+
+NET_PacketSendAndResetPayload :: (destination: NET_User)
+{
+  NET_RecalculatePacketHeader();
+  packet := NET_GetPacketString();
+  NET_SendString(destination, packet);
+  G.net.payload_used = 0;
+}
+
+NET_PacketSendAndResetPayloadToServer :: ()
+{
+  if NET_IsClient()
+  {
+    NET_RecalculatePacketHeader();
+    packet := NET_GetPacketString();
+    NET_SendString(G.net.server_user, packet);
+    G.net.payload_used = 0;
+  }
+}
+
+NET_PacketSendAndResetPayloadBroadcast :: ()
+{
+  if G.net.is_server
+  {
+    NET_RecalculatePacketHeader();
+    packet := NET_GetPacketString();
+
+    for G.server.users
+    {
+      if !it.address continue;
+      NET_SendString(it, packet);
+    }
+    G.net.payload_used = 0;
+  }
+}
+
+
 
 NET_IterateTimeoutUsers :: ()
 {
