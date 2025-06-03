@@ -149,7 +149,7 @@ Tan :: (turns: float) -> float
 
 Atan2 :: (x: float, y: float) -> float { return Math.atan2(x, y)*RAD_TO_TURNS; }
 Atan2 :: (vec: V2) -> float { return Atan2(vec.x, vec.y); }
-
+Acos :: (x: float) -> float { return Math.acos(x)*RAD_TO_TURNS; }
 
 NormalFromSegment :: (a: V2, b: V2) -> V2
 {
@@ -194,6 +194,36 @@ Mix :: (a: Quat, b: Quat, weight_a: float, weight_b: float) -> Quat
     a.w*weight_a + b.w*weight_b,
   };
   return res;
+}
+
+Nlerp :: (a: Quat, b: Quat, t: float) -> Quat
+{
+  return Mix(a, b, 1.0 - t, t);
+}
+
+Slerp :: (a: Quat, b_: Quat, t: float) -> Quat
+{
+  b := b_;
+
+  cos_theta := dot(a, b);
+  if cos_theta < 0.0
+  {
+    cos_theta = -cos_theta;
+    b = -b;
+  }
+
+  if cos_theta > 0.9995
+  {
+    // NOTE(lcf): Use Normalized Linear interpolation when vectors are roughly not L.I.
+    return Nlerp(a, b, t);
+  }
+
+  angle := Acos(cos_theta);
+  ta := Sin((1.0 - t) * angle);
+  tb := Sin(t * angle);
+
+  res := Mix(a, b, ta, tb);
+  return normalize(res);
 }
 
 // MATRIX MATH

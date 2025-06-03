@@ -131,28 +131,24 @@ CLIENT_InsertSnapshot :: (snaps: *CLIENT_ObjSnapshots, insert_at_tick_id: u64, n
     else
     {
       clearing_start := insert_at_tick_id - delta_from_latest.(u64) + 1;
-      i := clearing_start;
-      while i < insert_at_tick_id
+      for MakeRange(clearing_start, insert_at_tick_id)
       {
-        defer i += 1;
-        obj := CLIENT_ObjSyncAtTick(snaps, i);
+        obj := CLIENT_ObjSyncAtTick(snaps, it);
         Initialize(obj);
       }
     }
 
 
     // recalculate oldest_server_tick
-    if (snaps.oldest_server_tick < minimum_server_tick)
+    if snaps.oldest_server_tick < minimum_server_tick
     {
       // find new oldest
-      i := minimum_server_tick;
-      while i < insert_at_tick_id
+      for MakeRange(minimum_server_tick, insert_at_tick_id)
       {
-        defer i += 1;
-        obj := CLIENT_ObjSyncAtTick(snaps, i);
+        obj := CLIENT_ObjSyncAtTick(snaps, it);
         if OBJ_SyncIsInit(obj)
         {
-          snaps.oldest_server_tick = i;
+          snaps.oldest_server_tick = it;
           break;
         }
       }

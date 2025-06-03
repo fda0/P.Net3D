@@ -40,7 +40,7 @@ LOG_NetSend :: 7;
 
 Nlog :: (net_category: s64 /* @todo use user flags instead in the future */, format_string: string, args: .. Any, loc := #caller_location, flags := Log_Flags.NONE, user_flags : u32 = 0, section : *Log_Section = null)
 {
-  return;
+  if net_category != LOG_NetPacket return;
   // @todo do something with net_category and logging in general
   // @todo add "NET_Label()" before every net log?, or do that for logs globally
   log(ifx G.net.is_server then "[SERVER]" else "[CLIENT]");
@@ -179,7 +179,7 @@ NET_IterateReceive :: ()
     if !dgram   break;
 
     Nlog(LOG_NetDatagram, "got %-byte datagram from %:%",
-      dgram.buflen, SDLNet_GetAddressString(dgram.addr), dgram.port);
+      dgram.buflen, to_string(SDLNet_GetAddressString(dgram.addr)), dgram.port);
 
     dgram_error := false;
     if is_client
@@ -188,7 +188,7 @@ NET_IterateReceive :: ()
       {
         dgram_error = true;
         Nlog(LOG_NetDatagram, "dgram rejected - received from non-server address %:%",
-          SDLNet_GetAddressString(dgram.addr), dgram.port);
+          to_string(SDLNet_GetAddressString(dgram.addr)), dgram.port);
       }
     }
 
@@ -200,16 +200,15 @@ NET_IterateReceive :: ()
       if is_server
       {
         user := NET_FindUser(dgram.addr, dgram.port);
-        if (!user)
+        if !user
         {
           Nlog(LOG_NetInfo, "saving user with port: %", dgram.port);
           user = NET_AddUser(dgram.addr, dgram.port);
         }
 
-        if (user)
+        if user
         {
           user.last_msg_timestamp = G.timestamp;
-
           user_id: u64 = (user.(u64) - (*G.server.users[0]).(u64)) / size_of(NET_User);
           player_id = user_id.(u16);
         }
@@ -298,11 +297,11 @@ NET_IterateSend :: ()
         for 0..15
         {
           total_slots := rows * cols;
-          if (total_slots >= window_count)
+          if total_slots >= window_count
             break;
 
-          if (rows > cols) cols += 1;
-          else rows += 1;
+          if rows > cols  cols += 1;
+          else            rows += 1;
         }
 
         #if 0 // @impl
@@ -484,7 +483,7 @@ NET_SendString :: (destination: NET_User, msg: string)
   if !send_res
   {
     Nlog(LOG_NetSend, "Sending buffer of size %lluB to %s:%d; %s",
-        msg.count, SDLNet_GetAddressString(destination.address),
+        msg.count, to_string(SDLNet_GetAddressString(destination.address)),
         destination.port, ifx send_res then "success" else "fail");
   }
 }

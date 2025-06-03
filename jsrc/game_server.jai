@@ -17,7 +17,7 @@ SERVER_State :: struct
 SERVER_InsertPlayerInput :: (pi: *SERVER_PlayerInputs, net_msg: *NET_SendInputs, net_msg_tick_id: u64)
 {
   // @refactor this is dumb and complicated!
-  if (net_msg_tick_id <= pi.latest_client_tick_id)
+  if net_msg_tick_id <= pi.latest_client_tick_id
     return; // no new inputs
 
   pre_insert_playback_range := Range_CountSat(pi.playback_range);
@@ -25,14 +25,16 @@ SERVER_InsertPlayerInput :: (pi: *SERVER_PlayerInputs, net_msg: *NET_SendInputs,
   // @threading - mutex?
   inputs := net_msg.inputs;
   input_count := min(net_msg.input_count, net_msg.inputs.count);
-  skip_inputs := max(input_count - (net_msg_tick_id + 1), 0);
+  skip_inputs: u64;
+  if input_count > net_msg_tick_id + 1
+    skip_inputs = input_count - (net_msg_tick_id + 1);
 
   first_input_tick_id := net_msg_tick_id + 1 - input_count;
 
   for input_index: MakeRange(skip_inputs, input_count)
   {
     input_tick := first_input_tick_id + input_index;
-    if (input_tick <= pi.latest_client_tick_id)
+    if input_tick <= pi.latest_client_tick_id
     {
       // reject old inputs
       continue;
@@ -45,10 +47,10 @@ SERVER_InsertPlayerInput :: (pi: *SERVER_PlayerInputs, net_msg: *NET_SendInputs,
 
   pi.latest_client_tick_id = net_msg_tick_id;
 
-  if (TickDeltas_AddTick(*pi.receive_deltas, net_msg_tick_id))
+  if TickDeltas_AddTick(*pi.receive_deltas, net_msg_tick_id)
   {
     TickDeltas_UpdateCatchup(*pi.receive_deltas, pre_insert_playback_range.(u16));
-    if (pi.receive_deltas.tick_catchup)
+    if pi.receive_deltas.tick_catchup
     {
       Nlog(LOG_NetCatchup,
           "Client (?) current input delay: % Setting input playback catchup to %",
@@ -61,7 +63,7 @@ SERVER_PopPlayerInput :: (pi: *SERVER_PlayerInputs) -> TICK_PlayerInput
 {
   result: TICK_PlayerInput;
   pop := Q_Pop(pi.qbuf, *pi.playback_range);
-  if (pop)
+  if pop
     result = pop.*;
 
   pi.last_input = result;
@@ -82,17 +84,15 @@ SERVER_GetPlayerInput :: (player_index: u32) -> TICK_PlayerInput
   else
   {
     Nlog(LOG_NetTick,
-        "Ran out of input playback (player %u) . extrapolating; playback catchup %d",
-        player_index,
-        pi.receive_deltas.tick_catchup);
+        "Ran out of input playback (player %) -> extrapolating; playback catchup %",
+        player_index, pi.receive_deltas.tick_catchup);
 
     // extrapolation using last input!
     result = pi.last_input;
     result.is_pathing = false;
   }
 
-  if (playback_count > 1 &&
-      pi.receive_deltas.tick_catchup > 0)
+  if playback_count > 1 &&  pi.receive_deltas.tick_catchup > 0
   {
     pi.receive_deltas.tick_catchup -= 1;
 

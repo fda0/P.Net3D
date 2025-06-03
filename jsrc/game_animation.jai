@@ -9,7 +9,7 @@ ANIM_AnimateObjects :: ()
       q0 := obj.l.animated_rot;
       q1 := obj.s.rotation;
 
-      w1 := Min(1.0, G.dt * ROTATION_SPEED);
+      w1 := min(1.0, G.dt * ROTATION_SPEED);
       w0 := 1.0 - w1;
 
       if dot(q0, q1) < 0.0
@@ -106,7 +106,7 @@ ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: floa
         {
           q0 := (cast(*Quat) *channel.outputs[0])[sample_start];
           q1 := (cast(*Quat) *channel.outputs[0])[sample_end];
-          value := slerp(q0, q1, t); // @todo NLerp with "neighborhood operator" could be used here?
+          value := Slerp(q0, q1, t); // @todo NLerp with "neighborhood operator" could be used here?
 
           rotations[channel.joint_index] = value;
         }
