@@ -23,12 +23,7 @@ Mat4 :: struct // @todo change to row-major matrices in the future?
 };
 
 // AXIS MATH
-Axis3 :: enum
-{
-  X;
-  Y;
-  Z;
-};
+Axis3 :: enum { X; Y; Z; };
 AxisV3 :: (axis: Axis3) -> V3
 {
   if axis == {

@@ -315,7 +315,10 @@ GAME_AutoLayoutApply :: (code: ..Code) #expand
 
 
 // Includes and stuff
-#load "game_base.jai";
+BR :: #import,file "brick_layout.jai"(ColorType=Color32);
+
+
+#load "game_base.jai"; // this loads  a bunch of other files too
 #load "game_color.jai";
 #load "game_key.jai";
 #load "game_animation.jai";
