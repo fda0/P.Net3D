@@ -230,89 +230,87 @@ UI_BuildDeveloperWindow :: ()
   clamped_win_p := clamp(V2.{}, G.window_dim * 0.9, win_p);
 
 
+  UIC_Parent(UIC_Box(.{layout = .{child_layout = .TOP_TO_BOTTOM,
+                                  sizing = .{width = UIC_Rem(200, fit_children = true),
+                                             height = UIC_Rem(200)}},
+                       bg_color = UI_BG,
+                       floating = .{attach_to = .ROOT, offset = clamped_win_p},
+                       border = .{color = UI_SHADOW, width = UI_BORDER_WIDTH},
+                       corner_radius = UI_RADIUS}))
   {
-    UIC_Parent(UIC_Box(.{layout = .{child_layout = .TOP_TO_BOTTOM,
-                                    sizing = .{width = UIC_Rem(200, fit_children = true),
-                                               height = UIC_Rem(200)}},
-                         bg_color = UI_BG,
-                         floating = .{attach_to = .ROOT, offset = clamped_win_p},
-                         border = .{color = UI_SHADOW, width = UI_BORDER_WIDTH},
-                         corner_radius = UI_RADIUS}))
+    window_bar := UIC_Box(.{layout = {sizing = .{width = UIC_Grow(), height = UIC_Fit()},
+                                      padding = UI_BAR_PAD,
+                                      child_align = .{x = .CENTER}},
+                            bg_color = UI_ORANGE2,
+                            corner_radius = UI_RADIUS})
+    UIC_Parent(window_bar);
+
+    if window_bar.f & .DRAG  G.debug.win_p += G.mouse_delta;
+    else                     G.debug.win_p = clamped_win_p;
+
+    UIC_CreateText("Developer window", .{text = .{color = UI_BG}});
+  }
+
+  // Content of the window
+  {
+    UIC_Parent(UIC_Box(.{layout = .{sizing = .{width = UIC_Grow(), height = UIC_Grow()}}}))
+
+    // Category selection bar
+    CLAY(.{layout = {child_layout = .TOP_TO_BOTTOM,
+                     sizing = .{width = UIC_Fit(),
+                                height = UIC_GROW()},
+                     padding = UI_WINDOW_PAD,
+                     childGap = UI_WINDOW_GAP},
+           border = {color = UI_BORDER_BG,
+                     width = UI_BORDER_WIDTH}})
     {
-      window_bar := UIC_Box(.{layout = {sizing = .{width = UIC_Grow(), height = UIC_Fit()},
-                                        padding = UI_BAR_PAD,
-                                        child_align = .{x = .CENTER}},
-                              bg_color = UI_ORANGE2,
-                              corner_radius = UI_RADIUS})
-      UIC_Parent(window_bar);
-
-      if window_bar.f & .DRAG  G.debug.win_p += G.mouse_delta;
-      else                     G.debug.win_p = clamped_win_p;
-
-      UIC_CreateText("Developer window", .{text = .{color = UI_BG}});
+      UI_Button(CLAY_STRING("🕹️"), false, &G.debug.menu_category, 0);
+      UI_Button(CLAY_STRING("🤔"), false, &G.debug.menu_category, 1);
     }
 
-    // Content of the window
+    // Menu content
+    CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                     .sizing = {.width = CLAY_SIZING_GROW(),
+                                .height = CLAY_SIZING_FIT()},
+                     .padding = UI_WINDOW_PAD},
+          .cornerRadius = UI_RADIUS})
     {
-      UIC_Parent(UIC_Box(.{layout = .{sizing = .{width = UIC_Grow(), height = UIC_Grow()}}}))
-
-      // Category selection bar
-      CLAY(.{layout = {child_layout = .TOP_TO_BOTTOM,
-                       sizing = .{width = UIC_Fit(),
-                                  height = UIC_GROW()},
-                       padding = UI_WINDOW_PAD,
-                       childGap = UI_WINDOW_GAP},
-             border = {color = UI_BORDER_BG,
-                       width = UI_BORDER_WIDTH}})
+      if (G.debug.menu_category == 0)
       {
-        UI_Button(CLAY_STRING("🕹️"), false, &G.debug.menu_category, 0);
-        UI_Button(CLAY_STRING("🤔"), false, &G.debug.menu_category, 1);
+        UI_Header(CLAY_STRING("Debug switches"));
+
+        {
+          Object *player = OBJ_Get(G.client.player_key, OBJ_Network);
+          V3 rel_p = V3_Sub(G.camera_p, player.s.p);
+
+          Pr_MakeOnStack(p, Kilobyte(1));
+          Pr_Cstr(&p, "World camera p: ");
+          Pr_V3(&p, G.camera_p);
+
+          Pr_Cstr(&p, "\nPlayer camera p: ");
+          Pr_V3(&p, rel_p);
+
+          Pr_Cstr(&p, "\nCamera angles: ");
+          Pr_V3(&p, G.camera_angles);
+
+          UI_Label(Pr_AsS8(&p));
+        }
+
+        CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
+                         .sizing = {.width = CLAY_SIZING_GROW(),
+                                    .height = CLAY_SIZING_FIT()},
+                         .childGap = UI_WINDOW_GAP}})
+        {
+          UI_Checkbox(CLAY_STRING("📽️ Noclip camera"), false, &G.debug.noclip_camera);
+          UI_Checkbox(CLAY_STRING("☀️ Sun camera"), false, &G.debug.sun_camera);
+          UI_Checkbox(CLAY_STRING("📦 Draw model collision"), false, &G.debug.draw_model_collision);
+          bool todo = false;
+          UI_Checkbox(CLAY_STRING("🌌 [todo] Render normals"), false, &todo);
+        }
       }
-
-      // Menu content
-      CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                       .sizing = {.width = CLAY_SIZING_GROW(),
-                                  .height = CLAY_SIZING_FIT()},
-                       .padding = UI_WINDOW_PAD},
-            .cornerRadius = UI_RADIUS})
+      else if (G.debug.menu_category == 1)
       {
-        if (G.debug.menu_category == 0)
-        {
-          UI_Header(CLAY_STRING("Debug switches"));
-
-          {
-            Object *player = OBJ_Get(G.client.player_key, OBJ_Network);
-            V3 rel_p = V3_Sub(G.camera_p, player.s.p);
-
-            Pr_MakeOnStack(p, Kilobyte(1));
-            Pr_Cstr(&p, "World camera p: ");
-            Pr_V3(&p, G.camera_p);
-
-            Pr_Cstr(&p, "\nPlayer camera p: ");
-            Pr_V3(&p, rel_p);
-
-            Pr_Cstr(&p, "\nCamera angles: ");
-            Pr_V3(&p, G.camera_angles);
-
-            UI_Label(Pr_AsS8(&p));
-          }
-
-          CLAY({.layout = {.layoutDirection = CLAY_TOP_TO_BOTTOM,
-                           .sizing = {.width = CLAY_SIZING_GROW(),
-                                      .height = CLAY_SIZING_FIT()},
-                           .childGap = UI_WINDOW_GAP}})
-          {
-            UI_Checkbox(CLAY_STRING("📽️ Noclip camera"), false, &G.debug.noclip_camera);
-            UI_Checkbox(CLAY_STRING("☀️ Sun camera"), false, &G.debug.sun_camera);
-            UI_Checkbox(CLAY_STRING("📦 Draw model collision"), false, &G.debug.draw_model_collision);
-            bool todo = false;
-            UI_Checkbox(CLAY_STRING("🌌 [todo] Render normals"), false, &todo);
-          }
-        }
-        else if (G.debug.menu_category == 1)
-        {
-          UI_Header(CLAY_STRING("Nothing here yet"));
-        }
+        UI_Header(CLAY_STRING("Nothing here yet"));
       }
     }
 

@@ -18,6 +18,7 @@ GAME_State :: struct {
   net: NET_State;
   client: CLIENT_State;
   server: SERVER_State;
+  ui: UI_State;
 
   // SDL, window stuff
   window: *SDL_Window;
@@ -242,6 +243,7 @@ GAME_Iterate :: ()
     }
 
     WORLD_DrawObjects();
+    UI_BuildDeveloperWindow();
     GPU_Iterate();
 
     // Post frame calls
@@ -315,7 +317,7 @@ GAME_AutoLayoutApply :: (code: ..Code) #expand
 
 
 // Includes and stuff
-BR :: #import,file "brick_layout.jai"(ColorType=Color32);
+#load "game_ui_user.jai";
 
 
 #load "game_base.jai"; // this loads  a bunch of other files too

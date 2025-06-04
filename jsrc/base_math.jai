@@ -135,6 +135,14 @@ HasLength :: (vec: $T/VectorTypes) -> bool
   return false;
 }
 
+clamp :: (x: $T/VectorTypes, a: T, b: T) -> T
+{
+  res: T = ---;
+  for v, i: x.component
+    res.component[i] = clamp(v, a.component[i], b.component[i]);
+  return res;
+}
+
 Tan :: (turns: float) -> float
 {
   r64 := Math.tan(turns * TURNS_TO_RAD);

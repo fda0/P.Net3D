@@ -167,7 +167,7 @@ Parent :: (box: Box)
 
 Parent :: (signal: Signal) -> Signal
 {
-  Parent(signal.box);
+  // 1. take signal.box and push it on parent stack
   return signal;
 }
 
