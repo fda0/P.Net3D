@@ -123,7 +123,7 @@ GAME_Iterate :: ()
         G.camera_angles.z += rot_speed * G.mouse_delta.x;
         G.camera_angles.y += rot_speed * G.mouse_delta.y * (-2.0 / 3.0);
         G.camera_angles.z = WrapFloat(-0.5, 0.5, G.camera_angles.z);
-        G.camera_angles.y = clamp(-0.2, 0.2, G.camera_angles.y);
+        G.camera_angles.y = clamp(G.camera_angles.y, -0.2, 0.2);
       }
 
       move_dir: V3;

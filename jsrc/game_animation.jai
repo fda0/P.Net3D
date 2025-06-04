@@ -65,7 +65,7 @@ ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: floa
     if anim_index < skeleton.animations.count
     {
       anim := *skeleton.animations[anim_index];
-      time = clamp(anim.t_min, anim.t_max, time);
+      time = clamp(time, anim.t_min, anim.t_max);
 
       for channel: anim.channels
       {

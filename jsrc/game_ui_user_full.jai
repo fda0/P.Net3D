@@ -227,7 +227,7 @@ UI_BuildDeveloperWindow :: ()
   using G.ui.dev;
   if (!show) return;
 
-  clamped_win_p := clamp(V2.{}, G.window_dim * 0.9, win_p);
+  clamped_win_p := clamp(win_p, V2.{}, G.window_dim * 0.9);
 
 
   UIC_Parent(UIC_Box(.{layout = .{child_layout = .TOP_TO_BOTTOM,
