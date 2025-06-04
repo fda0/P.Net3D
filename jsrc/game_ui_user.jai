@@ -1,5 +1,3 @@
-BR :: #import,file "brick_layout.jai"(ColorType=Color32);
-
 UI_State :: struct
 {
   dev: struct
@@ -10,19 +8,41 @@ UI_State :: struct
   };
 };
 
+UI_RED1      :: #run Color32_RGBi(0xcc, 0x24, 0x1d);
+UI_RED2      :: #run Color32_RGBi(0xfb, 0x49, 0x34);
+UI_GREEN1    :: #run Color32_RGBi(0x98, 0x97, 0x1a);
+UI_GREEN2    :: #run Color32_RGBi(0xb8, 0xbb, 0x26);
+UI_YELLOW1   :: #run Color32_RGBi(0xd7, 0x99, 0x21);
+UI_YELLOW2   :: #run Color32_RGBi(0xfa, 0xbd, 0x2f);
+UI_BLUE1     :: #run Color32_RGBi(0x45, 0x85, 0x88);
+UI_BLUE2     :: #run Color32_RGBi(0x83, 0xa5, 0x98);
+UI_ORANGE1   :: #run Color32_RGBi(0xd6, 0x5d, 0x0e);
+UI_ORANGE2   :: #run Color32_RGBi(0xfe, 0x80, 0x19);
+UI_BG        :: #run Color32_RGBi(40, 40, 40);
+UI_FG        :: #run Color32_RGBi(235, 219, 178);
+UI_BORDER_BG :: #run Color32_RGBi(29, 32, 33);
+UI_SHADOW    :: #run Color32_RGBAi(29, 32, 33, 96);
+UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
+
+UI_RADIUS :: #run CornerRadius_All(3);
+UI_BORDER_WIDTH :: #run BorderWidths_Sides(1);
+
 UI_BuildDeveloperWindow :: ()
 {
   using BR;
   using G.ui.dev;
   if (!show) return;
 
-  clamped_win_p := clamp(win_p, V2.{}, G.window_dim * 0.9);
+  clamped_win_p := clamp(win_p, .{}, G.window_dim * 0.9);
 
-  // Parent(Box(.{layout = .{child_layout = .TOP_TO_BOTTOM,
-  //                         sizing = .{width = UIC_Rem(200, fit_children = true),
-  //                                    height = UIC_Rem(200)}},
-  //              bg_color = UI_BG,
-  //              floating = .{attach_to = .ROOT, offset = clamped_win_p},
-  //              border = .{color = UI_SHADOW, width = UI_BORDER_WIDTH},
-  //              corner_radius = UI_RADIUS}));
+  Parent(CreateBox(.{layout = .{child_layout = .TOP_TO_BOTTOM,
+                                sizing = .{width = Fit(SizeRem(200)), height = SizeRem(200)}},
+                     bg_color = UI_BG,
+                     floating = .{attach_to = .ROOT, offset = Length2Px(clamped_win_p)},
+                     border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},
+                     corner_radius = UI_RADIUS}));
 }
+
+BR :: #import,file "brick_layout.jai"(ColorType=Color32, V2Type=V2);
+#scope_file;
+using BR;

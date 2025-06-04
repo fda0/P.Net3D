@@ -1,4 +1,7 @@
-#module_parameters(ColorType: Type = u32);
+#module_parameters(
+  ColorType: Type = u32,
+  V2Type: Type = struct {x, y: float;}
+  );
 
 Axis2 :: enum u8 { X; Y; COUNT; };
 Inverse :: (a: Axis2) -> Axis2 { return ifx a == .X then .Y else .X; }
@@ -17,17 +20,38 @@ AlignX :: enum u8 { LEFT; RIGHT; CENTER; };
 AlignY :: enum u8 { TOP; BOTTOM; CENTER; };
 Bool3 :: enum u8 { DEFAULT; FALSE; TRUE; };
 
+SizeType :: enum u8 // @todo rename to Unit?
+{
+  NONE;
+  PX;
+  REM;
+  /*EM; PT;*/
+  TEXT;
+};
+
+Length :: struct
+{
+  type: SizeType;
+  value: float;
+};
+LengthPx  :: (v: float) -> Length { return .{.PX, v}; }
+LengthRem :: (v: float) -> Length { return .{.REM, v}; }
+
+Length2 :: struct
+{
+  width, height: Length;
+  #place width; array: [2] Length;
+}
+Length2Px  :: (wh: float) -> Length2 { return .{LengthPx(wh), LengthPx(wh)}; }
+Length2Rem :: (wh: float) -> Length2 { return .{LengthRem(wh), LengthRem(wh)}; }
+Length2Px  :: (w: float, h: float) -> Length2 { return .{LengthPx(w), LengthPx(h)}; }
+Length2Rem :: (w: float, h: float) -> Length2 { return .{LengthRem(w), LengthRem(h)}; }
+Length2Px  :: (vec: V2Type) -> Length2 { return .{LengthPx(vec.x), LengthPx(vec.y)}; }
+Length2Rem :: (vec: V2Type) -> Length2 { return .{LengthRem(vec.x), LengthRem(vec.y)}; }
+
 Size :: struct
 {
-  type: enum
-  {
-    NONE;
-    PX;
-    REM;
-    /*EM; PT;*/
-    TEXT;
-  };
-
+  type: SizeType;
   min := -1.0;
   max := -1.0;
   grow_pct := -1.0;
@@ -35,12 +59,28 @@ Size :: struct
   fit_children: Bool3; // expand to fit children
 };
 
-Px  :: (min: float) -> Size { return .{.PX,  min}; }
-Rem :: (min: float) -> Size { return .{.REM, min}; }
-Px  :: (min: float, max: float) -> Size { return .{.PX,  min, max}; }
-Rem :: (min: float, max: float) -> Size { return .{.REM, min, max}; }
+SizeTypeMin :: (type: SizeType, min: float) -> Size
+{
+  s: Size;
+  s.type = type;
+  s.min = min;
+  return s;
+}
+SizeTypeMinMax :: (type: SizeType, min: float, max: float) -> Size
+{
+  s: Size;
+  s.type = type;
+  s.min = min;
+  s.max = max;
+  return s;
+}
 
-Text :: () -> Size { return .{.TEXT}; }
+SizePx  :: (min: float) -> Size { return SizeTypeMin(.PX,  min); }
+SizeRem :: (min: float) -> Size { return SizeTypeMin(.REM, min); }
+SizePx  :: (min: float, max: float) -> Size { return SizeTypeMinMax(.PX,  min, max); }
+SizeRem :: (min: float, max: float) -> Size { return SizeTypeMinMax(.REM, min, max); }
+SizeText :: () -> Size { return .{.TEXT}; }
+
 Pct :: (percentage_of_parent: float, size := Size.{}) -> Size
 {
   s := size;
@@ -61,31 +101,53 @@ Fit :: (size := Size.{}) -> Size
   return s;
 }
 
+Size2 :: struct
+{
+  width, height: Size;
+  #place width; array: [2] Size;
+};
+Size2Px :: (vec: V2Type) -> Size2 { return Size2.{SizePx(vec.x), SizePx(vec.y)}; }
+
 BoxKey :: struct
 {
   hash_or_something: u64;
 };
 
-Sizing :: struct
+CornerRadius :: struct
 {
-  width: Size;
-  height: Size;
-  #place width; array: [Axis2.COUNT] Size;
+  // @todo replace float (px) with Size
+  top_left, top_right, bottom_left, bottom_right: float;
+};
+CornerRadius_All :: (r: float) -> CornerRadius { return .{r, r, r, r}; }
+
+BorderWidths :: struct
+{
+  // @todo replace float (px) with Size
+  left, right, top, bottom: float;
+  between_children: float;
+};
+BorderWidths_All   :: (w: float) -> BorderWidths { return .{w,w,w,w, w}; }
+BorderWidths_Sides :: (w: float) -> BorderWidths { return .{w,w,w,w, 0}; }
+
+Padding :: struct
+{
+  // @todo replace float (px) with Size
+  left, right, top, bottom: float;
 };
 
 BoxSpec :: struct
 {
   layout: struct
   {
-    sizing: [Axis2.COUNT] Size;
-    padding: [Side2.COUNT] Size;
+    sizing: Size2;
+    padding: Padding;
     child_gap: Size;
     child_align: struct { x: AlignX; y: AlignY; };
     child_layout: enum { LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
   };
 
   bg_color: ColorType;
-  corner_radius: [Corner2.COUNT] float;
+  corner_radius: CornerRadius;
 
   floating: struct
   {
@@ -97,7 +159,7 @@ BoxSpec :: struct
       ROOT;
     };
 
-    offset: [Axis2.COUNT] Size;
+    offset: Length2;
     // expand: [Axis2.COUNT] Size; do we need this?
     parent: BoxKey;
     z_index: s16;
@@ -108,11 +170,7 @@ BoxSpec :: struct
   border: struct
   {
     color: ColorType;
-    widths: struct
-    {
-      sides: [Side2.COUNT] Size;
-      between_children: Size;
-    };
+    widths: BorderWidths;
   };
 
   text: struct
@@ -142,16 +200,28 @@ Signal :: struct
   flags: SignalFlags;
 };
 
+BoxSpecFromLayer :: (layer: enum { MAIN; TEXT; }) -> BoxSpec
+{
+  // @impl
+  return .{};
+}
+
+InheritBoxSpecs :: (child: BoxSpec, parents: ..BoxSpec) -> BoxSpec
+{
+  // @impl
+  return child;
+}
+
 CreateText :: (text: string, spec := BoxSpec.{}) -> Signal
 {
-  merged_spec := InheritSpecs(spec, LayerTopSpec(.TEXT), LayerTopSpec(.MAIN));
+  merged_spec := InheritBoxSpecs(spec, BoxSpecFromLayer(.TEXT), BoxSpecFromLayer(.MAIN));
   spec.text.str = text;
   return CreateBoxDirect(spec);
 }
 
 CreateBox :: (spec: BoxSpec) -> Signal
 {
-  merged_spec := InheritSpecs(spec, LayerTopSpec(.MAIN));
+  merged_spec := InheritBoxSpecs(spec, BoxSpecFromLayer(.MAIN));
   return CreateBoxDirect(spec);
 }
 
