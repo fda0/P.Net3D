@@ -1,7 +1,19 @@
 #module_parameters(
   ColorType: Type = u32,
-  V2Type: Type = struct {x, y: float;}
-  );
+  Vector2: Type = Math.Vector2,
+  HashLocFunc := DefaultHashLocFunc,
+  MAX_NESTING := 256)
+{
+  Math :: #import "Math";
+  DefaultHashLocFunc :: (loc: Source_Code_Location) -> u64
+  {
+    Hash :: #import "Hash";
+    h := Hash.fnv1a_hash(loc.fully_pathed_filename.data, loc.fully_pathed_filename.count);
+    h  = Hash.fnv1a_hash(xx,no_check loc.line_number, h);
+    h  = Hash.fnv1a_hash(xx,no_check loc.character_number, h);
+    return h;
+  }
+}
 
 Axis2 :: enum u8 { X; Y; COUNT; };
 Inverse :: (a: Axis2) -> Axis2 { return ifx a == .X then .Y else .X; }
@@ -46,8 +58,8 @@ Length2Px  :: (wh: float) -> Length2 { return .{LengthPx(wh), LengthPx(wh)}; }
 Length2Rem :: (wh: float) -> Length2 { return .{LengthRem(wh), LengthRem(wh)}; }
 Length2Px  :: (w: float, h: float) -> Length2 { return .{LengthPx(w), LengthPx(h)}; }
 Length2Rem :: (w: float, h: float) -> Length2 { return .{LengthRem(w), LengthRem(h)}; }
-Length2Px  :: (vec: V2Type) -> Length2 { return .{LengthPx(vec.x), LengthPx(vec.y)}; }
-Length2Rem :: (vec: V2Type) -> Length2 { return .{LengthRem(vec.x), LengthRem(vec.y)}; }
+Length2Px  :: (vec: Vector2) -> Length2 { return .{LengthPx(vec.x), LengthPx(vec.y)}; }
+Length2Rem :: (vec: Vector2) -> Length2 { return .{LengthRem(vec.x), LengthRem(vec.y)}; }
 
 Size :: struct
 {
@@ -106,12 +118,26 @@ Size2 :: struct
   width, height: Size;
   #place width; array: [2] Size;
 };
-Size2Px :: (vec: V2Type) -> Size2 { return Size2.{SizePx(vec.x), SizePx(vec.y)}; }
+Size2Px :: (vec: Vector2) -> Size2 { return Size2.{SizePx(vec.x), SizePx(vec.y)}; }
 
 BoxKey :: struct
 {
-  hash_or_something: u64;
+  hash: u64;
 };
+
+CreateKey :: (loc: Source_Code_Location) -> BoxKey
+{
+  hash := HashLocFunc(loc);
+  key := BoxKey.{hash};
+  return key;
+}
+
+CreateKey :: (text: string) -> BoxKey
+{
+  hash := Hash64Any(text);
+  key := BoxKey.{hash};
+  return key;
+}
 
 CornerRadius :: struct
 {
@@ -131,12 +157,14 @@ BorderWidths_Sides :: (w: float) -> BorderWidths { return .{w,w,w,w, 0}; }
 
 Padding :: struct
 {
-  // @todo replace float (px) with Size
-  left, right, top, bottom: float;
+  left, right, top, bottom: Length;
 };
+Padding_All :: (l: Length) -> Padding { return .{l,l,l,l}; }
 
 BoxSpec :: struct
 {
+  key: BoxKey;
+
   layout: struct
   {
     sizing: Size2;
@@ -184,7 +212,9 @@ BoxSpec :: struct
 
 Box :: struct
 {
-  payload: u64;
+  using spec: BoxSpec;
+  next: *#this;
+  prev, first, last, parent: *Box;
 };
 
 SignalFlags :: enum_flags u32
@@ -206,28 +236,80 @@ BoxSpecFromLayer :: (layer: enum { MAIN; TEXT; }) -> BoxSpec
   return .{};
 }
 
-InheritBoxSpecs :: (child: BoxSpec, parents: ..BoxSpec) -> BoxSpec
+InheritBoxSpecs :: (child_spec: BoxSpec, parent_specs: ..BoxSpec) -> BoxSpec
 {
-  // @impl
-  return child;
+  res := child_spec;
+  for parent_specs
+  {
+    // @impl
+  }
+  return res;
 }
 
-CreateText :: (text: string, spec := BoxSpec.{}) -> Signal
+CreateText :: (text: string, spec := BoxSpec.{}, loc := #caller_location) -> Signal
 {
   merged_spec := InheritBoxSpecs(spec, BoxSpecFromLayer(.TEXT), BoxSpecFromLayer(.MAIN));
-  spec.text.str = text;
-  return CreateBoxDirect(spec);
+  merged_spec.text.str = text;
+  return CreateBoxDirect(merged_spec, loc);
 }
 
-CreateBox :: (spec: BoxSpec) -> Signal
+CreateBox :: (spec: BoxSpec, loc := #caller_location) -> Signal
 {
   merged_spec := InheritBoxSpecs(spec, BoxSpecFromLayer(.MAIN));
-  return CreateBoxDirect(spec);
+  return CreateBoxDirect(merged_spec, loc);
 }
 
-CreateBoxDirect :: (spec: BoxSpec) -> Signal
+
+CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box := false) -> Signal
 {
-  return .{};
+  spec := source_spec;
+  if !spec.key.hash  spec.key = CreateKey(loc);
+
+  state.boxes_created_on_this_layout += 1;
+
+  box := Basic.array_add(BoxesArray(.CURRENT));
+  box.spec = spec;
+
+  // links
+  LinkToNil(box);
+  if !is_root_box
+  {
+    box.parent = PeekParent();
+    if IsNil(box.parent.first)
+    {
+      box.parent.first = box;
+      box.parent.last = box;
+    }
+    else
+    {
+      box.prev = box.parent.last;
+      box.parent.last.next = box;
+      box.parent.last = box;
+    }
+  }
+
+  // Find prev_box
+  prev_box: *Box;
+  {
+    prev_boxes := BoxesArray(.PREVIOUS);
+    for * prev_boxes.*
+    {
+      if it.key.hash == box.key.hash
+      {
+        prev_box = it;
+        break;
+      }
+    }
+  }
+
+  if prev_box
+  {
+    // @impl copy some state from prev_box
+  }
+
+  signal: Signal;
+  signal.box = box;
+  return signal;
 }
 
 Parent :: (box: Box)
@@ -241,7 +323,101 @@ Parent :: (signal: Signal) -> Signal
   return signal;
 }
 
+BoxesArray :: (which: enum {CURRENT; PREVIOUS;}) -> *[..] Box
+{
+  using state;
+  index := ifx which == .CURRENT then current_boxes_index else xx !current_boxes_index;
+  res := *boxes[index];
+  return res;
+}
+
+PushParent :: (value: *Box)
+{
+  using state.stacks;
+  parents_index += 1;
+  i := Basic.clamp(parents_index, 0, MAX_NESTING-1);
+  if (i != parents_index) Basic.log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
+  parents[i] = value;
+}
+PopParent :: (value: *Box)
+{
+  using state.stacks;
+  parents_index -= 1;
+}
+PeekParent :: () -> *Box
+{
+  using state.stacks;
+  i := Basic.clamp(parents_index, 0, MAX_NESTING-1);
+  if (i != parents_index) Basic.log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
+  return parents[i];
+}
+
 State :: struct
 {
-  todo: int;
+  boxes_created_on_this_layout: s32;
+
+  // Double-buffer system.
+  // Each LayoutBegin call flips boxes_index between 0-1.
+  // current_boxes_index points to boxes array used by current layout run.
+  // Other boxes array points to boxes from the previous frame.
+  current_boxes_index: u8;
+  boxes: [2][..] Box; // @todo replace that with MAX_BOXES module parameter
+
+  nil_box: Box;
+
+  stacks: struct
+  {
+    parents: [MAX_NESTING] *Box;
+    parents_index: s32;
+  };
 };
+state: State;
+
+InitState :: (state: *State)
+{
+  using state;
+  LinkToNil(nil_box);
+}
+
+LinkToNil :: (box: *Box)
+{
+  using state;
+  box.next   = *nil_box;
+  box.prev   = *nil_box;
+  box.first  = *nil_box;
+  box.last   = *nil_box;
+  box.parent = *nil_box;
+}
+
+IsNil :: (box: *Box) -> bool { return box == *state.nil_box; }
+
+LayoutBegin :: ()
+{
+
+}
+
+DefaultHashLocFunc :: (loc: Source_Code_Location) -> u64
+{
+  // FNV-1a hash: http://www.isthe.com/chongo/tech/comp/fnv/index.html
+  // Taken from modules/Hash.jai
+  FNV_64_PRIME        : u64 : 0x100000001b3;
+  FNV_64_OFFSET_BIAS  : u64 : 0xcbf29ce484222325;
+  fnv1a_hash :: inline (val : u64, h := FNV_64_OFFSET_BIAS) -> u64 #no_aoc {
+    h ^= val;
+    return h * FNV_64_PRIME;
+  }
+  fnv1a_hash :: (data: *void, size: int, h := FNV_64_OFFSET_BIAS) -> u64 {
+    for 0..size-1 #no_abc #no_aoc {
+      h = fnv1a_hash((cast(*u8)data)[it], h);
+    }
+    return h;
+  }
+
+  hash := fnv1a_hash(loc.fully_pathed_filename.data, loc.fully_pathed_filename.count);
+  hash = fnv1a_hash(loc.line_number, hash);
+  hash = fnv1a_hash(loc.character_number, hash);
+  return hash;
+}
+
+#scope_file;
+Basic :: #import "Basic"; // for array_add, clamp, log_error

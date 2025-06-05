@@ -26,10 +26,10 @@ UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
 UI_RADIUS :: #run CornerRadius_All(3);
 UI_BORDER_WIDTH :: #run BorderWidths_Sides(1);
+UI_BAR_PAD :: #run Padding_All(LengthRem(0.5));
 
 UI_BuildDeveloperWindow :: ()
 {
-  using BR;
   using G.ui.dev;
   if (!show) return;
 
@@ -41,8 +41,22 @@ UI_BuildDeveloperWindow :: ()
                      floating = .{attach_to = .ROOT, offset = Length2Px(clamped_win_p)},
                      border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},
                      corner_radius = UI_RADIUS}));
+
+  window_bar := CreateBox(.{layout = .{sizing = .{width = Grow(), height = Fit()},
+                                       padding = UI_BAR_PAD,
+                                       child_align = .{x = .CENTER}},
+                            bg_color = UI_ORANGE2,
+                            corner_radius = UI_RADIUS});
+  Parent(window_bar);
+  if window_bar.flags & .DRAG  win_p += G.mouse_delta;
+  else                         win_p = clamped_win_p;
+
+  CreateBox(.{layout = .{sizing = .{SizePx(30), SizePx(30)}},
+              bg_color = UI_GREEN1});
+
+  // CreateText("Developer window", .{text = .{color = UI_BG}});
 }
 
-BR :: #import,file "brick_layout.jai"(ColorType=Color32, V2Type=V2);
+Layout :: #import,file "brick_layout.jai"(ColorType=Color32);
 #scope_file;
-using BR;
+using Layout;
