@@ -57,6 +57,6 @@ UI_BuildDeveloperWindow :: ()
   // CreateText("Developer window", .{text = .{color = UI_BG}});
 }
 
-Layout :: #import,file "brick_layout.jai"(ColorType=Color32);
+Layout :: #import,file "brick_ui_layout.jai"(ColorType=Color32);
 #scope_file;
 using Layout;
