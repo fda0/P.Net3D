@@ -2,7 +2,7 @@ UI_State :: struct
 {
   dev: struct
   {
-    show: bool;
+    show := true;
     win_p: V2;
     win_dim: V2;
   };
@@ -27,6 +27,8 @@ UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 UI_RADIUS :: #run CornerRadius_All(3);
 UI_BORDER_WIDTH :: #run BorderWidths_Sides(1);
 UI_BAR_PAD :: #run Padding_All(LengthRem(0.5));
+UI_WINDOW_GAP :: #run LengthRem(4);
+UI_WINDOW_PAD :: #run Padding_All(UI_WINDOW_GAP);
 
 UI_BuildDeveloperWindow :: ()
 {
@@ -35,26 +37,43 @@ UI_BuildDeveloperWindow :: ()
 
   clamped_win_p := clamp(win_p, .{}, G.window_dim * 0.9);
 
+  // Floating developer window
   Parent(CreateBox(.{layout = .{child_layout = .TOP_TO_BOTTOM,
                                 sizing = .{width = Fit(SizeRem(200)), height = SizeRem(200)}},
                      bg_color = UI_BG,
                      floating = .{attach_to = .ROOT, offset = Length2Px(clamped_win_p)},
-                     border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},
+                     border = .{color = UI_SHADOW, width = UI_BORDER_WIDTH},
                      corner_radius = UI_RADIUS}));
 
-  window_bar := CreateBox(.{layout = .{sizing = .{width = Grow(), height = Fit()},
-                                       padding = UI_BAR_PAD,
-                                       child_align = .{x = .CENTER}},
-                            bg_color = UI_ORANGE2,
-                            corner_radius = UI_RADIUS});
-  Parent(window_bar);
-  if window_bar.flags & .DRAG  win_p += G.mouse_delta;
-  else                         win_p = clamped_win_p;
+  // Window bar
+  {
+    window_bar := Parent(CreateBox(.{layout = .{sizing = .{width = Grow(), height = Fit()},
+                                                padding = UI_BAR_PAD,
+                                                child_align = .{x = .CENTER}},
+                                     bg_color = UI_ORANGE2,
+                                     corner_radius = UI_RADIUS}));
+    if window_bar.flags & .DRAG  win_p += G.mouse_delta;
+    else                         win_p = clamped_win_p;
 
-  CreateBox(.{layout = .{sizing = .{SizePx(30), SizePx(30)}},
-              bg_color = UI_GREEN1});
+    CreateBox(.{layout = .{sizing = .{SizePx(30), SizePx(30)}},
+                bg_color = UI_GREEN1});
 
-  // CreateText("Developer window", .{text = .{color = UI_BG}});
+    CreateText("Developer window", .{text = .{color = UI_BG}});
+  }
+
+  // Body
+  {
+    Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}}}));
+
+    {
+      Parent(CreateBox(.{layout = .{child_layout = .TOP_TO_BOTTOM,
+                                    sizing = .{Fit(), Grow()},
+                                    padding = UI_WINDOW_PAD,
+                                    child_gap = UI_WINDOW_GAP},
+                         border = .{color = UI_BORDER_BG,
+                                    width = UI_BORDER_WIDTH}}));
+    }
+  }
 }
 
 Layout :: #import,file "brick_ui_layout.jai"(ColorType=Color32);

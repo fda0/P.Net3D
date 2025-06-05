@@ -124,6 +124,8 @@ BoxKey :: struct
 {
   hash: u64;
 };
+operator == :: (a: BoxKey, b: BoxKey) -> bool { return a.hash == b.hash; }
+operator ! :: (a: BoxKey) -> bool { return !a.hash; }
 
 CreateKey :: (loc: Source_Code_Location) -> BoxKey
 {
@@ -169,7 +171,7 @@ BoxSpec :: struct
   {
     sizing: Size2;
     padding: Padding;
-    child_gap: Size;
+    child_gap: Length;
     child_align: struct { x: AlignX; y: AlignY; };
     child_layout: enum { LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
   };
@@ -198,7 +200,7 @@ BoxSpec :: struct
   border: struct
   {
     color: ColorType;
-    widths: BorderWidths;
+    width: BorderWidths;
   };
 
   text: struct
@@ -213,8 +215,9 @@ BoxSpec :: struct
 Box :: struct
 {
   using spec: BoxSpec;
-  next: *#this;
-  prev, first, last, parent: *Box;
+  next, prev, first, last, parent: *Box;
+  traversal_index: u64;
+  loc: Source_Code_Location; // creation loc
 };
 
 SignalFlags :: enum_flags u32
@@ -229,6 +232,39 @@ Signal :: struct
   box: *Box;
   flags: SignalFlags;
 };
+
+Parent :: (box: *Box) -> *Box #expand
+{
+  PushParent(box);
+  `defer PopParent(box);
+  return box;
+}
+Parent :: (signal: Signal) -> Signal #expand
+{
+  PushParent(signal.box);
+  `defer PopParent(signal.box);
+  return signal;
+}
+PushParent :: (value: *Box)
+{
+  using state;
+  parents_index += 1;
+  i := Basic.clamp(parents_index, 0, MAX_NESTING-1);
+  if (i != parents_index) Basic.log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
+  parents[i] = value;
+}
+PopParent :: (value: *Box)
+{
+  using state;
+  parents_index -= 1;
+}
+PeekParent :: () -> *Box
+{
+  using state;
+  i := Basic.clamp(parents_index, 0, MAX_NESTING-1);
+  if (i != parents_index) Basic.log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
+  return parents[i];
+}
 
 BoxSpecFromLayer :: (layer: enum { MAIN; TEXT; }) -> BoxSpec
 {
@@ -263,18 +299,20 @@ CreateBox :: (spec: BoxSpec, loc := #caller_location) -> Signal
 CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box := false) -> Signal
 {
   spec := source_spec;
-  if !spec.key.hash  spec.key = CreateKey(loc);
+  if !spec.key  spec.key = CreateKey(loc);
 
   state.boxes_created_on_this_layout += 1;
 
   box := Basic.array_add(BoxesArray(.CURRENT));
   box.spec = spec;
+  box.loc = loc;
 
   // links
   LinkToNil(box);
-  if !is_root_box
+  parent := PeekParent();
+  if !IsNil(parent)
   {
-    box.parent = PeekParent();
+    box.parent = parent;
     if IsNil(box.parent.first)
     {
       box.parent.first = box;
@@ -294,7 +332,7 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box :
     prev_boxes := BoxesArray(.PREVIOUS);
     for * prev_boxes.*
     {
-      if it.key.hash == box.key.hash
+      if it.key == box.key
       {
         prev_box = it;
         break;
@@ -312,71 +350,12 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box :
   return signal;
 }
 
-Parent :: (box: Box)
-{
-  // 1. take signal.box and push it on parent stack
-}
-
-Parent :: (signal: Signal) -> Signal
-{
-  // 1. take signal.box and push it on parent stack
-  return signal;
-}
-
 BoxesArray :: (which: enum {CURRENT; PREVIOUS;}) -> *[..] Box
 {
   using state;
   index := ifx which == .CURRENT then current_boxes_index else xx !current_boxes_index;
   res := *boxes[index];
   return res;
-}
-
-PushParent :: (value: *Box)
-{
-  using state.stacks;
-  parents_index += 1;
-  i := Basic.clamp(parents_index, 0, MAX_NESTING-1);
-  if (i != parents_index) Basic.log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
-  parents[i] = value;
-}
-PopParent :: (value: *Box)
-{
-  using state.stacks;
-  parents_index -= 1;
-}
-PeekParent :: () -> *Box
-{
-  using state.stacks;
-  i := Basic.clamp(parents_index, 0, MAX_NESTING-1);
-  if (i != parents_index) Basic.log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
-  return parents[i];
-}
-
-State :: struct
-{
-  boxes_created_on_this_layout: s32;
-
-  // Double-buffer system.
-  // Each LayoutBegin call flips boxes_index between 0-1.
-  // current_boxes_index points to boxes array used by current layout run.
-  // Other boxes array points to boxes from the previous frame.
-  current_boxes_index: u8;
-  boxes: [2][..] Box; // @todo replace that with MAX_BOXES module parameter
-
-  nil_box: Box;
-
-  stacks: struct
-  {
-    parents: [MAX_NESTING] *Box;
-    parents_index: s32;
-  };
-};
-state: State;
-
-InitState :: (state: *State)
-{
-  using state;
-  LinkToNil(nil_box);
 }
 
 LinkToNil :: (box: *Box)
@@ -388,36 +367,187 @@ LinkToNil :: (box: *Box)
   box.last   = *nil_box;
   box.parent = *nil_box;
 }
+IsNil :: (box: *Box) -> bool { return !box || box == *state.nil_box; }
 
-IsNil :: (box: *Box) -> bool { return box == *state.nil_box; }
-
-LayoutBegin :: ()
+InitState :: (state: *State)
 {
-
 }
 
-DefaultHashLocFunc :: (loc: Source_Code_Location) -> u64
+State :: struct
 {
-  // FNV-1a hash: http://www.isthe.com/chongo/tech/comp/fnv/index.html
-  // Taken from modules/Hash.jai
-  FNV_64_PRIME        : u64 : 0x100000001b3;
-  FNV_64_OFFSET_BIAS  : u64 : 0xcbf29ce484222325;
-  fnv1a_hash :: inline (val : u64, h := FNV_64_OFFSET_BIAS) -> u64 #no_aoc {
-    h ^= val;
-    return h * FNV_64_PRIME;
-  }
-  fnv1a_hash :: (data: *void, size: int, h := FNV_64_OFFSET_BIAS) -> u64 {
-    for 0..size-1 #no_abc #no_aoc {
-      h = fnv1a_hash((cast(*u8)data)[it], h);
+  boxes_created_on_this_layout: s32;
+
+  // Double-buffer system.
+  // Each LayoutBegin call flips boxes_index between 0-1.
+  // current_boxes_index points to boxes array used by current layout run.
+  // Other boxes array points to boxes from the previous frame.
+  current_boxes_index: u8;
+  boxes: [2][..] Box; // @todo replace with HashTable
+
+  nil_box: Box;
+  root_box: *Box;
+
+  parents: [MAX_NESTING] *Box; // @todo make this dynamic? Or no?
+  parents_index: s32;
+};
+state: State; // @todo allow user to create a state and to attach it to context instead of using a global variable
+
+LayoutBegin :: (root_dimensions_in_pixels: Vector2)
+{
+  using state;
+  current_boxes_index = xx !current_boxes_index;
+  Basic.array_reset_keeping_memory(BoxesArray(.CURRENT));
+
+  nil_box = .{};
+  LinkToNil(*nil_box);
+
+  parents_index = 0;
+  parents[0] = null;
+
+  root_box = CreateBox(.{layout = .{sizing = Size2Px(root_dimensions_in_pixels)}}).box;
+  PushParent(root_box);
+}
+
+LayoutEnd :: (print_stuff: bool)
+{
+  using state;
+
+  // Validate that nil_box wasn't modified.
+  // This wouldn't be needed if one could use read_only memory in jai for nil_box.
+  {
+    err := false;
+    err |= nil_box.next   != *nil_box;
+    err |= nil_box.prev   != *nil_box;
+    err |= nil_box.first  != *nil_box;
+    err |= nil_box.last   != *nil_box;
+    err |= nil_box.parent != *nil_box;
+    err |= nil_box.traversal_index != 0;
+    if err
+    {
+      Basic.log_error("[BRICK_UI_LAYOUT] error detected - nil_box was modified. Make sure you check with IsNil before modifying a box.");
+      nil_box = .{};
+      LinkToNil(*nil_box);
     }
-    return h;
   }
 
-  hash := fnv1a_hash(loc.fully_pathed_filename.data, loc.fully_pathed_filename.count);
-  hash = fnv1a_hash(loc.line_number, hash);
-  hash = fnv1a_hash(loc.character_number, hash);
-  return hash;
+  if print_stuff
+  {
+    for :TreeDepthFirst root_box
+    {
+      for 0..it_depth-1 Basic.print("  ");
+      Basic.print("%\n", it.loc);
+    }
+  }
 }
+
+TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
+{
+  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
+
+  /* Example traversal order from 0 to 10.
+        [10 (root)]
+        /    |    \
+       2     6     9
+      /|    /|\    |\
+     0 1   3 4 5   7 8
+  */
+
+  box := root;
+  box_depth := 0;
+  box_index := 0;
+  traversal_index := Basic.max(box.traversal_index + 1, 1);
+
+  ShouldVisit :: (box: *Box) -> bool #expand {
+    return !IsNil(box) && box.traversal_index != traversal_index;
+  }
+
+  while root_loop := true
+  {
+    has_siblings_or_children := true;
+    while has_siblings_or_children
+    {
+      // Descend to unvisited children
+      while ShouldVisit(box.first)
+      {
+        box = box.first;
+        box_depth += 1;
+      }
+
+      box.traversal_index = traversal_index; // mark box as visited
+      `it := box;
+      `it_depth := box_depth;
+      `it_index := box_index;
+      box_index += 1;
+
+      defer {
+        // Go to the next sibling or exit and go to parent
+        if ShouldVisit(box.next) box = box.next;
+        else has_siblings_or_children = false;
+      };
+
+      #insert(break=break root_loop) body;
+    }
+
+    // Ascend to parent or exit the tree traversal
+    if ShouldVisit(box.parent)
+    {
+      box = box.parent;
+      box_depth -= 1;
+    }
+    else break;
+  }
+}
+
+TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
+{
+  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
+
+  box := root;
+  traversal_index := max(box.traversal_index + 1, 1);
+
+  ShouldVisit :: (box: *Box) -> bool {
+    return !IsNil(box) && box.traversal_index != traversal_index;
+  }
+
+  while root_loop := true
+  {
+    // Descend to unvisited children
+    while ShouldVisit(box.first) box = box.first;
+
+    // Iterate through siblings
+    while true
+    {
+      box.traversal_index = traversal_index; // mark box as visited
+      defer {
+        if ShouldVisit(box.next) box = box.next;
+        else break;
+      };
+      `it := box;
+
+      #insert(break=break root_loop) body;
+    }
+
+    // Ascend to parent or exit the tree traversal
+    if ShouldVisit(box.parent) box = box.parent;
+    else break;
+  }
+}
+
+Siblings :: (box: *Box, body: Code, flags: For_Flags) #expand
+{
+  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
+  b := box;
+  index := 0;
+  while !IsNil(b)
+  {
+    `it := b;
+    `it_index := index;
+    b = b.next;
+    index += 1;
+    #insert body;
+  }
+}
+
 
 #scope_file;
 Basic :: #import "Basic"; // for array_add, clamp, log_error

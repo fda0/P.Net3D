@@ -243,7 +243,11 @@ GAME_Iterate :: ()
     }
 
     WORLD_DrawObjects();
+
+    Layout.LayoutBegin(G.window_dim);
     UI_BuildDeveloperWindow();
+    Layout.LayoutEnd(G.frame_number == 1);
+
     GPU_Iterate();
 
     // Post frame calls
