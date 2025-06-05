@@ -444,7 +444,7 @@ TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 {
   #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
 
-  /* Example traversal order from 0 to 10.
+  /* Example traversal order for a tree with 10 boxes.
         [10 (root)]
         /    |    \
        2     6     9
@@ -455,25 +455,23 @@ TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
   box := root;
   box_depth := 0;
   box_index := 0;
-  traversal_index := Basic.max(box.traversal_index + 1, 1);
 
-  ShouldVisit :: (box: *Box) -> bool #expand {
-    return !IsNil(box) && box.traversal_index != traversal_index;
-  }
-
+  came_back_to_parent := false;
   while root_loop := true
   {
     has_siblings_or_children := true;
     while has_siblings_or_children
     {
-      // Descend to unvisited children
-      while ShouldVisit(box.first)
+      if !came_back_to_parent
       {
-        box = box.first;
-        box_depth += 1;
+        // Descend depth-first to 'youngest' child
+        while !IsNil(box.first)
+        {
+          box = box.first;
+          box_depth += 1;
+        }
       }
 
-      box.traversal_index = traversal_index; // mark box as visited
       `it := box;
       `it_depth := box_depth;
       `it_index := box_index;
@@ -481,18 +479,20 @@ TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 
       defer {
         // Go to the next sibling or exit and go to parent
-        if ShouldVisit(box.next) box = box.next;
+        came_back_to_parent = false;
+        if !IsNil(box.next) box = box.next;
         else has_siblings_or_children = false;
       };
 
       #insert(break=break root_loop) body;
     }
 
-    // Ascend to parent or exit the tree traversal
-    if ShouldVisit(box.parent)
+    // Ascend to parent.next or exit the tree traversal
+    if !IsNil(box.parent)
     {
       box = box.parent;
       box_depth -= 1;
+      came_back_to_parent = true;
     }
     else break;
   }
@@ -502,52 +502,15 @@ TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 {
   #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
 
-  box := root;
-  traversal_index := max(box.traversal_index + 1, 1);
+  /* Example traversal order for a tree with 10 boxes.
+        [ 0 (root)]
+        /    |    \
+       1     4     8
+      /|    /|\    |\
+     2 3   5 6 7   9 10
+  */
 
-  ShouldVisit :: (box: *Box) -> bool {
-    return !IsNil(box) && box.traversal_index != traversal_index;
-  }
-
-  while root_loop := true
-  {
-    // Descend to unvisited children
-    while ShouldVisit(box.first) box = box.first;
-
-    // Iterate through siblings
-    while true
-    {
-      box.traversal_index = traversal_index; // mark box as visited
-      defer {
-        if ShouldVisit(box.next) box = box.next;
-        else break;
-      };
-      `it := box;
-
-      #insert(break=break root_loop) body;
-    }
-
-    // Ascend to parent or exit the tree traversal
-    if ShouldVisit(box.parent) box = box.parent;
-    else break;
-  }
 }
-
-Siblings :: (box: *Box, body: Code, flags: For_Flags) #expand
-{
-  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
-  b := box;
-  index := 0;
-  while !IsNil(b)
-  {
-    `it := b;
-    `it_index := index;
-    b = b.next;
-    index += 1;
-    #insert body;
-  }
-}
-
 
 #scope_file;
 Basic :: #import "Basic"; // for array_add, clamp, log_error
