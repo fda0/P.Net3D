@@ -32,113 +32,106 @@ AlignX :: enum u8 { LEFT; RIGHT; CENTER; };
 AlignY :: enum u8 { TOP; BOTTOM; CENTER; };
 Bool3 :: enum u8 { DEFAULT; FALSE; TRUE; };
 
-SizeType :: enum u8 // @todo rename to Unit?
+Unit :: enum u8
 {
-  NONE;
   PX;
   REM;
   /*EM; PT;*/
-  TEXT;
 };
 
 Length :: struct
 {
-  type: SizeType;
-  value: float;
+  unit: Unit;
+  value: float = -1.0;
 };
-LengthPx  :: (v: float) -> Length { return .{.PX, v}; }
-LengthRem :: (v: float) -> Length { return .{.REM, v}; }
+Px  :: (v: float) -> Length { return .{.PX, v}; }
+Rem :: (v: float) -> Length { return .{.REM, v}; }
 
 Length2 :: struct
 {
-  width, height: Length;
-  #place width; array: [2] Length;
+  x, y: Length;
+  #place x; axes: [2] Length;
 }
-Length2Px  :: (wh: float) -> Length2 { return .{LengthPx(wh), LengthPx(wh)}; }
-Length2Rem :: (wh: float) -> Length2 { return .{LengthRem(wh), LengthRem(wh)}; }
-Length2Px  :: (w: float, h: float) -> Length2 { return .{LengthPx(w), LengthPx(h)}; }
-Length2Rem :: (w: float, h: float) -> Length2 { return .{LengthRem(w), LengthRem(h)}; }
-Length2Px  :: (vec: Vector2) -> Length2 { return .{LengthPx(vec.x), LengthPx(vec.y)}; }
-Length2Rem :: (vec: Vector2) -> Length2 { return .{LengthRem(vec.x), LengthRem(vec.y)}; }
+Px  :: (v: Vector2) -> Length2 { return .{Px(v.x), Px(v.y)}; }
+Rem :: (v: Vector2) -> Length2 { return .{Rem(v.x), Rem(v.y)}; }
 
-Size :: struct
+BoxSize :: struct
 {
-  type: SizeType;
-  min := -1.0;
-  max := -1.0;
+  min: Length;
+  max: Length;
   grow_pct := -1.0; // expand to fit % of parent
 
   grow: Bool3; // expand to fit parent if there is free space available
   fit_children: Bool3; // expand to fit children
   measure_text: Bool3; // expand to fit containing text
 
-  #place min; range: [2] float;
+  #place min; range: [2] Length;
 };
 
-SizeMin :: (type: SizeType, min: float) -> Size
+SizeMin :: (min: Length) -> BoxSize
 {
-  s: Size;
-  s.type = type;
+  s: BoxSize;
   s.min = min;
   return s;
 }
-SizeMax :: (type: SizeType, max: float) -> Size
+SizeMax :: (max: Length) -> BoxSize
 {
-  s: Size;
-  s.type = type;
+  s: BoxSize;
   s.max = max;
   return s;
 }
-SizeMinMax :: (type: SizeType, min: float, max: float) -> Size
+Size :: (min: Length, max: Length) -> BoxSize // @todo this needs a shorter name
 {
-  s: Size;
-  s.type = type;
+  s: BoxSize;
   s.min = min;
   s.max = max;
   return s;
 }
+Size :: (minmax: Length) -> BoxSize
+{
+  s: BoxSize;
+  s.min = minmax;
+  s.max = minmax;
+  return s;
+}
 
-SizeMinPx  :: (min: float)             -> Size { return SizeMin(.PX, Min); }
-SizeMaxPx  :: (max: float)             -> Size { return SizeMax(.PX, max); }
-SizePx     :: (min: float, max: float) -> Size { return SizeMinMax(.PX, min, max); }
-SizePx     :: (minmax: float)          -> Size { return SizeMinMax(.PX, minmax, minmax); }
+Text :: () -> BoxSize { return .{.TEXT}; }
 
-SizeMinRem :: (min: float)             -> Size { return SizeMin(.REM, min); }
-SizeMaxRem :: (max: float)             -> Size { return SizeMax(.REM, max); }
-SizeRem    :: (min: float, max: float) -> Size { return SizeMinMax(.REM, min, max); }
-SizeRem    :: (minmax: float)          -> Size { return SizeMinMax(.REM, minmax, minmax); }
-
-SizeText :: () -> Size { return .{.TEXT}; }
-
-Pct :: (percentage_of_parent: float, size := Size.{}) -> Size
+Pct :: (percentage_of_parent: float, size := BoxSize.{}) -> BoxSize
 {
   s := size;
   s.grow_pct = percentage_of_parent;
   s.grow = .TRUE;
   return s;
 }
-Grow :: (size := Size.{}) -> Size
+Grow :: (size := BoxSize.{}) -> BoxSize
 {
   s := size;
   s.grow = .TRUE;
   return s;
 }
-Fit :: (size := Size.{}) -> Size
+Fit :: (size := BoxSize.{}) -> BoxSize
 {
   s := size;
   s.fit_children = .TRUE;
   return s;
 }
 
-Size2 :: struct
+BoxSize2 :: struct
 {
-  width, height: Size;
-  #place width; axes: [2] Size;
+  width, height: BoxSize;
+  #place width; axes: [2] BoxSize;
 };
-Size2MinPx :: (min: Vector2) -> Size2 { return Size2.{SizeMinPx(min.x), SizeMinPx(min.y)}; }
-Size2MaxPx :: (max: Vector2) -> Size2 { return Size2.{SizeMaxPx(max.x), SizeMaxPx(max.y)}; }
-Size2Px :: (min: Vector2, max: Vector2) -> Size2 { return Size2.{SizePx(min.x, max.x), SizePx(min.y, max.y)}; }
-Size2Px :: (minmax: Vector2) -> Size2 { return Size2.{SizePx(minmax.x, minmax.x), SizePx(minmax.y, minmax.y)}; }
+// Make Size2 out of Length2
+Size2Min :: (min: Length2) -> BoxSize2 { return BoxSize2.{SizeMin(min.x), SizeMin(min.y)}; }
+Size2Max :: (max: Length2) -> BoxSize2 { return BoxSize2.{SizeMax(max.x), SizeMax(max.y)}; }
+Size2 :: (min: Length2, max: Length2) -> BoxSize2 { return BoxSize2.{Size(min.x, max.x), Size(min.y, max.y)}; }
+Size2 :: (minmax: Length2) -> BoxSize2 { return BoxSize2.{Size(minmax.x, minmax.x), Size(minmax.y, minmax.y)}; }
+// Make Size2 out of Length
+Size2Min :: (min: Length) -> BoxSize2 { return BoxSize2.{SizeMin(min), SizeMin(min)}; }
+Size2Max :: (max: Length) -> BoxSize2 { return BoxSize2.{SizeMax(max), SizeMax(max)}; }
+Size2 :: (min: Length, max: Length) -> BoxSize2 { return BoxSize2.{Size(min, max), Size(min, max)}; }
+Size2 :: (minmax: Length) -> BoxSize2 { return BoxSize2.{Size(minmax, minmax), Size(minmax, minmax)}; }
 
 BoxKey :: struct
 {
@@ -189,7 +182,7 @@ BoxSpec :: struct
 
   layout: struct
   {
-    sizing: Size2;
+    sizing: BoxSize2;
     padding: Padding;
     child_gap: Length;
     child_align: struct { x: AlignX; y: AlignY; };
@@ -432,7 +425,7 @@ LayoutBegin :: (root_dimensions_in_pixels: Vector2)
   parents_index = 0;
   parents[0] = null;
 
-  root_box = CreateBox(.{layout = .{sizing = Size2Px(root_dimensions_in_pixels)}}).box;
+  root_box = CreateBox(.{layout = .{sizing = Size2(Px(root_dimensions_in_pixels))}}).box;
   PushParent(root_box);
 }
 
@@ -495,21 +488,24 @@ LayoutEnd :: (print_stuff: bool)
       using it.spec.layout;
       size := sizing.axes[axis];
 
-      if size.type == {
-        case .PX; #through;
-        case .REM;
-        for r: 0..1 // Resolve values for min(r=0) and max(r=1)
-        {
-          if size.range[r] < 0.0 continue;
+      for r: 0..1 // Resolve values for min(r=0) and max(r=1)
+      {
+        length := size.range[r];
+        if length.unit == {
+          case .PX; #through;
+          case .REM;
+          if length.value < 0.0 continue;
           coef := 1.0;
-          if size.type == {
+          if length.unit == {
             case .REM; coef = 16.0;
           }
-          it.dim_range[r].component[axis] = size.range[r]*coef;
+          it.dim_range[r].component[axis] = length.value*coef;
+          it.final_dim.component[axis] = max(it.min_dim.component[axis], it.max_dim.component[axis]);
         }
-        it.final_dim.component[axis] = max(it.min_dim.component[axis], it.max_dim.component[axis]);
+      }
 
-        case .TEXT;
+      if size.measure_text == .TRUE
+      {
         text_dim := Vector2.{text.str.count.(float) * 16.0, 32.0}; // @impl calculate text dimensions
         it.final_dim.component[axis] = text_dim.component[axis];
       }

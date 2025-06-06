@@ -26,8 +26,8 @@ UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
 UI_RADIUS :: #run CornerRadius_All(3);
 UI_BORDER_WIDTH :: #run BorderWidths_Sides(1);
-UI_BAR_PAD :: #run Padding_All(LengthRem(0.5));
-UI_WINDOW_GAP :: #run LengthRem(4);
+UI_BAR_PAD :: #run Padding_All(Rem(0.5));
+UI_WINDOW_GAP :: #run Rem(4);
 UI_WINDOW_PAD :: #run Padding_All(UI_WINDOW_GAP);
 
 UI_BuildDeveloperWindow :: ()
@@ -39,9 +39,9 @@ UI_BuildDeveloperWindow :: ()
 
   // Floating developer window
   Parent(CreateBox(.{layout = .{child_layout = .TOP_TO_BOTTOM,
-                                sizing = .{width = Fit(SizeMinRem(200)), height = SizeRem(200)}},
+                                sizing = .{width = Fit(SizeMin(Rem(200))), height = Size(Rem(200))}},
                      bg_color = UI_BG,
-                     floating = .{attach_to = .ROOT, offset = Length2Px(clamped_win_p)},
+                     floating = .{attach_to = .ROOT, offset = Px(clamped_win_p)},
                      border = .{color = UI_SHADOW, width = UI_BORDER_WIDTH},
                      corner_radius = UI_RADIUS}));
 
@@ -55,7 +55,7 @@ UI_BuildDeveloperWindow :: ()
     if window_bar.flags & .DRAG  win_p += G.mouse_delta;
     else                         win_p = clamped_win_p;
 
-    CreateBox(.{layout = .{sizing = .{SizePx(30), SizePx(30)}},
+    CreateBox(.{layout = .{sizing = Size2(Px(30))},
                 bg_color = UI_GREEN1});
 
     CreateText("Developer window", .{text = .{color = UI_BG}});
