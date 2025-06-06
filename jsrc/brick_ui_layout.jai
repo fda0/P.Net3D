@@ -66,19 +66,30 @@ Size :: struct
   type: SizeType;
   min := -1.0;
   max := -1.0;
-  grow_pct := -1.0;
-  grow: Bool3; // expand to fit parent
+  grow_pct := -1.0; // expand to fit % of parent
+
+  grow: Bool3; // expand to fit parent if there is free space available
   fit_children: Bool3; // expand to fit children
+  measure_text: Bool3; // expand to fit containing text
+
+  #place min; range: [2] float;
 };
 
-SizeTypeMin :: (type: SizeType, min: float) -> Size
+SizeMin :: (type: SizeType, min: float) -> Size
 {
   s: Size;
   s.type = type;
   s.min = min;
   return s;
 }
-SizeTypeMinMax :: (type: SizeType, min: float, max: float) -> Size
+SizeMax :: (type: SizeType, max: float) -> Size
+{
+  s: Size;
+  s.type = type;
+  s.max = max;
+  return s;
+}
+SizeMinMax :: (type: SizeType, min: float, max: float) -> Size
 {
   s: Size;
   s.type = type;
@@ -87,10 +98,16 @@ SizeTypeMinMax :: (type: SizeType, min: float, max: float) -> Size
   return s;
 }
 
-SizePx  :: (min: float) -> Size { return SizeTypeMin(.PX,  min); }
-SizeRem :: (min: float) -> Size { return SizeTypeMin(.REM, min); }
-SizePx  :: (min: float, max: float) -> Size { return SizeTypeMinMax(.PX,  min, max); }
-SizeRem :: (min: float, max: float) -> Size { return SizeTypeMinMax(.REM, min, max); }
+SizeMinPx  :: (min: float)             -> Size { return SizeMin(.PX, Min); }
+SizeMaxPx  :: (max: float)             -> Size { return SizeMax(.PX, max); }
+SizePx     :: (min: float, max: float) -> Size { return SizeMinMax(.PX, min, max); }
+SizePx     :: (minmax: float)          -> Size { return SizeMinMax(.PX, minmax, minmax); }
+
+SizeMinRem :: (min: float)             -> Size { return SizeMin(.REM, min); }
+SizeMaxRem :: (max: float)             -> Size { return SizeMax(.REM, max); }
+SizeRem    :: (min: float, max: float) -> Size { return SizeMinMax(.REM, min, max); }
+SizeRem    :: (minmax: float)          -> Size { return SizeMinMax(.REM, minmax, minmax); }
+
 SizeText :: () -> Size { return .{.TEXT}; }
 
 Pct :: (percentage_of_parent: float, size := Size.{}) -> Size
@@ -116,9 +133,12 @@ Fit :: (size := Size.{}) -> Size
 Size2 :: struct
 {
   width, height: Size;
-  #place width; array: [2] Size;
+  #place width; axes: [2] Size;
 };
-Size2Px :: (vec: Vector2) -> Size2 { return Size2.{SizePx(vec.x), SizePx(vec.y)}; }
+Size2MinPx :: (min: Vector2) -> Size2 { return Size2.{SizeMinPx(min.x), SizeMinPx(min.y)}; }
+Size2MaxPx :: (max: Vector2) -> Size2 { return Size2.{SizeMaxPx(max.x), SizeMaxPx(max.y)}; }
+Size2Px :: (min: Vector2, max: Vector2) -> Size2 { return Size2.{SizePx(min.x, max.x), SizePx(min.y, max.y)}; }
+Size2Px :: (minmax: Vector2) -> Size2 { return Size2.{SizePx(minmax.x, minmax.x), SizePx(minmax.y, minmax.y)}; }
 
 BoxKey :: struct
 {
@@ -217,6 +237,15 @@ Box :: struct
   using spec: BoxSpec;
   next, prev, first, last, parent: *Box;
   loc: Source_Code_Location; // creation loc
+
+  // in pixels
+  min_dim: Vector2 = .{-1,-1};
+  max_dim: Vector2 = .{-1,-1};
+  final_dim: Vector2;
+  rel_p: Vector2;
+  abs_p: Vector2;
+
+  #place min_dim; dim_range: [2] Vector2;
 };
 
 SignalFlags :: enum_flags u32
@@ -248,8 +277,8 @@ PushParent :: (value: *Box)
 {
   using state;
   parents_index += 1;
-  i := Basic.clamp(parents_index, 0, MAX_NESTING-1);
-  if (i != parents_index) Basic.log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
+  i := clamp(parents_index, 0, MAX_NESTING-1);
+  if (i != parents_index) log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
   parents[i] = value;
 }
 PopParent :: (value: *Box)
@@ -260,8 +289,8 @@ PopParent :: (value: *Box)
 PeekParent :: () -> *Box
 {
   using state;
-  i := Basic.clamp(parents_index, 0, MAX_NESTING-1);
-  if (i != parents_index) Basic.log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
+  i := clamp(parents_index, 0, MAX_NESTING-1);
+  if (i != parents_index) log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
   return parents[i];
 }
 
@@ -302,7 +331,7 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box :
 
   state.boxes_created_on_this_layout += 1;
 
-  box := Basic.array_add(BoxesArray(.CURRENT));
+  box := array_add(BoxesArray(.CURRENT));
   box.spec = spec;
   box.loc = loc;
 
@@ -395,7 +424,7 @@ LayoutBegin :: (root_dimensions_in_pixels: Vector2)
 {
   using state;
   current_boxes_index = xx !current_boxes_index;
-  Basic.array_reset_keeping_memory(BoxesArray(.CURRENT));
+  array_reset_keeping_memory(BoxesArray(.CURRENT));
 
   nil_box = .{};
   LinkToNil(*nil_box);
@@ -422,7 +451,7 @@ LayoutEnd :: (print_stuff: bool)
     err |= nil_box.parent != *nil_box;
     if err
     {
-      Basic.log_error("[BRICK_UI_LAYOUT] error detected - nil_box was modified. Make sure you check with IsNil before modifying a box.");
+      log_error("[BRICK_UI_LAYOUT] error detected - nil_box was modified. Make sure you check with IsNil before modifying a box.");
       nil_box = .{};
       LinkToNil(*nil_box);
     }
@@ -430,17 +459,85 @@ LayoutEnd :: (print_stuff: bool)
 
   if print_stuff
   {
+    print("[TreeDepthFirst] of root_box\n");
+    for :TreeDepthFirst root_box
+    {
+      for 0..it_depth-1 print("    ");
+      print("(d %; i %) %\n", it_depth, it_index, it.loc);
+    }
+    print("[TreeBreadthFirst] of root_box\n");
     for :TreeBreadthFirst root_box
     {
-      for 0..it_depth-1 Basic.print("    ");
-      Basic.print("(d %; i %) %\n", it_depth, it_index, it.loc);
+      for 0..it_depth-1 print("    ");
+      print("(d %; i %) %\n", it_depth, it_index, it.loc);
+    }
+
+    print("[TreeDepthFirst] of root_box.first\n");
+    for :TreeDepthFirst root_box.first
+    {
+      for 0..it_depth-1 print("    ");
+      print("(d %; i %) %\n", it_depth, it_index, it.loc);
+    }
+    print("[TreeBreadthFirst] of root_box.first\n");
+    for :TreeBreadthFirst root_box.first
+    {
+      for 0..it_depth-1 print("    ");
+      print("(d %; i %) %\n", it_depth, it_index, it.loc);
+    }
+  }
+
+  for axis: Axis2.X .. Axis2.Y // @todo the code might be actually simpler and faster if we just do layout on 2 dimensions at the same time?
+  {
+    // Calculate standalone sizes (px, rem, text) & sizes dependent on parent (percent)
+    for :TreeBreadthFirst root_box.first
+    {
+      using it.spec;
+      using it.spec.layout;
+      size := sizing.axes[axis];
+
+      if size.type == {
+        case .PX; #through;
+        case .REM;
+        for r: 0..1 // Resolve values for min(r=0) and max(r=1)
+        {
+          if size.range[r] < 0.0 continue;
+          coef := 1.0;
+          if size.type == {
+            case .REM; coef = 16.0;
+          }
+          it.dim_range[r].component[axis] = size.range[r]*coef;
+        }
+        it.final_dim.component[axis] = max(it.min_dim.component[axis], it.max_dim.component[axis]);
+
+        case .TEXT;
+        text_dim := Vector2.{text.str.count.(float) * 16.0, 32.0}; // @impl calculate text dimensions
+        it.final_dim.component[axis] = text_dim.component[axis];
+      }
+
+      // @todo percentage / grow here...
+    }
+
+    // Calculate sizes dependent on children (fit)
+    for :TreeDepthFirst root_box.first
+    {
+    }
+
+    // Solve overflow violations
+    for :TreeBreadthFirst root_box.first
+    {
+    }
+
+    // Compute relative and absolute positions
+    // (Could be merged with the step above)
+    for :TreeBreadthFirst root_box.first
+    {
     }
   }
 }
 
 TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 {
-  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
+  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added but it shouldn't be needed.
 
   /* Example traversal order for a tree with 10 boxes.
         [10 (root)]
@@ -486,7 +583,7 @@ TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
     }
 
     // Ascend to parent or exit the tree traversal
-    if !IsNil(box.parent)
+    if !IsNil(box.parent) && box_depth > 0
     {
       coming_from_child_to_parent = true;
       box_depth -= 1;
@@ -498,7 +595,7 @@ TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 
 TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 {
-  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
+  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added but it shouldn't be needed.
 
   /* Example traversal order for a tree with 10 boxes.
         [ 0 (root)]
@@ -544,7 +641,7 @@ TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
     }
 
     // Ascend to parent or exit the tree traversal
-    if !IsNil(box.parent)
+    if !IsNil(box.parent) && box_depth > 0
     {
       look_for_sibling = true;
       box_depth -= 1;
@@ -555,4 +652,4 @@ TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 }
 
 #scope_file;
-Basic :: #import "Basic"; // for array_add, clamp, log_error
+#import "Basic"; // for array_add, clamp, log_error
