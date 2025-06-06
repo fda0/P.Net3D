@@ -216,7 +216,6 @@ Box :: struct
 {
   using spec: BoxSpec;
   next, prev, first, last, parent: *Box;
-  traversal_index: u64;
   loc: Source_Code_Location; // creation loc
 };
 
@@ -421,7 +420,6 @@ LayoutEnd :: (print_stuff: bool)
     err |= nil_box.first  != *nil_box;
     err |= nil_box.last   != *nil_box;
     err |= nil_box.parent != *nil_box;
-    err |= nil_box.traversal_index != 0;
     if err
     {
       Basic.log_error("[BRICK_UI_LAYOUT] error detected - nil_box was modified. Make sure you check with IsNil before modifying a box.");
@@ -432,10 +430,10 @@ LayoutEnd :: (print_stuff: bool)
 
   if print_stuff
   {
-    for :TreeDepthFirst root_box
+    for :TreeBreadthFirst root_box
     {
-      for 0..it_depth-1 Basic.print("  ");
-      Basic.print("%\n", it.loc);
+      for 0..it_depth-1 Basic.print("    ");
+      Basic.print("(d %; i %) %\n", it_depth, it_index, it.loc);
     }
   }
 }
@@ -456,19 +454,19 @@ TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
   box_depth := 0;
   box_index := 0;
 
-  came_back_to_parent := false;
-  while root_loop := true
+  coming_from_child_to_parent := false;
+  while root_loop := true // Parent loop
   {
-    has_siblings_or_children := true;
-    while has_siblings_or_children
+    siblings_and_children_not_found := false;
+    while !siblings_and_children_not_found // Child/Sibling loop
     {
-      if !came_back_to_parent
+      if !coming_from_child_to_parent
       {
         // Descend depth-first to 'youngest' child
         while !IsNil(box.first)
         {
-          box = box.first;
           box_depth += 1;
+          box = box.first;
         }
       }
 
@@ -479,20 +477,20 @@ TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 
       defer {
         // Go to the next sibling or exit and go to parent
-        came_back_to_parent = false;
+        coming_from_child_to_parent = false;
         if !IsNil(box.next) box = box.next;
-        else has_siblings_or_children = false;
+        else siblings_and_children_not_found = true;
       };
 
       #insert(break=break root_loop) body;
     }
 
-    // Ascend to parent.next or exit the tree traversal
+    // Ascend to parent or exit the tree traversal
     if !IsNil(box.parent)
     {
-      box = box.parent;
+      coming_from_child_to_parent = true;
       box_depth -= 1;
-      came_back_to_parent = true;
+      box = box.parent;
     }
     else break;
   }
@@ -510,6 +508,50 @@ TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
      2 3   5 6 7   9 10
   */
 
+  box := root;
+  box_depth := 0;
+  box_index := 0;
+
+  look_for_sibling := false;
+  while root_loop := true // Parent loop
+  {
+    while true // Sibling/Child loop
+    {
+      if look_for_sibling
+      {
+        look_for_sibling = false; // Look for sibling only once until requested again
+        // Go to the next sibling or exit loop
+        if !IsNil(box.next) box = box.next;
+        else break;
+      }
+
+      `it := box;
+      `it_depth := box_depth;
+      `it_index := box_index;
+      box_index += 1;
+
+      defer {
+        // Go to the child or look_for_sibling
+        if !IsNil(box.first)
+        {
+          box_depth += 1;
+          box = box.first;
+        }
+        else look_for_sibling = true;
+      };
+
+      #insert(break=break root_loop) body;
+    }
+
+    // Ascend to parent or exit the tree traversal
+    if !IsNil(box.parent)
+    {
+      look_for_sibling = true;
+      box_depth -= 1;
+      box = box.parent;
+    }
+    else break;
+  }
 }
 
 #scope_file;
