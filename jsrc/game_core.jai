@@ -72,6 +72,7 @@ GAME_Init :: ()
     GPU_BATCH_Init();
     ASSET_Init();
     FONT_Init();
+    UI_RenderInit();
   }
 
   NET_Init();
@@ -244,14 +245,15 @@ GAME_Iterate :: ()
 
     WORLD_DrawObjects();
 
-    Layout.LayoutBegin(G.window_dim);
+    UI_StartFrame();
     UI_BuildDeveloperWindow();
-    Layout.LayoutEnd(G.frame_number == 1);
+    UI_FinishFrame();
 
     GPU_Iterate();
 
     // Post frame calls
     GPU_BATCH_PostFrame();
+    UI_RenderPostFrame();
     // UI_PostFrame();
     ASSET_PostFrame();
   }
@@ -321,8 +323,8 @@ GAME_AutoLayoutApply :: (code: ..Code) #expand
 
 
 // Includes and stuff
+#load "game_ui_core.jai";
 #load "game_ui_user.jai";
-
 
 #load "game_base.jai"; // this loads  a bunch of other files too
 #load "game_color.jai";

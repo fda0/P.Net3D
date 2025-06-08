@@ -35,7 +35,7 @@ FONT_State :: struct
 
   sizes: [FONT_Type.COUNT] float;
   // ttfs: [FONT_Type.COUNT][2] *TTF_Font;
-  texture_dim: s16;
+  texture_dim: s16 = 1;
   margin: s16;
 
   layers: [FONT_ATLAS_LAYERS] FONT_Layer;

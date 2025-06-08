@@ -42,7 +42,7 @@ UI_BuildDeveloperWindow :: ()
                                 sizing = .{width = Fit(SizeMin(Rem(200))), height = Size(Rem(200))}},
                      bg_color = UI_BG,
                      floating = .{attach_to = .ROOT, offset = Px(clamped_win_p)},
-                     border = .{color = UI_SHADOW, width = UI_BORDER_WIDTH},
+                     border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},
                      corner_radius = UI_RADIUS}));
 
   // Window bar
@@ -71,11 +71,11 @@ UI_BuildDeveloperWindow :: ()
                                     padding = UI_WINDOW_PAD,
                                     child_gap = UI_WINDOW_GAP},
                          border = .{color = UI_BORDER_BG,
-                                    width = UI_BORDER_WIDTH}}));
+                                    widths = UI_BORDER_WIDTH}}));
     }
   }
 }
 
-Layout :: #import,file "brick_ui_layout.jai"(ColorType=Color32);
+Layout :: #import,file "brick_ui_layout.jai"(Color=Color32);
 #scope_file;
 using Layout;

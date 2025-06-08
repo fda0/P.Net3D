@@ -1,10 +1,9 @@
 #module_parameters(
-  ColorType: Type = u32,
-  Vector2: Type = Math.Vector2,
+  Color: Type = u32,
+  V2: Type = Vector2,
   HashLocFunc := DefaultHashLocFunc,
   MAX_NESTING := 256)
 {
-  Math :: #import "Math";
   DefaultHashLocFunc :: (loc: Source_Code_Location) -> u64
   {
     Hash :: #import "Hash";
@@ -52,8 +51,8 @@ Length2 :: struct
   x, y: Length;
   #place x; axes: [2] Length;
 }
-Px  :: (v: Vector2) -> Length2 { return .{Px(v.x), Px(v.y)}; }
-Rem :: (v: Vector2) -> Length2 { return .{Rem(v.x), Rem(v.y)}; }
+Px  :: (v: V2) -> Length2 { return .{Px(v.x), Px(v.y)}; }
+Rem :: (v: V2) -> Length2 { return .{Rem(v.x), Rem(v.y)}; }
 
 BoxSize :: struct
 {
@@ -189,7 +188,7 @@ BoxSpec :: struct
     child_layout: enum { LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
   };
 
-  bg_color: ColorType;
+  bg_color: Color;
   corner_radius: CornerRadius;
 
   floating: struct
@@ -212,14 +211,14 @@ BoxSpec :: struct
 
   border: struct
   {
-    color: ColorType;
-    width: BorderWidths;
+    color: Color;
+    widths: BorderWidths;
   };
 
   text: struct
   {
     str: string;
-    color: ColorType;
+    color: Color;
     font: s16;
     pt_size: float;
   };
@@ -232,13 +231,13 @@ Box :: struct
   loc: Source_Code_Location; // creation loc
 
   // in pixels
-  min_dim: Vector2 = .{-1,-1};
-  max_dim: Vector2 = .{-1,-1};
-  final_dim: Vector2;
-  rel_p: Vector2;
-  abs_p: Vector2;
+  min_dim: V2 = .{-1,-1};
+  max_dim: V2 = .{-1,-1};
+  final_dim: V2;
+  rel_p: V2;
+  abs_p: V2;
 
-  #place min_dim; minmax_dim: [2] Vector2;
+  #place min_dim; minmax_dim: [2] V2;
 };
 
 SignalFlags :: enum_flags u32
@@ -268,7 +267,7 @@ Parent :: (signal: Signal) -> Signal #expand
 }
 PushParent :: (value: *Box)
 {
-  using state;
+  using layout_state;
   parents_index += 1;
   i := clamp(parents_index, 0, MAX_NESTING-1);
   if (i != parents_index) log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
@@ -276,12 +275,12 @@ PushParent :: (value: *Box)
 }
 PopParent :: (value: *Box)
 {
-  using state;
+  using layout_state;
   parents_index -= 1;
 }
 PeekParent :: () -> *Box
 {
-  using state;
+  using layout_state;
   i := clamp(parents_index, 0, MAX_NESTING-1);
   if (i != parents_index) log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
   return parents[i];
@@ -322,7 +321,7 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box :
   spec := source_spec;
   if !spec.key  spec.key = CreateKey(loc);
 
-  state.boxes_created_on_this_layout += 1;
+  layout_state.boxes_created_on_this_layout += 1;
 
   box := array_add(BoxesArray(.CURRENT));
   box.spec = spec;
@@ -373,7 +372,7 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box :
 
 BoxesArray :: (which: enum {CURRENT; PREVIOUS;}) -> *[..] Box
 {
-  using state;
+  using layout_state;
   index := ifx which == .CURRENT then current_boxes_index else xx !current_boxes_index;
   res := *boxes[index];
   return res;
@@ -381,22 +380,30 @@ BoxesArray :: (which: enum {CURRENT; PREVIOUS;}) -> *[..] Box
 
 LinkToNil :: (box: *Box)
 {
-  using state;
+  using layout_state;
   box.next   = *nil_box;
   box.prev   = *nil_box;
   box.first  = *nil_box;
   box.last   = *nil_box;
   box.parent = *nil_box;
 }
-IsNil :: (box: *Box) -> bool { return !box || box == *state.nil_box; }
+IsNil :: (box: *Box) -> bool { return !box || box == *layout_state.nil_box; }
 
-
-
-InitState :: (state: *State)
+RenderCommand :: struct
 {
-}
+  p: V2;
+  dim: V2;
+  color: Color;
 
-State :: struct
+  type: enum {RECTANGLE; BORDER;};
+  corner_radius: float; // @todo [4] float
+  border_width: float;
+  // edge_softness: float; add?
+
+  box: *Box;
+};
+
+LayoutState :: struct
 {
   boxes_created_on_this_layout: s32;
 
@@ -410,19 +417,23 @@ State :: struct
   nil_box: Box;
   root_box: *Box;
 
+  render_commands: [..] RenderCommand;
+
   parents: [MAX_NESTING] *Box; // @todo make this dynamic? Or no?
   parents_index: s32;
 };
-state: State; // @todo allow user to create a state and to attach it to context instead of using a global variable
+layout_state: LayoutState; // @todo allow user to create a layout_state and to attach it to context instead of using a global variable
 
-LayoutBegin :: (root_dimensions_in_pixels: Vector2)
+LayoutBegin :: (root_dimensions_in_pixels: V2)
 {
-  using state;
+  using layout_state;
   current_boxes_index = xx !current_boxes_index;
   array_reset_keeping_memory(BoxesArray(.CURRENT));
 
   nil_box = .{};
   LinkToNil(*nil_box);
+
+  array_reset_keeping_memory(*render_commands);
 
   parents_index = 0;
   parents[0] = null;
@@ -433,7 +444,7 @@ LayoutBegin :: (root_dimensions_in_pixels: Vector2)
 
 LayoutEnd :: (print_stuff: bool)
 {
-  using state;
+  using layout_state;
 
   // Validate that nil_box wasn't modified.
   // This wouldn't be needed if one could use read_only memory in jai for nil_box.
@@ -454,27 +465,8 @@ LayoutEnd :: (print_stuff: bool)
 
   if print_stuff
   {
-    print("[TreeDepthFirst] of root_box\n");
-    for :TreeDepthFirst root_box
-    {
-      for 0..it_depth-1 print("    ");
-      print("(d %; i %) %\n", it_depth, it_index, it.loc);
-    }
     print("[TreeBreadthFirst] of root_box\n");
     for :TreeBreadthFirst root_box
-    {
-      for 0..it_depth-1 print("    ");
-      print("(d %; i %) %\n", it_depth, it_index, it.loc);
-    }
-
-    print("[TreeDepthFirst] of root_box.first\n");
-    for :TreeDepthFirst root_box.first
-    {
-      for 0..it_depth-1 print("    ");
-      print("(d %; i %) %\n", it_depth, it_index, it.loc);
-    }
-    print("[TreeBreadthFirst] of root_box.first\n");
-    for :TreeBreadthFirst root_box.first
     {
       for 0..it_depth-1 print("    ");
       print("(d %; i %) %\n", it_depth, it_index, it.loc);
@@ -500,14 +492,14 @@ LayoutEnd :: (print_stuff: bool)
         if value_px >= 0.0
         {
           if length.unit == {
-            case .REM; value_px *= 16.0;
+            case .REM; value_px *= 2.0;
           }
         }
         it.minmax_dim[r].component[axis] = value_px;
       }
       // Default to maximal size (it will be decreased in later stages if overflow happens).
       it.final_dim.component[axis] = max(it.min_dim.component[axis], it.max_dim.component[axis]);
-
+      it.final_dim.component[axis] = max(it.final_dim.component[axis], 0); // Default to 0 if both values were negative.
 
       // 2. Calculate values for measure_text, percent_of_parent, grow (+ temp value for fit_children).
       new_dim := -1.0;
@@ -521,7 +513,7 @@ LayoutEnd :: (print_stuff: bool)
       }
       if size.measure_text == .TRUE
       {
-        text_dim := Vector2.{text.str.count.(float) * 16.0, 32.0}; // @impl calculate text dimensions
+        text_dim := V2.{text.str.count.(float) * 16.0, 32.0}; // @impl calculate text dimensions
         new_dim = text_dim.component[axis];
       }
       if size.percent_of_parent >= 0.0
@@ -569,12 +561,56 @@ LayoutEnd :: (print_stuff: bool)
     // Solve overflow violations
     for :TreeBreadthFirst root_box.first
     {
+
     }
 
-    // Compute relative and absolute positions
-    // (Could be merged with the step above)
-    for :TreeBreadthFirst root_box.first
+    // Compute relative positions
+    for :TreeBreadthFirst parent: root_box.first
     {
+      axis_matches_child_layout := (parent.layout.child_layout.(u8) == axis.(u8));
+
+      for :Siblings child: parent.first
+      {
+        offset := 0.0;
+        if axis_matches_child_layout
+        {
+          child.rel_p.component[axis] = offset;
+          offset += child.final_dim.component[axis];
+        }
+        else child.rel_p.component[axis] = 0.0;
+      }
+    }
+  }
+
+  // Compute absolute positions
+  for :TreeBreadthFirst root_box.first
+  {
+    it.abs_p = it.parent.abs_p + it.rel_p;
+  }
+
+  // Generate render commands
+  for :TreeBreadthFirst root_box.first
+  {
+    base_cmd: RenderCommand;
+    base_cmd.p = it.abs_p;
+    base_cmd.dim = it.final_dim;
+    base_cmd.box = it;
+
+    if it.bg_color
+    {
+      cmd := base_cmd;
+      cmd.color = it.bg_color;
+      cmd.type = .RECTANGLE;
+      array_add(*render_commands, cmd);
+    }
+
+    if it.border.color
+    {
+      cmd := base_cmd;
+      cmd.color = it.border.color;
+      cmd.type = .BORDER;
+      cmd.border_width = it.border.widths.left;
+      array_add(*render_commands, cmd);
     }
   }
 }
@@ -715,3 +751,4 @@ TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 
 #scope_file;
 #import "Basic"; // for array_add, clamp, log_error
+#import "Math"; // Vector2, operator +
