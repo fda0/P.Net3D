@@ -59,13 +59,13 @@ BoxSize :: struct
 {
   min: Length;
   max: Length;
-  grow_pct := -1.0; // expand to fit % of parent
 
-  grow: Bool3; // expand to fit parent if there is free space available
-  fit_children: Bool3; // expand to fit children
-  measure_text: Bool3; // expand to fit containing text
+  fit_children: Bool3; // Measure sum of children sizes and try to match their size.
+  measure_text: Bool3; // Measure containing text and try to match its size.
+  percent_of_parent := -1.0; // Try to have size that's equal to some exact percentage of parent box.
+  grow: Bool3; // Try to grow to fill size left in parent box.
 
-  #place min; range: [2] Length;
+  #place min; minmax: [2] Length;
 };
 
 SizeMin :: (min: Length) -> BoxSize
@@ -100,7 +100,7 @@ Text :: () -> BoxSize { return .{.TEXT}; }
 Pct :: (percentage_of_parent: float, size := BoxSize.{}) -> BoxSize
 {
   s := size;
-  s.grow_pct = percentage_of_parent;
+  s.percent_of_parent = percentage_of_parent;
   s.grow = .TRUE;
   return s;
 }
@@ -238,7 +238,7 @@ Box :: struct
   rel_p: Vector2;
   abs_p: Vector2;
 
-  #place min_dim; dim_range: [2] Vector2;
+  #place min_dim; minmax_dim: [2] Vector2;
 };
 
 SignalFlags :: enum_flags u32
@@ -390,6 +390,8 @@ LinkToNil :: (box: *Box)
 }
 IsNil :: (box: *Box) -> bool { return !box || box == *state.nil_box; }
 
+
+
 InitState :: (state: *State)
 {
 }
@@ -481,41 +483,87 @@ LayoutEnd :: (print_stuff: bool)
 
   for axis: Axis2.X .. Axis2.Y // @todo the code might be actually simpler and faster if we just do layout on 2 dimensions at the same time?
   {
-    // Calculate standalone sizes (px, rem, text) & sizes dependent on parent (percent)
+    // Pass 1.
+    //  1. Calculate standalone sizes (px, rem, text).
+    //  2. Calculate values for measure_text, percent_of_parent, grow (+ temp value for fit_children).
     for :TreeBreadthFirst root_box.first
     {
       using it.spec;
       using it.spec.layout;
       size := sizing.axes[axis];
 
+      // 1. Calculate standalone sizes (px, rem, text)
       for r: 0..1 // Resolve values for min(r=0) and max(r=1)
       {
-        length := size.range[r];
-        if length.unit == {
-          case .PX; #through;
-          case .REM;
-          if length.value < 0.0 continue;
-          coef := 1.0;
+        length := size.minmax[r];
+        value_px := length.value;
+        if value_px >= 0.0
+        {
           if length.unit == {
-            case .REM; coef = 16.0;
+            case .REM; value_px *= 16.0;
           }
-          it.dim_range[r].component[axis] = length.value*coef;
-          it.final_dim.component[axis] = max(it.min_dim.component[axis], it.max_dim.component[axis]);
         }
+        it.minmax_dim[r].component[axis] = value_px;
       }
+      // Default to maximal size (it will be decreased in later stages if overflow happens).
+      it.final_dim.component[axis] = max(it.min_dim.component[axis], it.max_dim.component[axis]);
 
+
+      // 2. Calculate values for measure_text, percent_of_parent, grow (+ temp value for fit_children).
+      new_dim := -1.0;
+      parent_dim := it.parent.final_dim.component[axis];
+      if size.fit_children == .TRUE
+      {
+        // This will be overwriten by the next stage;
+        // For now assign parent_dim to provide some reasonable behavior for cofigurations
+        // where parent uses `fit_children` and child uses `grow`/`percentage_of_parent`.
+        new_dim = parent_dim;
+      }
       if size.measure_text == .TRUE
       {
         text_dim := Vector2.{text.str.count.(float) * 16.0, 32.0}; // @impl calculate text dimensions
-        it.final_dim.component[axis] = text_dim.component[axis];
+        new_dim = text_dim.component[axis];
+      }
+      if size.percent_of_parent >= 0.0
+      {
+        new_dim = parent_dim*size.percent_of_parent;
+      }
+      if size.grow == .TRUE
+      {
+        parent_dim := it.parent.final_dim.component[axis];
+        new_dim = parent_dim;
       }
 
-      // @todo percentage / grow here...
+      if new_dim >= 0.0
+      {
+        it.final_dim.component[axis] = new_dim;
+      }
     }
 
-    // Calculate sizes dependent on children (fit)
+    // Pass 2.
+    //   1. Calculate sizes dependent on children (fit).
+    //   2. Clamp final_dim to min_dim and max_dim.
     for :TreeDepthFirst root_box.first
     {
+      using it.spec.layout;
+      size := sizing.axes[axis];
+
+      // 1. Calculate sizes dependent on children (fit).
+      if size.fit_children == .TRUE
+      {
+        sum: float;
+        for :Siblings child: it.first
+          sum += child.final_dim.component[axis];
+
+        it.final_dim.component[axis] = sum;
+      }
+
+      // 2. Clamp final_dim to min_dim and max_dim.
+      if it.max_dim.component[axis] >= 0.0
+        it.final_dim.component[axis] = min(it.max_dim.component[axis], it.final_dim.component[axis]);
+
+      if it.min_dim.component[axis] >= 0.0
+        it.final_dim.component[axis] = max(it.min_dim.component[axis], it.final_dim.component[axis]);
     }
 
     // Solve overflow violations
@@ -528,6 +576,24 @@ LayoutEnd :: (print_stuff: bool)
     for :TreeBreadthFirst root_box.first
     {
     }
+  }
+}
+
+Siblings :: (first_box: *Box, body: Code, flags: For_Flags) #expand
+{
+  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
+
+  box := first_box;
+  box_index := 0;
+
+  while !IsNil(box)
+  {
+    `it := box;
+    `it_index := box_index;
+    box = box.next;
+    box_index += 1;
+
+    #insert body;
   }
 }
 

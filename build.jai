@@ -3,6 +3,14 @@ build :: () {
 
   w := compiler_create_workspace("Game");
   options := get_build_options(w);
+
+  args := options.compile_time_command_line;
+  for args
+  {
+    if it == "kill"  print_and_run("raddbg", "--ipc", "kill_all");
+    else if it_index > 1  print("Unknow argument used: %\n", it);
+  }
+
   options.output_path = "build";
   options.output_executable_name = "Treasure";
   set_build_options(options, w);
@@ -19,6 +27,12 @@ build :: () {
 }
 #run build();
 
+print_and_run :: (args: ..string)
+{
+  print("Run before compilation: %\n", join(..args, " "));
+  run_command(..args);
+}
+
 translate_precompiled_shader_headers :: ()
 {
   // 0. (future) Trigger shader precompilation.
@@ -27,6 +41,8 @@ translate_precompiled_shader_headers :: ()
   // In the future steps 1 & 2 would be done only after shader precompilation - not for all game compilations.
 }
 
+#import "Compiler";
 #import "Basic";
 #import "File";
-#import "Compiler";
+#import "String";
+#import "Process";
