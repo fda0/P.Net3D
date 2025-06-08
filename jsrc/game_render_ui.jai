@@ -106,6 +106,8 @@ UI_RenderInit :: ()
     usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
   };
   G.gpu.ui.gpu_atlas_texture = SDL_CreateGPUTexture(G.gpu.device, *tex_info);
+
+  UI_RenderPostFrame();
 }
 
 UI_RenderPostFrame :: ()

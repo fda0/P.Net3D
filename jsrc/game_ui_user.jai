@@ -49,7 +49,7 @@ UI_BuildDeveloperWindow :: ()
   {
     window_bar := Parent(CreateBox(.{layout = .{sizing = .{width = Grow(), height = Fit()},
                                                 padding = UI_BAR_PAD,
-                                                child_align = .{x = .CENTER}},
+                                                child_align.x = .CENTER},
                                      bg_color = UI_ORANGE2,
                                      corner_radius = UI_RADIUS}));
     if window_bar.flags & .DRAG  win_p += G.mouse_delta;
@@ -58,7 +58,8 @@ UI_BuildDeveloperWindow :: ()
     CreateBox(.{layout = .{sizing = Size2(Px(30))},
                 bg_color = UI_GREEN1});
 
-    CreateText("Developer window", .{text = .{color = UI_BG}});
+    CreateText("Developer window", .{text.color = UI_YELLOW1});
+    CreateText("Text2", .{text = .{color = UI_BLUE1}});
   }
 
   // Body
@@ -70,6 +71,7 @@ UI_BuildDeveloperWindow :: ()
                                     sizing = .{Fit(), Grow()},
                                     padding = UI_WINDOW_PAD,
                                     child_gap = UI_WINDOW_GAP},
+                         bg_color = Color32_RGBi(255,255,0),
                          border = .{color = UI_BORDER_BG,
                                     widths = UI_BORDER_WIDTH}}));
     }

@@ -315,8 +315,10 @@ ASSET_InitModels :: ()
     vertices_string := PIE_LOAD_ListToString(pie.links.models.vertices);
     indices_string := PIE_LOAD_ListToString(pie.links.models.indices);
 
-    GPU_TransferBuffer(G.ast.model_vertices, vertices_string.data, xx vertices_string.count);
-    GPU_TransferBuffer(G.ast.model_indices, indices_string.data, xx indices_string.count);
+    cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
+    GPU_TransferBuffer(cmd, G.ast.model_vertices, vertices_string.data, xx vertices_string.count);
+    GPU_TransferBuffer(cmd, G.ast.model_indices, indices_string.data, xx indices_string.count);
+    SDL_SubmitGPUCommandBuffer(cmd);
   }
 
   G.ast.models = NewArray(pie.models.count, ASSET_Model);

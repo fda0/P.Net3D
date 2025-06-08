@@ -567,17 +567,17 @@ GPU_Iterate :: ()
     // Upload buffers to GPU
     {
       transfer_size := size_of(type_of(G.gpu.ui.indices[0])) * G.gpu.ui.indices_count;
-      GPU_TransferBuffer(G.gpu.ui.gpu_indices, *G.gpu.ui.indices[0], xx transfer_size);
+      GPU_TransferBuffer(cmd, G.gpu.ui.gpu_indices, *G.gpu.ui.indices[0], xx transfer_size);
     }
     if (G.gpu.ui.shapes_count)
     {
       transfer_size := size_of(type_of(G.gpu.ui.shapes[0])) * G.gpu.ui.shapes_count;
-      GPU_TransferBuffer(G.gpu.ui.gpu_shape_buffer, *G.gpu.ui.shapes[0], xx transfer_size);
+      GPU_TransferBuffer(cmd, G.gpu.ui.gpu_shape_buffer, *G.gpu.ui.shapes[0], xx transfer_size);
     }
     if (G.gpu.ui.clips_count)
     {
       transfer_size := size_of(type_of(G.gpu.ui.clips[0])) * G.gpu.ui.clips_count;
-      GPU_TransferBuffer(G.gpu.ui.gpu_clip_buffer, *G.gpu.ui.clips[0], xx transfer_size);
+      GPU_TransferBuffer(cmd, G.gpu.ui.gpu_clip_buffer, *G.gpu.ui.clips[0], xx transfer_size);
     }
 
     // Start pass
@@ -588,15 +588,15 @@ GPU_Iterate :: ()
     };
     pass := SDL_BeginGPURenderPass(cmd, *color_target, 1, null);
 
+    // Bind pipeline
+    SDL_BindGPUGraphicsPipeline(pass, G.gpu.ui_pipeline);
+
     // Bind texture & sampler
     sampler_binding := SDL_GPUTextureSamplerBinding.{
       texture = G.gpu.ui.gpu_atlas_texture,
       sampler = G.gpu.ui.gpu_atlas_sampler,
     };
     SDL_BindGPUFragmentSamplers(pass, 0, *sampler_binding, 1);
-
-    // Bind pipeline
-    SDL_BindGPUGraphicsPipeline(pass, G.gpu.ui_pipeline);
 
     // Bind storage buffers
     storage_bufs := *SDL_GPUBuffer.[
@@ -715,7 +715,7 @@ GPU_CreateResolveTexture :: (width: u32, height: u32) -> *SDL_GPUTexture
   return result;
 }
 
-GPU_TransferBuffer :: (gpu_buffer: *SDL_GPUBuffer, data: *void, data_size: u32)
+GPU_TransferBuffer :: (cmd: *SDL_GPUCommandBuffer, gpu_buffer: *SDL_GPUBuffer, data: *void, data_size: u32)
 {
   // create transfer buffer
   trans_desc := SDL_GPUTransferBufferCreateInfo.{
@@ -734,7 +734,6 @@ GPU_TransferBuffer :: (gpu_buffer: *SDL_GPUBuffer, data: *void, data_size: u32)
 
   // GPU memory -> GPU buffers
   {
-    cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
     copy_pass := SDL_BeginGPUCopyPass(cmd);
 
     buf_location := SDL_GPUTransferBufferLocation.{
@@ -749,7 +748,6 @@ GPU_TransferBuffer :: (gpu_buffer: *SDL_GPUBuffer, data: *void, data_size: u32)
     SDL_UploadToGPUBuffer(copy_pass, *buf_location, *dst_region, false);
 
     SDL_EndGPUCopyPass(copy_pass);
-    SDL_SubmitGPUCommandBuffer(cmd);
   }
 
   SDL_ReleaseGPUTransferBuffer(G.gpu.device, buf_transfer);

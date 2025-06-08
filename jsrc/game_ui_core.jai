@@ -7,15 +7,23 @@ UI_FinishFrame :: ()
 {
   LayoutEnd(G.frame_number == 1);
 
+  red: u32 = 0;
+
   for cmd: layout_state.render_commands
   {
     if G.frame_number == 1
       print("[%] render_command: % (%)\n", G.frame_number, cmd, cmd.box.loc);
 
+    red = (red + 43) & 255;
+    green := 255 - red;
+    blue := (red + 128) & 255;
+    debug_color := Color32_RGBAi(red, green, blue, 200);
+
     shape := UI_Shape.{
       p_min = cmd.p,
       p_max = cmd.p + cmd.dim,
-      color = cmd.color,
+      // color = cmd.color,
+      color = debug_color,
       corner_radius = cmd.corner_radius,
       tex_layer = -1.0,
     };
@@ -23,7 +31,19 @@ UI_FinishFrame :: ()
 
     if cmd.type == {
       case .BORDER;
-      shape.border_thickness = cmd.border_width;
+        shape.border_thickness = cmd.border_width;
+
+      case .TEXT;
+      skip_shape = true;
+
+      sh := shape;
+      for cmd.box.text.str
+      {
+        sh.p_min.x = cmd.p.x + it_index*16.0;
+        sh.p_max.x = sh.p_min.x + 16.0;
+        sh.p_min.y = shape.p_min.y + (it_index % 2) * 6.0;
+        UI_DrawRaw(sh);
+      }
     }
 
     if !skip_shape

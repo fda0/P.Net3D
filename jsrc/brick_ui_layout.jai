@@ -16,6 +16,10 @@
 
 Axis2 :: enum u8 { X; Y; COUNT; };
 Inverse :: (a: Axis2) -> Axis2 { return ifx a == .X then .Y else .X; }
+AxisMatchesLayoutDirection :: inline (axis: Axis2, lay_dir: LayoutDirection) -> bool
+{
+  return axis.(u8) == lay_dir.(u8);
+}
 
 Side2 :: enum u8 { LEFT; RIGHT; TOP; BOTTOM; COUNT; };
 Corner2 :: enum u8 { TOP_LEFT; TOP_RIGHT; BOTTOM_LEFT; BOTTOM_RIGHT; COUNT; };
@@ -94,8 +98,18 @@ Size :: (minmax: Length) -> BoxSize
   return s;
 }
 
-Text :: () -> BoxSize { return .{.TEXT}; }
-
+Fit :: (size := BoxSize.{}) -> BoxSize
+{
+  s := size;
+  s.fit_children = .TRUE;
+  return s;
+}
+MeasureText :: (size := BoxSize.{}) -> BoxSize
+{
+  s := size;
+  s.measure_text = .TRUE;
+  return s;
+}
 Pct :: (percentage_of_parent: float, size := BoxSize.{}) -> BoxSize
 {
   s := size;
@@ -107,12 +121,6 @@ Grow :: (size := BoxSize.{}) -> BoxSize
 {
   s := size;
   s.grow = .TRUE;
-  return s;
-}
-Fit :: (size := BoxSize.{}) -> BoxSize
-{
-  s := size;
-  s.fit_children = .TRUE;
   return s;
 }
 
@@ -175,6 +183,8 @@ Padding :: struct
 };
 Padding_All :: (l: Length) -> Padding { return .{l,l,l,l}; }
 
+LayoutDirection :: enum { LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
+
 BoxSpec :: struct
 {
   key: BoxKey;
@@ -185,7 +195,7 @@ BoxSpec :: struct
     padding: Padding;
     child_gap: Length;
     child_align: struct { x: AlignX; y: AlignY; };
-    child_layout: enum { LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
+    child_layout: LayoutDirection;
   };
 
   bg_color: Color;
@@ -306,6 +316,13 @@ CreateText :: (text: string, spec := BoxSpec.{}, loc := #caller_location) -> Sig
 {
   merged_spec := InheritBoxSpecs(spec, BoxSpecFromLayer(.TEXT), BoxSpecFromLayer(.MAIN));
   merged_spec.text.str = text;
+
+  {
+    using merged_spec.layout.sizing;
+    width = MeasureText(width);
+    height = MeasureText(height);
+  }
+
   return CreateBoxDirect(merged_spec, loc);
 }
 
@@ -395,7 +412,7 @@ RenderCommand :: struct
   dim: V2;
   color: Color;
 
-  type: enum {RECTANGLE; BORDER;};
+  type: enum {RECTANGLE; BORDER; TEXT;};
   corner_radius: float; // @todo [4] float
   border_width: float;
   // edge_softness: float; add?
@@ -520,11 +537,6 @@ LayoutEnd :: (print_stuff: bool)
       {
         new_dim = parent_dim*size.percent_of_parent;
       }
-      if size.grow == .TRUE
-      {
-        parent_dim := it.parent.final_dim.component[axis];
-        new_dim = parent_dim;
-      }
 
       if new_dim >= 0.0
       {
@@ -540,14 +552,21 @@ LayoutEnd :: (print_stuff: bool)
       using it.spec.layout;
       size := sizing.axes[axis];
 
-      // 1. Calculate sizes dependent on children (fit).
+      // 1. Calculate size from children (fit).
       if size.fit_children == .TRUE
       {
-        sum: float;
-        for :Siblings child: it.first
-          sum += child.final_dim.component[axis];
-
-        it.final_dim.component[axis] = sum;
+        new_dim: float;
+        if AxisMatchesLayoutDirection(axis, child_layout)
+        {
+          for :Siblings child: it.first
+            new_dim += child.final_dim.component[axis];
+        }
+        else
+        {
+          for :Siblings child: it.first
+            new_dim = max(new_dim, child.final_dim.component[axis]);
+        }
+        it.final_dim.component[axis] = new_dim;
       }
 
       // 2. Clamp final_dim to min_dim and max_dim.
@@ -558,20 +577,78 @@ LayoutEnd :: (print_stuff: bool)
         it.final_dim.component[axis] = max(it.min_dim.component[axis], it.final_dim.component[axis]);
     }
 
-    // Solve overflow violations
-    for :TreeBreadthFirst root_box.first
+    // Pass 3.
+    //   1. Solve overflow violations.
+    //   2. Use free space from parent if grow == .TRUE.
+    for :TreeBreadthFirst parent: root_box
     {
+      parent_dim := parent.final_dim.component[axis];
 
+      if AxisMatchesLayoutDirection(axis, parent.layout.child_layout)
+      {
+        children_dim_sum := 0.0;
+        children_with_grow_count := 0;
+        children_shrink_space_sum := 0.0;
+
+        for :Siblings child: parent.first
+        {
+          children_dim_sum += child.final_dim.component[axis];
+          if child.layout.sizing.axes[axis].grow == .TRUE then children_with_grow_count += 1;
+
+          shrink_space := child.final_dim.component[axis] - child.min_dim.component[axis];
+          children_shrink_space_sum += shrink_space;
+        }
+
+        free_space := parent_dim - children_dim_sum;
+
+        // shrink children
+        if free_space < 0.0 && children_shrink_space_sum > 0.0
+        {
+          shrink_ratio := children_shrink_space_sum / -free_space;
+          shrink_ratio = min(shrink_ratio, 1.0); // If there isn't enough free space then allow the box to overflow.
+
+          for :Siblings child: parent.first
+          {
+            shrink_space := child.final_dim.component[axis] - child.min_dim.component[axis];
+            to_shrink := shrink_space * shrink_ratio;
+            child.final_dim.component[axis] -= to_shrink;
+          }
+        }
+
+        // grow children
+        if free_space > 0.0 && children_with_grow_count > 0
+        {
+          space_per_growable_child := free_space / children_with_grow_count; // @todo consider max_dim here too!
+          for :Siblings child: parent.first
+          {
+            if child.layout.sizing.axes[axis].grow == .TRUE
+              child.final_dim.component[axis] += space_per_growable_child;
+          }
+        }
+      }
+      else
+      {
+        for :Siblings child: parent.first
+        {
+          // shrink child
+          if child.final_dim.component[axis] > parent_dim
+            child.final_dim.component[axis] = max(parent_dim, child.min_dim.component[axis]);
+
+          // grow child
+          if child.layout.sizing.axes[axis].grow == .TRUE && child.final_dim.component[axis] < parent_dim
+            child.final_dim.component[axis] = parent_dim;
+        }
+      }
     }
 
     // Compute relative positions
-    for :TreeBreadthFirst parent: root_box.first
+    for :TreeBreadthFirst parent: root_box
     {
-      axis_matches_child_layout := (parent.layout.child_layout.(u8) == axis.(u8));
+      axis_matches_child_layout := AxisMatchesLayoutDirection(axis, parent.layout.child_layout);
 
+      offset := 0.0;
       for :Siblings child: parent.first
       {
-        offset := 0.0;
         if axis_matches_child_layout
         {
           child.rel_p.component[axis] = offset;
@@ -606,10 +683,18 @@ LayoutEnd :: (print_stuff: bool)
 
     if it.border.color
     {
+      // cmd := base_cmd;
+      // cmd.color = it.border.color;
+      // cmd.type = .BORDER;
+      // cmd.border_width = it.border.widths.left;
+      // array_add(*render_commands, cmd);
+    }
+
+    if it.text.color
+    {
       cmd := base_cmd;
-      cmd.color = it.border.color;
-      cmd.type = .BORDER;
-      cmd.border_width = it.border.widths.left;
+      cmd.color = it.text.color;
+      cmd.type = .TEXT;
       array_add(*render_commands, cmd);
     }
   }
