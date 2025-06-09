@@ -55,7 +55,7 @@ UI_BuildDeveloperWindow :: ()
     if window_bar.flags & .DRAG  win_p += G.mouse_delta;
     else                         win_p = clamped_win_p;
 
-    CreateBox(.{layout = .{sizing = Size2(Px(30))},
+    CreateBox(.{layout = .{sizing = Size2(Px(16))},
                 bg_color = UI_GREEN1});
 
     CreateText("Developer window", .{text.color = UI_YELLOW1});
@@ -63,7 +63,7 @@ UI_BuildDeveloperWindow :: ()
   }
 
   // Body
-  {
+  if false {
     Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}}}));
 
     {

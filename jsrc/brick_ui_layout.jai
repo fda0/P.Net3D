@@ -31,8 +31,15 @@ AttachPoint :: enum u8
   RIGHT_TOP; RIGHT_CENTER; RIGHT_BOTTOM;
 };
 
-AlignX :: enum u8 { LEFT; RIGHT; CENTER; };
-AlignY :: enum u8 { TOP; BOTTOM; CENTER; };
+Align :: enum u8
+{
+  DEFAULT :: 0;
+  LEFT    :: 1;
+  TOP     :: 1;
+  CENTER  :: 2;
+  RIGHT   :: 3;
+  BOTTOM  :: 3;
+};
 Bool3 :: enum u8 { DEFAULT; FALSE; TRUE; };
 
 Unit :: enum u8
@@ -194,7 +201,7 @@ BoxSpec :: struct
     sizing: BoxSize2;
     padding: Padding;
     child_gap: Length;
-    child_align: struct { x: AlignX; y: AlignY; };
+    child_align: struct { x, y: Align; #place x; axes: [2] Align; };
     child_layout: LayoutDirection;
   };
 
@@ -586,20 +593,20 @@ LayoutEnd :: (print_stuff: bool)
 
       if AxisMatchesLayoutDirection(axis, parent.layout.child_layout)
       {
-        children_dim_sum := 0.0;
+        children_side_sum := 0.0;
         children_with_grow_count := 0;
         children_shrink_space_sum := 0.0;
 
         for :Siblings child: parent.first
         {
-          children_dim_sum += child.final_dim.component[axis];
+          children_side_sum += child.final_dim.component[axis];
           if child.layout.sizing.axes[axis].grow == .TRUE then children_with_grow_count += 1;
 
           shrink_space := child.final_dim.component[axis] - child.min_dim.component[axis];
           children_shrink_space_sum += shrink_space;
         }
 
-        free_space := parent_dim - children_dim_sum;
+        free_space := parent_dim - children_side_sum;
 
         // shrink children
         if free_space < 0.0 && children_shrink_space_sum > 0.0
@@ -644,17 +651,58 @@ LayoutEnd :: (print_stuff: bool)
     // Compute relative positions
     for :TreeBreadthFirst parent: root_box
     {
-      axis_matches_child_layout := AxisMatchesLayoutDirection(axis, parent.layout.child_layout);
-
-      offset := 0.0;
-      for :Siblings child: parent.first
+      if AxisMatchesLayoutDirection(axis, parent.layout.child_layout)
       {
-        if axis_matches_child_layout
+        // Set base relative positions
         {
-          child.rel_p.component[axis] = offset;
-          offset += child.final_dim.component[axis];
+          offset := 0.0;
+          for :Siblings child: parent.first
+          {
+            child.rel_p.component[axis] = offset;
+            offset += child.final_dim.component[axis];
+          }
         }
-        else child.rel_p.component[axis] = 0.0;
+
+        // Add alignment if there is free space in parent
+        if parent.layout.child_align.axes[axis] > .LEFT
+        {
+          children_side_sum := 0.0;
+          for :Siblings child: parent.first
+          {
+            children_side_sum += child.final_dim.component[axis];
+          }
+          free_space := parent.final_dim.component[axis] - children_side_sum;
+
+          if free_space > 0.0
+          {
+            shift_ratio := ifx parent.layout.child_align.axes[axis] == .RIGHT then 1.0 else 0.5 /* .CENTER */;
+            shift_by := free_space * shift_ratio;
+
+            for :Siblings child: parent.first
+              child.rel_p.component[axis] += shift_by;
+          }
+        }
+      }
+      else
+      {
+        // Clear relative positions
+        for :Siblings child: parent.first
+          child.rel_p.component[axis] = 0.0;
+
+        // Add alignment if there is free space in parent
+        if parent.layout.child_align.axes[axis] > .LEFT
+        {
+          for :Siblings child: parent.first
+          {
+            free_space := parent.final_dim.component[axis] - child.final_dim.component[axis];
+            if free_space > 0.0
+            {
+              shift_ratio := ifx parent.layout.child_align.axes[axis] == .RIGHT then 1.0 else 0.5 /* .CENTER */;
+              shift_by := free_space * shift_ratio;
+              child.rel_p.component[axis] += shift_by;
+            }
+          }
+        }
       }
     }
   }
