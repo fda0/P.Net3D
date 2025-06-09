@@ -63,7 +63,7 @@ UI_BuildDeveloperWindow :: ()
   }
 
   // Body
-  if false {
+  {
     Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}}}));
 
     {

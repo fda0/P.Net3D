@@ -12,6 +12,11 @@ Kilobyte :: v => v * 1024;
 Megabyte :: v => v * 1024 * 1024;
 Gigabyte :: v => v * 1024 * 1024 * 1024;
 
+EnumCount :: ($t: Type) -> s64
+{
+  return enum_highest_value(t) + 1;
+}
+
 //
 ClearAddress :: (dst: *void, count: s64)
 {

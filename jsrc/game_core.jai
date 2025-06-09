@@ -106,6 +106,13 @@ GAME_Iterate :: ()
 
   if !G.headless
   {
+    glyph := FONT_GetGlyph(.REGULAR, #char "Q");
+    a := 1;
+    a += 1;
+  }
+
+  if !G.headless
+  {
     if (KEY_Pressed(.SDL_SCANCODE_GRAVE))
     G.debug.show_debug_window = !G.debug.show_debug_window;
 
