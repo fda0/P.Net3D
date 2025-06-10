@@ -104,8 +104,9 @@ GAME_Iterate :: ()
   NET_IterateTimeoutUsers();
   NET_IterateSend();
 
-  if !G.headless
+  if !G.headless && G.frame_number == 1
   {
+    print("@todo remove this temporary code\n");
     glyph := FONT_GetGlyph(.REGULAR, #char "Q");
     a := 1;
     a += 1;

@@ -403,6 +403,9 @@ Vec2 :: struct($T: Type)
   x, y: T;
 };
 
+operator + :: (a: Vec2($T), b: Vec2(T)) -> Vec2(T) {
+  return .{a.x+b.x, a.y+b.y};
+}
 
 // We wrap some math operations here to change its units from radians to turns.
 // For now there is a bunch of needless unit conversions which will be eliminated

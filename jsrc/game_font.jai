@@ -61,7 +61,7 @@ FONT_StyleMetrics :: struct
 
 FONT_StyleToMetrics :: (style: FONT_Style) -> FONT_StyleMetrics
 {
-  return .{16, .PlayfairDisplay}; // @impl
+  return .{32 + 16 * style.(u32), .PlayfairDisplay}; // @impl
 }
 
 FONT_Init :: ()
@@ -284,11 +284,42 @@ FONT_GetGlyph :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> FONT_
 
   glyph := ft_face.glyph;
   bitmap := glyph.bitmap;
+  bitmap_dim: Vec2(s32) = .{xx bitmap.width, xx bitmap.rows};
+  bitmap_and_margin_dim := bitmap_dim + Vec2(s32).{margin2, margin2};
 
   // Reject surfaces that are too big
-  if bitmap.width + margin2 > texture_dim || bitmap.rows + margin2 > texture_dim
+  if bitmap_and_margin_dim.x > texture_dim || bitmap_and_margin_dim.y > texture_dim
     return .{};
 
+  // Copy bitmap into a new buffer in a correct format (RGBA) with margin
+  glyph_pixels_size := bitmap_and_margin_dim.x * bitmap_and_margin_dim.y * 4;
+  glyph_pixels: *u32 = talloc(glyph_pixels_size);
+  ClearAddress(glyph_pixels, glyph_pixels_size); // clear margin
+
+  if bitmap.pixel_mode == xx FT_Pixel_Mode_.GRAY
+  {
+    glyph_pixels_no_margin := *glyph_pixels[bitmap_and_margin_dim.x/*skip margin rows*/ + margin/*skip margin columns*/];
+
+    for y: MakeRange(bitmap_dim.y)
+    {
+      bitmap_row: *u8 = *bitmap.buffer[bitmap.pitch * y];
+      glyph_row: *u32 = *glyph_pixels_no_margin[bitmap_and_margin_dim.x * y];
+
+      for x: MakeRange(bitmap_dim.x)
+      {
+        c := bitmap_row[x];
+        glyph_row[x] = Color32_RGBAi(c,c,c,c).(u32);
+      }
+    }
+  }
+  else
+  {
+    log("Unsupported bitmap pixel_mode coming from freetype: %\n", bitmap.pixel_mode, flags=.WARNING);
+    return .{};
+  }
+
+  // Find glyph slot in atlas.
+  // Look for glyph slot in existing atlas layers.
   slot: *FONT_Glyph;
   for layer_offset: 0 .. layers.count-2
   {
@@ -297,9 +328,9 @@ FONT_GetGlyph :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> FONT_
     if slot then break;
   }
 
-  if !slot // couldn't find space in any layer
+  if !slot // Couldn't find space in any layer. Clear the oldest layer to make space for new glyph.
   {
-    // advance active_layer index (backwards) and clear active layer
+    // Advance active_layer index (backwards) and clear active layer.
     active_layer_index += layers.count - 1;
     active_layer_index %= layers.count;
 
@@ -309,71 +340,54 @@ FONT_GetGlyph :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> FONT_
     slot = FONT_CreateGlyphInLayer(active_layer, hash, xx bitmap.width, xx bitmap.rows);
   }
 
-  // Upload surface to GPU (if free slot was found)
+  // Upload surface to GPU (if free slot was found).
   if slot
   {
-    comp_size: s32 = 4;
-    bitmap_dim: Vec2(s32) = .{xx bitmap.width, xx bitmap.rows};
-    bitmap_with_margin_size := (bitmap_dim.x + margin2) * (bitmap_dim.y + margin2) * comp_size;
+    // @speed Check if it makes sense to batch these transfers.
+    trans_cpu := SDL_GPUTransferBufferCreateInfo.{
+      usage = .SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+      size = xx glyph_pixels_size
+    };
+    buf_transfer := SDL_CreateGPUTransferBuffer(G.gpu.device, *trans_cpu);
 
-  //   {
-  //     SDL_GPUTransferBufferCreateInfo trans_cpu =
-  //     {
-  //       .usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-  //       .size = surf_with_margin_size
-  //     };
-  //     SDL_GPUTransferBuffer *buf_transfer = SDL_CreateGPUTransferBuffer(G.gpu.device, &trans_cpu);
+    // CPU memory -> GPU memory
+    {
+      mapped_memory := SDL_MapGPUTransferBuffer(G.gpu.device, buf_transfer, false);
+      memcpy(mapped_memory, glyph_pixels, glyph_pixels_size);
+      SDL_UnmapGPUTransferBuffer(G.gpu.device, buf_transfer);
+    }
 
-  //     // CPU memory . GPU memory
-  //     {
-  //       void *mapped_memory = SDL_MapGPUTransferBuffer(G.gpu.device, buf_transfer, false);
-  //       memset(mapped_memory, 0, surf_with_margin_size);
+    // GPU memory -> GPU texture
+    {
+      cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
+      copy_pass := SDL_BeginGPUCopyPass(cmd);
 
-  //       ForI32(y, surf.h)
-  //       {
-  //         U8 *dst = (U8 *)mapped_memory + (y * (surf.w + margin2) * comp_size);
-  //         U8 *src = (U8 *)surf.pixels  + (y * surf.pitch);
-  //         memcpy(dst, src, surf.w*comp_size);
-  //       }
+      trans_gpu := SDL_GPUTextureTransferInfo.{
+        transfer_buffer = buf_transfer,
+        offset = 0,
+      };
 
-  //       SDL_UnmapGPUTransferBuffer(G.gpu.device, buf_transfer);
-  //     }
+      assert(slot.p.x >= margin);
+      assert(slot.p.y >= margin);
+      assert(slot.p.x + slot.dim.x + margin <= G.font.texture_dim);
+      assert(slot.p.y + slot.dim.y + margin <= G.font.texture_dim);
+      dst_region := SDL_GPUTextureRegion.{
+        texture = G.gpu.ui.gpu_atlas_texture,
+        layer = slot.layer,
+        x = slot.p.x - margin,
+        y = slot.p.y - margin,
+        w = slot.dim.x + margin2,
+        h = slot.dim.y + margin2,
+        d = 1,
+      };
+      SDL_UploadToGPUTexture(copy_pass, *trans_gpu, *dst_region, false);
 
-  //     // GPU memory . GPU texture
-  //     {
-  //       SDL_GPUCommandBuffer *cmd = SDL_AcquireGPUCommandBuffer(G.gpu.device);
-  //       SDL_GPUCopyPass *copy_pass = SDL_BeginGPUCopyPass(cmd);
+      SDL_EndGPUCopyPass(copy_pass);
+      SDL_SubmitGPUCommandBuffer(cmd);
+    }
 
-  //       SDL_GPUTextureTransferInfo trans_gpu =
-  //       {
-  //         .transfer_buffer = buf_transfer,
-  //         .offset = 0,
-  //       };
-
-  //       Assert(slot.p.x >= margin);
-  //       Assert(slot.p.y >= margin);
-  //       Assert(slot.p.x + slot.dim.x + margin <= G.font.texture_dim);
-  //       Assert(slot.p.y + slot.dim.y + margin <= G.font.texture_dim);
-  //       SDL_GPUTextureRegion dst_region =
-  //       {
-  //         .texture = G.gpu.ui.gpu.atlas_texture,
-  //         .layer = slot.layer,
-  //         .x = slot.p.x - margin,
-  //         .y = slot.p.y - margin,
-  //         .w = slot.dim.x + margin2,
-  //         .h = slot.dim.y + margin2,
-  //         .d = 1,
-  //       };
-  //       SDL_UploadToGPUTexture(copy_pass, &trans_gpu, &dst_region, false);
-
-  //       SDL_EndGPUCopyPass(copy_pass);
-  //       SDL_SubmitGPUCommandBuffer(cmd);
-  //     }
-
-  //     SDL_ReleaseGPUTransferBuffer(G.gpu.device, buf_transfer);
-  //   }
-
-  //   result = *slot;
+    SDL_ReleaseGPUTransferBuffer(G.gpu.device, buf_transfer);
+    return slot.*;
   }
 
   return .{};
