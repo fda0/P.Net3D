@@ -192,6 +192,14 @@ Padding_All :: (l: Length) -> Padding { return .{l,l,l,l}; }
 
 LayoutDirection :: enum { LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
 
+BoxTextSpec :: struct
+{
+  str: string;
+  color: Color;
+  font: s16 = -1;
+  font_size: s16 = -1;
+};
+
 BoxSpec :: struct
 {
   key: BoxKey;
@@ -232,13 +240,7 @@ BoxSpec :: struct
     widths: BorderWidths;
   };
 
-  text: struct
-  {
-    str: string;
-    color: Color;
-    font: s16;
-    pt_size: float;
-  };
+  text: BoxTextSpec;
 };
 
 Box :: struct
@@ -326,8 +328,14 @@ CreateText :: (text: string, spec := BoxSpec.{}, loc := #caller_location) -> Sig
 
   {
     using merged_spec.layout.sizing;
-    width = MeasureText(width);
-    height = MeasureText(height);
+    if width.measure_text  == .DEFAULT then width.measure_text  = .TRUE;
+    if height.measure_text == .DEFAULT then height.measure_text = .TRUE;
+  }
+
+  {
+    using merged_spec.text;
+    if font      == -1 then font = 0;
+    if font_size == -1 then font_size = 32;
   }
 
   return CreateBoxDirect(merged_spec, loc);
@@ -339,11 +347,11 @@ CreateBox :: (spec: BoxSpec, loc := #caller_location) -> Signal
   return CreateBoxDirect(merged_spec, loc);
 }
 
-
 CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box := false) -> Signal
 {
   spec := source_spec;
   if !spec.key  spec.key = CreateKey(loc);
+  if spec.text.str then spec.text.str = copy_temporary_string(spec.text.str);
 
   layout_state.boxes_created_on_this_layout += 1;
 
@@ -443,10 +451,30 @@ LayoutState :: struct
 
   render_commands: [..] RenderCommand;
 
+  measure_text_callback := MeasureTextStub;
+
   parents: [MAX_NESTING] *Box; // @todo make this dynamic? Or no?
   parents_index: s32;
 };
 layout_state: LayoutState; // @todo allow user to create a layout_state and to attach it to context instead of using a global variable
+
+MeasureTextParams :: struct
+{
+  text: string;
+  font: s16;
+  font_size: s16;
+  flags: enum_flags u8
+  {
+    MEASURE_X;
+    MEASURE_Y;
+  };
+};
+MeasureTextStub :: (params: MeasureTextParams) -> Vector2 { return .{}; }
+
+SetMeasureTextCallback :: (callback: #type (params: MeasureTextParams) -> Vector2)
+{
+  layout_state.measure_text_callback = callback;
+}
 
 LayoutBegin :: (root_dimensions_in_pixels: V2)
 {
@@ -537,7 +565,13 @@ LayoutEnd :: (print_stuff: bool)
       }
       if size.measure_text == .TRUE
       {
-        text_dim := V2.{text.str.count.(float) * 16.0, 32.0}; // @impl calculate text dimensions
+        params := MeasureTextParams.{
+          text = text.str,
+          font = text.font,
+          font_size = text.font_size,
+          flags = ifx axis == .X then .MEASURE_X else .MEASURE_Y,
+        };
+        text_dim := measure_text_callback(params);
         new_dim = text_dim.component[axis];
       }
       if size.percent_of_parent >= 0.0

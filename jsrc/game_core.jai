@@ -72,7 +72,8 @@ GAME_Init :: ()
     GPU_BATCH_Init();
     ASSET_Init();
     FONT_Init();
-    UI_InitRenderCounters();
+    UI_Init();
+    UI_ClearRenderCounters();
   }
 
   NET_Init();
@@ -107,9 +108,16 @@ GAME_Iterate :: ()
 
   if !G.headless && G.frame_number == 1
   {
-    print("@todo remove this temporary code\n");
-    for #char "A" .. #char "z"
-      glyph := FONT_GetGlyph(.REGULAR, xx it);
+    // print("@todo remove this temporary code\n");
+    // for scale_part: 1 .. 8
+    // {
+    //   scale := 16 + scale_part * 4;
+    //   for codepoint: 33 .. 126
+    //   {
+    //     // g0 := FONT_GetGlyph(xx codepoint, .Jacquard24,      xx scale);
+    //     g1 := FONT_GetGlyph(xx codepoint, .PlayfairDisplay, xx scale);
+    //   }
+    // }
   }
 
   if !G.headless
@@ -261,7 +269,7 @@ GAME_Iterate :: ()
 
     // Post frame calls
     GPU_BATCH_PostFrame();
-    UI_InitRenderCounters();
+    UI_ClearRenderCounters();
     // UI_PostFrame();
     ASSET_PostFrame();
   }
@@ -331,6 +339,7 @@ GAME_AutoLayoutApply :: (code: ..Code) #expand
 
 
 // Includes and stuff
+#load "game_ui_text.jai";
 #load "game_ui_core.jai";
 #load "game_ui_user.jai";
 

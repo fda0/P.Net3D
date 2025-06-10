@@ -10,7 +10,7 @@ UI_Shape :: struct
   p_max: V2;
   tex_min: V2;
   tex_max: V2;
-  tex_layer: float;
+  tex_layer: float = -1.0;
   corner_radius: float;
   edge_softness: float;
   border_thickness: float;
@@ -94,7 +94,7 @@ UI_DrawRect :: (shape_: UI_Shape)
   UI_DrawRaw(shape);
 }
 
-UI_InitRenderCounters :: ()
+UI_ClearRenderCounters :: ()
 {
   using G.gpu.ui;
   indices_count = 0;

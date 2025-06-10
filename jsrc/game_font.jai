@@ -27,16 +27,10 @@ FONT_Layer :: struct
   collision_count: u16;
 };
 
-FONT_Style :: enum
-{
-  REGULAR;
-  HEADER;
-};
-
 FONT_Family :: enum u8
 {
-  Jacquard24;
   PlayfairDisplay;
+  Jacquard24;
   NotoColorEmoji;
 };
 
@@ -55,14 +49,9 @@ FONT_State :: struct
 
 FONT_StyleMetrics :: struct
 {
-  pixel_height: u32;
+  pixel_height: u16;
   font: FONT_Family;
 };
-
-FONT_StyleToMetrics :: (style: FONT_Style) -> FONT_StyleMetrics
-{
-  return .{32 + 16 * style.(u32), .PlayfairDisplay}; // @impl
-}
 
 FONT_Init :: ()
 {
@@ -74,8 +63,8 @@ FONT_Init :: ()
   {
     path := "";
     if it == { // @todo this should be put into .PIE file
-      case .Jacquard24; path = "../res/fonts/Jacquard24-Regular.ttf";
       case .PlayfairDisplay; path = "../res/fonts/PlayfairDisplay-Regular.ttf";
+      case .Jacquard24; path = "../res/fonts/Jacquard24-Regular.ttf";
       case .NotoColorEmoji; path = "../res/fonts/NotoColorEmoji-Regular.ttf";
     }
     if !err then err = FT_New_Face(ft_library, temp_c_string(path), 0, *ft_faces[it]);
@@ -84,7 +73,51 @@ FONT_Init :: ()
   FONT_MaybeResizeAtlasTexture();
 }
 
-FONT_CodepointHash :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> u64
+FONT_MaybeResizeAtlasTexture :: ()
+{
+  using G.font;
+
+  window_area := sqrt(G.window_dim.x * G.window_dim.y);
+  new_texture_dim := max(CeilPow2(window_area.(u32)).(u16), 512);
+
+  // Do the atlas texture resize if new_texture_dim is 2x too small or more than 2x too big compared to previous texture_dim.
+  if new_texture_dim >= texture_dim * 2 || new_texture_dim*2 < texture_dim
+  {
+    log("UI texture atlas resizing from % to %", texture_dim, new_texture_dim, flags=.VERBOSE_ONLY);
+    texture_dim = new_texture_dim;
+
+    {
+      SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.ui.gpu_atlas_texture);
+      tex_info := SDL_GPUTextureCreateInfo.{
+        type = .SDL_GPU_TEXTURETYPE_2D_ARRAY,
+        format = .SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+        width = texture_dim,
+        height = texture_dim,
+        layer_count_or_depth = FONT_ATLAS_LAYERS,
+        num_levels = 1,
+        usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
+      };
+      G.gpu.ui.gpu_atlas_texture = SDL_CreateGPUTexture(G.gpu.device, *tex_info);
+      SDL_SetGPUTextureName(G.gpu.device, G.gpu.ui.gpu_atlas_texture, "UI Atlas Texture");
+    }
+
+    ClearArray(layers);
+    // Pre-seed layers to be full.
+    // This isn't necessary but will result in more optimal fill order.
+    for * layers
+    {
+      it.line_count = 1;
+      it.line_heights[0] = texture_dim;
+      it.line_advances[0] = texture_dim;
+    }
+  }
+}
+
+//
+// Glyphs in atlas
+//
+
+FONT_CodepointHash :: (codepoint: u32, font: FONT_Family, pixel_height: u16) -> u64
 {
   hash := Hash64Any(font, pixel_height, codepoint);
   return hash;
@@ -224,12 +257,6 @@ FONT_CreateGlyphInLayer :: (layer: *FONT_Layer, hash: u64, orig_width: u16, orig
   return null;
 }
 
-FONT_GetGlyph :: (style: FONT_Style, codepoint: u32) -> FONT_Glyph
-{
-  metrics := FONT_StyleToMetrics(style);
-  return FONT_GetGlyph(metrics.font, metrics.pixel_height, codepoint);
-}
-
 FONT_LayerIndexFromPointer :: (layer: *FONT_Layer) -> u8
 {
   using G.font;
@@ -237,7 +264,7 @@ FONT_LayerIndexFromPointer :: (layer: *FONT_Layer) -> u8
   return index.(u8);
 }
 
-FONT_GetGlyph :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> FONT_Glyph
+FONT_GetGlyph :: (codepoint: u32, font: FONT_Family, pixel_height: u16) -> FONT_Glyph
 {
   using G.font;
   assert(!G.headless);
@@ -245,7 +272,7 @@ FONT_GetGlyph :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> FONT_
   margin: u16 = FONT_ATLAS_MARGIN;
   margin2 := margin * 2;
 
-  hash := FONT_CodepointHash(font, pixel_height, codepoint);
+  hash := FONT_CodepointHash(codepoint, font, pixel_height);
 
   // Find already existing glyph run
   for layer_offset: 0 .. layers.count-2
@@ -259,11 +286,12 @@ FONT_GetGlyph :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> FONT_
   // Render glyph
   ft_face := ft_faces[font];
   FT_Set_Pixel_Sizes(ft_face, 0, pixel_height);
-  glyph_index := FT_Get_Char_Index(ft_faces[1], codepoint);
+  glyph_index := FT_Get_Char_Index(ft_face, codepoint);
   if !glyph_index
   {
-     // @todo Instead look into fallback font faces (emoji).
-     //       If codepoint is not found anywhere use fallback glyph character (dot?).
+    // @todo Instead look into fallback font faces (emoji).
+    //       If codepoint is not found anywhere use fallback glyph character (dot?).
+    log("Can't find glyph_index in font % for codepoint %", font, codepoint, flags=.VERBOSE_ONLY);
     return .{};
   }
 
@@ -378,66 +406,4 @@ FONT_GetGlyph :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> FONT_
   }
 
   return .{};
-}
-
-FONT_MaybeResizeAtlasTexture :: ()
-{
-  using G.font;
-
-  window_area := sqrt(G.window_dim.x * G.window_dim.y);
-  new_texture_dim := max(CeilPow2(window_area.(u32)).(u16), 512);
-
-  // Do the atlas texture resize if new_texture_dim is 2x too small or more than 2x too big compared to previous texture_dim.
-  if new_texture_dim >= texture_dim * 2 || new_texture_dim*2 < texture_dim
-  {
-    log("UI texture atlas resizing from % to %", texture_dim, new_texture_dim, flags=.VERBOSE_ONLY);
-    texture_dim = new_texture_dim;
-
-    {
-      SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.ui.gpu_atlas_texture);
-      tex_info := SDL_GPUTextureCreateInfo.{
-        type = .SDL_GPU_TEXTURETYPE_2D_ARRAY,
-        format = .SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-        width = texture_dim,
-        height = texture_dim,
-        layer_count_or_depth = FONT_ATLAS_LAYERS,
-        num_levels = 1,
-        usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
-      };
-      G.gpu.ui.gpu_atlas_texture = SDL_CreateGPUTexture(G.gpu.device, *tex_info);
-      SDL_SetGPUTextureName(G.gpu.device, G.gpu.ui.gpu_atlas_texture, "UI Atlas Texture");
-    }
-
-    ClearArray(layers);
-    // Pre-seed layers to be full.
-    // This isn't necessary but will result in more optimal fill order.
-    for * layers
-    {
-      it.line_count = 1;
-      it.line_heights[0] = texture_dim;
-      it.line_advances[0] = texture_dim;
-    }
-  }
-
-  // if (G.window_resized || init)
-  // {
-  //   float scale = Max(1.5f, FRound(G.window_height / 128.f)*0.5f - 2.f);
-  //   if (scale != G.font.scale || init)
-  //     G.font.scale_changed = true;
-
-  //   G.font.scale = scale;
-  // }
-
-  // if (G.font.scale_changed)
-  // {
-  //   G.font.sizes[FONT_Regular] = FRound(G.font.scale * 14.f);
-  //   G.font.sizes[FONT_Header] = FRound(G.font.scale * 14.f * 1.5f);
-
-  //   ForU32(i, FONT_COUNT)
-  //   {
-  //     float dpi = 72.f * 0.5f;
-  //     TTF_SetFontSizeDPI(G.font.ttfs[i][0], G.font.sizes[i], dpi, dpi);
-  //     TTF_SetFontSizeDPI(G.font.ttfs[i][1], G.font.sizes[i], dpi, dpi);
-  //   }
-
 }
