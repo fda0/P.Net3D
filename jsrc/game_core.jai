@@ -72,7 +72,7 @@ GAME_Init :: ()
     GPU_BATCH_Init();
     ASSET_Init();
     FONT_Init();
-    UI_RenderInit();
+    UI_InitRenderCounters();
   }
 
   NET_Init();
@@ -94,9 +94,10 @@ GAME_Iterate :: ()
   }
 
   // pre frame calls
-  if !G.headless
+  if G.window_resized
   {
-    GPU_ProcessWindowResize(false);
+    GPU_ResizeFramebuffer();
+    FONT_MaybeResizeAtlasTexture();
   }
 
   NET_IterateReceive();
@@ -107,9 +108,8 @@ GAME_Iterate :: ()
   if !G.headless && G.frame_number == 1
   {
     print("@todo remove this temporary code\n");
-    glyph := FONT_GetGlyph(.REGULAR, #char "Q");
-    a := 1;
-    a += 1;
+    for #char "A" .. #char "z"
+      glyph := FONT_GetGlyph(.REGULAR, xx it);
   }
 
   if !G.headless
@@ -261,7 +261,7 @@ GAME_Iterate :: ()
 
     // Post frame calls
     GPU_BATCH_PostFrame();
-    UI_RenderPostFrame();
+    UI_InitRenderCounters();
     // UI_PostFrame();
     ASSET_PostFrame();
   }

@@ -332,7 +332,7 @@ GPU_Init :: ()
     SDL_ReleaseGPUShader(G.gpu.device, fragment_shader);
   }
 
-  GPU_ProcessWindowResize(true);
+  GPU_ResizeFramebuffer();
 }
 
 GPU_Iterate :: ()
@@ -620,20 +620,17 @@ GPU_Iterate :: ()
 }
 
 
-GPU_ProcessWindowResize :: (init: bool)
+GPU_ResizeFramebuffer :: ()
 {
-  if (G.window_resized || init)
-  {
-    SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_depth);
-    SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_msaa);
-    SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_resolve);
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_depth);
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_msaa);
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_resolve);
 
-    window_width := cast(u32) G.window_dim.x;
-    window_height := cast(u32) G.window_dim.y;
-    G.gpu.tex_depth = GPU_CreateDepthTexture(window_width, window_height, false);
-    G.gpu.tex_msaa = GPU_CreateMSAATexture(window_width, window_height);
-    G.gpu.tex_resolve = GPU_CreateResolveTexture(window_width, window_height);
-  }
+  window_width := cast(u32) G.window_dim.x;
+  window_height := cast(u32) G.window_dim.y;
+  G.gpu.tex_depth = GPU_CreateDepthTexture(window_width, window_height, false);
+  G.gpu.tex_msaa = GPU_CreateMSAATexture(window_width, window_height);
+  G.gpu.tex_resolve = GPU_CreateResolveTexture(window_width, window_height);
 }
 
 GPU_CreateBuffer :: (usage: SDL_GPUBufferUsageFlags, size: u32, name: string) -> *SDL_GPUBuffer

@@ -44,7 +44,7 @@ FONT_State :: struct
 {
   err: s32;
 
-  texture_dim: u16 = 1024;
+  texture_dim: u16;
 
   layers: [FONT_ATLAS_LAYERS] FONT_Layer;
   active_layer_index: u8;
@@ -79,21 +79,9 @@ FONT_Init :: ()
       case .NotoColorEmoji; path = "../res/fonts/NotoColorEmoji-Regular.ttf";
     }
     if !err then err = FT_New_Face(ft_library, temp_c_string(path), 0, *ft_faces[it]);
-    // if !err then FT_Set_Char_Size(ft_faces[it], 0, 16*64, 96, 96);
-    if !err then FT_Set_Pixel_Sizes(ft_faces[it], 0, 32);
   }
 
-  glyph_index := FT_Get_Char_Index(ft_faces[1], #char "R");
-  error := FT_Load_Glyph(ft_faces[1], glyph_index, 0);
-  print("ft glyph (1): %\n", formatStruct(ft_faces[1].glyph.*, use_newlines_if_long_form=true));
-  error = FT_Render_Glyph(ft_faces[1].glyph, .FT_RENDER_MODE_NORMAL);
-  print("ft glyph (2): %\n", formatStruct(ft_faces[1].glyph.*, use_newlines_if_long_form=true));
-
-  glyph := ft_faces[1].glyph;
-  bitmap := glyph.bitmap;
-  a := 1;
-  a += 1;
-  FONT_ProcessWindowResize(true);
+  FONT_MaybeResizeAtlasTexture();
 }
 
 FONT_CodepointHash :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> u64
@@ -307,8 +295,7 @@ FONT_GetGlyph :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> FONT_
 
       for x: MakeRange(bitmap_dim.x)
       {
-        c := bitmap_row[x];
-        glyph_row[x] = Color32_RGBAi(c,c,c,c).(u32);
+        glyph_row[x] = Color32_RGBAi(255, 255, 255, bitmap_row[x]).(u32);
       }
     }
   }
@@ -393,8 +380,45 @@ FONT_GetGlyph :: (font: FONT_Family, pixel_height: u32, codepoint: u32) -> FONT_
   return .{};
 }
 
-FONT_ProcessWindowResize :: (init: bool)
+FONT_MaybeResizeAtlasTexture :: ()
 {
+  using G.font;
+
+  window_area := sqrt(G.window_dim.x * G.window_dim.y);
+  new_texture_dim := max(CeilPow2(window_area.(u32)).(u16), 512);
+
+  // Do the atlas texture resize if new_texture_dim is 2x too small or more than 2x too big compared to previous texture_dim.
+  if new_texture_dim >= texture_dim * 2 || new_texture_dim*2 < texture_dim
+  {
+    log("UI texture atlas resizing from % to %", texture_dim, new_texture_dim, flags=.VERBOSE_ONLY);
+    texture_dim = new_texture_dim;
+
+    {
+      SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.ui.gpu_atlas_texture);
+      tex_info := SDL_GPUTextureCreateInfo.{
+        type = .SDL_GPU_TEXTURETYPE_2D_ARRAY,
+        format = .SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+        width = texture_dim,
+        height = texture_dim,
+        layer_count_or_depth = FONT_ATLAS_LAYERS,
+        num_levels = 1,
+        usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
+      };
+      G.gpu.ui.gpu_atlas_texture = SDL_CreateGPUTexture(G.gpu.device, *tex_info);
+      SDL_SetGPUTextureName(G.gpu.device, G.gpu.ui.gpu_atlas_texture, "UI Atlas Texture");
+    }
+
+    ClearArray(layers);
+    // Pre-seed layers to be full.
+    // This isn't necessary but will result in more optimal fill order.
+    for * layers
+    {
+      it.line_count = 1;
+      it.line_heights[0] = texture_dim;
+      it.line_advances[0] = texture_dim;
+    }
+  }
+
   // if (G.window_resized || init)
   // {
   //   float scale = Max(1.5f, FRound(G.window_height / 128.f)*0.5f - 2.f);
@@ -416,48 +440,4 @@ FONT_ProcessWindowResize :: (init: bool)
   //     TTF_SetFontSizeDPI(G.font.ttfs[i][1], G.font.sizes[i], dpi, dpi);
   //   }
 
-  //   I32 new_texture_dim = U32_CeilPow2(G.window_height); // @todo consider window area instead of height
-  //   new_texture_dim = Max(256, new_texture_dim);
-
-  //   bool resize_texture = false;
-  //   resize_texture |= new_texture_dim > G.font.texture_dim; // texture grew
-  //   resize_texture |= new_texture_dim*2 < G.font.texture_dim; // texure shrank by at least 4x
-
-  //   if (resize_texture || init)
-  //   {
-  //     LOG(LOG_GPU, "Font Atlas resize from %d to %d", (I32)G.font.texture_dim, new_texture_dim);
-
-  //     G.font.texture_dim = new_texture_dim;
-
-  //     // Initialize atlas layers bookkeeping structs
-  //     {
-  //       SDL_zeroa(G.font.layers); // clear layers
-
-  //       // Pre-seed layers to be full.
-  //       // This isn't necessary but will result in more optimal fill order.
-  //       ForArray(i, G.font.layers)
-  //       {
-  //         FONT_Layer *layer = G.font.layers + i;
-  //         layer.line_count = 1;
-  //         layer.line_heights[0] = G.font.texture_dim;
-  //         layer.line_advances[0] = G.font.texture_dim;
-  //       }
-  //     }
-
-  //     SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.ui.gpu.atlas_texture);
-
-  //     SDL_GPUTextureCreateInfo tex_info =
-  //     {
-  //       .type = SDL_GPU_TEXTURETYPE_2D_ARRAY,
-  //       .format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM,
-  //       .width = G.font.texture_dim,
-  //       .height = G.font.texture_dim,
-  //       .layer_count_or_depth = FONT_ATLAS_LAYERS,
-  //       .num_levels = CalculateMipMapCount(G.font.texture_dim, G.font.texture_dim),
-  //       .usage = SDL_GPU_TEXTUREUSAGE_SAMPLER|SDL_GPU_TEXTUREUSAGE_COLOR_TARGET
-  //     };
-  //     G.gpu.ui.gpu.atlas_texture = SDL_CreateGPUTexture(G.gpu.device, &tex_info);
-  //     SDL_SetGPUTextureName(G.gpu.device, G.gpu.ui.gpu.atlas_texture, "UI Atlas Texture");
-  //   }
-  // }
 }

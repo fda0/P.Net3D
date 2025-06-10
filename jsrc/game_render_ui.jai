@@ -94,24 +94,7 @@ UI_DrawRect :: (shape_: UI_Shape)
   UI_DrawRaw(shape);
 }
 
-UI_RenderInit :: ()
-{
-  tex_info := SDL_GPUTextureCreateInfo.{
-    type = .SDL_GPU_TEXTURETYPE_2D_ARRAY,
-    format = .SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
-    width = 512,
-    height = 512,
-    layer_count_or_depth = 1,
-    num_levels = 1,
-    usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
-  };
-  G.gpu.ui.gpu_atlas_texture = SDL_CreateGPUTexture(G.gpu.device, *tex_info);
-  SDL_SetGPUTextureName(G.gpu.device, G.gpu.ui.gpu_atlas_texture, "UI Atlas Texture");
-
-  UI_RenderPostFrame();
-}
-
-UI_RenderPostFrame :: ()
+UI_InitRenderCounters :: ()
 {
   using G.gpu.ui;
   indices_count = 0;
