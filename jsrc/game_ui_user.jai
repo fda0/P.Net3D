@@ -24,7 +24,7 @@ UI_BORDER_BG :: #run Color32_RGBi(29, 32, 33);
 UI_SHADOW    :: #run Color32_RGBAi(29, 32, 33, 96);
 UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
-UI_RADIUS :: #run CornerRadius_All(3);
+UI_RADIUS :: #run CornerRadius_All(Px(3));
 UI_BORDER_WIDTH :: #run BorderWidths_Sides(1);
 UI_BAR_PAD :: #run Padding_All(Rem(0.5));
 UI_WINDOW_GAP :: #run Rem(4);

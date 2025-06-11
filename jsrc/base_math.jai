@@ -97,6 +97,10 @@ CastSaturate :: ($Tdst: Type, value: $Tstr) -> Tdst
   return 0;
 }
 
+Round :: (x: float) -> float {
+    return cast(float)cast(int)(x + 0.5 * ifx x < 0 then -1 else 1);
+}
+
 CeilPow2 :: (v: u32) -> u32
 {
   if (!v) return 0;

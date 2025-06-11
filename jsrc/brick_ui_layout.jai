@@ -170,10 +170,9 @@ CreateKey :: (text: string) -> BoxKey
 
 CornerRadius :: struct
 {
-  // @todo replace float (px) with Size
-  top_left, top_right, bottom_left, bottom_right: float;
+  top_left, top_right, bottom_left, bottom_right: Length;
 };
-CornerRadius_All :: (r: float) -> CornerRadius { return .{r, r, r, r}; }
+CornerRadius_All :: (r: Length) -> CornerRadius { return .{r, r, r, r}; }
 
 BorderWidths :: struct
 {
@@ -190,7 +189,7 @@ Padding :: struct
 };
 Padding_All :: (l: Length) -> Padding { return .{l,l,l,l}; }
 
-LayoutDirection :: enum { LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
+LayoutDirection :: enum { DEFAULT; LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
 
 BoxTextSpec :: struct
 {
@@ -311,14 +310,69 @@ BoxSpecFromLayer :: (layer: enum { MAIN; TEXT; }) -> BoxSpec
   return .{};
 }
 
+Inherit :: (m: *$T, p: T)
+#modify { return T.(*Type_Info).type == .ENUM; }
+{
+  if m.* == .DEFAULT then m.* = p;
+}
+Inherit :: (c: *Length, p: Length) {
+  if c.value < 0.0 then c.* = p;
+}
+Inherit :: (c: *float, p: float) {
+  if c.* < 0.0 then c.* = p;
+}
+Inherit :: (c: *Color, p: Color) {
+  if c.* == 0 then c.* = p;
+}
+Inherit :: (c: *BoxSize, p: BoxSize) {
+  Inherit(*c.min, p.min);
+  Inherit(*c.max, p.max);
+  Inherit(*c.fit_children, p.fit_children);
+  Inherit(*c.measure_text, p.measure_text);
+  Inherit(*c.percent_of_parent, p.percent_of_parent);
+  Inherit(*c.grow, p.grow);
+}
+Inherit :: (c: *BoxSize2, p: BoxSize2) {
+  Inherit(*c.width, p.width);
+  Inherit(*c.height, p.height);
+}
+Inherit :: (c: *Padding, p: Padding) {
+  Inherit(*c.left, p.left);
+  Inherit(*c.right, p.right);
+  Inherit(*c.top, p.top);
+  Inherit(*c.bottom, p.bottom);
+}
+Inherit :: (c: *CornerRadius, p: CornerRadius) {
+  Inherit(*c.top_left,     p.top_left);
+  Inherit(*c.top_right,    p.top_right);
+  Inherit(*c.bottom_left,  p.bottom_left);
+  Inherit(*c.bottom_right, p.bottom_right);
+}
+
+Inherit :: (c: *BoxSpec, p: BoxSpec) {
+  Inherit(*c.layout.sizing, p.layout.sizing);
+  Inherit(*c.layout.padding, p.layout.padding);
+  Inherit(*c.layout.child_gap, p.layout.child_gap);
+  Inherit(*c.layout.child_align.x, p.layout.child_align.x);
+  Inherit(*c.layout.child_align.y, p.layout.child_align.y);
+  Inherit(*c.layout.child_layout, p.layout.child_layout);
+
+  Inherit(*c.bg_color, p.bg_color);
+  Inherit(*c.corner_radius, p.corner_radius);
+
+  //
+  
+
+}
+
 InheritBoxSpecs :: (child_spec: BoxSpec, parent_specs: ..BoxSpec) -> BoxSpec
 {
-  res := child_spec;
+  merged := child_spec;
   for parent_specs
   {
-    // @impl
+    Inherit(*merged, it);
   }
-  return res;
+  return merged;
 }
 
 CreateText :: (text: string, spec := BoxSpec.{}, loc := #caller_location) -> Signal

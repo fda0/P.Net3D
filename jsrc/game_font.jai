@@ -14,6 +14,9 @@ FONT_Glyph :: struct
   dim: Vec2(u16);
   layer: u8;
   next: u16;
+  // metrics
+  bearing: V2;
+  advance: float;
 };
 
 FONT_Layer :: struct
@@ -45,12 +48,6 @@ FONT_State :: struct
 
   ft_library: FT_Library;
   ft_faces: [#run EnumCount(FONT_Family)] FT_Face;
-};
-
-FONT_StyleMetrics :: struct
-{
-  pixel_height: u16;
-  font: FONT_Family;
 };
 
 FONT_Init :: ()
@@ -111,6 +108,27 @@ FONT_MaybeResizeAtlasTexture :: ()
       it.line_advances[0] = texture_dim;
     }
   }
+}
+
+FONT_FaceMetrics :: struct
+{
+  ascent: float;
+  descent: float;
+  // linegap: float;
+  linespace: float;
+};
+
+FONT_GetFaceMetrics :: (font: FONT_Family, pixel_height: u16) -> FONT_FaceMetrics
+{
+  ft_face := G.font.ft_faces[font];
+  FT_Set_Pixel_Sizes(ft_face, 0, pixel_height);
+
+  result := FONT_FaceMetrics.{
+    ascent    = ft_face.size.metrics.ascender.(float)  / 64.0,
+    descent   = ft_face.size.metrics.descender.(float) / 64.0,
+    linespace = ft_face.size.metrics.height.(float)    / 64.0,
+  };
+  return result;
 }
 
 //
@@ -358,6 +376,13 @@ FONT_GetGlyph :: (codepoint: u32, font: FONT_Family, pixel_height: u16) -> FONT_
   // Upload surface to GPU (if free slot was found).
   if slot
   {
+    // Fill glyph metrics
+    slot.bearing = .{
+      glyph.metrics.horiBearingX.(float) / 64.0,
+      glyph.metrics.horiBearingY.(float) / -64.0,
+    };
+    slot.advance = glyph.metrics.horiAdvance.(float) / 64.0;
+
     // @speed Check if it makes sense to batch these transfers.
     trans_cpu := SDL_GPUTransferBufferCreateInfo.{
       usage = .SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
