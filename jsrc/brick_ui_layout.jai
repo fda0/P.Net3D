@@ -18,7 +18,10 @@ Axis2 :: enum u8 { X; Y; COUNT; };
 Inverse :: (a: Axis2) -> Axis2 { return ifx a == .X then .Y else .X; }
 AxisMatchesLayoutDirection :: inline (axis: Axis2, lay_dir: LayoutDirection) -> bool
 {
-  return axis.(u8) == lay_dir.(u8);
+  matches := false;
+  matches |= axis == .X && (lay_dir == .DEFAULT || lay_dir == .LEFT_TO_RIGHT);
+  matches |= axis == .Y && lay_dir == .TOP_TO_BOTTOM;
+  return matches;
 }
 
 Side2 :: enum u8 { LEFT; RIGHT; TOP; BOTTOM; COUNT; };
@@ -444,10 +447,9 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box :
 
   // links
   LinkToNil(box);
-  parent := PeekParent();
-  if !IsNil(parent)
+  box.parent = PeekParent();
+  if !IsNil(box.parent)
   {
-    box.parent = parent;
     if IsNil(box.parent.first)
     {
       box.parent.first = box;
