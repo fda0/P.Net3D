@@ -57,7 +57,7 @@ UI_DrawTextLine :: (text: string, font: FONT_Family, pixel_height: u16, pos: V2,
 UI_MeasureText :: (params: Layout.MeasureTextParams) -> V2
 {
   font := params.font.(FONT_Family);
-  pixel_height := params.font_size.(u16);
+  pixel_height := Round(params.font_size).(u16);
 
   process_params: UI_TextLineParams;
   UI_ProcessTextLine(params.text, font, pixel_height, *process_params);

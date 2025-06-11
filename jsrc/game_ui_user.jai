@@ -36,9 +36,9 @@ UI_BuildDeveloperWindow :: ()
   if (!show) return;
 
   header_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay,
-                                   font_size = 32}};
-  regular_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay,
                                    font_size = 24}};
+  regular_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay,
+                                   font_size = 16}};
 
   Layer(.{text = .{color = Color32_Grayi(255),
                    font = xx FONT_Family.PlayfairDisplay,
@@ -64,17 +64,15 @@ UI_BuildDeveloperWindow :: ()
     if window_bar.flags & .DRAG  win_p += G.mouse_delta;
     else                         win_p = clamped_win_p;
 
-    CreateBox(.{layout = .{sizing = Size2(Px(16))},
-                bg_color = UI_GREEN1});
-
-    CreateText("Developer window", .{text.color = UI_RED1}, regular_text);
-    CreateText("Text2", .{text.color = UI_BLUE1});
+    CreateText("Developer window", .{text.color = UI_BG}, header_text);
   }
 
-  // Body
+  // Content body
   {
-    Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}}}));
+    Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}},
+                       bg_color = Color32_RGBAf(0.2, 0.2, 0.7 + 0.3*Sin(G.at), 0.75)}));
 
+    // Category vertical bar
     {
       Parent(CreateBox(.{layout = .{child_layout = .TOP_TO_BOTTOM,
                                     sizing = .{Fit(), Grow()},
@@ -83,6 +81,8 @@ UI_BuildDeveloperWindow :: ()
                          bg_color = Color32_RGBi(255,255,0),
                          border = .{color = UI_BORDER_BG,
                                     widths = UI_BORDER_WIDTH}}));
+
+      CreateText("X", .{text.color = UI_RED1}, regular_text);
     }
   }
 }

@@ -2,7 +2,7 @@
   Color: Type = u32,
   V2: Type = Vector2,
   HashLocFunc := DefaultHashLocFunc,
-  MAX_NESTING := 256)
+  MAX_NESTING := 512)
 {
   DefaultHashLocFunc :: (loc: Source_Code_Location) -> u64
   {
@@ -252,8 +252,8 @@ BoxSpec :: struct
   {
     str: string;
     color: Color;
-    font: s16 = -1;
-    font_size: s16 = -1;
+    font: s32 = -1;
+    font_size: float = -1;
   };
 };
 
@@ -301,22 +301,21 @@ Parent :: (signal: Signal) -> Signal #expand
 PushParent :: (value: *Box)
 {
   using layout_state;
-  parents_index += 1;
-  i := clamp(parents_index, 0, MAX_NESTING-1);
-  if (i != parents_index) log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
-  parents[i] = value;
+  if parents_count < parents.count
+    parents[parents_count] = value;
+  parents_count += 1;
 }
 PopParent :: (value: *Box)
 {
   using layout_state;
-  parents_index -= 1;
+  parents_count -= 1;
 }
 PeekParent :: () -> *Box
 {
   using layout_state;
-  i := clamp(parents_index, 0, MAX_NESTING-1);
-  if (i != parents_index) log_error("[BRICK_UI_LAYOUT] Invalid parents_index: %", parents_index);
-  return parents[i];
+  if parents_count > 0 && parents_count <= parents.count
+    return parents[parents_count-1];
+  return *nil_box;
 }
 
 Merge :: (c: *$T, p: T)
@@ -327,7 +326,7 @@ Merge :: (c: *$T, p: T)
 Merge :: (c: *Length, p: Length) {
   if c.value < 0.0 then c.* = p;
 }
-Merge :: (c: *s16, p: s16) {
+Merge :: (c: *s32, p: s32) {
   if c.* < 0 then c.* = p;
 }
 Merge :: (c: *float, p: float) {
@@ -412,7 +411,7 @@ CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc 
   if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
   merged = Merge(merged, ..ActiveLayers());
 
-  merged.text.str = text;
+  if text.count then merged.text.str = text;
 
   {
     using merged.layout.sizing;
@@ -537,19 +536,19 @@ LayoutState :: struct
 
   measure_text_callback := MeasureTextStub;
 
-  layers: [256] BoxSpec;
+  layers: [MAX_NESTING] BoxSpec;
   layers_count: s64;
 
   parents: [MAX_NESTING] *Box; // @todo make this dynamic? Or no?
-  parents_index: s64;
+  parents_count: s64;
 };
 layout_state: LayoutState; // @todo allow user to create a layout_state and to attach it to context instead of using a global variable
 
 MeasureTextParams :: struct
 {
   text: string;
-  font: s16;
-  font_size: s16;
+  font: s32;
+  font_size: float;
   flags: enum_flags u8
   {
     MEASURE_X;
@@ -574,8 +573,8 @@ LayoutBegin :: (root_dimensions_in_pixels: V2)
 
   array_reset_keeping_memory(*render_commands);
 
-  parents_index = 0;
-  parents[0] = null;
+  parents_count = 0;
+  layers_count = 0;
 
   root_box = CreateBox(.{layout = .{sizing = Size2(Px(root_dimensions_in_pixels))}}).box;
   PushParent(root_box);
