@@ -114,7 +114,6 @@ FONT_FaceMetrics :: struct
 {
   ascent: float;
   descent: float;
-  // linegap: float;
   linespace: float;
 };
 

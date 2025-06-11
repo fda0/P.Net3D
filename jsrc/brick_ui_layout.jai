@@ -176,12 +176,11 @@ CornerRadius_All :: (r: Length) -> CornerRadius { return .{r, r, r, r}; }
 
 BorderWidths :: struct
 {
-  // @todo replace float (px) with Size
-  left, right, top, bottom: float;
-  between_children: float;
+  left, right, top, bottom: Length;
+  between_children: Length;
 };
-BorderWidths_All   :: (w: float) -> BorderWidths { return .{w,w,w,w, w}; }
-BorderWidths_Sides :: (w: float) -> BorderWidths { return .{w,w,w,w, 0}; }
+BorderWidths_All   :: (w: Length) -> BorderWidths { return .{w,w,w,w, w}; }
+BorderWidths_Sides :: (w: Length) -> BorderWidths { return .{w,w,w,w, .{}}; }
 
 Padding :: struct
 {
@@ -191,13 +190,23 @@ Padding_All :: (l: Length) -> Padding { return .{l,l,l,l}; }
 
 LayoutDirection :: enum { DEFAULT; LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
 
-BoxTextSpec :: struct
+PushLayer :: (spec: BoxSpec)
 {
-  str: string;
-  color: Color;
-  font: s16 = -1;
-  font_size: s16 = -1;
-};
+  using layout_state;
+  if layers_count < layers.count
+    layers[layers_count] = spec;
+  layers_count += 1;
+}
+PopLayer :: ()
+{
+  using layout_state;
+  layers_count -= 1;
+}
+Layer :: (spec: BoxSpec) #expand
+{
+  PushLayer(spec);
+  `defer PopLayer();
+}
 
 BoxSpec :: struct
 {
@@ -239,7 +248,13 @@ BoxSpec :: struct
     widths: BorderWidths;
   };
 
-  text: BoxTextSpec;
+  text: struct
+  {
+    str: string;
+    color: Color;
+    font: s16 = -1;
+    font_size: s16 = -1;
+  };
 };
 
 Box :: struct
@@ -304,101 +319,116 @@ PeekParent :: () -> *Box
   return parents[i];
 }
 
-BoxSpecFromLayer :: (layer: enum { MAIN; TEXT; }) -> BoxSpec
-{
-  // @impl
-  return .{};
-}
-
-Inherit :: (m: *$T, p: T)
+Merge :: (c: *$T, p: T)
 #modify { return T.(*Type_Info).type == .ENUM; }
 {
-  if m.* == .DEFAULT then m.* = p;
+  if c.* == .DEFAULT then c.* = p;
 }
-Inherit :: (c: *Length, p: Length) {
+Merge :: (c: *Length, p: Length) {
   if c.value < 0.0 then c.* = p;
 }
-Inherit :: (c: *float, p: float) {
+Merge :: (c: *s16, p: s16) {
+  if c.* < 0 then c.* = p;
+}
+Merge :: (c: *float, p: float) {
   if c.* < 0.0 then c.* = p;
 }
-Inherit :: (c: *Color, p: Color) {
+Merge :: (c: *Color, p: Color) {
   if c.* == 0 then c.* = p;
 }
-Inherit :: (c: *BoxSize, p: BoxSize) {
-  Inherit(*c.min, p.min);
-  Inherit(*c.max, p.max);
-  Inherit(*c.fit_children, p.fit_children);
-  Inherit(*c.measure_text, p.measure_text);
-  Inherit(*c.percent_of_parent, p.percent_of_parent);
-  Inherit(*c.grow, p.grow);
+Merge :: (c: *BoxSize, p: BoxSize) {
+  Merge(*c.min, p.min);
+  Merge(*c.max, p.max);
+  Merge(*c.fit_children, p.fit_children);
+  Merge(*c.measure_text, p.measure_text);
+  Merge(*c.percent_of_parent, p.percent_of_parent);
+  Merge(*c.grow, p.grow);
 }
-Inherit :: (c: *BoxSize2, p: BoxSize2) {
-  Inherit(*c.width, p.width);
-  Inherit(*c.height, p.height);
+Merge :: (c: *BoxSize2, p: BoxSize2) {
+  Merge(*c.width, p.width);
+  Merge(*c.height, p.height);
 }
-Inherit :: (c: *Padding, p: Padding) {
-  Inherit(*c.left, p.left);
-  Inherit(*c.right, p.right);
-  Inherit(*c.top, p.top);
-  Inherit(*c.bottom, p.bottom);
+Merge :: (c: *Padding, p: Padding) {
+  Merge(*c.left, p.left);
+  Merge(*c.right, p.right);
+  Merge(*c.top, p.top);
+  Merge(*c.bottom, p.bottom);
 }
-Inherit :: (c: *CornerRadius, p: CornerRadius) {
-  Inherit(*c.top_left,     p.top_left);
-  Inherit(*c.top_right,    p.top_right);
-  Inherit(*c.bottom_left,  p.bottom_left);
-  Inherit(*c.bottom_right, p.bottom_right);
+Merge :: (c: *CornerRadius, p: CornerRadius) {
+  Merge(*c.top_left,     p.top_left);
+  Merge(*c.top_right,    p.top_right);
+  Merge(*c.bottom_left,  p.bottom_left);
+  Merge(*c.bottom_right, p.bottom_right);
 }
-
-Inherit :: (c: *BoxSpec, p: BoxSpec) {
-  Inherit(*c.layout.sizing, p.layout.sizing);
-  Inherit(*c.layout.padding, p.layout.padding);
-  Inherit(*c.layout.child_gap, p.layout.child_gap);
-  Inherit(*c.layout.child_align.x, p.layout.child_align.x);
-  Inherit(*c.layout.child_align.y, p.layout.child_align.y);
-  Inherit(*c.layout.child_layout, p.layout.child_layout);
-
-  Inherit(*c.bg_color, p.bg_color);
-  Inherit(*c.corner_radius, p.corner_radius);
-
-  //
-  
-
+Merge :: (c: *BorderWidths, p: BorderWidths) {
+  Merge(*c.left,             p.left);
+  Merge(*c.right,            p.right);
+  Merge(*c.top,              p.top);
+  Merge(*c.bottom,           p.bottom);
+  Merge(*c.between_children, p.between_children);
 }
 
-InheritBoxSpecs :: (child_spec: BoxSpec, parent_specs: ..BoxSpec) -> BoxSpec
+Merge :: (c: *BoxSpec, p: BoxSpec) {
+  Merge(*c.layout.sizing,        p.layout.sizing);
+  Merge(*c.layout.padding,       p.layout.padding);
+  Merge(*c.layout.child_gap,     p.layout.child_gap);
+  Merge(*c.layout.child_align.x, p.layout.child_align.x);
+  Merge(*c.layout.child_align.y, p.layout.child_align.y);
+  Merge(*c.layout.child_layout,  p.layout.child_layout);
+
+  Merge(*c.bg_color,      p.bg_color);
+  Merge(*c.corner_radius, p.corner_radius);
+
+  // floating isn't inherited - at least for now
+
+  Merge(*c.border.color,  p.border.color);
+  Merge(*c.border.widths, p.border.widths);
+
+  Merge(*c.text.color,     p.text.color);
+  Merge(*c.text.font,      p.text.font);
+  Merge(*c.text.font_size, p.text.font_size);
+}
+
+Merge :: (child_spec: BoxSpec, parent_specs: ..BoxSpec) -> BoxSpec
 {
   merged := child_spec;
   for parent_specs
-  {
-    Inherit(*merged, it);
-  }
+    Merge(*merged, it);
   return merged;
 }
 
-CreateText :: (text: string, spec := BoxSpec.{}, loc := #caller_location) -> Signal
+ActiveLayers :: () -> [] BoxSpec
 {
-  merged_spec := InheritBoxSpecs(spec, BoxSpecFromLayer(.TEXT), BoxSpecFromLayer(.MAIN));
-  merged_spec.text.str = text;
+  using layout_state;
+  result: [] BoxSpec;
+  result.data = *layers[0];
+  result.count = layers_count;
+  return result;
+}
+
+CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc := #caller_location) -> Signal
+{
+  merged := spec;
+  if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
+  merged = Merge(merged, ..ActiveLayers());
+
+  merged.text.str = text;
 
   {
-    using merged_spec.layout.sizing;
+    using merged.layout.sizing;
     if width.measure_text  == .DEFAULT then width.measure_text  = .TRUE;
     if height.measure_text == .DEFAULT then height.measure_text = .TRUE;
   }
 
-  {
-    using merged_spec.text;
-    if font      == -1 then font = 0;
-    if font_size == -1 then font_size = 32;
-  }
-
-  return CreateBoxDirect(merged_spec, loc);
+  return CreateBoxDirect(merged, loc);
 }
 
-CreateBox :: (spec: BoxSpec, loc := #caller_location) -> Signal
+CreateBox :: (spec: BoxSpec, to_merge_specs: ..BoxSpec, loc := #caller_location) -> Signal
 {
-  merged_spec := InheritBoxSpecs(spec, BoxSpecFromLayer(.MAIN));
-  return CreateBoxDirect(merged_spec, loc);
+  merged := spec;
+  if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
+  merged = Merge(merged, ..ActiveLayers());
+  return CreateBoxDirect(merged, loc);
 }
 
 CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box := false) -> Signal
@@ -507,8 +537,11 @@ LayoutState :: struct
 
   measure_text_callback := MeasureTextStub;
 
+  layers: [256] BoxSpec;
+  layers_count: s64;
+
   parents: [MAX_NESTING] *Box; // @todo make this dynamic? Or no?
-  parents_index: s32;
+  parents_index: s64;
 };
 layout_state: LayoutState; // @todo allow user to create a layout_state and to attach it to context instead of using a global variable
 

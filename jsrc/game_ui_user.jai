@@ -25,7 +25,7 @@ UI_SHADOW    :: #run Color32_RGBAi(29, 32, 33, 96);
 UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
 UI_RADIUS :: #run CornerRadius_All(Px(3));
-UI_BORDER_WIDTH :: #run BorderWidths_Sides(1);
+UI_BORDER_WIDTH :: #run BorderWidths_Sides(Px(1));
 UI_BAR_PAD :: #run Padding_All(Rem(0.5));
 UI_WINDOW_GAP :: #run Rem(4);
 UI_WINDOW_PAD :: #run Padding_All(UI_WINDOW_GAP);
@@ -34,6 +34,15 @@ UI_BuildDeveloperWindow :: ()
 {
   using G.ui.dev;
   if (!show) return;
+
+  header_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay,
+                                   font_size = 32}};
+  regular_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay,
+                                   font_size = 24}};
+
+  Layer(.{text = .{color = Color32_Grayi(255),
+                   font = xx FONT_Family.PlayfairDisplay,
+                   font_size = 16}});
 
   clamped_win_p := clamp(win_p, .{}, G.window_dim * 0.9);
 
@@ -58,8 +67,8 @@ UI_BuildDeveloperWindow :: ()
     CreateBox(.{layout = .{sizing = Size2(Px(16))},
                 bg_color = UI_GREEN1});
 
-    CreateText("Developer window", .{text.color = UI_YELLOW1});
-    CreateText("Text2", .{text = .{color = UI_BLUE1}});
+    CreateText("Developer window", .{text.color = UI_RED1}, regular_text);
+    CreateText("Text2", .{text.color = UI_BLUE1});
   }
 
   // Body

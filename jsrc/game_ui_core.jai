@@ -35,7 +35,7 @@ UI_FinishFrame :: ()
       case .TEXT;
       skip_shape = true;
       t := cmd.box.text;
-      UI_DrawTextLine(t.str, cmd.p, xx t.font, xx t.font_size);
+      UI_DrawTextLine(t.str, xx t.font, xx t.font_size, cmd.p, t.color);
     }
 
     if !skip_shape
