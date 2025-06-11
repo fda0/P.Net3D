@@ -35,10 +35,9 @@ UI_BuildDeveloperWindow :: ()
   using G.ui.dev;
   if (!show) return;
 
-  header_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay,
-                                   font_size = 24}};
-  regular_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay,
-                                   font_size = 16}};
+  header_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = 24}};
+  regular_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = 16}};
+  funky_text := BoxSpec.{text = .{font = xx FONT_Family.Jacquard24, font_size = 24}};
 
   Layer(.{text = .{color = Color32_Grayi(255),
                    font = xx FONT_Family.PlayfairDisplay,
@@ -77,12 +76,14 @@ UI_BuildDeveloperWindow :: ()
       Parent(CreateBox(.{layout = .{child_layout = .TOP_TO_BOTTOM,
                                     sizing = .{Fit(), Grow()},
                                     padding = UI_WINDOW_PAD,
-                                    child_gap = UI_WINDOW_GAP},
+                                    child_gap = UI_WINDOW_GAP,
+                                    child_align.x = .CENTER},
                          bg_color = Color32_RGBi(255,255,0),
                          border = .{color = UI_BORDER_BG,
                                     widths = UI_BORDER_WIDTH}}));
 
-      CreateText("X", .{text.color = UI_RED1}, regular_text);
+      CreateText("switches", .{text.color = UI_RED1}, regular_text);
+      CreateText("?",  .{text.color = UI_RED1}, regular_text);
     }
   }
 }

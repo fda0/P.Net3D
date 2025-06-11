@@ -20,27 +20,36 @@ UI_ProcessTextLine :: (text: string, font: FONT_Family, pixel_height: u16, using
   // measure
   dimensions.y = metrics.linespace;
 
-  for codepoint: text // this isn't correct
+  t := text;
+  while t.count
   {
-    glyph := FONT_GetGlyph(xx codepoint, font, pixel_height);
-    tex_p   := V2.{xx glyph.p.x, xx glyph.p.y};
-    tex_dim := V2.{xx glyph.dim.x, xx glyph.dim.y};
+    codepoint, byte_length := STR_DecodeUTF8(t);
+    t = STR_Skip(t, byte_length);
+
+    glyph := FONT_GetGlyph(codepoint, font, pixel_height);
 
     if draw
     {
-      p := text_pos + glyph.bearing;
-      p.x = Round(p.x);
-      p.y = Round(p.y);
+      tex_p   := V2.{xx glyph.p.x, xx glyph.p.y};
+      tex_dim := V2.{xx glyph.dim.x, xx glyph.dim.y};
 
-      shape := UI_Shape.{
-        p_min = p,
-        p_max = p + tex_dim,
-        tex_min = tex_p,
-        tex_max = tex_p + tex_dim,
-        tex_layer = xx glyph.layer,
-        color = draw_color,
-      };
-      UI_DrawRaw(shape);
+      if tex_dim.x > 0 && tex_dim.y > 0 // skip glyphs without bitmap
+      {
+        p := text_pos + glyph.bearing;
+        p.x = Round(p.x);
+        p.y = Round(p.y);
+
+        shape := UI_Shape.{
+          p_min = p,
+          p_max = p + tex_dim,
+          tex_min = tex_p,
+          tex_max = tex_p + tex_dim,
+          tex_layer = xx glyph.layer,
+          color = draw_color,
+        };
+        UI_DrawRaw(shape);
+      }
+
       text_pos.x += glyph.advance;
     }
 

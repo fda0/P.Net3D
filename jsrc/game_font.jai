@@ -183,6 +183,19 @@ FONT_CreateGlyphInLayer :: (layer: *FONT_Layer, hash: u64, orig_width: u16, orig
 {
   using G.font;
 
+  if orig_width <= 0 || orig_height <= 0
+  {
+    slot := FONT_FindGlyphInLayer(layer, hash, true);
+    if !slot.hash
+    {
+      slot.hash = hash;
+      slot.layer = FONT_LayerIndexFromPointer(layer);
+      return slot;
+    }
+    else
+      return null;
+  }
+
   margin: u16 = FONT_ATLAS_MARGIN;
   margin2 := margin * 2;
 
@@ -281,7 +294,7 @@ FONT_LayerIndexFromPointer :: (layer: *FONT_Layer) -> u8
   return index.(u8);
 }
 
-FONT_GetGlyph :: (codepoint: u32, font: FONT_Family, pixel_height: u16) -> FONT_Glyph
+FONT_GetGlyph :: (codepoint: u32, preferred_font: FONT_Family, pixel_height: u16) -> FONT_Glyph
 {
   using G.font;
   assert(!G.headless);
@@ -289,7 +302,8 @@ FONT_GetGlyph :: (codepoint: u32, font: FONT_Family, pixel_height: u16) -> FONT_
   margin: u16 = FONT_ATLAS_MARGIN;
   margin2 := margin * 2;
 
-  hash := FONT_CodepointHash(codepoint, font, pixel_height);
+  hash := FONT_CodepointHash(codepoint, preferred_font, pixel_height);
+  font := preferred_font;
 
   // Find already existing glyph run
   for layer_offset: 0 .. layers.count-2
@@ -300,55 +314,78 @@ FONT_GetGlyph :: (codepoint: u32, font: FONT_Family, pixel_height: u16) -> FONT_
       return glyph_run.*;
   }
 
-  // Render glyph
-  ft_face := ft_faces[font];
-  FT_Set_Pixel_Sizes(ft_face, 0, pixel_height);
-  glyph_index := FT_Get_Char_Index(ft_face, codepoint);
-  if !glyph_index
+  // Load and render glyph
+  glyph: *FT_GlyphSlotRec_;
+  bitmap_dim: Vec2(s32);
+  glyph_pixels_size: s32;
+  glyph_pixels: *u32;
+
+  for font_fallback: 0..1
   {
-    // @todo Instead look into fallback font faces (emoji).
-    //       If codepoint is not found anywhere use fallback glyph character (dot?).
-    log("Can't find glyph_index in font % for codepoint %", font, codepoint, flags=.VERBOSE_ONLY);
-    return .{};
-  }
-
-  FT_Load_Glyph(ft_face, glyph_index, 0);
-  FT_Render_Glyph(ft_face.glyph, .FT_RENDER_MODE_NORMAL);
-
-  glyph := ft_face.glyph;
-  bitmap := glyph.bitmap;
-  bitmap_dim: Vec2(s32) = .{xx bitmap.width, xx bitmap.rows};
-  bitmap_and_margin_dim := bitmap_dim + Vec2(s32).{margin2, margin2};
-
-  // Reject surfaces that are too big
-  if bitmap_and_margin_dim.x > texture_dim || bitmap_and_margin_dim.y > texture_dim
-    return .{};
-
-  // Copy bitmap into a new buffer in a correct format (RGBA) with margin
-  glyph_pixels_size := bitmap_and_margin_dim.x * bitmap_and_margin_dim.y * 4;
-  glyph_pixels: *u32 = talloc(glyph_pixels_size);
-  ClearAddress(glyph_pixels, glyph_pixels_size); // clear margin
-
-  if bitmap.pixel_mode == xx FT_Pixel_Mode_.GRAY
-  {
-    glyph_pixels_no_margin := *glyph_pixels[bitmap_and_margin_dim.x/*skip margin rows*/ + margin/*skip margin columns*/];
-
-    for y: MakeRange(bitmap_dim.y)
+    if glyph then break;
+    // If glyph wasn't found then try looking in in NotoColorEmoji font.
+    if font_fallback > 0
     {
-      bitmap_row: *u8 = *bitmap.buffer[bitmap.pitch * y];
-      glyph_row: *u32 = *glyph_pixels_no_margin[bitmap_and_margin_dim.x * y];
+      if font == .NotoColorEmoji then break;
+      font = .NotoColorEmoji;
+    }
 
-      for x: MakeRange(bitmap_dim.x)
+    ft_face := ft_faces[font];
+    FT_Set_Pixel_Sizes(ft_face, 0, pixel_height);
+    glyph_index := FT_Get_Char_Index(ft_face, codepoint);
+    if !glyph_index then continue;
+
+    FT_Load_Glyph(ft_face, glyph_index, FT_LOAD_COLOR);
+    FT_Render_Glyph(ft_face.glyph, .FT_RENDER_MODE_NORMAL);
+
+    glyph = ft_face.glyph;
+    if glyph.format == .SVG
+    {
+      log("Unsupported SVG format was used for codepoint % (from font %).", codepoint, font, flags=.WARNING);
+      // @todo Support these formats with https://github.com/sammycage/plutosvg
+      //       Or use SDL_ttf which uses it.
+    }
+
+    bitmap := glyph.bitmap;
+    bitmap_dim = .{xx bitmap.width, xx bitmap.rows};
+    if bitmap_dim.x > 0 && bitmap_dim.y > 0
+    {
+      bitmap_and_margin_dim := bitmap_dim + Vec2(s32).{margin2, margin2};
+
+      // Reject surfaces that are too big
+      if bitmap_and_margin_dim.x > texture_dim || bitmap_and_margin_dim.y > texture_dim
+        return .{};
+
+      // Copy bitmap into a new buffer in a correct format (RGBA) with margin
+      glyph_pixels_size = bitmap_and_margin_dim.x * bitmap_and_margin_dim.y * 4;
+      glyph_pixels = talloc(glyph_pixels_size);
+      ClearAddress(glyph_pixels, glyph_pixels_size); // clear margin
+
+      if bitmap.pixel_mode == xx FT_Pixel_Mode_.GRAY
       {
-        glyph_row[x] = Color32_RGBAi(255, 255, 255, bitmap_row[x]).(u32);
+        glyph_pixels_no_margin := *glyph_pixels[bitmap_and_margin_dim.x/*skip margin rows*/ + margin/*skip margin columns*/];
+        for y: MakeRange(bitmap_dim.y)
+        {
+          bitmap_row: *u8 = *bitmap.buffer[bitmap.pitch * y];
+          glyph_row: *u32 = *glyph_pixels_no_margin[bitmap_and_margin_dim.x * y];
+          for x: MakeRange(bitmap_dim.x)
+            glyph_row[x] = Color32_RGBAi(255, 255, 255, bitmap_row[x]).(u32);
+        }
+      }
+      else
+      {
+        log("Unsupported bitmap pixel_mode coming from freetype: %\n", bitmap.pixel_mode, flags=.WARNING);
+        return .{};
       }
     }
   }
-  else
+
+  if !glyph
   {
-    log("Unsupported bitmap pixel_mode coming from freetype: %\n", bitmap.pixel_mode, flags=.WARNING);
+    log("Can't find glyph_index in font % (or fallbacks) for codepoint %", preferred_font, codepoint, flags=.VERBOSE_ONLY);
     return .{};
   }
+
 
   // Find glyph slot in atlas.
   // Look for glyph slot in existing atlas layers.
@@ -356,7 +393,7 @@ FONT_GetGlyph :: (codepoint: u32, font: FONT_Family, pixel_height: u16) -> FONT_
   for layer_offset: 0 .. layers.count-2
   {
     layer_index := (active_layer_index + layer_offset) % layers.count;
-    slot = FONT_CreateGlyphInLayer(*layers[layer_index], hash, xx bitmap.width, xx bitmap.rows);
+    slot = FONT_CreateGlyphInLayer(*layers[layer_index], hash, xx bitmap_dim.x, xx bitmap_dim.y);
     if slot then break;
   }
 
@@ -369,7 +406,7 @@ FONT_GetGlyph :: (codepoint: u32, font: FONT_Family, pixel_height: u16) -> FONT_
     active_layer := *layers[active_layer_index];
     ClearType(active_layer);
 
-    slot = FONT_CreateGlyphInLayer(active_layer, hash, xx bitmap.width, xx bitmap.rows);
+    slot = FONT_CreateGlyphInLayer(active_layer, hash, xx bitmap_dim.x, xx bitmap_dim.y);
   }
 
   // Upload surface to GPU (if free slot was found).
@@ -383,49 +420,53 @@ FONT_GetGlyph :: (codepoint: u32, font: FONT_Family, pixel_height: u16) -> FONT_
     slot.advance = glyph.metrics.horiAdvance.(float) / 64.0;
 
     // @speed Check if it makes sense to batch these transfers.
-    trans_cpu := SDL_GPUTransferBufferCreateInfo.{
-      usage = .SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-      size = xx glyph_pixels_size
-    };
-    buf_transfer := SDL_CreateGPUTransferBuffer(G.gpu.device, *trans_cpu);
-
-    // CPU memory -> GPU memory
+    if glyph_pixels
     {
-      mapped_memory := SDL_MapGPUTransferBuffer(G.gpu.device, buf_transfer, false);
-      memcpy(mapped_memory, glyph_pixels, glyph_pixels_size);
-      SDL_UnmapGPUTransferBuffer(G.gpu.device, buf_transfer);
+      trans_cpu := SDL_GPUTransferBufferCreateInfo.{
+        usage = .SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        size = xx glyph_pixels_size
+      };
+      buf_transfer := SDL_CreateGPUTransferBuffer(G.gpu.device, *trans_cpu);
+
+      // CPU memory -> GPU memory
+      {
+        mapped_memory := SDL_MapGPUTransferBuffer(G.gpu.device, buf_transfer, false);
+        memcpy(mapped_memory, glyph_pixels, glyph_pixels_size);
+        SDL_UnmapGPUTransferBuffer(G.gpu.device, buf_transfer);
+      }
+
+      // GPU memory -> GPU texture
+      {
+        cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
+        copy_pass := SDL_BeginGPUCopyPass(cmd);
+
+        trans_gpu := SDL_GPUTextureTransferInfo.{
+          transfer_buffer = buf_transfer,
+          offset = 0,
+        };
+
+        assert(slot.p.x >= margin);
+        assert(slot.p.y >= margin);
+        assert(slot.p.x + slot.dim.x + margin <= G.font.texture_dim);
+        assert(slot.p.y + slot.dim.y + margin <= G.font.texture_dim);
+        dst_region := SDL_GPUTextureRegion.{
+          texture = G.gpu.ui.gpu_atlas_texture,
+          layer = slot.layer,
+          x = slot.p.x - margin,
+          y = slot.p.y - margin,
+          w = slot.dim.x + margin2,
+          h = slot.dim.y + margin2,
+          d = 1,
+        };
+        SDL_UploadToGPUTexture(copy_pass, *trans_gpu, *dst_region, false);
+
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(cmd);
+      }
+
+      SDL_ReleaseGPUTransferBuffer(G.gpu.device, buf_transfer);
     }
 
-    // GPU memory -> GPU texture
-    {
-      cmd := SDL_AcquireGPUCommandBuffer(G.gpu.device);
-      copy_pass := SDL_BeginGPUCopyPass(cmd);
-
-      trans_gpu := SDL_GPUTextureTransferInfo.{
-        transfer_buffer = buf_transfer,
-        offset = 0,
-      };
-
-      assert(slot.p.x >= margin);
-      assert(slot.p.y >= margin);
-      assert(slot.p.x + slot.dim.x + margin <= G.font.texture_dim);
-      assert(slot.p.y + slot.dim.y + margin <= G.font.texture_dim);
-      dst_region := SDL_GPUTextureRegion.{
-        texture = G.gpu.ui.gpu_atlas_texture,
-        layer = slot.layer,
-        x = slot.p.x - margin,
-        y = slot.p.y - margin,
-        w = slot.dim.x + margin2,
-        h = slot.dim.y + margin2,
-        d = 1,
-      };
-      SDL_UploadToGPUTexture(copy_pass, *trans_gpu, *dst_region, false);
-
-      SDL_EndGPUCopyPass(copy_pass);
-      SDL_SubmitGPUCommandBuffer(cmd);
-    }
-
-    SDL_ReleaseGPUTransferBuffer(G.gpu.device, buf_transfer);
     return slot.*;
   }
 

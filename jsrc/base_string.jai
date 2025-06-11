@@ -97,5 +97,66 @@ STR_StartsWith :: (haystack: string, needle: string, flags: STR_MatchFlags = 0) 
   return STR_Match(h, needle, flags);
 }
 
+STR_DecodeUTF8 :: (str: string) -> codepoint:u32, byte_length:s64
+{
+  codepoint: u32 = ~cast(u32)0;
+  byte_length: s64 = 1;
+  if str.count <= 0 then return codepoint, byte_length;
+
+  BITMASK_3 :: 0b111;
+  BITMASK_4 :: 0b1111;
+  BITMASK_5 :: 0b111_11;
+  BITMASK_6 :: 0b111_111;
+  utf8_class: [32] u8 = .[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5];
+
+  byte := str[0];
+  byte_class := utf8_class[byte >> 3];
+
+  if byte_class <= str.count
+  {
+    if byte_class == {
+      case 1;
+      codepoint = byte;
+      byte_length = 1;
+
+      case 2;
+      cont_byte := str[1];
+      if utf8_class[cont_byte >> 3] == 0
+      {
+        codepoint  = (byte      & BITMASK_5).(u32) << 6;
+        codepoint |= (cont_byte & BITMASK_6).(u32);
+        byte_length = 2;
+      }
+
+      case 3;
+      cont_byte: [2] u8 = .[str[1], str[2]];
+      if utf8_class[cont_byte[0] >> 3] == 0 &&
+         utf8_class[cont_byte[1] >> 3] == 0
+      {
+        codepoint  = (byte         & BITMASK_4).(u32) << 12;
+        codepoint |= (cont_byte[0] & BITMASK_6).(u32) << 6;
+        codepoint |= (cont_byte[1] & BITMASK_6).(u32);
+        byte_length = 3;
+      }
+
+      case 4;
+      cont_byte: [3] u8 = .[str[1], str[2], str[3]];
+      if utf8_class[cont_byte[0] >> 3] == 0 &&
+         utf8_class[cont_byte[1] >> 3] == 0 &&
+         utf8_class[cont_byte[2] >> 3] == 0
+      {
+        codepoint  = (byte         & BITMASK_3).(u32) << 18;
+        codepoint |= (cont_byte[0] & BITMASK_6).(u32) << 12;
+        codepoint |= (cont_byte[1] & BITMASK_6).(u32) <<  6;
+        codepoint |= (cont_byte[2] & BITMASK_6).(u32);
+        byte_length = 4;
+      }
+    }
+  }
+
+  return codepoint, byte_length;
+}
+
+
 #scope_file
 #import "Basic"; // for clamp
