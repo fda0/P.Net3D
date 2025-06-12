@@ -109,7 +109,7 @@ tests_grow :: ()
   }
 
   // 3x grow with 1 max size contrain.
-  // Middle box will be initialized with its max size; it's siblings will get what's left.
+  // Middle box (child1) will be initialized with its max size; it's siblings will get what's left.
   {
     LayoutBegin(WindowDim, RemSize);
     parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
@@ -128,7 +128,8 @@ tests_grow :: ()
   }
 
   // 3x grow with 1 min size contrain.
-  // Min size of Px(300) was picked because it makes the calculations a bit easier to follow.
+  // Min size of Px(300) was picked because it makes calculations a bit easier to follow.
+  // Middle box (child1) starts with its min size of 300px before grow calculations begin.
   //
   // free_space -> (900 - 300) -> 600
   // children_growable_sum (sum of how much each child could grow in isolation) -> 900 + 600 + 900 -> 2400
