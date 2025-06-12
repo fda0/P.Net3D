@@ -820,9 +820,9 @@ LayoutEnd :: (debug_print_tree := false)
         }
 
         // Detect free space. Extend dimensions of children with grow == .TRUE
-        if free_space > 0.0 && children_growable_sum > 0
+        if free_space > 0.0 && children_growable_sum > 0.0
         {
-          grow_ratio := children_growable_sum / free_space;
+          grow_ratio := free_space / children_growable_sum;
           grow_ratio = min(grow_ratio, 1.0); // We can't let them grow past free space.
 
           for :Siblings child: parent.first

@@ -1,4 +1,4 @@
-PRINT_ON_PASS :: true;
+PRINT_ON_PASS :: false;
 DUMP_TREES :: true;
 
 #import,file "brick_ui_layout.jai";
