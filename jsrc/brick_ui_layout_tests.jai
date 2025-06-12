@@ -13,7 +13,7 @@ tests :: ()
 tests_fit_and_grow :: ()
 {
   // TEST: Fit on parent & grow on children.
-  // Same as below but uses child_layout = .DEFAULT (.LEFT_TO_RIGHT)
+  // Same as below but uses direction = .DEFAULT (.LEFT_TO_RIGHT)
   {
     LayoutBegin(WindowDim, RemSize);
     parent := CreateBox(.{layout.sizing = .{Fit(), Fit(SizeMin(Px(100)))},
@@ -42,12 +42,12 @@ tests_fit_and_grow :: ()
   }
 
   // TEST: Fit on parent & grow on children.
-  // Same as above but uses child_layout = .TOP_TO_BOTTOM
+  // Same as above but uses direction = .TOP_TO_BOTTOM
   {
     LayoutBegin(WindowDim, RemSize);
     parent := CreateBox(.{layout.sizing = .{Fit(), Fit(SizeMin(Px(100)))},
                           layout.padding = Padding_All(Px(3)),
-                          layout.child_layout = .TOP_TO_BOTTOM}).box;
+                          layout.direction = .TOP_TO_BOTTOM}).box;
     Parent(parent);
     child0 := CreateBox(.{layout.sizing = .{Size(Px(10)), Size(Px(15))},
                           layout.padding = Padding_All(Px(10))});

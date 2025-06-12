@@ -227,7 +227,7 @@ BoxSpec :: struct
     padding: Padding;
     child_gap: Length;
     child_align: struct { x, y: Align; #place x; axes: [2] Align; };
-    child_layout: LayoutDirection;
+    direction: LayoutDirection;
   };
 
   bg_color: Color;
@@ -391,7 +391,7 @@ Merge :: (c: *BoxSpec, p: BoxSpec) {
   Merge(*c.layout.child_gap,     p.layout.child_gap);
   Merge(*c.layout.child_align.x, p.layout.child_align.x);
   Merge(*c.layout.child_align.y, p.layout.child_align.y);
-  Merge(*c.layout.child_layout,  p.layout.child_layout);
+  Merge(*c.layout.direction,  p.layout.direction);
 
   Merge(*c.bg_color,      p.bg_color);
   Merge(*c.corner_radius, p.corner_radius);
@@ -406,11 +406,11 @@ Merge :: (c: *BoxSpec, p: BoxSpec) {
   Merge(*c.text.font_size, p.text.font_size);
 }
 
-Merge :: (child_spec: BoxSpec, parent_specs: ..BoxSpec) -> BoxSpec
+Merge :: (child_spec: BoxSpec, parent_specs: ..BoxSpec, reverse := false) -> BoxSpec
 {
   merged := child_spec;
-  for parent_specs
-    Merge(*merged, it);
+  if reverse then for < parent_specs Merge(*merged, it);
+  else            for   parent_specs Merge(*merged, it);
   return merged;
 }
 
@@ -423,20 +423,26 @@ ActiveLayers :: () -> [] BoxSpec
   return result;
 }
 
+RemToPx :: (scale := 1.0) -> float
+{
+  using layout_state;
+  return scale*rem_to_px;
+}
+
+// @todo spec vs to_merge_spec distincton is a bit lame...
+// Polish the design to a point where these concepts can be merged.
 CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc := #caller_location) -> Signal
 {
   merged := spec;
   if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
-  merged = Merge(merged, ..ActiveLayers());
+  merged = Merge(merged, ..ActiveLayers(), reverse=true);
 
   if text.count then merged.text.str = text;
 
   {
     using merged.text;
-    font_size = layout_state.rem_to_px;
-  }
+    if font_size < 0.0 then font_size = layout_state.rem_to_px;
 
-  {
     using merged.layout.sizing;
     if width.measure_text  == .DEFAULT then width.measure_text  = .TRUE;
     if height.measure_text == .DEFAULT then height.measure_text = .TRUE;
@@ -449,7 +455,7 @@ CreateBox :: (spec: BoxSpec, to_merge_specs: ..BoxSpec, loc := #caller_location)
 {
   merged := spec;
   if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
-  merged = Merge(merged, ..ActiveLayers());
+  merged = Merge(merged, ..ActiveLayers(), reverse=true);
   return CreateBoxDirect(merged, loc);
 }
 
@@ -756,7 +762,7 @@ LayoutEnd :: (debug_print_tree := false)
       if size.fit_children == .TRUE
       {
         children_outer_dim: float;
-        if AxisMatchesLayoutDirection(axis, child_layout)
+        if AxisMatchesLayoutDirection(axis, direction)
         {
           for :Siblings child: it.first
             children_outer_dim += OuterDim(child, axis);
@@ -783,7 +789,7 @@ LayoutEnd :: (debug_print_tree := false)
     //   2. Use free space from parent if grow == .TRUE.
     for :TreeBreadthFirst parent: root_box
     {
-      if AxisMatchesLayoutDirection(axis, parent.layout.child_layout)
+      if AxisMatchesLayoutDirection(axis, parent.layout.direction)
       {
         children_outer_dim_sum := 0.0;
         children_growable_sum := 0.0;
@@ -871,7 +877,7 @@ LayoutEnd :: (debug_print_tree := false)
         case .RIGHT; /*or BOTTOM*/ align_shift_ratio = 1.0;
       };
 
-      if AxisMatchesLayoutDirection(axis, parent.layout.child_layout)
+      if AxisMatchesLayoutDirection(axis, parent.layout.direction)
       {
         // Set base relative positions
         {

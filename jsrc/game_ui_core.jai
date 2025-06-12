@@ -5,7 +5,7 @@ UI_Init :: ()
 
 UI_StartFrame :: ()
 {
-  LayoutBegin(G.window_dim, 16.0 + 2.0 * floor(G.window_dim.y / 256.0));
+  LayoutBegin(G.window_dim, 12.0 + 2.0 * floor(G.window_dim.y / 256.0));
 }
 
 UI_FinishFrame :: ()
@@ -18,7 +18,6 @@ UI_FinishFrame :: ()
       print("[%] render_command: % (%)\n", G.frame_number, cmd, cmd.box.loc);
 
     c4 := ColorV4_32(cmd.color);
-    c4.w *= 0.5;
     c32 := Color32_V4(c4);
 
     shape := UI_Shape.{

@@ -26,8 +26,8 @@ UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
 UI_RADIUS :: #run CornerRadius_All(Px(3));
 UI_BORDER_WIDTH :: #run BorderWidths_Sides(Px(1));
-UI_BAR_PAD :: #run Padding_All(Rem(1));
-UI_WINDOW_GAP :: #run Rem(1);
+UI_BAR_PAD :: #run Padding_All(Rem(0.2));
+UI_WINDOW_GAP :: #run Rem(0.5);
 UI_WINDOW_PAD :: #run Padding_All(UI_WINDOW_GAP);
 
 UI_BuildDeveloperWindow :: ()
@@ -35,18 +35,18 @@ UI_BuildDeveloperWindow :: ()
   using G.ui.dev;
   if (!show) return;
 
-  header_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = 24}};
-  regular_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = 16}};
-  funky_text := BoxSpec.{text = .{font = xx FONT_Family.Jacquard24, font_size = 24}};
-
-  Layer(.{text = .{color = Color32_Grayi(255),
-                   font = xx FONT_Family.PlayfairDisplay}});
+  header_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = RemToPx(1.5)}};
+  regular_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = RemToPx(1)}};
+  small_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = RemToPx(0.8)}};
+  funky_text := BoxSpec.{text = .{font = xx FONT_Family.Jacquard24, font_size = RemToPx(1.5)}};
+  Layer(.{text.color = UI_FG});
+  Layer(regular_text);
 
   clamped_win_p := clamp(win_p, .{}, G.window_dim * 0.9);
 
   // Floating developer window
-  Parent(CreateBox(.{layout = .{child_layout = .TOP_TO_BOTTOM,
-                                sizing = .{width = Fit(SizeMin(Rem(20))), height = Size(Rem(20))}},
+  Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
+                                sizing = .{width = Fit(SizeMin(Rem(30))), height = Size(Rem(30))}},
                      bg_color = UI_BG,
                      floating = .{attach_to = .ROOT, offset = Px(clamped_win_p)},
                      border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},
@@ -62,27 +62,47 @@ UI_BuildDeveloperWindow :: ()
     if window_bar.flags & .DRAG  win_p += G.mouse_delta;
     else                         win_p = clamped_win_p;
 
-    CreateText("Developer window", .{text.color = UI_BG}/*, header_text*/);
+    CreateText("Developer window", .{text.color = UI_BG});
   }
 
   // Content body
-  if true {
-    Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}},
-                       bg_color = Color32_RGBAf(0.2, 0.5 + 0.5*Cos(G.at), 0.5 + 0.5*Sin(G.at), 0.75)}));
+  {
+    Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}}}));
 
     // Category vertical bar
     {
-      Parent(CreateBox(.{layout = .{child_layout = .TOP_TO_BOTTOM,
+      Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
                                     sizing = .{Fit(), Grow()},
                                     padding = UI_WINDOW_PAD,
                                     child_gap = UI_WINDOW_GAP,
                                     child_align.x = .CENTER},
-                         bg_color = Color32_RGBi(255,255,0),
                          border = .{color = UI_BORDER_BG,
                                     widths = UI_BORDER_WIDTH}}));
 
-      CreateText("switches", .{text.color = UI_RED1}, regular_text);
-      CreateText("?",  .{text.color = UI_RED1}, regular_text);
+      CreateText("switches", .{});
+      CreateText("?",  .{});
+    }
+
+    // Menu content
+    {
+      Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
+                                    sizing = .{Grow(), Fit()},
+                                    padding = UI_WINDOW_PAD},
+                         corner_radius = UI_RADIUS}));
+
+      CreateText("Debug switches", .{}, header_text);
+
+      {
+        Layer(small_text);
+        CreateText(tprint("World Camera: %", G.camera_p));
+        CreateText(tprint("Camera - Player: %", G.camera_p - OBJ_Get(G.client.player_key, .NETWORK).s.p));
+        CreateText(tprint("Camera angles: %", G.camera_angles));
+      }
+
+      CreateText("Noclip camera");
+      CreateText("Sun camera");
+      CreateText("Draw model collision");
+      CreateText("Render normals");
     }
   }
 }
