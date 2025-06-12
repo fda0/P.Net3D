@@ -1,22 +1,14 @@
 PRINT_ON_PASS :: false;
 DUMP_TREES :: true;
 
-#import,file "brick_ui_layout.jai";
-#import "Basic";
-#import "Math";
-V2 :: Vector2;
+WindowDim :: V2.{2000, 1500};
+RemSize :: 16;
 
-CheckCount := 0;
-CheckErrorCount := 0;
-
-main :: ()
+tests :: ()
 {
-  window_dim := V2.{640, 480};
-  rem :: 16;
-
   // TEST: Fit root & Grow child; child_layout = .LEFT_TO_RIGHT
   {
-    LayoutBegin(window_dim, rem);
+    LayoutBegin(WindowDim, RemSize);
     parent := CreateBox(.{layout.sizing = .{Fit(), Fit(SizeMin(Px(100)))},
                           layout.padding = Padding_All(Px(3))}).box;
     Parent(parent);
@@ -44,7 +36,7 @@ main :: ()
 
   // TEST: Fit root & Grow child; child_layout = .TOP_TO_BOTTOM
   {
-    LayoutBegin(window_dim, rem);
+    LayoutBegin(WindowDim, RemSize);
     parent := CreateBox(.{layout.sizing = .{Fit(), Fit(SizeMin(Px(100)))},
                           layout.padding = Padding_All(Px(3)),
                           layout.child_layout = .TOP_TO_BOTTOM}).box;
@@ -70,13 +62,27 @@ main :: ()
     parent_inner := V2.{max(c0_outer.x, c1_outer.x), c0_outer.y + c1_outer.y};
     CheckEQ(parent.inner_final, parent_inner);
   }
+}
 
+//
+// Tests setup
+//
+#import,file "brick_ui_layout.jai";
+#import "Basic";
+#import "Math";
+V2 :: Vector2;
+CheckCount := 0;
+CheckErrorCount := 0;
+
+main :: ()
+{
+  tests();
   if CheckErrorCount print("% out of % checks failed.\n", CheckErrorCount, CheckCount);
   else               print("All % checks passed.\n", CheckCount);
   exit(xx CheckErrorCount);
 }
 
-CheckEQ :: (a: $T, b: T, loc := #caller_location) #no_debug #expand
+CheckEQ :: (a: $T, b: T, loc := #caller_location)
 {
   did_pass := a == b;
   Check(did_pass, "Condtion: % % %", a, ifx did_pass then "==" else "!=", b, loc=loc);
