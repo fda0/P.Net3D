@@ -657,8 +657,11 @@ InnerDim :: inline (box: *Box, axis: Axis2) -> float {
 InnerDimMin :: inline (box: *Box, axis: Axis2) -> float {
   return box.dim_min.component[axis];
 }
+InnerDimMax :: inline (box: *Box, axis: Axis2) -> float {
+  return box.dim_max.component[axis];
+}
 
-LayoutEnd :: (print_stuff: bool)
+LayoutEnd :: (debug_print_tree := false)
 {
   using layout_state;
 
@@ -676,16 +679,6 @@ LayoutEnd :: (print_stuff: bool)
       log_error("[BRICK_UI_LAYOUT] error detected - nil_box was modified. Make sure you check with IsNil before modifying a box.");
       nil_box = .{};
       LinkToNil(*nil_box);
-    }
-  }
-
-  if print_stuff
-  {
-    print("[TreeBreadthFirst] of root_box\n");
-    for :TreeBreadthFirst root_box
-    {
-      for 0..it_depth-1 print("    ");
-      print("(d %; i %) %\n", it_depth, it_index, it.loc);
     }
   }
 
@@ -716,7 +709,7 @@ LayoutEnd :: (print_stuff: bool)
       if size.fit_children == .TRUE
       {
         // This will be overwriten by the next stage;
-        // For now assign parent_dim to provide some reasonable behavior for cofigurations
+        // For now assign parent_dim to provide some reasonable behavior for (miss)cofigurations
         // where parent uses `fit_children` and child uses `grow`/`percentage_of_parent`.
         new_dim = parent_dim;
       }
@@ -801,7 +794,7 @@ LayoutEnd :: (print_stuff: bool)
           children_shrinkable_sum += shrinkable;
         }
 
-        free_space := OuterDim(parent, axis) - children_outer_dim_sum;
+        free_space := InnerDim(parent, axis) - children_outer_dim_sum;
 
         // Detect overflow. Shrink children.
         // @future try to shrink paddings too; or extend paddings to have min_length, max_length properties?
@@ -833,13 +826,15 @@ LayoutEnd :: (print_stuff: bool)
       {
         for :Siblings child: parent.first
         {
+          free_space := InnerDim(parent, axis) - OuterDim(child, axis);
+
           // shrink child
-          if InnerDim(child, axis) > OuterDim(parent, axis)
-            child.dim_final.component[axis] = max(OuterDim(parent, axis), InnerDimMin(child, axis));
+          if free_space < 0.0
+            child.dim_final.component[axis] = max(InnerDim(parent, axis), InnerDimMin(child, axis));
 
           // grow child
-          if child.layout.sizing.axes[axis].grow == .TRUE && InnerDim(child, axis) < OuterDim(parent, axis)
-            child.dim_final.component[axis] = OuterDim(parent, axis); // @todo consider dim_max here ! ! !
+          if free_space > 0.0 && child.layout.sizing.axes[axis].grow == .TRUE
+            child.dim_final.component[axis] = min(InnerDim(parent, axis), InnerDimMax(child, axis));
         }
       }
     }
@@ -913,6 +908,23 @@ LayoutEnd :: (print_stuff: bool)
   for :TreeBreadthFirst root_box
   {
     it.abs_p = it.parent.abs_p + it.rel_p;
+  }
+
+  // - DEBUG PRINT PASS -
+  if debug_print_tree
+  {
+    print("[TreeBreadthFirst] Debug dump of root_box\n");
+    for :TreeBreadthFirst root_box
+    {
+      inner_dim := it.dim_final;
+      outer_dim := V2.{OuterDim(it, .X), OuterDim(it, .Y)};
+
+      for 0..it_depth-1 print("  ");
+      print("[d %; i %]; ", it_depth, it_index);
+      print("inner% + padding% = outer%;\t", inner_dim, it.padding, outer_dim);
+      print("rel_p %; abs_p %;\t", it.rel_p, it.abs_p);
+      print("%\n", it.loc);
+    }
   }
 
   // - RENDER COMMANDS PASS -

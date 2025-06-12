@@ -26,8 +26,8 @@ UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
 UI_RADIUS :: #run CornerRadius_All(Px(3));
 UI_BORDER_WIDTH :: #run BorderWidths_Sides(Px(1));
-UI_BAR_PAD :: #run Padding_All(Rem(0.5 + 2.5));
-UI_WINDOW_GAP :: #run Rem(4 + 1);
+UI_BAR_PAD :: #run Padding_All(Rem(1));
+UI_WINDOW_GAP :: #run Rem(1);
 UI_WINDOW_PAD :: #run Padding_All(UI_WINDOW_GAP);
 
 UI_BuildDeveloperWindow :: ()
@@ -54,7 +54,7 @@ UI_BuildDeveloperWindow :: ()
 
   // Window bar
   {
-    window_bar := Parent(CreateBox(.{layout = .{sizing = .{width = Grow(), height = Fit()},
+    window_bar := Parent(CreateBox(.{layout = .{sizing = .{width = Grow(Fit()), height = Fit()},
                                                 padding = UI_BAR_PAD,
                                                 child_align.x = .CENTER},
                                      bg_color = UI_ORANGE2,
@@ -68,7 +68,7 @@ UI_BuildDeveloperWindow :: ()
   // Content body
   {
     Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}},
-                       bg_color = Color32_RGBAf(0.2, 0.2, 0.7 + 0.3*Sin(G.at), 0.75)}));
+                       bg_color = Color32_RGBAf(0.2, 0.5 + 0.5*Cos(G.at), 0.5 + 0.5*Sin(G.at), 0.75)}));
 
     // Category vertical bar
     {

@@ -17,10 +17,14 @@ UI_FinishFrame :: ()
     if G.frame_number == 1
       print("[%] render_command: % (%)\n", G.frame_number, cmd, cmd.box.loc);
 
+    c4 := ColorV4_32(cmd.color);
+    c4.w *= 0.5;
+    c32 := Color32_V4(c4);
+
     shape := UI_Shape.{
       p_min = cmd.p,
       p_max = cmd.p + cmd.dim,
-      color = cmd.color,
+      color = c32,
       corner_radius = cmd.corner_radius,
       tex_layer = -1.0,
     };
