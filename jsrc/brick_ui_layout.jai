@@ -300,7 +300,7 @@ SignalFlags :: enum_flags u32
 
 Signal :: struct
 {
-  box: *Box;
+  using #as box: *Box;
   flags: SignalFlags;
 };
 
@@ -659,6 +659,13 @@ InnerDimMax :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
   return box.inner_max.component[axis];
 }
 
+OuterDim2 :: (box: *Box) -> V2 #expand #no_debug {
+  return V2.{OuterDim(box, .X), OuterDim(box, .Y)};
+}
+InnerDim2 :: (box: *Box) -> V2 #expand #no_debug {
+  return box.inner_final;
+}
+
 LayoutEnd :: (debug_print_tree := false)
 {
   using layout_state;
@@ -778,45 +785,55 @@ LayoutEnd :: (debug_print_tree := false)
     {
       if AxisMatchesLayoutDirection(axis, parent.layout.child_layout)
       {
-        children_with_grow_count := 0;
         children_outer_dim_sum := 0.0;
+        children_growable_sum := 0.0;
         children_shrinkable_sum := 0.0;
 
         for :Siblings child: parent.first
         {
           children_outer_dim_sum += OuterDim(child, axis);
-          if child.layout.sizing.axes[axis].grow == .TRUE then children_with_grow_count += 1;
+          if child.layout.sizing.axes[axis].grow == .TRUE
+          {
+            max_child_inner_dim := InnerDim(parent, axis) - PaddingDim(child, axis);
+            growable := PositiveMin(max_child_inner_dim, InnerDimMax(child, axis));
+            children_growable_sum += growable;
+          }
 
-          // @future Extend shrinkable calculations when padding can shrink too.
-          shrinkable := InnerDim(child, axis) - InnerDimMin(child, axis);
+          shrinkable := InnerDim(child, axis) - max(0.0, InnerDimMin(child, axis));
           children_shrinkable_sum += shrinkable;
         }
 
         free_space := InnerDim(parent, axis) - children_outer_dim_sum;
 
         // Detect overflow. Shrink children.
-        // @future try to shrink paddings too; or extend paddings to have min_length, max_length properties?
         if free_space < 0.0 && children_shrinkable_sum > 0.0
         {
           shrink_ratio := children_shrinkable_sum / -free_space;
-          shrink_ratio = min(shrink_ratio, 1.0); // If there isn't enough free space then allow the box to overflow.
+          shrink_ratio = min(shrink_ratio, 1.0); // If there isn't enough free space then allow boxes to overflow.
 
           for :Siblings child: parent.first
           {
-            shrinkable := InnerDim(child, axis) - InnerDimMin(child, axis);
+            shrinkable := InnerDim(child, axis) - max(0.0, InnerDimMin(child, axis));
             to_shrink := shrinkable * shrink_ratio;
             child.inner_final.component[axis] -= to_shrink;
           }
         }
 
         // Detect free space. Extend dimensions of children with grow == .TRUE
-        if free_space > 0.0 && children_with_grow_count > 0
+        if free_space > 0.0 && children_growable_sum > 0
         {
-          space_per_growable_child := free_space / children_with_grow_count; // @todo consider inner_max here ! ! !
+          grow_ratio := children_growable_sum / free_space;
+          grow_ratio = min(grow_ratio, 1.0); // We can't let them grow past free space.
+
           for :Siblings child: parent.first
           {
             if child.layout.sizing.axes[axis].grow == .TRUE
-              child.inner_final.component[axis] += space_per_growable_child;
+            {
+              max_child_inner_dim := InnerDim(parent, axis) - PaddingDim(child, axis);
+              growable := PositiveMin(max_child_inner_dim, InnerDimMax(child, axis));
+              to_grow := growable * grow_ratio;
+              child.inner_final.component[axis] += to_grow;
+            }
           }
         }
       }
@@ -828,11 +845,17 @@ LayoutEnd :: (debug_print_tree := false)
 
           // shrink child
           if free_space < 0.0
-            child.inner_final.component[axis] = max(InnerDim(parent, axis), InnerDimMin(child, axis));
+          {
+            max_child_inner_dim := InnerDim(parent, axis) - PaddingDim(child, axis);
+            child.inner_final.component[axis] = PositiveMax(max_child_inner_dim, InnerDimMin(child, axis));
+          }
 
           // grow child
           if free_space > 0.0 && child.layout.sizing.axes[axis].grow == .TRUE
-            child.inner_final.component[axis] = min(InnerDim(parent, axis), InnerDimMax(child, axis));
+          {
+            max_child_inner_dim := InnerDim(parent, axis) - PaddingDim(child, axis);
+            child.inner_final.component[axis] = PositiveMin(max_child_inner_dim, InnerDimMax(child, axis));
+          }
         }
       }
     }
@@ -1099,4 +1122,22 @@ TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 #import "Math"; // Vector2, operator +
 
 // Math helpers
+min :: (a: V2, b: V2) -> V2 { return V2.{min(a.x,b.x), min(a.y,b.y)}; }
 max :: (a: V2, b: V2) -> V2 { return V2.{max(a.x,b.x), max(a.y,b.y)}; }
+
+PositiveMin :: (a: float, b: float) -> float
+{
+  result := max(a,b);
+  candidate := min(a,b);
+  if candidate >= 0.0 then result = min(result, candidate);
+  return result;
+}
+PositiveMax :: (a: float, b: float) -> float
+{
+  result := max(a,b);
+  candidate := min(a,b);
+  if candidate >= 0.0 then result = max(result, candidate);
+  return result;
+}
+PositiveMin :: (a: V2, b: V2) -> V2 { return .{PositiveMin(a.x, b.x), PositiveMin(a.y, b.y)}; }
+PositiveMax :: (a: V2, b: V2) -> V2 { return .{PositiveMax(a.x, b.x), PositiveMax(a.y, b.y)}; }

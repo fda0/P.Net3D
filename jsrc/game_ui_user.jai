@@ -54,7 +54,7 @@ UI_BuildDeveloperWindow :: ()
 
   // Window bar
   {
-    window_bar := Parent(CreateBox(.{layout = .{sizing = .{width = Grow(Fit()), height = Fit()},
+    window_bar := Parent(CreateBox(.{layout = .{sizing = .{width = Grow(), height = Fit()},
                                                 padding = UI_BAR_PAD,
                                                 child_align.x = .CENTER},
                                      bg_color = UI_ORANGE2,
@@ -66,7 +66,7 @@ UI_BuildDeveloperWindow :: ()
   }
 
   // Content body
-  {
+  if true {
     Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}},
                        bg_color = Color32_RGBAf(0.2, 0.5 + 0.5*Cos(G.at), 0.5 + 0.5*Sin(G.at), 0.75)}));
 
