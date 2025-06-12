@@ -823,7 +823,7 @@ LayoutEnd :: (debug_print_tree := false)
         if free_space > 0.0 && children_growable_sum > 0.0
         {
           grow_ratio := free_space / children_growable_sum;
-          grow_ratio = min(grow_ratio, 1.0); // We can't let them grow past free space.
+          grow_ratio = min(grow_ratio, 1.0); // Don't let box grow past its "growable" (based on max_child_inner_dim).
 
           for :Siblings child: parent.first
           {

@@ -74,7 +74,7 @@ tests_fit_and_grow :: ()
 
 tests_grow :: ()
 {
-  // 3x just grow
+  // 3x just grow.
   {
     LayoutBegin(WindowDim, RemSize);
     parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
@@ -91,7 +91,7 @@ tests_grow :: ()
     CheckEQ(parent.inner_final, V2.{900, 600});
   }
 
-  // 3x just grow with 1 irrelevant max constain
+  // 3x grow with 1 max size contrain - should be indentical to above.
   {
     LayoutBegin(WindowDim, RemSize);
     parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
@@ -105,6 +105,56 @@ tests_grow :: ()
     CheckEQ(OuterDim2(child0), c_inner);
     CheckEQ(OuterDim2(child1), c_inner);
     CheckEQ(OuterDim2(child2), c_inner);
+    CheckEQ(parent.inner_final, V2.{900, 600});
+  }
+
+  // 3x grow with 1 max size contrain.
+  // Middle box will be initialized with its max size; it's siblings will get what's left.
+  {
+    LayoutBegin(WindowDim, RemSize);
+    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
+    Parent(parent);
+    child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    child1 := CreateBox(.{layout.sizing = .{Grow(SizeMax(Px(600))), Grow()}});
+    child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    LayoutEnd(DUMP_TREES);
+
+    c1_inner := V2.{600, 600};
+    c02_inner := V2.{150, 600};
+    CheckEQ(OuterDim2(child0), c02_inner);
+    CheckEQ(OuterDim2(child1), c1_inner);
+    CheckEQ(OuterDim2(child2), c02_inner);
+    CheckEQ(parent.inner_final, V2.{900, 600});
+  }
+
+  // 3x grow with 1 min size contrain.
+  // Min size of Px(300) was picked because it makes the calculations a bit easier to follow.
+  //
+  // free_space -> (900 - 300) -> 600
+  // children_growable_sum (sum of how much each child could grow in isolation) -> 900 + 600 + 900 -> 2400
+  // free_space / children_growable_sum -> 0.25
+  //
+  // child0_to_grow -> 0.25 * 900 -> 225
+  // child1_to_grow -> 0.25 * 600 -> 150
+  // child2_to_grow -> 0.25 * 900 -> 225
+  //
+  // child0_new_dim ->   0 + 225 -> 225
+  // child1_new_dim -> 300 + 150 -> 450
+  // child2_new_dim ->   0 + 225 -> 225
+  {
+    LayoutBegin(WindowDim, RemSize);
+    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
+    Parent(parent);
+    child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    child1 := CreateBox(.{layout.sizing = .{Grow(SizeMin(Px(300))), Grow()}});
+    child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    LayoutEnd(DUMP_TREES);
+
+    c1_inner := V2.{450, 600};
+    c02_inner := V2.{225, 600};
+    CheckEQ(OuterDim2(child0), c02_inner);
+    CheckEQ(OuterDim2(child1), c1_inner);
+    CheckEQ(OuterDim2(child2), c02_inner);
     CheckEQ(parent.inner_final, V2.{900, 600});
   }
 
