@@ -26,8 +26,8 @@ UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
 UI_RADIUS :: #run CornerRadius_All(Px(3));
 UI_BORDER_WIDTH :: #run BorderWidths_Sides(Px(1));
-UI_BAR_PAD :: #run Padding_All(Rem(0.5));
-UI_WINDOW_GAP :: #run Rem(4);
+UI_BAR_PAD :: #run Padding_All(Rem(0.5 + 2.5));
+UI_WINDOW_GAP :: #run Rem(4 + 1);
 UI_WINDOW_PAD :: #run Padding_All(UI_WINDOW_GAP);
 
 UI_BuildDeveloperWindow :: ()

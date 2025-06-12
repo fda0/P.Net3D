@@ -22,10 +22,10 @@ PLATFORM_Init :: ()
       //       SDL_DisplayID SDL_GetPrimaryDisplay(void);
       //       bool SDL_GetDisplayUsableBounds(SDL_DisplayID displayID, SDL_Rect *rect);
       if G.init_window_dim.x < 0
-        G.init_window_dim.x = 1920/2;
+        G.init_window_dim.x = 1920/6*5;
 
       if G.init_window_dim.y < 0
-        G.init_window_dim.y = 1080/2;
+        G.init_window_dim.y = 1080/6*5;
     }
   }
 
