@@ -273,9 +273,9 @@ Box :: struct
   loc: Source_Code_Location; // creation loc
 
   // in pixels
-  dim_min: V2 = .{-1, -1}; // @todo rename to inner_min
-  dim_max: V2 = .{-1, -1}; // @todo rename to inner_min
-  dim_final: V2;           // @todo rename to inner_final
+  inner_min: V2 = .{-1, -1};
+  inner_max: V2 = .{-1, -1};
+  inner_final: V2;
 
   padding: struct
   {
@@ -289,8 +289,6 @@ Box :: struct
 
   rel_p: V2; // offset from outer dimensions of parent
   abs_p: V2; // offset from 0,0 of root box
-
-  #place dim_min; dim_range: [2] V2;
 };
 
 SignalFlags :: enum_flags u32
@@ -637,28 +635,28 @@ LayoutBegin :: (root_dimensions_in_pixels: V2, set_rem_to_px: float)
   PushParent(root_box);
 }
 
-PaddingLower :: inline (box: *Box, axis: Axis2) -> float {
+PaddingLower :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
   return box.padding.axes[axis].lower;
 }
-PaddingUpper :: inline (box: *Box, axis: Axis2) -> float {
+PaddingUpper :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
   return box.padding.axes[axis].upper;
 }
-PaddingDim :: inline (box: *Box, axis: Axis2) -> float {
+PaddingDim :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
   return box.padding.axes[axis].lower + box.padding.axes[axis].upper;
 }
-OuterDim :: inline (box: *Box, axis: Axis2) -> float {
-  return box.dim_final.component[axis] +
+OuterDim :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.inner_final.component[axis] +
          box.padding.axes[axis].lower +
          box.padding.axes[axis].upper;
 }
-InnerDim :: inline (box: *Box, axis: Axis2) -> float {
-  return box.dim_final.component[axis];
+InnerDim :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.inner_final.component[axis];
 }
-InnerDimMin :: inline (box: *Box, axis: Axis2) -> float {
-  return box.dim_min.component[axis];
+InnerDimMin :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.inner_min.component[axis];
 }
-InnerDimMax :: inline (box: *Box, axis: Axis2) -> float {
-  return box.dim_max.component[axis];
+InnerDimMax :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.inner_max.component[axis];
 }
 
 LayoutEnd :: (debug_print_tree := false)
@@ -696,16 +694,16 @@ LayoutEnd :: (debug_print_tree := false)
       size := sizing.axes[axis];
 
       // 1. Calculate standalone sizes (px, rem, text)
-      it.dim_min.component[axis] = LengthToPx(size.min, it, false);
-      it.dim_max.component[axis] = LengthToPx(size.max, it, false);
+      it.inner_min.component[axis] = LengthToPx(size.min, it, false);
+      it.inner_max.component[axis] = LengthToPx(size.max, it, false);
 
       // Default to maximal size (it will be decreased in later stages if overflow happens).
-      it.dim_final.component[axis] = max(it.dim_min.component[axis], it.dim_max.component[axis]);
-      it.dim_final.component[axis] = max(it.dim_final.component[axis], 0); // Default to 0 if both values were negative.
+      it.inner_final.component[axis] = max(it.inner_min.component[axis], it.inner_max.component[axis]);
+      it.inner_final.component[axis] = max(it.inner_final.component[axis], 0); // Default to 0 if both values were negative.
 
       // 2. Calculate values for measure_text, percent_of_parent, grow (+ temp value for fit_children).
       new_dim := -1.0;
-      parent_dim := it.parent.dim_final.component[axis];
+      parent_dim := it.parent.inner_final.component[axis];
       if size.fit_children == .TRUE
       {
         // This will be overwriten by the next stage;
@@ -730,7 +728,7 @@ LayoutEnd :: (debug_print_tree := false)
       }
       if new_dim >= 0.0 // Store new_dim
       {
-        it.dim_final.component[axis] = new_dim;
+        it.inner_final.component[axis] = new_dim;
       }
 
       // 3. Calculate padding.
@@ -741,7 +739,7 @@ LayoutEnd :: (debug_print_tree := false)
     // - SIZING PASS 2 -
     // Steps:
     //   1. Calculate sizes dependent on children (fit).
-    //   2. Clamp dim_final to dim_min and dim_max.
+    //   2. Clamp inner_final to inner_min and inner_max.
     for :TreeDepthFirst root_box
     {
       using it.spec.layout;
@@ -761,15 +759,15 @@ LayoutEnd :: (debug_print_tree := false)
           for :Siblings child: it.first
             children_outer_dim = max(children_outer_dim, OuterDim(child, axis));
         }
-        it.dim_final.component[axis] = children_outer_dim;
+        it.inner_final.component[axis] = children_outer_dim;
       }
 
-      // 2. Clamp dim_final to dim_min and dim_max.
-      if it.dim_max.component[axis] >= 0.0
-        it.dim_final.component[axis] = min(it.dim_max.component[axis], it.dim_final.component[axis]);
+      // 2. Clamp inner_final to inner_min and inner_max.
+      if it.inner_max.component[axis] >= 0.0
+        it.inner_final.component[axis] = min(it.inner_max.component[axis], it.inner_final.component[axis]);
 
-      if it.dim_min.component[axis] >= 0.0
-        it.dim_final.component[axis] = max(it.dim_min.component[axis], it.dim_final.component[axis]);
+      if it.inner_min.component[axis] >= 0.0
+        it.inner_final.component[axis] = max(it.inner_min.component[axis], it.inner_final.component[axis]);
     }
 
     // - SIZING PASS 3 -
@@ -807,18 +805,18 @@ LayoutEnd :: (debug_print_tree := false)
           {
             shrinkable := InnerDim(child, axis) - InnerDimMin(child, axis);
             to_shrink := shrinkable * shrink_ratio;
-            child.dim_final.component[axis] -= to_shrink;
+            child.inner_final.component[axis] -= to_shrink;
           }
         }
 
         // Detect free space. Extend dimensions of children with grow == .TRUE
         if free_space > 0.0 && children_with_grow_count > 0
         {
-          space_per_growable_child := free_space / children_with_grow_count; // @todo consider dim_max here ! ! !
+          space_per_growable_child := free_space / children_with_grow_count; // @todo consider inner_max here ! ! !
           for :Siblings child: parent.first
           {
             if child.layout.sizing.axes[axis].grow == .TRUE
-              child.dim_final.component[axis] += space_per_growable_child;
+              child.inner_final.component[axis] += space_per_growable_child;
           }
         }
       }
@@ -830,11 +828,11 @@ LayoutEnd :: (debug_print_tree := false)
 
           // shrink child
           if free_space < 0.0
-            child.dim_final.component[axis] = max(InnerDim(parent, axis), InnerDimMin(child, axis));
+            child.inner_final.component[axis] = max(InnerDim(parent, axis), InnerDimMin(child, axis));
 
           // grow child
           if free_space > 0.0 && child.layout.sizing.axes[axis].grow == .TRUE
-            child.dim_final.component[axis] = min(InnerDim(parent, axis), InnerDimMax(child, axis));
+            child.inner_final.component[axis] = min(InnerDim(parent, axis), InnerDimMax(child, axis));
         }
       }
     }
@@ -916,7 +914,7 @@ LayoutEnd :: (debug_print_tree := false)
     print("[TreeBreadthFirst] Debug dump of root_box\n");
     for :TreeBreadthFirst root_box
     {
-      inner_dim := it.dim_final;
+      inner_dim := it.inner_final;
       outer_dim := V2.{OuterDim(it, .X), OuterDim(it, .Y)};
 
       for 0..it_depth-1 print("  ");
