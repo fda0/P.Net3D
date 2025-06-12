@@ -140,6 +140,12 @@ PLATFORM_Deinit :: ()
 //
 // SDL THINGS
 //
+
+// @todo To support live window resizing without SDL3 callbacks one has to:
+// 1. Use SDL_SetEventFilter + callback - PLATFORM_EventFilterSDL :: (userdata: *void, event: *SDL_Event) -> bool #c_call;
+// 2. Detect SDL_EVENT_WINDOW_EXPOSED and then issue a draw call.
+// 3. But to do this properly one has to do Dangerous Threads Crew kinds of shenanigans (callback might be called from a thread that's different than rendering thread).
+
 /**
 * A bitmask of pressed mouse buttons, as reported by SDL_GetMouseState, etc.
 *

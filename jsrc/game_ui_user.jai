@@ -40,14 +40,13 @@ UI_BuildDeveloperWindow :: ()
   funky_text := BoxSpec.{text = .{font = xx FONT_Family.Jacquard24, font_size = 24}};
 
   Layer(.{text = .{color = Color32_Grayi(255),
-                   font = xx FONT_Family.PlayfairDisplay,
-                   font_size = 16}});
+                   font = xx FONT_Family.PlayfairDisplay}});
 
   clamped_win_p := clamp(win_p, .{}, G.window_dim * 0.9);
 
   // Floating developer window
   Parent(CreateBox(.{layout = .{child_layout = .TOP_TO_BOTTOM,
-                                sizing = .{width = Fit(SizeMin(Rem(200))), height = Size(Rem(200))}},
+                                sizing = .{width = Fit(SizeMin(Rem(20))), height = Size(Rem(20))}},
                      bg_color = UI_BG,
                      floating = .{attach_to = .ROOT, offset = Px(clamped_win_p)},
                      border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},
@@ -63,7 +62,7 @@ UI_BuildDeveloperWindow :: ()
     if window_bar.flags & .DRAG  win_p += G.mouse_delta;
     else                         win_p = clamped_win_p;
 
-    CreateText("Developer window", .{text.color = UI_BG}, header_text);
+    CreateText("Developer window", .{text.color = UI_BG}/*, header_text*/);
   }
 
   // Content body

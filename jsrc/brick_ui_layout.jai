@@ -49,6 +49,7 @@ Unit :: enum u8
 {
   PX;
   REM;
+  EM;
   /*EM; PT;*/
 };
 
@@ -272,6 +273,8 @@ Box :: struct
   final_dim: V2;
   rel_p: V2;
   abs_p: V2;
+  pad0: V2; // left, top
+  pad1: V2; // right, bottom
 
   #place min_dim; minmax_dim: [2] V2;
 };
@@ -417,6 +420,11 @@ CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc 
   if text.count then merged.text.str = text;
 
   {
+    using merged.text;
+    font_size = layout_state.rem_to_px;
+  }
+
+  {
     using merged.layout.sizing;
     if width.measure_text  == .DEFAULT then width.measure_text  = .TRUE;
     if height.measure_text == .DEFAULT then height.measure_text = .TRUE;
@@ -506,6 +514,32 @@ LinkToNil :: (box: *Box)
 }
 IsNil :: (box: *Box) -> bool { return !box || box == *layout_state.nil_box; }
 
+LengthToPx :: (len: Length, owner_box: *Box) -> float
+{
+  using layout_state;
+  if len.unit == {
+  case .EM;
+    box := owner_box;
+    while !IsNil(box)
+    {
+      if box.text.font_size
+        return len.value * box.text.font_size;
+
+      box = box.parent;
+    }
+    #through;
+
+    case .REM;
+    return len.value * rem_to_px;
+  }
+  return len.value;
+}
+
+Length2ToPx :: (len2: Length2, owner_box: *Box) -> V2
+{
+  return .{LenghtToPx(len2.width, owner_box), LengthToPx(len2.height, owner_box)};
+}
+
 RenderCommand :: struct
 {
   p: V2;
@@ -537,6 +571,7 @@ LayoutState :: struct
   render_commands: [..] RenderCommand;
 
   measure_text_callback := MeasureTextStub;
+  rem_to_px: float;
 
   layers: [MAX_NESTING] BoxSpec;
   layers_count: s64;
@@ -564,7 +599,7 @@ SetMeasureTextCallback :: (callback: #type (params: MeasureTextParams) -> Vector
   layout_state.measure_text_callback = callback;
 }
 
-LayoutBegin :: (root_dimensions_in_pixels: V2)
+LayoutBegin :: (root_dimensions_in_pixels: V2, set_rem_to_px: float)
 {
   using layout_state;
   current_boxes_index = xx !current_boxes_index;
@@ -574,6 +609,8 @@ LayoutBegin :: (root_dimensions_in_pixels: V2)
   LinkToNil(*nil_box);
 
   array_reset_keeping_memory(*render_commands);
+
+  rem_to_px = set_rem_to_px;
 
   parents_count = 0;
   layers_count = 0;
@@ -618,6 +655,7 @@ LayoutEnd :: (print_stuff: bool)
     // Pass 1.
     //  1. Calculate standalone sizes (px, rem, text).
     //  2. Calculate values for measure_text, percent_of_parent, grow (+ temp value for fit_children).
+    //  3. Calculate padding.
     for :TreeBreadthFirst root_box.first
     {
       using it.spec;
@@ -626,17 +664,8 @@ LayoutEnd :: (print_stuff: bool)
 
       // 1. Calculate standalone sizes (px, rem, text)
       for r: 0..1 // Resolve values for min(r=0) and max(r=1)
-      {
-        length := size.minmax[r];
-        value_px := length.value;
-        if value_px >= 0.0
-        {
-          if length.unit == {
-            case .REM; value_px *= 2.0;
-          }
-        }
-        it.minmax_dim[r].component[axis] = value_px;
-      }
+        it.minmax_dim[r].component[axis] = LengthToPx(size.minmax[r], it);
+
       // Default to maximal size (it will be decreased in later stages if overflow happens).
       it.final_dim.component[axis] = max(it.min_dim.component[axis], it.max_dim.component[axis]);
       it.final_dim.component[axis] = max(it.final_dim.component[axis], 0); // Default to 0 if both values were negative.
@@ -666,11 +695,12 @@ LayoutEnd :: (print_stuff: bool)
       {
         new_dim = parent_dim*size.percent_of_parent;
       }
-
-      if new_dim >= 0.0
+      if new_dim >= 0.0 // Store new_dim
       {
         it.final_dim.component[axis] = new_dim;
       }
+
+      // @todo padding; first remove for axis from this pass?
     }
 
     // Pass 2.
