@@ -1,12 +1,19 @@
+DUMP_TREES :: false;
 PRINT_ON_PASS :: false;
-DUMP_TREES :: true;
 
 WindowDim :: V2.{2000, 1500};
 RemSize :: 16;
 
 tests :: ()
 {
-  // TEST: Fit root & Grow child; child_layout = .LEFT_TO_RIGHT
+  tests_grow();
+  tests_fit_and_grow();
+}
+
+tests_fit_and_grow :: ()
+{
+  // TEST: Fit on parent & grow on children.
+  // Same as below but uses child_layout = .DEFAULT (.LEFT_TO_RIGHT)
   {
     LayoutBegin(WindowDim, RemSize);
     parent := CreateBox(.{layout.sizing = .{Fit(), Fit(SizeMin(Px(100)))},
@@ -34,7 +41,8 @@ tests :: ()
     CheckEQ(parent.inner_final, parent_inner);
   }
 
-  // TEST: Fit root & Grow child; child_layout = .TOP_TO_BOTTOM
+  // TEST: Fit on parent & grow on children.
+  // Same as above but uses child_layout = .TOP_TO_BOTTOM
   {
     LayoutBegin(WindowDim, RemSize);
     parent := CreateBox(.{layout.sizing = .{Fit(), Fit(SizeMin(Px(100)))},
@@ -62,6 +70,44 @@ tests :: ()
     parent_inner := V2.{max(c0_outer.x, c1_outer.x), c0_outer.y + c1_outer.y};
     CheckEQ(parent.inner_final, parent_inner);
   }
+}
+
+tests_grow :: ()
+{
+  // 3x just grow
+  {
+    LayoutBegin(WindowDim, RemSize);
+    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
+    Parent(parent);
+    child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    child1 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    LayoutEnd(DUMP_TREES);
+
+    c_inner := V2.{300, 600};
+    CheckEQ(OuterDim2(child0), c_inner);
+    CheckEQ(OuterDim2(child1), c_inner);
+    CheckEQ(OuterDim2(child2), c_inner);
+    CheckEQ(parent.inner_final, V2.{900, 600});
+  }
+
+  // 3x just grow with 1 irrelevant max constain
+  {
+    LayoutBegin(WindowDim, RemSize);
+    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
+    Parent(parent);
+    child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    child1 := CreateBox(.{layout.sizing = .{Grow(SizeMax(Px(300))), Grow()}});
+    child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    LayoutEnd(DUMP_TREES);
+
+    c_inner := V2.{300, 600};
+    CheckEQ(OuterDim2(child0), c_inner);
+    CheckEQ(OuterDim2(child1), c_inner);
+    CheckEQ(OuterDim2(child2), c_inner);
+    CheckEQ(parent.inner_final, V2.{900, 600});
+  }
+
 }
 
 //

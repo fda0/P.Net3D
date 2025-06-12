@@ -794,8 +794,8 @@ LayoutEnd :: (debug_print_tree := false)
           children_outer_dim_sum += OuterDim(child, axis);
           if child.layout.sizing.axes[axis].grow == .TRUE
           {
-            max_child_inner_dim := InnerDim(parent, axis) - PaddingDim(child, axis);
-            growable := PositiveMin(max_child_inner_dim, InnerDimMax(child, axis));
+            max_child_inner_dim := PositiveMin(InnerDim(parent, axis) - PaddingDim(child, axis), InnerDimMax(child, axis));
+            growable := max_child_inner_dim - InnerDim(child, axis);
             children_growable_sum += growable;
           }
 
@@ -829,8 +829,8 @@ LayoutEnd :: (debug_print_tree := false)
           {
             if child.layout.sizing.axes[axis].grow == .TRUE
             {
-              max_child_inner_dim := InnerDim(parent, axis) - PaddingDim(child, axis);
-              growable := PositiveMin(max_child_inner_dim, InnerDimMax(child, axis));
+              max_child_inner_dim := PositiveMin(InnerDim(parent, axis) - PaddingDim(child, axis), InnerDimMax(child, axis));
+              growable := max_child_inner_dim - InnerDim(child, axis);
               to_grow := growable * grow_ratio;
               child.inner_final.component[axis] += to_grow;
             }
