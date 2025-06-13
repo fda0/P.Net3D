@@ -787,21 +787,21 @@ LayoutEnd :: (debug_print_tree := false)
       // 1. Calculate size from children (fit).
       if size.fit_children == .TRUE
       {
-        children_outer_dim: float;
+        children_outer_dim_sum: float;
         if AxisMatchesLayoutDirection(axis, direction)
         {
-          for :Siblings child: it.first
+          for :Siblings child, child_index: it.first
           {
-            children_outer_dim += OuterDim(child, axis);
-
+            if child_index > 0 then children_outer_dim_sum += it.child_gap;
+            children_outer_dim_sum += OuterDim(child, axis);
           }
         }
         else
         {
           for :Siblings child: it.first
-            children_outer_dim = max(children_outer_dim, OuterDim(child, axis));
+            children_outer_dim_sum = max(children_outer_dim_sum, OuterDim(child, axis));
         }
-        it.inner_final.component[axis] = children_outer_dim;
+        it.inner_final.component[axis] = children_outer_dim_sum;
       }
 
       // 2. Clamp inner_final to inner_min and inner_max.
@@ -824,9 +824,11 @@ LayoutEnd :: (debug_print_tree := false)
         children_growable_sum := 0.0;
         children_shrinkable_sum := 0.0;
 
-        for :Siblings child: parent.first
+        for :Siblings child, child_index: parent.first
         {
+          if child_index > 0 then children_outer_dim_sum += parent.child_gap;
           children_outer_dim_sum += OuterDim(child, axis);
+
           if child.layout.sizing.axes[axis].grow == .TRUE
           {
             max_child_inner_dim := PositiveMin(InnerDim(parent, axis) - PaddingDim(child, axis), InnerDimMax(child, axis));
@@ -911,8 +913,9 @@ LayoutEnd :: (debug_print_tree := false)
         // Set base relative positions
         {
           offset := PaddingLower(parent, axis);
-          for :Siblings child: parent.first
+          for :Siblings child, child_index: parent.first
           {
+            if child_index > 0 then offset += parent.child_gap;
             child.rel_p.component[axis] = offset;
             offset += OuterDim(child, axis);
           }
@@ -922,8 +925,9 @@ LayoutEnd :: (debug_print_tree := false)
         if align_shift_ratio > 0.0
         {
           children_outer_dim_sum := 0.0;
-          for :Siblings child: parent.first
+          for :Siblings child, child_index: parent.first
           {
+            if child_index > 0 then children_outer_dim_sum += parent.child_gap;
             children_outer_dim_sum += OuterDim(child, axis);
           }
           free_space := InnerDim(parent, axis) - children_outer_dim_sum;

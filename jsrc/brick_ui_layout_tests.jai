@@ -8,6 +8,7 @@ tests :: ()
 {
   tests_grow();
   tests_fit_and_grow();
+  tests_child_gap();
 }
 
 tests_fit_and_grow :: ()
@@ -158,7 +159,33 @@ tests_grow :: ()
     CheckEQ(OuterDim2(child2), c02_inner);
     CheckEQ(parent.inner_final, V2.{900, 600});
   }
+}
 
+tests_child_gap :: ()
+{
+  // Test if child gap is applied between 3 children.
+  {
+    LayoutBegin(WindowDim, RemSize);
+    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))},
+                          layout.child_gap = Px(40)}).box;
+    Parent(parent);
+    child0 := CreateBox(.{layout.sizing = .{Size(Px(100)), Grow()}});
+    child1 := CreateBox(.{layout.sizing = .{Size(Px(200)), Grow()},
+                          layout.padding = Padding_All(Px(15))});
+    child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
+    LayoutEnd(DUMP_TREES);
+
+    gap := 40.0;
+    pad1 := 15.0;
+    CheckEQ(InnerDim2(child0), V2.{100, 600});
+    CheckEQ(InnerDim2(child1), V2.{200, 600 - pad1*2});
+    CheckEQ(InnerDim2(child2), V2.{900 - (100+200 + pad1*2 + gap*2), 600});
+    CheckEQ(parent.inner_final, V2.{900, 600});
+
+    CheckEQ(child0.abs_p, V2.{0, 0});
+    CheckEQ(child1.abs_p, V2.{100 + gap, 0});
+    CheckEQ(child2.abs_p, V2.{100+200 + pad1*2 + gap*2, 0});
+  }
 }
 
 //
