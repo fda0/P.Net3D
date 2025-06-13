@@ -1,3 +1,7 @@
+#scope_file
+using Layout;
+#scope_export;
+
 UI_Init :: ()
 {
   SetMeasureTextCallback(UI_MeasureText);
@@ -43,6 +47,3 @@ UI_FinishFrame :: ()
       UI_DrawRaw(shape);
   }
 }
-
-#scope_file
-using Layout;

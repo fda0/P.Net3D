@@ -5,6 +5,8 @@ UI_State :: struct
     show := true;
     win_p: V2;
     win_dim: V2;
+
+    check_tests: [4] bool;
   };
 };
 
@@ -21,14 +23,17 @@ UI_ORANGE2   :: #run Color32_RGBi(0xfe, 0x80, 0x19);
 UI_BG        :: #run Color32_RGBi(40, 40, 40);
 UI_FG        :: #run Color32_RGBi(235, 219, 178);
 UI_BORDER_BG :: #run Color32_RGBi(29, 32, 33);
+UI_BUTTON_BG :: #run Color32_RGBi(80, 73, 69);
+UI_BUTTON_HOVER_BG :: #run Color32_RGBi(102, 92, 84);
 UI_SHADOW    :: #run Color32_RGBAi(29, 32, 33, 96);
 UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
-UI_RADIUS :: #run CornerRadius_All(Px(3));
-UI_BORDER_WIDTH :: #run BorderWidths_Sides(Px(1));
+UI_RADIUS :: #run RadiusAll(Px(3));
+UI_BORDER_WIDTH :: #run BorderOutside(Px(1));
 UI_BAR_PAD :: #run Padding_All(Rem(0.2));
 UI_WINDOW_GAP :: #run Rem(0.5);
 UI_WINDOW_PAD :: #run Padding_All(UI_WINDOW_GAP);
+UI_BUTTON_PAD :: #run Padding.{UI_WINDOW_GAP, UI_WINDOW_GAP, UI_WINDOW_GAP*0.5, UI_WINDOW_GAP*0.5};
 
 UI_BuildDeveloperWindow :: ()
 {
@@ -99,12 +104,32 @@ UI_BuildDeveloperWindow :: ()
         CreateText(tprint("Camera angles: %", G.camera_angles));
       }
 
-      CreateText("Noclip camera");
-      CreateText("Sun camera");
-      CreateText("Draw model collision");
-      CreateText("Render normals");
+      UI_Checkbox("Noclip camera", *check_tests[0]);
+      UI_Checkbox("Sun camera", *check_tests[1]);
+      UI_Checkbox("Draw model collision", *check_tests[2]);
+      UI_Checkbox("Render normals", *check_tests[3]);
     }
   }
+}
+
+// UI element library
+UI_Checkbox :: (label: string, checkbox_value: *bool)
+{
+  button := CreateBox(.{layout = .{sizing = .{Grow(), Fit()},
+                                   padding = UI_BUTTON_PAD,
+                                   child_align.y = .CENTER,
+                                   child_gap = UI_WINDOW_GAP}});
+  Parent(button);
+
+  if button.flags & .CLICK
+    checkbox_value.* = !checkbox_value.*;
+
+  CreateBox(.{layout = .{sizing = Size2(Rem(2)),
+                         child_align = .{x = .CENTER, y = .CENTER}},
+              bg_color = ifx checkbox_value.* then UI_YELLOW1 else UI_BUTTON_BG,
+              border = .{color = UI_FG, widths = UI_BORDER_WIDTH},
+              corner_radius = UI_RADIUS});
+  CreateText(label);
 }
 
 Layout :: #import,file "brick_ui_layout.jai"(Color=Color32);

@@ -69,6 +69,11 @@ Length2 :: struct
 Px  :: (v: V2) -> Length2 { return .{Px(v.x), Px(v.y)}; }
 Rem :: (v: V2) -> Length2 { return .{Rem(v.x), Rem(v.y)}; }
 
+operator * :: (length: Length, scale: float) -> Length #symmetric
+{
+  return .{length.unit, length.value * scale};
+}
+
 BoxSize :: struct
 {
   min: Length;
@@ -176,15 +181,15 @@ CornerRadius :: struct
 {
   top_left, top_right, bottom_left, bottom_right: Length;
 };
-CornerRadius_All :: (r: Length) -> CornerRadius { return .{r, r, r, r}; }
+RadiusAll :: (r: Length) -> CornerRadius { return .{r, r, r, r}; }
 
 BorderWidths :: struct
 {
   left, right, top, bottom: Length;
   between_children: Length;
 };
-BorderWidths_All   :: (w: Length) -> BorderWidths { return .{w,w,w,w, w}; }
-BorderWidths_Sides :: (w: Length) -> BorderWidths { return .{w,w,w,w, .{}}; }
+BorderAll     :: (w: Length) -> BorderWidths { return .{w,w,w,w, w}; }
+BorderOutside :: (w: Length) -> BorderWidths { return .{w,w,w,w, .{}}; }
 
 Padding :: struct
 {
@@ -328,7 +333,7 @@ PopParent :: (value: *Box)
   using layout_state;
   parents_count -= 1;
 }
-PeekParent :: () -> *Box
+ActiveParent :: () -> *Box
 {
   using layout_state;
   if parents_count > 0 && parents_count <= parents.count
@@ -473,7 +478,7 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box :
 
   // links
   LinkToNil(box);
-  box.parent = PeekParent();
+  box.parent = ActiveParent();
   if !IsNil(box.parent)
   {
     if IsNil(box.parent.first)
