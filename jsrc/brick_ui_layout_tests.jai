@@ -1,4 +1,4 @@
-DUMP_TREES :: false;
+DUMP_TREE :: false;
 PRINT_ON_PASS :: false;
 
 WindowDim :: V2.{2000, 1500};
@@ -24,7 +24,7 @@ tests_fit_and_grow :: ()
                           layout.padding = Padding_All(Px(10))});
     child1 := CreateBox(.{layout.sizing = .{Grow(), Grow()},
                           layout.padding = .{Px(11), Px(12), Px(13), Px(14)}});
-    LayoutEnd(DUMP_TREES);
+    LayoutEnd(DUMP_TREE);
 
     c0_padding := V2.{10+10, 10+10};
     c0_inner := V2.{10, 15};
@@ -54,7 +54,7 @@ tests_fit_and_grow :: ()
                           layout.padding = Padding_All(Px(10))});
     child1 := CreateBox(.{layout.sizing = .{Grow(), Grow()},
                           layout.padding = .{Px(11), Px(12), Px(13), Px(14)}});
-    LayoutEnd(DUMP_TREES);
+    LayoutEnd(DUMP_TREE);
 
     c0_padding := V2.{10+10, 10+10};
     c0_inner := V2.{10, 15};
@@ -83,7 +83,7 @@ tests_grow :: ()
     child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
     child1 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
     child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
-    LayoutEnd(DUMP_TREES);
+    LayoutEnd(DUMP_TREE);
 
     c_inner := V2.{300, 600};
     CheckEQ(OuterDim2(child0), c_inner);
@@ -100,7 +100,7 @@ tests_grow :: ()
     child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
     child1 := CreateBox(.{layout.sizing = .{Grow(SizeMax(Px(300))), Grow()}});
     child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
-    LayoutEnd(DUMP_TREES);
+    LayoutEnd(DUMP_TREE);
 
     c_inner := V2.{300, 600};
     CheckEQ(OuterDim2(child0), c_inner);
@@ -118,7 +118,7 @@ tests_grow :: ()
     child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
     child1 := CreateBox(.{layout.sizing = .{Grow(SizeMax(Px(600))), Grow()}});
     child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
-    LayoutEnd(DUMP_TREES);
+    LayoutEnd(DUMP_TREE);
 
     c1_inner := V2.{600, 600};
     c02_inner := V2.{150, 600};
@@ -150,7 +150,7 @@ tests_grow :: ()
     child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
     child1 := CreateBox(.{layout.sizing = .{Grow(SizeMin(Px(300))), Grow()}});
     child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
-    LayoutEnd(DUMP_TREES);
+    LayoutEnd(DUMP_TREE);
 
     c1_inner := V2.{450, 600};
     c02_inner := V2.{225, 600};
@@ -173,7 +173,7 @@ tests_child_gap :: ()
     child1 := CreateBox(.{layout.sizing = .{Size(Px(200)), Grow()},
                           layout.padding = Padding_All(Px(15))});
     child2 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
-    LayoutEnd(DUMP_TREES);
+    LayoutEnd(DUMP_TREE);
 
     gap := 40.0;
     pad1 := 15.0;
