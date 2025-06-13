@@ -59,11 +59,11 @@ UI_BuildDeveloperWindow :: ()
 
   // Window bar
   {
-    window_bar := Parent(CreateBox(.{layout = .{sizing = .{width = Grow(), height = Fit()},
-                                                padding = UI_BAR_PAD,
-                                                child_align.x = .CENTER},
-                                     bg_color = UI_ORANGE2,
-                                     corner_radius = UI_RADIUS}));
+    window_bar := Signal(Parent(CreateBox(.{layout = .{sizing = .{width = Grow(), height = Fit()},
+                                                       padding = UI_BAR_PAD,
+                                                       child_align.x = .CENTER},
+                                            bg_color = UI_ORANGE2,
+                                            corner_radius = UI_RADIUS})));
     if window_bar.flags & .DRAG  win_p += G.mouse_delta;
     else                         win_p = clamped_win_p;
 
@@ -115,10 +115,10 @@ UI_BuildDeveloperWindow :: ()
 // UI element library
 UI_Checkbox :: (label: string, checkbox_value: *bool)
 {
-  button := CreateBox(.{layout = .{sizing = .{Grow(), Fit()},
-                                   padding = UI_BUTTON_PAD,
-                                   child_align.y = .CENTER,
-                                   child_gap = UI_WINDOW_GAP}});
+  button := Signal(CreateBox(.{layout = .{sizing = .{Grow(), Fit()},
+                                          padding = UI_BUTTON_PAD,
+                                          child_align.y = .CENTER,
+                                          child_gap = UI_WINDOW_GAP}}));
   Parent(button);
 
   if button.flags & .CLICK

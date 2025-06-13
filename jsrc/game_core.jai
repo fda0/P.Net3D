@@ -72,7 +72,6 @@ GAME_Init :: ()
     GPU_BATCH_Init();
     ASSET_Init();
     FONT_Init();
-    UI_Init();
     UI_ClearRenderCounters();
   }
 

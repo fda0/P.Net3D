@@ -297,30 +297,31 @@ Box :: struct
   abs_p: V2; // offset from 0,0 of root box
 };
 
-SignalFlags :: enum_flags u32
-{
-  CLICK; DOUBLE_CLICK; TRIPLE_CLICK;
-  RIGHT_CLICK; RIGHT_DOUBLE_CLICK; RIGHT_TRIPLE_CLICK;
-  DRAG;
-};
-
-Signal :: struct
+BoxSignal :: struct
 {
   using #as box: *Box;
-  flags: SignalFlags;
+  flags: Flags;
+
+  Flags :: enum_flags u32
+  {
+    CLICK; DOUBLE_CLICK; TRIPLE_CLICK;
+    RIGHT_CLICK; RIGHT_DOUBLE_CLICK; RIGHT_TRIPLE_CLICK;
+    DRAG;
+  };
 };
+
+Signal :: (box: *Box) -> BoxSignal
+{
+  signal := BoxSignal.{box = box};
+  // @todo @impl Input logic here.
+  return signal;
+}
 
 Parent :: (box: *Box) -> *Box #expand
 {
   PushParent(box);
   `defer PopParent(box);
   return box;
-}
-Parent :: (signal: Signal) -> Signal #expand
-{
-  PushParent(signal.box);
-  `defer PopParent(signal.box);
-  return signal;
 }
 PushParent :: (value: *Box)
 {
@@ -431,14 +432,15 @@ ActiveLayers :: () -> [] BoxSpec
 
 RemToPx :: (scale := 1.0) -> float
 {
-  using layout_state;
-  return scale*rem_to_px;
+  using layout_state.layout_spec;
+  return scale * rem_to_px;
 }
 
 // @todo spec vs to_merge_spec distincton is a bit lame...
 // Polish the design to a point where these concepts can be merged.
-CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc := #caller_location) -> Signal
+CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc := #caller_location) -> *Box
 {
+
   merged := spec;
   if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
   merged = Merge(merged, ..ActiveLayers(), reverse=true);
@@ -446,8 +448,9 @@ CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc 
   if text.count then merged.text.str = text;
 
   {
+    using layout_state;
     using merged.text;
-    if font_size < 0.0 then font_size = layout_state.rem_to_px;
+    if font_size < 0.0 then font_size = layout_spec.rem_to_px;
 
     using merged.layout.sizing;
     if width.measure_text  == .DEFAULT then width.measure_text  = .TRUE;
@@ -457,7 +460,7 @@ CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc 
   return CreateBoxDirect(merged, loc);
 }
 
-CreateBox :: (spec: BoxSpec, to_merge_specs: ..BoxSpec, loc := #caller_location) -> Signal
+CreateBox :: (spec: BoxSpec, to_merge_specs: ..BoxSpec, loc := #caller_location) -> *Box
 {
   merged := spec;
   if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
@@ -465,7 +468,7 @@ CreateBox :: (spec: BoxSpec, to_merge_specs: ..BoxSpec, loc := #caller_location)
   return CreateBoxDirect(merged, loc);
 }
 
-CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box := false) -> Signal
+CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box := false) -> *Box
 {
   spec := source_spec;
   if !spec.key  spec.key = CreateKey(loc);
@@ -514,9 +517,7 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box :
     // @impl copy some state from prev_box
   }
 
-  signal: Signal;
-  signal.box = box;
-  return signal;
+  return box;
 }
 
 BoxesArray :: (which: enum {CURRENT; PREVIOUS;}) -> *[..] Box
@@ -540,7 +541,7 @@ IsNil :: (box: *Box) -> bool { return !box || box == *layout_state.nil_box; }
 
 LengthToPx :: (length: Length, owner_box: *Box, clamp_at_zero: bool) -> float
 {
-  using layout_state;
+  using layout_state.layout_spec;
   value := length.value;
   if clamp_at_zero then value = max(value, 0.0);
 
@@ -584,6 +585,8 @@ RenderCommand :: struct
 
 LayoutState :: struct
 {
+  layout_spec: LayoutSpec;
+
   boxes_created_on_this_layout: s32;
 
   // Double-buffer system.
@@ -598,9 +601,6 @@ LayoutState :: struct
 
   render_commands: [..] RenderCommand;
 
-  measure_text_callback := MeasureTextStub;
-  rem_to_px: float;
-
   layers: [MAX_NESTING] BoxSpec;
   layers_count: s64;
 
@@ -614,22 +614,31 @@ MeasureTextParams :: struct
   text: string;
   font: s32;
   font_size: float;
-  flags: enum_flags u8
-  {
-    MEASURE_X;
-    MEASURE_Y;
-  };
 };
 MeasureTextStub :: (params: MeasureTextParams) -> Vector2 { return .{}; }
 
-SetMeasureTextCallback :: (callback: #type (params: MeasureTextParams) -> Vector2)
+LayoutSpec :: struct
 {
-  layout_state.measure_text_callback = callback;
-}
+  root_dim_px: V2;
+  rem_to_px: float;
+  measure_text_callback := MeasureTextStub;
 
-LayoutBegin :: (root_dimensions_in_pixels: V2, set_rem_to_px: float)
+  mouse_p: V2;
+  mouse_is_down_buttons: [3] ButtonState;
+  MouseButtons :: enum u8 { LEFT; MIDDLE; RIGHT; };
+  ButtonState  :: enum_flags u8
+  {
+    HELD;
+    PRESSED; DOUBLE_PRESSED; TRIPLE_PRESSED;
+    RELEASED;
+  };
+};
+
+LayoutBegin :: (spec: LayoutSpec)
 {
   using layout_state;
+  layout_spec = spec;
+
   current_boxes_index = xx !current_boxes_index;
   array_reset_keeping_memory(BoxesArray(.CURRENT));
 
@@ -638,12 +647,10 @@ LayoutBegin :: (root_dimensions_in_pixels: V2, set_rem_to_px: float)
 
   array_reset_keeping_memory(*render_commands);
 
-  rem_to_px = set_rem_to_px;
-
   parents_count = 0;
   layers_count = 0;
 
-  root_box = CreateBox(.{layout = .{sizing = Size2(Px(root_dimensions_in_pixels))}}).box;
+  root_box = CreateBox(.{layout = .{sizing = Size2(Px(layout_spec.root_dim_px))}});
   PushParent(root_box);
 }
 
@@ -735,7 +742,7 @@ LayoutEnd :: (debug_print_tree := false)
         font = text.font,
         font_size = text.font_size,
       };
-      text_measurement = measure_text_callback(params);
+      text_measurement = layout_spec.measure_text_callback(params);
     }
 
     // Due to how data is organized it's not easy to "simd" it using Vector2.

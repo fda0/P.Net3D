@@ -1,8 +1,10 @@
 DUMP_TREE :: false;
 PRINT_ON_PASS :: false;
 
-WindowDim :: V2.{2000, 1500};
-RemSize :: 16;
+DefaultLayoutSpec :: LayoutSpec.{
+  root_dim_px = V2.{2000, 1500},
+  rem_to_px = 16,
+};
 
 tests :: ()
 {
@@ -16,9 +18,9 @@ tests_fit_and_grow :: ()
   // TEST: Fit on parent & grow on children.
   // Same as below but uses direction = .DEFAULT (.LEFT_TO_RIGHT)
   {
-    LayoutBegin(WindowDim, RemSize);
+    LayoutBegin(DefaultLayoutSpec);
     parent := CreateBox(.{layout.sizing = .{Fit(), Fit(SizeMin(Px(100)))},
-                          layout.padding = Padding_All(Px(3))}).box;
+                          layout.padding = Padding_All(Px(3))});
     Parent(parent);
     child0 := CreateBox(.{layout.sizing = .{Size(Px(10)), Size(Px(15))},
                           layout.padding = Padding_All(Px(10))});
@@ -45,10 +47,10 @@ tests_fit_and_grow :: ()
   // TEST: Fit on parent & grow on children.
   // Same as above but uses direction = .TOP_TO_BOTTOM
   {
-    LayoutBegin(WindowDim, RemSize);
+    LayoutBegin(DefaultLayoutSpec);
     parent := CreateBox(.{layout.sizing = .{Fit(), Fit(SizeMin(Px(100)))},
                           layout.padding = Padding_All(Px(3)),
-                          layout.direction = .TOP_TO_BOTTOM}).box;
+                          layout.direction = .TOP_TO_BOTTOM});
     Parent(parent);
     child0 := CreateBox(.{layout.sizing = .{Size(Px(10)), Size(Px(15))},
                           layout.padding = Padding_All(Px(10))});
@@ -77,8 +79,8 @@ tests_grow :: ()
 {
   // 3x just grow.
   {
-    LayoutBegin(WindowDim, RemSize);
-    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
+    LayoutBegin(DefaultLayoutSpec);
+    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}});
     Parent(parent);
     child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
     child1 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
@@ -94,8 +96,8 @@ tests_grow :: ()
 
   // 3x grow with 1 max size contrain - should be indentical to above.
   {
-    LayoutBegin(WindowDim, RemSize);
-    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
+    LayoutBegin(DefaultLayoutSpec);
+    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}});
     Parent(parent);
     child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
     child1 := CreateBox(.{layout.sizing = .{Grow(SizeMax(Px(300))), Grow()}});
@@ -112,8 +114,8 @@ tests_grow :: ()
   // 3x grow with 1 max size contrain.
   // Middle box (child1) will be initialized with its max size; it's siblings will get what's left.
   {
-    LayoutBegin(WindowDim, RemSize);
-    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
+    LayoutBegin(DefaultLayoutSpec);
+    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}});
     Parent(parent);
     child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
     child1 := CreateBox(.{layout.sizing = .{Grow(SizeMax(Px(600))), Grow()}});
@@ -144,8 +146,8 @@ tests_grow :: ()
   // child1_new_dim -> 300 + 150 -> 450
   // child2_new_dim ->   0 + 225 -> 225
   {
-    LayoutBegin(WindowDim, RemSize);
-    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}}).box;
+    LayoutBegin(DefaultLayoutSpec);
+    parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))}});
     Parent(parent);
     child0 := CreateBox(.{layout.sizing = .{Grow(), Grow()}});
     child1 := CreateBox(.{layout.sizing = .{Grow(SizeMin(Px(300))), Grow()}});
@@ -165,9 +167,9 @@ tests_child_gap :: ()
 {
   // Test if child gap is applied between 3 children.
   {
-    LayoutBegin(WindowDim, RemSize);
+    LayoutBegin(DefaultLayoutSpec);
     parent := CreateBox(.{layout.sizing = .{Size(Px(900)), Size(Px(600))},
-                          layout.child_gap = Px(40)}).box;
+                          layout.child_gap = Px(40)});
     Parent(parent);
     child0 := CreateBox(.{layout.sizing = .{Size(Px(100)), Grow()}});
     child1 := CreateBox(.{layout.sizing = .{Size(Px(200)), Grow()},

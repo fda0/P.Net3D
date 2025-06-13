@@ -2,14 +2,14 @@
 using Layout;
 #scope_export;
 
-UI_Init :: ()
-{
-  SetMeasureTextCallback(UI_MeasureText);
-}
-
 UI_StartFrame :: ()
 {
-  LayoutBegin(G.window_dim, 12.0 + 2.0 * floor(G.window_dim.y / 256.0));
+  layout_spec := LayoutSpec.{
+    root_dim_px = G.window_dim,
+    rem_to_px = 12.0 + 2.0 * floor(G.window_dim.y / 256.0),
+    measure_text_callback = UI_MeasureText,
+  };
+  LayoutBegin(layout_spec);
 }
 
 UI_FinishFrame :: ()

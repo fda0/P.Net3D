@@ -13,11 +13,12 @@ KEY_Code :: enum u32
   // D :: SDL_SCANCODE_D;
 };
 
-KEY_Flags :: enum_flags u32
+KEY_Flags :: enum_flags u8
 {
   HELD;
   PRESSED;
   RELEASED;
+  // @todo DOUBLE_PRESSED, TRIPLE_PRESSED
 }
 
 Key :: struct
