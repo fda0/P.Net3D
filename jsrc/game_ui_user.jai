@@ -124,9 +124,12 @@ UI_Checkbox :: (label: string, checkbox_value: *bool)
   if button.flags & .CLICK
     checkbox_value.* = !checkbox_value.*;
 
+  // bg_color := ifx checkbox_value.* then UI_YELLOW1 else UI_BUTTON_BG;
+  bg_color := ifx button.flags & .HOVER then UI_YELLOW1 else UI_BUTTON_BG;
+
   CreateBox(.{layout = .{sizing = Size2(Rem(2)),
                          child_align = .{x = .CENTER, y = .CENTER}},
-              bg_color = ifx checkbox_value.* then UI_YELLOW1 else UI_BUTTON_BG,
+              bg_color = bg_color,
               border = .{color = UI_FG, widths = UI_BORDER_WIDTH},
               corner_radius = UI_RADIUS});
   CreateText(label);

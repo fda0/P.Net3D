@@ -4,10 +4,17 @@ using Layout;
 
 UI_StartFrame :: ()
 {
+  mouse_left: LayoutSpec.ButtonFlags;
+  if KEY_Held(.MouseLeft) then mouse_left |= .HELD;
+  if KEY_Pressed(.MouseLeft)  then mouse_left |= .PRESSED;
+  if KEY_Released(.MouseLeft) then mouse_left |= .RELEASED;
+
   layout_spec := LayoutSpec.{
     root_dim_px = G.window_dim,
     rem_to_px = 12.0 + 2.0 * floor(G.window_dim.y / 256.0),
     measure_text_callback = UI_MeasureText,
+    mouse = G.mouse,
+    buttons[0] = mouse_left,
   };
   LayoutBegin(layout_spec);
 }

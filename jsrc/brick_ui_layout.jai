@@ -2,11 +2,18 @@
   Color: Type = u32,
   V2: Type = Vector2,
   HashLocFunc := DefaultHashLocFunc,
+  HashStringFunc := DefaultHashStringFunc,
   MAX_NESTING := 512)
 {
+  Hash :: #import "Hash";
+  DefaultHashStringFunc :: (s: string) -> u64
+  {
+    h := Hash.fnv1a_hash(s.data, s.count);
+    return h;
+  }
+
   DefaultHashLocFunc :: (loc: Source_Code_Location) -> u64
   {
-    Hash :: #import "Hash";
     h := Hash.fnv1a_hash(loc.fully_pathed_filename.data, loc.fully_pathed_filename.count);
     h  = Hash.fnv1a_hash(xx,no_check loc.line_number, h);
     h  = Hash.fnv1a_hash(xx,no_check loc.character_number, h);
@@ -165,16 +172,15 @@ operator ! :: (a: BoxKey) -> bool { return !a.hash; }
 
 CreateKey :: (loc: Source_Code_Location) -> BoxKey
 {
-  hash := HashLocFunc(loc);
+  h := HashLocFunc(loc);
   key := BoxKey.{hash};
   return key;
 }
 
 CreateKey :: (text: string) -> BoxKey
 {
-  hash := Hash64Any(text);
-  key := BoxKey.{hash};
-  return key;
+  h := HashStringFunc(text);
+  return BoxKey.{h};
 }
 
 CornerRadius :: struct
@@ -276,6 +282,7 @@ Box :: struct
   using spec: BoxSpec;
   next, prev, first, last, parent: *Box;
   loc: Source_Code_Location; // creation loc
+  old: *Box; // Pointer to this Box from previous frame. Otherwise should point to nil_box.
 
   // in pixels
   inner_min: V2 = .{-1, -1};
@@ -304,6 +311,7 @@ BoxSignal :: struct
 
   Flags :: enum_flags u32
   {
+    OVERLAPS; HOVER;
     CLICK; DOUBLE_CLICK; TRIPLE_CLICK;
     RIGHT_CLICK; RIGHT_DOUBLE_CLICK; RIGHT_TRIPLE_CLICK;
     DRAG;
@@ -312,8 +320,33 @@ BoxSignal :: struct
 
 Signal :: (box: *Box) -> BoxSignal
 {
+  using layout_state.layout_spec;
+  using ButtonType;
+  using ButtonFlags;
+  using BoxSignal.Flags;
+  // @todo See if things like 2 boxes catching the same click,
+  //       floating boxes and their Z-order etc are a problem to be solved.
+
   signal := BoxSignal.{box = box};
-  // @todo @impl Input logic here.
+  mouse_overlaps_box := false;
+
+  if !IsNil(box.old)
+  {
+    box_min := box.old.abs_p;
+    box_max := box_min + OuterDim2(box.old);
+
+    mouse_overlaps_box = (mouse.x >= box_min.x && mouse.x < box_max.x &&
+                          mouse.y >= box_min.y && mouse.y < box_max.y);
+  }
+
+  if mouse_overlaps_box
+  {
+    signal.flags |= .OVERLAPS;
+    signal.flags |= .HOVER;
+    signal.flags |= ifx buttons[MOUSE_LEFT]  & PRESSED then CLICK else 0;
+    signal.flags |= ifx buttons[MOUSE_RIGHT] & PRESSED then RIGHT_CLICK else 0;
+  }
+
   return signal;
 }
 
@@ -468,11 +501,41 @@ CreateBox :: (spec: BoxSpec, to_merge_specs: ..BoxSpec, loc := #caller_location)
   return CreateBoxDirect(merged, loc);
 }
 
-CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box := false) -> *Box
+FindBox :: (key: BoxKey, target := BoxerArrayTarget.CURRENT) -> *Box
+{
+  // @speed accelerate using hash table or something
+  result := *layout_state.nil_box;
+  array := BoxesArray(target);
+  for * array.*
+  {
+    if it.key == key
+    {
+      result = it;
+      break;
+    }
+  }
+  return result;
+}
+
+CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location) -> *Box
 {
   spec := source_spec;
-  if !spec.key  spec.key = CreateKey(loc);
-  if spec.text.str then spec.text.str = copy_temporary_string(spec.text.str);
+  if !spec.key
+  {
+    // spec.key = CreateKey(loc);
+    stack_trace_string := get_stack_trace_string(context.stack_trace,, temp);
+    spec.key = CreateKey(stack_trace_string);
+  }
+  if spec.text.str then spec.text.str = copy_temporary_string(spec.text.str); // @todo This should live in some double-buffered array in layout_state
+
+  // check for collision
+  {
+    check := FindBox(spec.key);
+    if !IsNil(check)
+    {
+      log_error("brick_ui_layout - Found BoxKey collision when creating a new box. Collided on key: %. Tried to create a box from: %. Collided with box from: %.", spec.key, loc, check.loc);
+    }
+  }
 
   layout_state.boxes_created_on_this_layout += 1;
 
@@ -498,29 +561,15 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location, is_root_box :
     }
   }
 
-  // Find prev_box
-  prev_box: *Box;
-  {
-    prev_boxes := BoxesArray(.PREVIOUS);
-    for * prev_boxes.*
-    {
-      if it.key == box.key
-      {
-        prev_box = it;
-        break;
-      }
-    }
-  }
-
-  if prev_box
-  {
-    // @impl copy some state from prev_box
-  }
+  // Find old (from previous frame) box
+  box.old = FindBox(box.key, .OLD); // will be equal to nil_box if not found
 
   return box;
 }
 
-BoxesArray :: (which: enum {CURRENT; PREVIOUS;}) -> *[..] Box
+BoxerArrayTarget :: enum u8 {CURRENT; OLD;};
+
+BoxesArray :: (which: BoxerArrayTarget) -> *[..] Box
 {
   using layout_state;
   index := ifx which == .CURRENT then current_boxes_index else xx !current_boxes_index;
@@ -606,6 +655,8 @@ LayoutState :: struct
 
   parents: [MAX_NESTING] *Box; // @todo make this dynamic? Or no?
   parents_count: s64;
+
+  debug := false; // @todo remove
 };
 layout_state: LayoutState; // @todo allow user to create a layout_state and to attach it to context instead of using a global variable
 
@@ -617,16 +668,21 @@ MeasureTextParams :: struct
 };
 MeasureTextStub :: (params: MeasureTextParams) -> Vector2 { return .{}; }
 
+
+
 LayoutSpec :: struct
 {
   root_dim_px: V2;
   rem_to_px: float;
   measure_text_callback := MeasureTextStub;
 
-  mouse_p: V2;
-  mouse_is_down_buttons: [3] ButtonState;
-  MouseButtons :: enum u8 { LEFT; MIDDLE; RIGHT; };
-  ButtonState  :: enum_flags u8
+  // @todo A second pass on input is needed - best done in the future when keyboard support is added.
+  // Or should keyboard support be left outside of layout library? Not sure.
+  mouse: V2;
+  buttons: [3] ButtonFlags;
+
+  ButtonType :: enum u8 { MOUSE_LEFT; MOUSE_MIDDLE; MOUSE_RIGHT; };
+  ButtonFlags  :: enum_flags u8
   {
     HELD;
     PRESSED; DOUBLE_PRESSED; TRIPLE_PRESSED;
@@ -639,11 +695,17 @@ LayoutBegin :: (spec: LayoutSpec)
   using layout_state;
   layout_spec = spec;
 
+  nil_box = .{};
+  LinkToNil(*nil_box);
+
   current_boxes_index = xx !current_boxes_index;
   array_reset_keeping_memory(BoxesArray(.CURRENT));
 
-  nil_box = .{};
-  LinkToNil(*nil_box);
+  old_boxes := BoxesArray(.OLD);
+  for * old_boxes.*
+  {
+    it.old = *nil_box;
+  }
 
   array_reset_keeping_memory(*render_commands);
 
@@ -688,6 +750,7 @@ InnerDim2 :: (box: *Box) -> V2 #expand #no_debug {
 LayoutEnd :: (debug_print_tree := false)
 {
   using layout_state;
+  debug = debug_print_tree;
 
   // Validate that nil_box wasn't modified.
   // This wouldn't be needed if one could use read_only memory in jai for nil_box.
@@ -705,8 +768,6 @@ LayoutEnd :: (debug_print_tree := false)
       LinkToNil(*nil_box);
     }
   }
-
-
 
   // - SIZING PASS 1 -
   // Steps:
