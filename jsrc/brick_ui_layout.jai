@@ -291,6 +291,7 @@ Box :: struct
       #place lower; ends: [2] float;
     };
   };
+  child_gap: float;
 
   rel_p: V2; // offset from outer dimensions of parent
   abs_p: V2; // offset from 0,0 of root box
@@ -698,55 +699,69 @@ LayoutEnd :: (debug_print_tree := false)
     }
   }
 
-  for axis: Axis2.X .. Axis2.Y
+
+
+  // - SIZING PASS 1 -
+  // Steps:
+  //   1. Calculate standalone sizes (px, rem, text).
+  //   2. Calculate values for measure_text, percent_of_parent, grow (+ temp value for fit_children).
+  //   3. Calculate padding.
+  //   4. Calculate child gap.
+  for :TreeBreadthFirst root_box
   {
-    // - SIZING PASS 1 -
-    // Steps:
-    //   1. Calculate standalone sizes (px, rem, text).
-    //   2. Calculate values for measure_text, percent_of_parent, grow (+ temp value for fit_children).
-    //   3. Calculate padding.
-    for :TreeBreadthFirst root_box
+    using it.spec;
+    using it.spec.layout;
+
+    // 1. Calculate standalone sizes (px, rem, text)
+    it.inner_min.component[Axis2.X] = LengthToPx(sizing.width.min, it, false);
+    it.inner_max.component[Axis2.X] = LengthToPx(sizing.width.max, it, false);
+    it.inner_min.component[Axis2.Y] = LengthToPx(sizing.height.min, it, false);
+    it.inner_max.component[Axis2.Y] = LengthToPx(sizing.height.max, it, false);
+
+    // Default to maximal size (it will be decreased in later stages if overflow happens).
+    it.inner_final = max(it.inner_min, it.inner_max);
+    it.inner_final = max(it.inner_final, V2.{0, 0}); // Default to 0 if both values were negative.
+
+    // 2. Calculate values for measure_text, percent_of_parent, grow (+ temp value for fit_children).
+    new_dim := V2.{-1.0, -1.0};
+    parent_dim := it.parent.inner_final;
+
+    // Prepare text_measurement ahead of time to not call it twice per axis.
+    text_measurement: V2;
+    if sizing.width.measure_text == .TRUE || sizing.height.measure_text == .TRUE
     {
-      using it.spec;
-      using it.spec.layout;
+      params := MeasureTextParams.{
+        text = text.str,
+        font = text.font,
+        font_size = text.font_size,
+      };
+      text_measurement = measure_text_callback(params);
+    }
+
+    // Due to how data is organized it's not easy to "simd" it using Vector2.
+    // This could be improved in the future but it's fine for now.
+    // We can just do a layout one axis at a time.
+    for axis: Axis2.X .. Axis2.Y
+    {
       size := sizing.axes[axis];
-
-      // 1. Calculate standalone sizes (px, rem, text)
-      it.inner_min.component[axis] = LengthToPx(size.min, it, false);
-      it.inner_max.component[axis] = LengthToPx(size.max, it, false);
-
-      // Default to maximal size (it will be decreased in later stages if overflow happens).
-      it.inner_final.component[axis] = max(it.inner_min.component[axis], it.inner_max.component[axis]);
-      it.inner_final.component[axis] = max(it.inner_final.component[axis], 0); // Default to 0 if both values were negative.
-
-      // 2. Calculate values for measure_text, percent_of_parent, grow (+ temp value for fit_children).
-      new_dim := -1.0;
-      parent_dim := it.parent.inner_final.component[axis];
       if size.fit_children == .TRUE
       {
         // This will be overwriten by the next stage;
         // For now assign parent_dim to provide some reasonable behavior for (miss)cofigurations
         // where parent uses `fit_children` and child uses `grow`/`percentage_of_parent`.
-        new_dim = parent_dim;
+        new_dim.component[axis] = parent_dim.component[axis];
       }
       if size.measure_text == .TRUE
       {
-        params := MeasureTextParams.{
-          text = text.str,
-          font = text.font,
-          font_size = text.font_size,
-          flags = ifx axis == .X then .MEASURE_X else .MEASURE_Y,
-        };
-        text_dim := measure_text_callback(params);
-        new_dim = text_dim.component[axis];
+        new_dim.component[axis] = text_measurement.component[axis];
       }
       if size.percent_of_parent >= 0.0
       {
-        new_dim = parent_dim*size.percent_of_parent;
+        new_dim.component[axis] = parent_dim.component[axis] * size.percent_of_parent;
       }
-      if new_dim >= 0.0 // Store new_dim
+      if new_dim.component[axis] >= 0.0 // Store new_dim
       {
-        it.inner_final.component[axis] = new_dim;
+        it.inner_final.component[axis] = new_dim.component[axis];
       }
 
       // 3. Calculate padding.
@@ -754,6 +769,12 @@ LayoutEnd :: (debug_print_tree := false)
       it.padding.axes[axis].upper = LengthToPx(padding.axes[axis].upper, it, true);
     }
 
+    // 4. Calculate child gap.
+    it.child_gap = LengthToPx(child_gap, it, true);
+  }
+
+  for axis: Axis2.X .. Axis2.Y
+  {
     // - SIZING PASS 2 -
     // Steps:
     //   1. Calculate sizes dependent on children (fit).
@@ -770,7 +791,10 @@ LayoutEnd :: (debug_print_tree := false)
         if AxisMatchesLayoutDirection(axis, direction)
         {
           for :Siblings child: it.first
+          {
             children_outer_dim += OuterDim(child, axis);
+
+          }
         }
         else
         {
