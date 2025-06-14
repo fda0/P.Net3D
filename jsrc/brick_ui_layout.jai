@@ -83,11 +83,12 @@ Unit :: enum u8
   REM;
   EM;
   /*PT;?*/
+  // @todo explore adding VW, VH, %? Remove percent_of_parent from BoxSize? Idk! Unit encoding only absolute values has its benefits.
 };
 
 RemToPx :: (scale := 1.0) -> float
 {
-  using layout_state.layout_spec;
+  using layout_state;
   return scale * rem_to_px;
 }
 
@@ -98,6 +99,7 @@ Length :: struct
 };
 
 Px  :: (v: float) -> Length { return .{.PX, v}; }
+Em :: (v: float) -> Length { return .{.EM, v}; }
 Rem :: (v: float) -> Length { return .{.REM, v}; }
 operator * :: (length: Length, scale: float) -> Length #symmetric {
   return .{length.unit, length.value * scale};
@@ -105,7 +107,7 @@ operator * :: (length: Length, scale: float) -> Length #symmetric {
 
 LengthToPx :: (length: Length, owner_box: *Box, clamp_at_zero: bool) -> float
 {
-  using layout_state.layout_spec;
+  using layout_state;
   value := length.value;
   if clamp_at_zero then value = max(value, 0.0);
 
@@ -114,12 +116,17 @@ LengthToPx :: (length: Length, owner_box: *Box, clamp_at_zero: bool) -> float
     box := owner_box;
     while !IsNil(box)
     {
-      if box.text.font_size
-        return value * box.text.font_size;
-
+      if box.text.font_size.value > 0.0
+      {
+        // Defining font_size as EM recursively is not allowed for now!
+        // EM on font_size will be interpreted as REM instead.
+        if box.text.font_size.unit == .EM
+          return value * rem_to_px;
+        return LengthToPx(value * box.text.font_size, box, clamp_at_zero);
+      }
       box = box.parent;
     }
-    #through;
+    return value * rem_to_px; // fallback to REM
 
     case .REM;
     return value * rem_to_px;
@@ -286,7 +293,9 @@ BoxSpec :: struct
     str: string;
     color: Color;
     font: s32 = -1;
-    font_size: float = -1;
+    font_size: Length; // EM on font size will be interpreted as REM!
+    align_y: Align;
+    // @todo add text align?
   };
 };
 
@@ -569,12 +578,12 @@ CreateText :: (text: string, specs: ..BoxSpec, loc := #caller_location) -> *Box
   merged := MergeButTakeFirstAsBase(..specs);
   merged = Merge(merged, ..ActiveLayers(), reverse_order=true);
 
-  if text.count then merged.text.str = text;
+  merged.text.str = text;
 
   {
     using layout_state;
     using merged.text;
-    if font_size < 0.0 then font_size = rem_to_px;
+    if font_size.value < 0.0 then font_size = Rem(1);
 
     using merged.layout.sizing;
     if width.measure_text  == .DEFAULT then width.measure_text  = .TRUE;
@@ -632,10 +641,9 @@ BoxSignal :: struct
 
 Signal :: (box: *Box) -> BoxSignal
 {
-  using layout_state.layout_spec;
+  using layout_state;
   using ButtonType;
-  using ButtonFlags;
-  using BoxSignal.Flags;
+  // using ButtonFlags;
   // @todo See if things like 2 boxes catching the same click,
   //       floating boxes and their Z-order etc are a problem to be solved.
 
@@ -655,8 +663,8 @@ Signal :: (box: *Box) -> BoxSignal
   {
     signal.flags |= .OVERLAPS;
     signal.flags |= .HOVER;
-    signal.flags |= ifx buttons[MOUSE_LEFT]  & PRESSED then CLICK else 0;
-    signal.flags |= ifx buttons[MOUSE_RIGHT] & PRESSED then RIGHT_CLICK else 0;
+    if buttons[MOUSE_LEFT]  & .PRESSED then signal.flags |= .CLICK;
+    if buttons[MOUSE_RIGHT] & .PRESSED then signal.flags |= .RIGHT_CLICK;
   }
 
   return signal;
@@ -669,7 +677,7 @@ MeasureTextParams :: struct
 {
   text: string;
   font: s32;
-  font_size: float;
+  font_size_px: float;
 };
 MeasureTextStub :: (params: MeasureTextParams) -> Vector2 { return .{}; }
 
@@ -694,35 +702,49 @@ RenderCommand :: struct
 //
 // LayoutBegin initializes internal layout state according to LayoutSpec
 //
+ButtonType :: enum u32 { MOUSE_LEFT; MOUSE_MIDDLE; MOUSE_RIGHT; };
+ButtonTypeCount :: #run enum_highest_value(ButtonType) + 1;
+ButtonFlags :: enum_flags u8
+{
+  HELD;
+  PRESSED; DOUBLE_PRESSED; TRIPLE_PRESSED;
+  RELEASED;
+};
+
 LayoutSpec :: struct
 {
+  debug_logging := false;
+
   root_dim_px: V2;
   rem_to_px: float;
   measure_text_callback := MeasureTextStub;
 
-  debug_logging := false;
-
   // @todo A second pass on input is needed - best done in the future when keyboard support is added.
   // Or should keyboard support be left outside of layout library? Not sure.
   mouse: V2;
-  // is_down_buttons: [3] bool;
-  // Button :: enum u8 { MOUSE_LEFT; MOUSE_MIDDLE; MOUSE_RIGHT; };
-  buttons: [3] ButtonFlags;
-  ButtonType :: enum u8 { MOUSE_LEFT; MOUSE_MIDDLE; MOUSE_RIGHT; };
-
-  ButtonFlags  :: enum_flags u8
-  {
-    HELD;
-    PRESSED; DOUBLE_PRESSED; TRIPLE_PRESSED;
-    RELEASED;
-  };
+  are_buttons_down: [ButtonTypeCount] bool;
 };
 
-LayoutBegin :: (spec: LayoutSpec)
+LayoutBegin :: (new_spec: LayoutSpec)
 {
   using layout_state;
-  layout_spec = spec;
 
+  // Update button states
+  for was_down: are_buttons_down
+  {
+    is_down := new_spec.are_buttons_down[it_index];
+
+    using ButtonFlags;
+    buttons[it_index] =
+      (ifx is_down              then HELD     else 0) |
+      (ifx is_down && !was_down then PRESSED  else 0) |
+      (ifx !is_down && was_down then RELEASED else 0);
+  }
+
+  // Assing new spec
+  layout_spec = new_spec;
+
+  // Boxes init
   nil_box = .{};
   LinkToNil(*nil_box);
 
@@ -776,7 +798,7 @@ LayoutEnd :: ()
   //   4. Calculate child gap.
   for :TreeBreadthFirst root_box
   {
-    using it.spec;
+    using it.spec; // @todo Add using it?
     using it.spec.layout;
 
     // 1. Calculate standalone sizes (px, rem, text)
@@ -800,7 +822,7 @@ LayoutEnd :: ()
       params := MeasureTextParams.{
         text = text.str,
         font = text.font,
-        font_size = text.font_size,
+        font_size_px = LengthToPx(text.font_size, it, true),
       };
       text_measurement = measure_text_callback(params);
     }
@@ -1232,6 +1254,8 @@ TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 LayoutState :: struct
 {
   using layout_spec: LayoutSpec;
+
+  buttons: [ButtonTypeCount] ButtonFlags;
 
   boxes_created_on_this_layout: s32;
 

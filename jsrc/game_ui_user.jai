@@ -35,17 +35,18 @@ UI_WINDOW_GAP :: #run Rem(0.5);
 UI_WINDOW_PAD :: #run PaddingAll(UI_WINDOW_GAP);
 UI_BUTTON_PAD :: #run Padding.{UI_WINDOW_GAP, UI_WINDOW_GAP, UI_WINDOW_GAP*0.5, UI_WINDOW_GAP*0.5};
 
+UI_HEADER_TEXT  :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1.5)}};
+UI_REGULAR_TEXT :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1)}};
+UI_SMALL_TEXT   :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(0.8)}};
+UI_FUNKY_TEXT   :: #run BoxSpec.{text = .{font = xx FONT_Family.Jacquard24,      font_size = Rem(1.5)}};
+
 UI_BuildDeveloperWindow :: ()
 {
   using G.ui.dev;
   if (!show) return;
 
-  header_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = RemToPx(1.5)}};
-  regular_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = RemToPx(1)}};
-  small_text := BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = RemToPx(0.8)}};
-  funky_text := BoxSpec.{text = .{font = xx FONT_Family.Jacquard24, font_size = RemToPx(1.5)}};
   Layer(.{text.color = UI_FG});
-  Layer(regular_text);
+  Layer(UI_REGULAR_TEXT);
 
   clamped_win_p := clamp(win_p, .{}, G.window_dim * 0.9);
 
@@ -95,10 +96,10 @@ UI_BuildDeveloperWindow :: ()
                                     padding = UI_WINDOW_PAD},
                          corner_radius = UI_RADIUS}));
 
-      CreateText("Debug switches", header_text);
+      CreateText("Debug switches", UI_HEADER_TEXT);
 
       {
-        Layer(small_text);
+        Layer(UI_SMALL_TEXT);
         CreateText(tprint("World Camera: %", G.camera_p));
         CreateText(tprint("Camera - Player: %", G.camera_p - OBJ_Get(G.client.player_key, .NETWORK).s.p));
         CreateText(tprint("Camera angles: %", G.camera_angles));
@@ -124,14 +125,17 @@ UI_Checkbox :: (label: string, checkbox_value: *bool)
   if button.flags & .CLICK
     checkbox_value.* = !checkbox_value.*;
 
-  // bg_color := ifx checkbox_value.* then UI_YELLOW1 else UI_BUTTON_BG;
   bg_color := ifx button.flags & .HOVER then UI_YELLOW1 else UI_BUTTON_BG;
 
-  CreateBox(.{layout = .{sizing = Size2(Rem(2)),
+  if checkbox_value.* then bg_color = lerp(bg_color, UI_RED1, 0.5);
+  square_text := ifx checkbox_value.* then "X" else "";
+
+  CreateBox(.{layout = .{sizing = Size2(Em(1)),
                          child_align = .{x = .CENTER, y = .CENTER}},
               bg_color = bg_color,
               border = .{color = UI_FG, widths = UI_BORDER_WIDTH},
-              corner_radius = UI_RADIUS});
+              corner_radius = UI_RADIUS,
+              text = .{str = square_text, font_size = Rem(2), align_y = .CENTER}});
   CreateText(label);
 }
 

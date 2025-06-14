@@ -4,20 +4,21 @@ using Layout;
 
 UI_StartFrame :: ()
 {
-  mouse_left: LayoutSpec.ButtonFlags;
-  if KEY_Held(.MouseLeft) then mouse_left |= .HELD;
-  if KEY_Pressed(.MouseLeft)  then mouse_left |= .PRESSED;
-  if KEY_Released(.MouseLeft) then mouse_left |= .RELEASED;
+  spec := LayoutSpec.{
+    debug_logging = (G.frame_number == 1),
 
-  layout_spec := LayoutSpec.{
     root_dim_px = G.window_dim,
     rem_to_px = 12.0 + 2.0 * floor(G.window_dim.y / 256.0),
     measure_text_callback = UI_MeasureText,
     mouse = G.mouse,
-    buttons[0] = mouse_left,
-    debug_logging = (G.frame_number == 1),
   };
-  LayoutBegin(layout_spec);
+
+  using ButtonType;
+  spec.are_buttons_down[MOUSE_LEFT]   = KEY_Held(.MouseLeft);
+  spec.are_buttons_down[MOUSE_MIDDLE] = false;
+  spec.are_buttons_down[MOUSE_RIGHT]  = KEY_Held(.MouseRight);
+
+  LayoutBegin(spec);
 }
 
 UI_FinishFrame :: ()
@@ -48,7 +49,10 @@ UI_FinishFrame :: ()
       case .TEXT;
       skip_shape = true;
       t := cmd.box.text;
-      UI_DrawTextLine(t.str, xx t.font, xx t.font_size, cmd.p, t.color);
+      align_y: UI_TextAlignY = .TOP;
+      if t.align_y == .CENTER then align_y = .CENTER;
+      if t.align_y == .BOTTOM then align_y = .BOTTOM;
+      UI_DrawTextLine(t.str, xx t.font, xx LengthToPx(t.font_size, cmd.box, true), t.color, cmd.p, cmd.dim, align_y);
     }
 
     if !skip_shape
