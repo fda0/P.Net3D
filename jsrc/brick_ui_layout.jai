@@ -82,7 +82,7 @@ Unit :: enum u8
   PX;
   REM;
   EM;
-  /*EM; PT;*/
+  /*PT;?*/
 };
 
 RemToPx :: (scale := 1.0) -> float
@@ -135,10 +135,10 @@ Length2 :: struct
 Px  :: (v: V2) -> Length2 { return .{Px(v.x), Px(v.y)}; }
 Rem :: (v: V2) -> Length2 { return .{Rem(v.x), Rem(v.y)}; }
 
-Length2ToPx :: (len2: Length2, owner_box: *Box, clamp_at_zero: bool) -> V2
+LengthToPx :: (len2: Length2, owner_box: *Box, clamp_at_zero: bool) -> V2
 {
-  return .{LenghtToPx(len2.width, owner_box, clamp_at_zero),
-           LengthToPx(len2.height, owner_box, clamp_at_zero)};
+  return .{LenghtToPx(len2.x, owner_box, clamp_at_zero),
+           LengthToPx(len2.y, owner_box, clamp_at_zero)};
 }
 
 BoxSize :: struct
@@ -803,7 +803,7 @@ LayoutEnd :: ()
       if size.fit_children == .TRUE
       {
         // This will be overwriten by the next stage;
-        // For now assign parent_dim to provide some reasonable behavior for (miss)cofigurations
+        // For now assign parent_dim to provide some reasonable behavior for (mis)cofigurations
         // where parent uses `fit_children` and child uses `grow`/`percentage_of_parent`.
         new_dim.component[axis] = parent_dim.component[axis];
       }
