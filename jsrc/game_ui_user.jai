@@ -84,8 +84,8 @@ UI_BuildDeveloperWindow :: ()
                          border = .{color = UI_BORDER_BG,
                                     widths = UI_BORDER_WIDTH}}));
 
-      CreateText("switches", .{});
-      CreateText("?",  .{});
+      CreateText("switches");
+      CreateText("?");
     }
 
     // Menu content
@@ -95,7 +95,7 @@ UI_BuildDeveloperWindow :: ()
                                     padding = UI_WINDOW_PAD},
                          corner_radius = UI_RADIUS}));
 
-      CreateText("Debug switches", .{}, header_text);
+      CreateText("Debug switches", header_text);
 
       {
         Layer(small_text);

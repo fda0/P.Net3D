@@ -376,12 +376,12 @@ Merge :: (c: *BoxSpec, p: BoxSpec) {
   Merge(*c.layout.child_gap,     p.layout.child_gap);
   Merge(*c.layout.child_align.x, p.layout.child_align.x);
   Merge(*c.layout.child_align.y, p.layout.child_align.y);
-  Merge(*c.layout.direction,  p.layout.direction);
+  Merge(*c.layout.direction,     p.layout.direction);
 
   Merge(*c.bg_color,      p.bg_color);
   Merge(*c.corner_radius, p.corner_radius);
 
-  // floating isn't inherited - at least for now
+  // floating isn't merged - at least for now
 
   Merge(*c.border.color,  p.border.color);
   Merge(*c.border.widths, p.border.widths);
@@ -390,12 +390,27 @@ Merge :: (c: *BoxSpec, p: BoxSpec) {
   Merge(*c.text.font,      p.text.font);
   Merge(*c.text.font_size, p.text.font_size);
 }
-Merge :: (child_spec: BoxSpec, parent_specs: ..BoxSpec, reverse := false) -> BoxSpec
+Merge :: (child_spec: BoxSpec, parent_specs: ..BoxSpec, reverse_order := false) -> BoxSpec
 {
   merged := child_spec;
-  if reverse then for < parent_specs Merge(*merged, it);
-  else            for   parent_specs Merge(*merged, it);
+  if reverse_order then for < parent_specs Merge(*merged, it);
+  else                  for   parent_specs Merge(*merged, it);
   return merged;
+}
+MergeButTakeFirstAsBase :: (specs: ..BoxSpec) -> BoxSpec
+{
+  // First spec in specs array is "primary".
+  // It will be taken by value and won't be subjected
+  // to the rules of merge.
+  spec: BoxSpec;
+  for specs
+  {
+    if it_index == 0
+      spec = it;
+    else
+      spec = Merge(spec, it);
+  }
+  return spec;
 }
 
 //
@@ -542,21 +557,17 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location) -> *Box
   return box;
 }
 
-CreateBox :: (spec: BoxSpec, to_merge_specs: ..BoxSpec, loc := #caller_location) -> *Box
+CreateBox :: (specs: ..BoxSpec, loc := #caller_location) -> *Box
 {
-  merged := spec;
-  if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
-  merged = Merge(merged, ..ActiveLayers(), reverse=true);
+  merged := MergeButTakeFirstAsBase(..specs);
+  merged = Merge(merged, ..ActiveLayers(), reverse_order=true);
   return CreateBoxDirect(merged, loc);
 }
 
-// @todo spec vs to_merge_spec distincton is a bit lame...
-// Polish the design to a point where these concepts can be merged.
-CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc := #caller_location) -> *Box
+CreateText :: (text: string, specs: ..BoxSpec, loc := #caller_location) -> *Box
 {
-  merged := spec;
-  if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
-  merged = Merge(merged, ..ActiveLayers(), reverse=true);
+  merged := MergeButTakeFirstAsBase(..specs);
+  merged = Merge(merged, ..ActiveLayers(), reverse_order=true);
 
   if text.count then merged.text.str = text;
 
