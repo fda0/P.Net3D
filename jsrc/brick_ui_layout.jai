@@ -21,8 +21,12 @@
   }
 }
 
+//
+// BoxSpec's structs and enums
+//
+Bool3 :: enum u8 { DEFAULT; FALSE; TRUE; };
 Axis2 :: enum u8 { X; Y; COUNT; };
-Inverse :: (a: Axis2) -> Axis2 { return ifx a == .X then .Y else .X; }
+LayoutDirection :: enum { DEFAULT; LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
 AxisMatchesLayoutDirection :: inline (axis: Axis2, lay_dir: LayoutDirection) -> bool
 {
   matches := false;
@@ -31,8 +35,30 @@ AxisMatchesLayoutDirection :: inline (axis: Axis2, lay_dir: LayoutDirection) -> 
   return matches;
 }
 
-Side2 :: enum u8 { LEFT; RIGHT; TOP; BOTTOM; COUNT; };
-Corner2 :: enum u8 { TOP_LEFT; TOP_RIGHT; BOTTOM_LEFT; BOTTOM_RIGHT; COUNT; };
+BorderWidths :: struct
+{
+  left, right, top, bottom: Length;
+  between_children: Length;
+};
+BorderAll     :: (w: Length) -> BorderWidths { return .{w,w,w,w, w}; }
+BorderOutside :: (w: Length) -> BorderWidths { return .{w,w,w,w, .{}}; }
+
+Padding :: struct
+{
+  left, right, top, bottom: Length;
+  #place left; axes: [2] struct
+  {
+    lower, upper: Length;
+    #place lower; ends: [2] Length;
+  };
+};
+PaddingAll :: (l: Length) -> Padding { return .{l,l,l,l}; }
+
+CornerRadius :: struct
+{
+  top_left, top_right, bottom_left, bottom_right: Length;
+};
+RadiusAll :: (r: Length) -> CornerRadius { return .{r, r, r, r}; }
 
 AttachPoint :: enum u8
 {
@@ -50,7 +76,6 @@ Align :: enum u8
   RIGHT   :: 3;
   BOTTOM  :: 3;
 };
-Bool3 :: enum u8 { DEFAULT; FALSE; TRUE; };
 
 Unit :: enum u8
 {
@@ -60,13 +85,47 @@ Unit :: enum u8
   /*EM; PT;*/
 };
 
+RemToPx :: (scale := 1.0) -> float
+{
+  using layout_state.layout_spec;
+  return scale * rem_to_px;
+}
+
 Length :: struct
 {
   unit: Unit;
   value: float = -1.0;
 };
+
 Px  :: (v: float) -> Length { return .{.PX, v}; }
 Rem :: (v: float) -> Length { return .{.REM, v}; }
+operator * :: (length: Length, scale: float) -> Length #symmetric {
+  return .{length.unit, length.value * scale};
+}
+
+LengthToPx :: (length: Length, owner_box: *Box, clamp_at_zero: bool) -> float
+{
+  using layout_state.layout_spec;
+  value := length.value;
+  if clamp_at_zero then value = max(value, 0.0);
+
+  if length.unit == {
+  case .EM;
+    box := owner_box;
+    while !IsNil(box)
+    {
+      if box.text.font_size
+        return value * box.text.font_size;
+
+      box = box.parent;
+    }
+    #through;
+
+    case .REM;
+    return value * rem_to_px;
+  }
+  return value;
+}
 
 Length2 :: struct
 {
@@ -76,9 +135,10 @@ Length2 :: struct
 Px  :: (v: V2) -> Length2 { return .{Px(v.x), Px(v.y)}; }
 Rem :: (v: V2) -> Length2 { return .{Rem(v.x), Rem(v.y)}; }
 
-operator * :: (length: Length, scale: float) -> Length #symmetric
+Length2ToPx :: (len2: Length2, owner_box: *Box, clamp_at_zero: bool) -> V2
 {
-  return .{length.unit, length.value * scale};
+  return .{LenghtToPx(len2.width, owner_box, clamp_at_zero),
+           LengthToPx(len2.height, owner_box, clamp_at_zero)};
 }
 
 BoxSize :: struct
@@ -93,7 +153,6 @@ BoxSize :: struct
 
   #place min; range: [2] Length;
 };
-
 SizeMin :: (min: Length) -> BoxSize
 {
   s: BoxSize;
@@ -120,7 +179,6 @@ Size :: (minmax: Length) -> BoxSize
   s.max = minmax;
   return s;
 }
-
 Fit :: (size := BoxSize.{}) -> BoxSize
 {
   s := size;
@@ -183,51 +241,6 @@ CreateKey :: (text: string) -> BoxKey
   return BoxKey.{h};
 }
 
-CornerRadius :: struct
-{
-  top_left, top_right, bottom_left, bottom_right: Length;
-};
-RadiusAll :: (r: Length) -> CornerRadius { return .{r, r, r, r}; }
-
-BorderWidths :: struct
-{
-  left, right, top, bottom: Length;
-  between_children: Length;
-};
-BorderAll     :: (w: Length) -> BorderWidths { return .{w,w,w,w, w}; }
-BorderOutside :: (w: Length) -> BorderWidths { return .{w,w,w,w, .{}}; }
-
-Padding :: struct
-{
-  left, right, top, bottom: Length;
-  #place left; axes: [2] struct
-  {
-    lower, upper: Length;
-    #place lower; ends: [2] Length;
-  };
-};
-Padding_All :: (l: Length) -> Padding { return .{l,l,l,l}; }
-
-LayoutDirection :: enum { DEFAULT; LEFT_TO_RIGHT; TOP_TO_BOTTOM; };
-
-PushLayer :: (spec: BoxSpec)
-{
-  using layout_state;
-  if layers_count < layers.count
-    layers[layers_count] = spec;
-  layers_count += 1;
-}
-PopLayer :: ()
-{
-  using layout_state;
-  layers_count -= 1;
-}
-Layer :: (spec: BoxSpec) #expand
-{
-  PushLayer(spec);
-  `defer PopLayer();
-}
-
 BoxSpec :: struct
 {
   key: BoxKey;
@@ -277,105 +290,38 @@ BoxSpec :: struct
   };
 };
 
-Box :: struct
-{
-  using spec: BoxSpec;
-  next, prev, first, last, parent: *Box;
-  loc: Source_Code_Location; // creation loc
-  old: *Box; // Pointer to this Box from previous frame. Otherwise should point to nil_box.
-
-  // in pixels
-  inner_min: V2 = .{-1, -1};
-  inner_max: V2 = .{-1, -1};
-  inner_final: V2;
-
-  padding: struct
-  {
-    left, right, top, bottom: float;
-    #place left; axes: [2] struct
-    {
-      lower, upper: float;
-      #place lower; ends: [2] float;
-    };
-  };
-  child_gap: float;
-
-  rel_p: V2; // offset from outer dimensions of parent
-  abs_p: V2; // offset from 0,0 of root box
-};
-
-BoxSignal :: struct
-{
-  using #as box: *Box;
-  flags: Flags;
-
-  Flags :: enum_flags u32
-  {
-    OVERLAPS; HOVER;
-    CLICK; DOUBLE_CLICK; TRIPLE_CLICK;
-    RIGHT_CLICK; RIGHT_DOUBLE_CLICK; RIGHT_TRIPLE_CLICK;
-    DRAG;
-  };
-};
-
-Signal :: (box: *Box) -> BoxSignal
-{
-  using layout_state.layout_spec;
-  using ButtonType;
-  using ButtonFlags;
-  using BoxSignal.Flags;
-  // @todo See if things like 2 boxes catching the same click,
-  //       floating boxes and their Z-order etc are a problem to be solved.
-
-  signal := BoxSignal.{box = box};
-  mouse_overlaps_box := false;
-
-  if !IsNil(box.old)
-  {
-    box_min := box.old.abs_p;
-    box_max := box_min + OuterDim2(box.old);
-
-    mouse_overlaps_box = (mouse.x >= box_min.x && mouse.x < box_max.x &&
-                          mouse.y >= box_min.y && mouse.y < box_max.y);
-  }
-
-  if mouse_overlaps_box
-  {
-    signal.flags |= .OVERLAPS;
-    signal.flags |= .HOVER;
-    signal.flags |= ifx buttons[MOUSE_LEFT]  & PRESSED then CLICK else 0;
-    signal.flags |= ifx buttons[MOUSE_RIGHT] & PRESSED then RIGHT_CLICK else 0;
-  }
-
-  return signal;
-}
-
-Parent :: (box: *Box) -> *Box #expand
-{
-  PushParent(box);
-  `defer PopParent(box);
-  return box;
-}
-PushParent :: (value: *Box)
+//
+// BoxSpec Layer helpers
+//
+PushLayer :: (spec: BoxSpec)
 {
   using layout_state;
-  if parents_count < parents.count
-    parents[parents_count] = value;
-  parents_count += 1;
+  if layers_count < layers.count
+    layers[layers_count] = spec;
+  layers_count += 1;
 }
-PopParent :: (value: *Box)
+PopLayer :: ()
 {
   using layout_state;
-  parents_count -= 1;
+  layers_count -= 1;
 }
-ActiveParent :: () -> *Box
+Layer :: (spec: BoxSpec) #expand
+{
+  PushLayer(spec);
+  `defer PopLayer();
+}
+ActiveLayers :: () -> [] BoxSpec
 {
   using layout_state;
-  if parents_count > 0 && parents_count <= parents.count
-    return parents[parents_count-1];
-  return *nil_box;
+  result: [] BoxSpec;
+  result.data = *layers[0];
+  result.count = layers_count;
+  return result;
 }
 
+//
+// Helpers for merging multiple BoxSpecs together
+//
 Merge :: (c: *$T, p: T)
 #modify { return T.(*Type_Info).type == .ENUM; }
 {
@@ -424,7 +370,6 @@ Merge :: (c: *BorderWidths, p: BorderWidths) {
   Merge(*c.bottom,           p.bottom);
   Merge(*c.between_children, p.between_children);
 }
-
 Merge :: (c: *BoxSpec, p: BoxSpec) {
   Merge(*c.layout.sizing,        p.layout.sizing);
   Merge(*c.layout.padding,       p.layout.padding);
@@ -445,7 +390,6 @@ Merge :: (c: *BoxSpec, p: BoxSpec) {
   Merge(*c.text.font,      p.text.font);
   Merge(*c.text.font_size, p.text.font_size);
 }
-
 Merge :: (child_spec: BoxSpec, parent_specs: ..BoxSpec, reverse := false) -> BoxSpec
 {
   merged := child_spec;
@@ -454,54 +398,85 @@ Merge :: (child_spec: BoxSpec, parent_specs: ..BoxSpec, reverse := false) -> Box
   return merged;
 }
 
-ActiveLayers :: () -> [] BoxSpec
+//
+// Box struct and helpers
+//
+Box :: struct
+{
+  using spec: BoxSpec;
+  next, prev, first, last, parent: *Box;
+  loc: Source_Code_Location; // creation loc
+  old: *Box; // Pointer to this Box from previous frame. Otherwise should point to nil_box.
+
+  // in pixels
+  inner_min: V2 = .{-1, -1};
+  inner_max: V2 = .{-1, -1};
+  inner_final: V2;
+
+  padding: struct
+  {
+    left, right, top, bottom: float;
+    #place left; axes: [2] struct
+    {
+      lower, upper: float;
+      #place lower; ends: [2] float;
+    };
+  };
+  child_gap: float;
+
+  rel_p: V2; // offset from outer dimensions of parent
+  abs_p: V2; // offset from 0,0 of root box
+};
+
+//
+// Helpers for accessing layout dimensions quickly.
+// @todo delete some of these?
+//
+PaddingLower :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.padding.axes[axis].lower;
+}
+PaddingUpper :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.padding.axes[axis].upper;
+}
+PaddingDim :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.padding.axes[axis].lower + box.padding.axes[axis].upper;
+}
+OuterDim :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.inner_final.component[axis] +
+         box.padding.axes[axis].lower +
+         box.padding.axes[axis].upper;
+}
+InnerDim :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.inner_final.component[axis];
+}
+InnerDimMin :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.inner_min.component[axis];
+}
+InnerDimMax :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
+  return box.inner_max.component[axis];
+}
+OuterDim2 :: (box: *Box) -> V2 #expand #no_debug {
+  return V2.{OuterDim(box, .X), OuterDim(box, .Y)};
+}
+InnerDim2 :: (box: *Box) -> V2 #expand #no_debug {
+  return box.inner_final;
+}
+
+//
+// Box functions
+//
+LinkToNil :: (box: *Box)
 {
   using layout_state;
-  result: [] BoxSpec;
-  result.data = *layers[0];
-  result.count = layers_count;
-  return result;
+  box.next   = *nil_box;
+  box.prev   = *nil_box;
+  box.first  = *nil_box;
+  box.last   = *nil_box;
+  box.parent = *nil_box;
 }
+IsNil :: (box: *Box) -> bool { return !box || box == *layout_state.nil_box; }
 
-RemToPx :: (scale := 1.0) -> float
-{
-  using layout_state.layout_spec;
-  return scale * rem_to_px;
-}
-
-// @todo spec vs to_merge_spec distincton is a bit lame...
-// Polish the design to a point where these concepts can be merged.
-CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc := #caller_location) -> *Box
-{
-
-  merged := spec;
-  if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
-  merged = Merge(merged, ..ActiveLayers(), reverse=true);
-
-  if text.count then merged.text.str = text;
-
-  {
-    using layout_state;
-    using merged.text;
-    if font_size < 0.0 then font_size = layout_spec.rem_to_px;
-
-    using merged.layout.sizing;
-    if width.measure_text  == .DEFAULT then width.measure_text  = .TRUE;
-    if height.measure_text == .DEFAULT then height.measure_text = .TRUE;
-  }
-
-  return CreateBoxDirect(merged, loc);
-}
-
-CreateBox :: (spec: BoxSpec, to_merge_specs: ..BoxSpec, loc := #caller_location) -> *Box
-{
-  merged := spec;
-  if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
-  merged = Merge(merged, ..ActiveLayers(), reverse=true);
-  return CreateBoxDirect(merged, loc);
-}
-
-FindBox :: (key: BoxKey, target := BoxerArrayTarget.CURRENT) -> *Box
+FindBox :: (key: BoxKey, target := BoxStorageArray.CURRENT) -> *Box
 {
   // @speed accelerate using hash table or something
   result := *layout_state.nil_box;
@@ -567,57 +542,129 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location) -> *Box
   return box;
 }
 
-BoxerArrayTarget :: enum u8 {CURRENT; OLD;};
-
-BoxesArray :: (which: BoxerArrayTarget) -> *[..] Box
+CreateBox :: (spec: BoxSpec, to_merge_specs: ..BoxSpec, loc := #caller_location) -> *Box
 {
-  using layout_state;
-  index := ifx which == .CURRENT then current_boxes_index else xx !current_boxes_index;
-  res := *boxes[index];
-  return res;
+  merged := spec;
+  if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
+  merged = Merge(merged, ..ActiveLayers(), reverse=true);
+  return CreateBoxDirect(merged, loc);
 }
 
-LinkToNil :: (box: *Box)
+// @todo spec vs to_merge_spec distincton is a bit lame...
+// Polish the design to a point where these concepts can be merged.
+CreateText :: (text: string, spec := BoxSpec.{}, to_merge_specs: ..BoxSpec, loc := #caller_location) -> *Box
+{
+  merged := spec;
+  if to_merge_specs.count then merged = Merge(merged, ..to_merge_specs);
+  merged = Merge(merged, ..ActiveLayers(), reverse=true);
+
+  if text.count then merged.text.str = text;
+
+  {
+    using layout_state;
+    using merged.text;
+    if font_size < 0.0 then font_size = rem_to_px;
+
+    using merged.layout.sizing;
+    if width.measure_text  == .DEFAULT then width.measure_text  = .TRUE;
+    if height.measure_text == .DEFAULT then height.measure_text = .TRUE;
+  }
+
+  return CreateBoxDirect(merged, loc);
+}
+
+//
+// Box Parent helpers
+//
+PushParent :: (value: *Box)
 {
   using layout_state;
-  box.next   = *nil_box;
-  box.prev   = *nil_box;
-  box.first  = *nil_box;
-  box.last   = *nil_box;
-  box.parent = *nil_box;
+  if parents_count < parents.count
+    parents[parents_count] = value;
+  parents_count += 1;
 }
-IsNil :: (box: *Box) -> bool { return !box || box == *layout_state.nil_box; }
+PopParent :: (value: *Box)
+{
+  using layout_state;
+  parents_count -= 1;
+}
+Parent :: (box: *Box) -> *Box #expand
+{
+  PushParent(box);
+  `defer PopParent(box);
+  return box;
+}
+ActiveParent :: () -> *Box
+{
+  using layout_state;
+  if parents_count > 0 && parents_count <= parents.count
+    return parents[parents_count-1];
+  return *nil_box;
+}
 
-LengthToPx :: (length: Length, owner_box: *Box, clamp_at_zero: bool) -> float
+//
+// BoxSignal
+//
+BoxSignal :: struct
+{
+  using #as box: *Box;
+  flags: Flags;
+
+  Flags :: enum_flags u32
+  {
+    OVERLAPS; HOVER;
+    CLICK; DOUBLE_CLICK; TRIPLE_CLICK;
+    RIGHT_CLICK; RIGHT_DOUBLE_CLICK; RIGHT_TRIPLE_CLICK;
+    DRAG;
+  };
+};
+
+Signal :: (box: *Box) -> BoxSignal
 {
   using layout_state.layout_spec;
-  value := length.value;
-  if clamp_at_zero then value = max(value, 0.0);
+  using ButtonType;
+  using ButtonFlags;
+  using BoxSignal.Flags;
+  // @todo See if things like 2 boxes catching the same click,
+  //       floating boxes and their Z-order etc are a problem to be solved.
 
-  if length.unit == {
-  case .EM;
-    box := owner_box;
-    while !IsNil(box)
-    {
-      if box.text.font_size
-        return value * box.text.font_size;
+  signal := BoxSignal.{box = box};
+  mouse_overlaps_box := false;
 
-      box = box.parent;
-    }
-    #through;
+  if !IsNil(box.old)
+  {
+    box_min := box.old.abs_p;
+    box_max := box_min + OuterDim2(box.old);
 
-    case .REM;
-    return value * rem_to_px;
+    mouse_overlaps_box = (mouse.x >= box_min.x && mouse.x < box_max.x &&
+                          mouse.y >= box_min.y && mouse.y < box_max.y);
   }
-  return value;
+
+  if mouse_overlaps_box
+  {
+    signal.flags |= .OVERLAPS;
+    signal.flags |= .HOVER;
+    signal.flags |= ifx buttons[MOUSE_LEFT]  & PRESSED then CLICK else 0;
+    signal.flags |= ifx buttons[MOUSE_RIGHT] & PRESSED then RIGHT_CLICK else 0;
+  }
+
+  return signal;
 }
 
-Length2ToPx :: (len2: Length2, owner_box: *Box, clamp_at_zero: bool) -> V2
+//
+// Measure text callback
+//
+MeasureTextParams :: struct
 {
-  return .{LenghtToPx(len2.width, owner_box, clamp_at_zero),
-           LengthToPx(len2.height, owner_box, clamp_at_zero)};
-}
+  text: string;
+  font: s32;
+  font_size: float;
+};
+MeasureTextStub :: (params: MeasureTextParams) -> Vector2 { return .{}; }
 
+//
+// Output RenderCommand struct
+//
 RenderCommand :: struct
 {
   p: V2;
@@ -632,56 +679,26 @@ RenderCommand :: struct
   box: *Box;
 };
 
-LayoutState :: struct
-{
-  layout_spec: LayoutSpec;
 
-  boxes_created_on_this_layout: s32;
-
-  // Double-buffer system.
-  // Each LayoutBegin call flips boxes_index between 0-1.
-  // current_boxes_index points to boxes array used by current layout run.
-  // Other boxes array points to boxes from the previous frame.
-  current_boxes_index: u8;
-  boxes: [2][..] Box; // @todo replace with HashTable
-
-  nil_box: Box;
-  root_box: *Box;
-
-  render_commands: [..] RenderCommand;
-
-  layers: [MAX_NESTING] BoxSpec;
-  layers_count: s64;
-
-  parents: [MAX_NESTING] *Box; // @todo make this dynamic? Or no?
-  parents_count: s64;
-
-  debug := false; // @todo remove
-};
-layout_state: LayoutState; // @todo allow user to create a layout_state and to attach it to context instead of using a global variable
-
-MeasureTextParams :: struct
-{
-  text: string;
-  font: s32;
-  font_size: float;
-};
-MeasureTextStub :: (params: MeasureTextParams) -> Vector2 { return .{}; }
-
-
-
+//
+// LayoutBegin initializes internal layout state according to LayoutSpec
+//
 LayoutSpec :: struct
 {
   root_dim_px: V2;
   rem_to_px: float;
   measure_text_callback := MeasureTextStub;
 
+  debug_logging := false;
+
   // @todo A second pass on input is needed - best done in the future when keyboard support is added.
   // Or should keyboard support be left outside of layout library? Not sure.
   mouse: V2;
+  // is_down_buttons: [3] bool;
+  // Button :: enum u8 { MOUSE_LEFT; MOUSE_MIDDLE; MOUSE_RIGHT; };
   buttons: [3] ButtonFlags;
-
   ButtonType :: enum u8 { MOUSE_LEFT; MOUSE_MIDDLE; MOUSE_RIGHT; };
+
   ButtonFlags  :: enum_flags u8
   {
     HELD;
@@ -712,45 +729,16 @@ LayoutBegin :: (spec: LayoutSpec)
   parents_count = 0;
   layers_count = 0;
 
-  root_box = CreateBox(.{layout = .{sizing = Size2(Px(layout_spec.root_dim_px))}});
+  root_box = CreateBox(.{layout = .{sizing = Size2(Px(root_dim_px))}});
   PushParent(root_box);
 }
 
-PaddingLower :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
-  return box.padding.axes[axis].lower;
-}
-PaddingUpper :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
-  return box.padding.axes[axis].upper;
-}
-PaddingDim :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
-  return box.padding.axes[axis].lower + box.padding.axes[axis].upper;
-}
-OuterDim :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
-  return box.inner_final.component[axis] +
-         box.padding.axes[axis].lower +
-         box.padding.axes[axis].upper;
-}
-InnerDim :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
-  return box.inner_final.component[axis];
-}
-InnerDimMin :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
-  return box.inner_min.component[axis];
-}
-InnerDimMax :: (box: *Box, axis: Axis2) -> float #expand #no_debug {
-  return box.inner_max.component[axis];
-}
-
-OuterDim2 :: (box: *Box) -> V2 #expand #no_debug {
-  return V2.{OuterDim(box, .X), OuterDim(box, .Y)};
-}
-InnerDim2 :: (box: *Box) -> V2 #expand #no_debug {
-  return box.inner_final;
-}
-
-LayoutEnd :: (debug_print_tree := false)
+//
+// Computes layout and generates render commands (@todo put render command generation in a separate or optional step?)
+//
+LayoutEnd :: ()
 {
   using layout_state;
-  debug = debug_print_tree;
 
   // Validate that nil_box wasn't modified.
   // This wouldn't be needed if one could use read_only memory in jai for nil_box.
@@ -803,7 +791,7 @@ LayoutEnd :: (debug_print_tree := false)
         font = text.font,
         font_size = text.font_size,
       };
-      text_measurement = layout_spec.measure_text_callback(params);
+      text_measurement = measure_text_callback(params);
     }
 
     // Due to how data is organized it's not easy to "simd" it using Vector2.
@@ -1039,7 +1027,7 @@ LayoutEnd :: (debug_print_tree := false)
   }
 
   // - DEBUG PRINT PASS -
-  if debug_print_tree
+  if debug_logging
   {
     print("[TreeBreadthFirst] Debug dump of root_box\n");
     for :TreeBreadthFirst root_box
@@ -1090,6 +1078,9 @@ LayoutEnd :: (debug_print_tree := false)
   }
 }
 
+//
+// Box for_expansions
+//
 Siblings :: (first_box: *Box, body: Code, flags: For_Flags) #expand
 {
   #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
@@ -1224,11 +1215,54 @@ TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
   }
 }
 
+//
+// LayoutState - internal layout state
+//
+LayoutState :: struct
+{
+  using layout_spec: LayoutSpec;
+
+  boxes_created_on_this_layout: s32;
+
+  // Double-buffer system.
+  // Each LayoutBegin call flips boxes_index between 0-1.
+  // current_boxes_index points to boxes array used by current layout run.
+  // Other boxes array points to boxes from the previous frame.
+  current_boxes_index: u8;
+  boxes: [2][..] Box; // @todo replace with HashTable
+
+  nil_box: Box;
+  root_box: *Box;
+
+  render_commands: [..] RenderCommand;
+
+  layers: [MAX_NESTING] BoxSpec;
+  layers_count: s64;
+
+  parents: [MAX_NESTING] *Box; // @todo make this dynamic? Or no?
+  parents_count: s64;
+};
+layout_state: LayoutState; // @todo allow user to create a layout_state and to attach it to context instead of using a global variable
+
+//
+// Internal storage for Box. Uses double-buffer approach for keeping 1 "frame" old data around.
+//
+BoxStorageArray :: enum u8 {CURRENT; OLD;};
+BoxesArray :: (which: BoxStorageArray) -> *[..] Box
+{
+  using layout_state;
+  index := ifx which == .CURRENT then current_boxes_index else xx !current_boxes_index;
+  res := *boxes[index];
+  return res;
+}
+
 #scope_file;
 #import "Basic"; // for array_add, clamp, log_error
 #import "Math"; // Vector2, operator +
 
-// Math helpers
+//
+// Internal math helpers
+//
 min :: (a: V2, b: V2) -> V2 { return V2.{min(a.x,b.x), min(a.y,b.y)}; }
 max :: (a: V2, b: V2) -> V2 { return V2.{max(a.x,b.x), max(a.y,b.y)}; }
 

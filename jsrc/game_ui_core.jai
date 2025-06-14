@@ -15,18 +15,19 @@ UI_StartFrame :: ()
     measure_text_callback = UI_MeasureText,
     mouse = G.mouse,
     buttons[0] = mouse_left,
+    debug_logging = (G.frame_number == 1),
   };
   LayoutBegin(layout_spec);
 }
 
 UI_FinishFrame :: ()
 {
-  LayoutEnd(G.frame_number == 1);
+  LayoutEnd();
 
   for cmd: layout_state.render_commands
   {
-    if G.frame_number == 1
-      print("[%] render_command: % (%)\n", G.frame_number, cmd, cmd.box.loc);
+    // if G.frame_number == 1
+    //   print("[%] render_command: % (%)\n", G.frame_number, cmd, cmd.box.loc);
 
     c4 := ColorV4_32(cmd.color);
     c32 := Color32_V4(c4);

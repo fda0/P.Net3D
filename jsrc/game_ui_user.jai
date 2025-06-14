@@ -30,9 +30,9 @@ UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
 UI_RADIUS :: #run RadiusAll(Px(3));
 UI_BORDER_WIDTH :: #run BorderOutside(Px(1));
-UI_BAR_PAD :: #run Padding_All(Rem(0.2));
+UI_BAR_PAD :: #run PaddingAll(Rem(0.2));
 UI_WINDOW_GAP :: #run Rem(0.5);
-UI_WINDOW_PAD :: #run Padding_All(UI_WINDOW_GAP);
+UI_WINDOW_PAD :: #run PaddingAll(UI_WINDOW_GAP);
 UI_BUTTON_PAD :: #run Padding.{UI_WINDOW_GAP, UI_WINDOW_GAP, UI_WINDOW_GAP*0.5, UI_WINDOW_GAP*0.5};
 
 UI_BuildDeveloperWindow :: ()
