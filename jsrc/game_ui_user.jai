@@ -4,10 +4,10 @@ UI_State :: struct
   {
     show := true;
     win_p: V2;
-    win_dim: V2;
 
     category: enum {switches; stats; network;};
 
+    // switches
     show_stats: bool;
     noclip: bool;
     sun_camera: bool;
@@ -39,28 +39,24 @@ UI_WINDOW_GAP :: #run Rem(0.5);
 UI_WINDOW_PAD :: #run PaddingAll(UI_WINDOW_GAP);
 UI_BUTTON_PAD :: #run Padding.{UI_WINDOW_GAP, UI_WINDOW_GAP, UI_WINDOW_GAP*0.5, UI_WINDOW_GAP*0.5};
 
-UI_HEADER_TEXT  :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1.5),}};
+UI_HEADER_TEXT  :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1.5)},
+                                 layout.padding = PaddingV(Rem(0.2), Rem(0.6))};
 UI_REGULAR_TEXT :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1)}};
-UI_SMALL_TEXT   :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(0.8)}};
-UI_FUNKY_TEXT   :: #run BoxSpec.{text = .{font = xx FONT_Family.Jacquard24,      font_size = Rem(1.5)}};
-UI_TEXT_PAD     :: #run BoxSpec.{layout.padding = PaddingV(Em(0.1), Em(0.4))};
+UI_MONO_TEXT    :: #run BoxSpec.{text = .{font = xx FONT_Family.Inconsolata, font_size = Rem(0.8)},
+                                 layout.padding = PaddingV(Em(0.4))};
 
 UI_DeveloperKeyShortcuts :: ()
 {
-  if (KEY_Pressed(.GRAVE))
-    G.debug.show_debug_window = !G.debug.show_debug_window;
-
-  if (KEY_Pressed(.RETURN))
-    G.ui.dev.noclip = !G.ui.dev.noclip;
-
-  if (KEY_Pressed(.BACKSPACE))
-    G.ui.dev.sun_camera = !G.ui.dev.sun_camera;
+  using G.ui.dev;
+  if (KEY_Pressed(.GRAVE)) then show = !show;
+  if (KEY_Pressed(.RETURN)) then noclip = !noclip;
+  if (KEY_Pressed(.BACKSPACE)) then sun_camera = !sun_camera;
 }
 
 UI_BuildDeveloperWindow :: ()
 {
   using G.ui.dev;
-  if (!show) return;
+  if !show return;
 
   Layer(.{text.color = UI_FG});
   Layer(UI_REGULAR_TEXT);
@@ -90,9 +86,9 @@ UI_BuildDeveloperWindow :: ()
 
   // Content body
   {
-    Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}}}));
-
-
+    Parent(CreateBox(.{layout = .{sizing = .{Grow(Fit()), Grow()}}}));
+    category_names := enum_names(type_of(category));
+    category_values := enum_values_as_enum(type_of(category));
 
     // Category vertical bar
     {
@@ -103,39 +99,38 @@ UI_BuildDeveloperWindow :: ()
                                     child_align.x = .CENTER},
                          border = .{color = UI_BORDER_BG,
                                     widths = UI_BORDER_WIDTH}}));
-
-      category_names := enum_names(type_of(category));
-      category_values := enum_values_as_enum(type_of(category));
       for category_names
       {
         UI_Button(it, *category, category_values[it_index]);
       }
     }
 
-    // Menu content
-    {
-      Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
-                                    sizing = .{Grow(), Fit()},
-                                    padding = UI_WINDOW_PAD},
-                         corner_radius = UI_RADIUS}));
+    // Content box
+    Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
+                                  sizing = .{Grow(Fit()), Fit()},
+                                  padding = UI_WINDOW_PAD},
+                       corner_radius = UI_RADIUS}));
 
-      CreateText("Debug switches", UI_HEADER_TEXT, UI_TEXT_PAD);
+    // Header
+    CreateText(category_names[category], UI_HEADER_TEXT);
 
-      submenu := Merge(UI_SMALL_TEXT, .{layout.padding = .{UI_WINDOW_GAP, UI_WINDOW_GAP, Em(0.2), Em(0.2)}});
-
-      UI_Checkbox("Show stats", *show_stats);
-      if show_stats
-      {
-        Layers(submenu);
-        CreateText(tprint("World Camera: %", G.camera_p));
-        CreateText(tprint("Camera - Player: %", G.camera_p - OBJ_Get(G.client.player_key, .NETWORK).s.p));
-        CreateText(tprint("Camera angles: %", G.camera_angles));
-      }
-
+    // Per category body
+    if #complete category == {
+      case .switches;
       UI_Checkbox("Noclip camera", *noclip);
       UI_Checkbox("Sun camera", *sun_camera);
       UI_Checkbox("Show colliders", *show_colliders);
       UI_Checkbox("Render normals", null);
+
+      case .stats;
+      Layers(UI_MONO_TEXT);
+      CreateText(tprint("World Camera: %", G.camera_p));
+      CreateText(tprint("Camera - Player: %", G.camera_p - OBJ_Get(G.client.player_key, .NETWORK).s.p));
+      CreateText(tprint("Camera angles: %", G.camera_angles));
+
+      case .network;
+      Layers(UI_MONO_TEXT);
+      CreateText("network stuff here");
     }
   }
 }
@@ -198,11 +193,7 @@ UI_Button :: (label: string, button_value: *$T, set_value: T)
       label_box.text.color = UI_BG;
     }
   }
-  else
-  {
-    label_box.text.color = UI_RED2;
-  }
-
+  else label_box.text.color = UI_RED2;
 }
 
 Layout :: #import,file "brick_ui_layout.jai"(Color=Color32);

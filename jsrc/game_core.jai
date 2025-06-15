@@ -51,12 +51,6 @@ GAME_State :: struct {
   camera_angles: V3;
   camera_fov_y: float = 0.111;
   camera_transform: Mat4;
-
-  debug: struct
-  {
-    click_id: u64; // old UI thing, delete?
-    show_debug_window: bool;
-  };
 }
 
 GAME_Init :: ()
@@ -122,7 +116,7 @@ GAME_Iterate :: ()
 
     if G.ui.dev.noclip
     {
-      if (KEY_Held(.MouseLeft) && !G.debug.click_id)
+      if KEY_Held(.MouseLeft)
       {
         rot_speed := 0.0004;
         G.camera_angles.z += rot_speed * G.mouse_delta.x;

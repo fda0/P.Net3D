@@ -34,6 +34,7 @@ FONT_Family :: enum u8
 {
   PlayfairDisplay;
   Jacquard24;
+  Inconsolata;
   NotoColorEmoji;
 };
 
@@ -59,9 +60,10 @@ FONT_Init :: ()
   for enum_values_as_enum(FONT_Family)
   {
     path := "";
-    if it == { // @todo this should be put into .PIE file
+    if #complete it == { // @todo this should be put into .PIE file
       case .PlayfairDisplay; path = "../res/fonts/PlayfairDisplay-Regular.ttf";
       case .Jacquard24; path = "../res/fonts/Jacquard24-Regular.ttf";
+      case .Inconsolata; path = "../res/fonts/Inconsolata-Regular.ttf";
       case .NotoColorEmoji; path = "../res/fonts/NotoColorEmoji-Regular.ttf";
     }
     if !err then err = FT_New_Face(ft_library, temp_c_string(path), 0, *ft_faces[it]);
