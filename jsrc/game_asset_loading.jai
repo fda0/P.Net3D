@@ -3,10 +3,8 @@ ASSET_Init :: ()
   using,only(err) G.ast.pie;
 
   init(*G.ast.arena);
-  new_context := context;
-  new_context.allocator = G.ast.arena;
-  push_context new_context
   {
+    push_allocator(G.ast.arena);
     if !err  ASSET_LoadPieFile("data.pie");
     if !err  ASSET_InitSkeletons();
     if !err  ASSET_InitMaterials();

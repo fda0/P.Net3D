@@ -12,6 +12,12 @@ Color32_RGBAi :: (r: u32, g: u32, b: u32, a: u32) -> Color32
 Color32_RGBi :: (r: u32, g: u32, b: u32) -> Color32 { return Color32_RGBAi(r, g, b, 255); }
 Color32_Grayi :: (rgb: u32) -> Color32 { return Color32_RGBi(rgb, rgb, rgb); }
 
+Color32_SetAlphai :: (color: Color32, a: u32) -> Color32
+{
+  no_alpha := color.(u32) & ~(0xff << 24);
+  return xx (no_alpha | (a << 24));
+}
+
 Color32_RGBAf :: (r: float, g: float, b: float, a: float) -> Color32
 {
   ri := (r * 255).(u32) & 255;

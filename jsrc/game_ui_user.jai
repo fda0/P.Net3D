@@ -6,6 +6,8 @@ UI_State :: struct
     win_p: V2;
     win_dim: V2;
 
+    show_stats: bool;
+    noclip: bool;
     check_tests: [4] bool;
   };
 };
@@ -30,15 +32,15 @@ UI_DARKER    :: #run Color32_RGBAi(0, 0, 0, 64);
 
 UI_RADIUS :: #run RadiusAll(Px(3));
 UI_BORDER_WIDTH :: #run BorderOutside(Px(1));
-UI_BAR_PAD :: #run PaddingAll(Rem(0.2));
 UI_WINDOW_GAP :: #run Rem(0.5);
 UI_WINDOW_PAD :: #run PaddingAll(UI_WINDOW_GAP);
 UI_BUTTON_PAD :: #run Padding.{UI_WINDOW_GAP, UI_WINDOW_GAP, UI_WINDOW_GAP*0.5, UI_WINDOW_GAP*0.5};
 
-UI_HEADER_TEXT  :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1.5)}};
+UI_HEADER_TEXT  :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1.5),}};
 UI_REGULAR_TEXT :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1)}};
 UI_SMALL_TEXT   :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(0.8)}};
 UI_FUNKY_TEXT   :: #run BoxSpec.{text = .{font = xx FONT_Family.Jacquard24,      font_size = Rem(1.5)}};
+UI_TEXT_PAD     :: #run BoxSpec.{layout.padding = PaddingV(Em(0.1), Em(0.4))};
 
 UI_BuildDeveloperWindow :: ()
 {
@@ -61,8 +63,8 @@ UI_BuildDeveloperWindow :: ()
   // Window bar
   {
     window_bar := Signal(Parent(CreateBox(.{layout = .{sizing = .{width = Grow(), height = Fit()},
-                                                       padding = UI_BAR_PAD,
-                                                       child_align.x = .CENTER},
+                                                       padding = PaddingAll(Rem(0.4)),
+                                                       child_align = .{x = .CENTER, y = .CENTER}},
                                             bg_color = UI_ORANGE2,
                                             corner_radius = UI_RADIUS})));
     if window_bar.flags & .DRAG  win_p += G.mouse_delta;
@@ -96,16 +98,20 @@ UI_BuildDeveloperWindow :: ()
                                     padding = UI_WINDOW_PAD},
                          corner_radius = UI_RADIUS}));
 
-      CreateText("Debug switches", UI_HEADER_TEXT);
+      CreateText("Debug switches", UI_HEADER_TEXT, UI_TEXT_PAD);
 
+      submenu := Merge(UI_SMALL_TEXT, .{layout.padding = .{UI_WINDOW_GAP, UI_WINDOW_GAP, Em(0.2), Em(0.2)}});
+
+      UI_Checkbox("Show stats", *show_stats);
+      if show_stats
       {
-        Layer(UI_SMALL_TEXT);
+        Layers(submenu);
         CreateText(tprint("World Camera: %", G.camera_p));
         CreateText(tprint("Camera - Player: %", G.camera_p - OBJ_Get(G.client.player_key, .NETWORK).s.p));
         CreateText(tprint("Camera angles: %", G.camera_angles));
       }
 
-      UI_Checkbox("Noclip camera", *check_tests[0]);
+      UI_Checkbox("Noclip camera", *noclip);
       UI_Checkbox("Sun camera", *check_tests[1]);
       UI_Checkbox("Draw model collision", *check_tests[2]);
       UI_Checkbox("Render normals", *check_tests[3]);
@@ -124,18 +130,23 @@ UI_Checkbox :: (label: string, checkbox_value: *bool)
 
   if button.flags & .CLICK
     checkbox_value.* = !checkbox_value.*;
+  if button.flags & .HOVER
+    button.bg_color = Color32_SetAlphai(UI_YELLOW1, 128);
 
-  bg_color := ifx button.flags & .HOVER then UI_YELLOW1 else UI_BUTTON_BG;
+  // if checkbox_value.* then bg_color = lerp(bg_color, UI_RED1, 0.5);
 
-  if checkbox_value.* then bg_color = lerp(bg_color, UI_RED1, 0.5);
-  square_text := ifx checkbox_value.* then "X" else "";
+  {
+    square_text := ifx checkbox_value.* then "X" else "";
+    square_length := Rem(1.5);
 
-  CreateBox(.{layout = .{sizing = Size2(Em(1)),
-                         child_align = .{x = .CENTER, y = .CENTER}},
-              bg_color = bg_color,
-              border = .{color = UI_FG, widths = UI_BORDER_WIDTH},
-              corner_radius = UI_RADIUS,
-              text = .{str = square_text, font_size = Rem(2), align_y = .CENTER}});
+    Parent(CreateBox(.{layout = .{sizing = Size2(square_length),
+                                  child_align = .{x = .CENTER, y = .CENTER}},
+                       bg_color = UI_BUTTON_BG,
+                       border = .{color = UI_FG, widths = UI_BORDER_WIDTH},
+                       corner_radius = UI_RADIUS},));
+
+    CreateText(square_text, .{text.font_size = square_length});
+  }
   CreateText(label);
 }
 

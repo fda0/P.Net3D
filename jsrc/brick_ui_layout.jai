@@ -52,7 +52,11 @@ Padding :: struct
     #place lower; ends: [2] Length;
   };
 };
-PaddingAll :: (l: Length) -> Padding { return .{l,l,l,l}; }
+PaddingAll :: (l: Length)                   -> Padding { return .{l, l, l, l}; }
+PaddingV   :: (top_bottom: Length)          -> Padding { return .{.{}, .{}, top_bottom, top_bottom}; }
+PaddingV   :: (top: Length, bottom: Length) -> Padding { return .{.{}, .{}, top, bottom}; }
+PaddingH   :: (left_right: Length)          -> Padding { return .{left_right, left_right, .{}, .{}}; }
+PaddingH   :: (left: Length, right: Length) -> Padding { return .{left, right, .{}, .{}}; }
 
 CornerRadius :: struct
 {
@@ -294,8 +298,6 @@ BoxSpec :: struct
     color: Color;
     font: s32 = -1;
     font_size: Length; // EM on font size will be interpreted as REM!
-    align_y: Align;
-    // @todo add text align?
   };
 };
 
@@ -318,6 +320,11 @@ Layer :: (spec: BoxSpec) #expand
 {
   PushLayer(spec);
   `defer PopLayer();
+}
+Layers :: (specs: ..BoxSpec) #expand
+{
+  for specs PushLayer(it);
+  `defer for specs PopLayer();
 }
 ActiveLayers :: () -> [] BoxSpec
 {
@@ -435,7 +442,7 @@ Box :: struct
   // in pixels
   inner_min: V2 = .{-1, -1};
   inner_max: V2 = .{-1, -1};
-  inner_final: V2;
+  inner_final: V2; // @todo rename to inner_dim
 
   padding: struct
   {
@@ -536,7 +543,7 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location) -> *Box
     }
   }
 
-  layout_state.boxes_created_on_this_layout += 1;
+  layout_state.boxes_count += 1;
 
   box := array_add(BoxesArray(.CURRENT));
   box.spec = spec;
@@ -686,14 +693,19 @@ MeasureTextStub :: (params: MeasureTextParams) -> Vector2 { return .{}; }
 //
 RenderCommand :: struct
 {
+  type: enum u8 {RECTANGLE; BORDER; TEXT;};
   p: V2;
-  dim: V2;
+  dim: V2; // skipped for TEXT
   color: Color;
 
-  type: enum {RECTANGLE; BORDER; TEXT;};
   corner_radius: float; // @todo [4] float
   border_width: float;
   // edge_softness: float; add?
+
+  // .TEXT only
+  text: string;
+  font: s32;
+  font_size_px: float;
 
   box: *Box;
 };
@@ -745,6 +757,8 @@ LayoutBegin :: (new_spec: LayoutSpec)
   layout_spec = new_spec;
 
   // Boxes init
+  boxes_count = 0;
+
   nil_box = .{};
   LinkToNil(*nil_box);
 
@@ -1066,7 +1080,7 @@ LayoutEnd :: ()
     for :TreeBreadthFirst root_box
     {
       inner_dim := it.inner_final;
-      outer_dim := V2.{OuterDim(it, .X), OuterDim(it, .Y)};
+      outer_dim := OuterDim2(it);
 
       for 0..it_depth-1 print("  ");
       print("[d %; i %]; ", it_depth, it_index);
@@ -1081,14 +1095,14 @@ LayoutEnd :: ()
   {
     base_cmd: RenderCommand;
     base_cmd.p = it.abs_p;
-    base_cmd.dim = V2.{OuterDim(it, .X), OuterDim(it, .Y)};
+    base_cmd.dim = OuterDim2(it);
     base_cmd.box = it;
 
     if it.bg_color
     {
       cmd := base_cmd;
-      cmd.color = it.bg_color;
       cmd.type = .RECTANGLE;
+      cmd.color = it.bg_color;
       array_add(*render_commands, cmd);
     }
 
@@ -1104,8 +1118,12 @@ LayoutEnd :: ()
     if it.text.color
     {
       cmd := base_cmd;
-      cmd.color = it.text.color;
       cmd.type = .TEXT;
+      cmd.p += V2.{it.padding.left, it.padding.top + it.inner_final.y};
+      cmd.color = it.text.color;
+      cmd.text = it.text.str;
+      cmd.font = it.text.font;
+      cmd.font_size_px = LengthToPx(it.text.font_size, it, true);
       array_add(*render_commands, cmd);
     }
   }
@@ -1257,7 +1275,7 @@ LayoutState :: struct
 
   buttons: [ButtonTypeCount] ButtonFlags;
 
-  boxes_created_on_this_layout: s32;
+  boxes_count: s32;
 
   // Double-buffer system.
   // Each LayoutBegin call flips boxes_index between 0-1.

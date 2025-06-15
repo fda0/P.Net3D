@@ -55,7 +55,6 @@ GAME_State :: struct {
   debug: struct
   {
     sun_camera: bool;
-    noclip_camera: bool;
     draw_model_collision: bool;
     click_id: u64; // old UI thing, delete?
     show_debug_window: bool;
@@ -121,17 +120,17 @@ GAME_Iterate :: ()
 
   if !G.headless
   {
-    if (KEY_Pressed(.SDL_SCANCODE_GRAVE))
-    G.debug.show_debug_window = !G.debug.show_debug_window;
+    if (KEY_Pressed(.GRAVE))
+      G.debug.show_debug_window = !G.debug.show_debug_window;
 
-    if (KEY_Pressed(.SDL_SCANCODE_RETURN))
-    G.debug.noclip_camera = !G.debug.noclip_camera;
+    if (KEY_Pressed(.RETURN))
+      G.ui.dev.noclip = !G.ui.dev.noclip;
 
-    if (KEY_Pressed(.SDL_SCANCODE_BACKSPACE))
-    G.debug.sun_camera = !G.debug.sun_camera;
+    if (KEY_Pressed(.BACKSPACE))
+      G.debug.sun_camera = !G.debug.sun_camera;
 
     // move camera; calculate camera scale
-    if (G.debug.noclip_camera)
+    if G.ui.dev.noclip
     {
       if (KEY_Held(.MouseLeft) && !G.debug.click_id)
       {
@@ -147,8 +146,8 @@ GAME_Iterate :: ()
       if (KEY_Held(.S)) move_dir.x -= 1;
       if (KEY_Held(.A)) move_dir.y += 1;
       if (KEY_Held(.D)) move_dir.y -= 1;
-      if (KEY_Held(.SDL_SCANCODE_SPACE)) move_dir.z += 1;
-      if (KEY_Held(.SDL_SCANCODE_LSHIFT) || KEY_Held(.SDL_SCANCODE_RSHIFT)) move_dir.z -= 1;
+      if (KEY_Held(.SPACE)) move_dir.z += 1;
+      if (KEY_Held(.LSHIFT) || KEY_Held(.RSHIFT)) move_dir.z -= 1;
       move_dir = normalize(move_dir);
       move_dir = Math.rotate(move_dir, RotationAroundAxis(-AxisV3(.Z)/* @todo why negation fixes things? */, G.camera_angles.z));
       G.camera_p += move_dir * 4.0 * G.dt;
@@ -238,12 +237,12 @@ GAME_Iterate :: ()
     ANIM_AnimateObjects();
 
     marker := OBJ_Get(G.obj.pathing_marker, .OFFLINE);
-    if (!OBJ_IsNil(marker))
+    if !OBJ_IsNil(marker)
     {
-      if (!G.debug.noclip_camera && KEY_Held(.W, .S, .A, .D))
+      if !G.ui.dev.noclip && KEY_Held(.W, .S, .A, .D)
         marker.s.p.z = -2.0;
 
-      if (KEY_Held(.MouseRight) && G.world_mouse_valid)
+      if KEY_Held(.MouseRight) && G.world_mouse_valid
       {
         marker.s.flags |= .DRAW_MODEL;
         marker.s.model = MODEL_CreateKey("Flag");

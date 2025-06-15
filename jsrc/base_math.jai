@@ -433,12 +433,14 @@ Sin :: (turns: float) -> float
   rad := TURNS_TO_RAD * turns;
   return Math.sin(rad);
 }
-
 Cos :: (turns: float) -> float
 {
   rad := TURNS_TO_RAD * turns;
   return Math.cos(rad);
 }
+
+Sin01 :: (turns: float) -> float { return Sin(turns)*0.5 + 0.5; }
+Cos01 :: (turns: float) -> float { return Cos(turns)*0.5 + 0.5; }
 
 //
 Rotate :: (v: V3, q: Quat) -> V3 { return Math.rotate(v, q); }

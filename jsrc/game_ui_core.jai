@@ -27,8 +27,8 @@ UI_FinishFrame :: ()
 
   for cmd: layout_state.render_commands
   {
-    // if G.frame_number == 1
-    //   print("[%] render_command: % (%)\n", G.frame_number, cmd, cmd.box.loc);
+    if G.frame_number == 1
+      print("[%] render_command: % (%)\n", G.frame_number, cmd, cmd.box.loc);
 
     c4 := ColorV4_32(cmd.color);
     c32 := Color32_V4(c4);
@@ -48,11 +48,7 @@ UI_FinishFrame :: ()
 
       case .TEXT;
       skip_shape = true;
-      t := cmd.box.text;
-      align_y: UI_TextAlignY = .TOP;
-      if t.align_y == .CENTER then align_y = .CENTER;
-      if t.align_y == .BOTTOM then align_y = .BOTTOM;
-      UI_DrawTextLine(t.str, xx t.font, xx LengthToPx(t.font_size, cmd.box, true), t.color, cmd.p, cmd.dim, align_y);
+      UI_DrawTextLine(cmd.text, xx cmd.font, xx cmd.font_size_px, cmd.color, cmd.p);
     }
 
     if !skip_shape
