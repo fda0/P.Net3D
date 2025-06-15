@@ -55,30 +55,6 @@ UI_DeveloperKeyShortcuts :: ()
 
   if (KEY_Pressed(.BACKSPACE))
     G.ui.dev.sun_camera = !G.ui.dev.sun_camera;
-
-  // move camera; calculate camera scale
-  if G.ui.dev.noclip
-  {
-    if (KEY_Held(.MouseLeft) && !G.debug.click_id)
-    {
-      rot_speed := 0.0004;
-      G.camera_angles.z += rot_speed * G.mouse_delta.x;
-      G.camera_angles.y += rot_speed * G.mouse_delta.y * (-2.0 / 3.0);
-      G.camera_angles.z = WrapFloat(-0.5, 0.5, G.camera_angles.z);
-      G.camera_angles.y = clamp(G.camera_angles.y, -0.2, 0.2);
-    }
-
-    move_dir: V3;
-    if (KEY_Held(.W)) move_dir.x += 1;
-    if (KEY_Held(.S)) move_dir.x -= 1;
-    if (KEY_Held(.A)) move_dir.y += 1;
-    if (KEY_Held(.D)) move_dir.y -= 1;
-    if (KEY_Held(.SPACE)) move_dir.z += 1;
-    if (KEY_Held(.LSHIFT) || KEY_Held(.RSHIFT)) move_dir.z -= 1;
-    move_dir = normalize(move_dir);
-    move_dir = Math.rotate(move_dir, RotationAroundAxis(-AxisV3(.Z)/* @todo why negation fixes things? */, G.camera_angles.z));
-    G.camera_p += move_dir * 4.0 * G.dt;
-  }
 }
 
 UI_BuildDeveloperWindow :: ()

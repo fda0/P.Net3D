@@ -100,8 +100,8 @@ WORLD_DrawObjects :: ()
   for *obj: G.obj.all_objects
   {
     draw_model := OBJ_HasAnyFlag(obj, .DRAW_MODEL);
-    draw_colliders := (OBJ_HasAnyFlag(obj, .DRAW_COLLIDERS));
-    dev_draw_colliders := (draw_model && G.ui.dev.show_colliders);
+    draw_colliders := OBJ_HasAnyFlag(obj, .DRAW_COLLIDERS);
+    debug_colliders := G.ui.dev.show_colliders;
 
     if draw_model
     {
@@ -110,7 +110,7 @@ WORLD_DrawObjects :: ()
         pos = obj.l.animated_p;
 
       transform := TranslationMatrix(pos);
-      if (OBJ_HasAnyFlag(obj, .ANIMATE_ROTATION))
+      if OBJ_HasAnyFlag(obj, .ANIMATE_ROTATION)
       {
         rot_mat := RotationMatrix(obj.l.animated_rot);
         transform = transform * rot_mat; // rotate first, translate second
@@ -119,12 +119,12 @@ WORLD_DrawObjects :: ()
       WORLD_DrawModel(obj.s.model, transform, obj.s.color, obj.l.animation_index, obj.l.animation_t);
     }
 
-    if draw_colliders || draw_colliders
+    if draw_colliders || debug_colliders
     {
       height := obj.s.height;
       material := obj.s.material;
 
-      if draw_colliders
+      if debug_colliders && draw_model
       {
         if !height  height = 0.2;
         if MATERIAL_IsZeroKey(material)  material = MATERIAL_CreateKey("tex.Leather011");
