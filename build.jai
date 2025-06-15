@@ -17,12 +17,12 @@ build :: ()
 
   Build(.{workspace_name = "Baker",
           output_name = "Baker",
-          entry_file = tprint("%jsrc/baker/baker_entry.jai", #filepath),
+          entry_file = "jsrc/baker/baker_entry.jai",
           icon_path = "res/ico/cook.ico"});
 
   Build(.{workspace_name = "Game",
           output_name = "Treasure",
-          entry_file = tprint("%jsrc/game/game_sdl_entry.jai", #filepath),
+          entry_file = "jsrc/game/game_sdl_entry.jai",
           icon_path = "res/ico/coin.ico"});
 }
 
