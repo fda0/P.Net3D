@@ -168,7 +168,7 @@ SDL_BUTTON_LMASK : SDL_MouseButtonFlags : (1 << 0);
 SDL_BUTTON_RMASK : SDL_MouseButtonFlags : (1 << 2);
 // @todo how to overwrite SDL_ASSERT_LEVEL :: 2; in sdl3 module?
 
-using,map(ImportMapForSDL) SDL :: #import,file "libs/jai-sdl3/module.jai";
+using,map(ImportMapForSDL) SDL :: #import,file "../libs/jai-sdl3/module.jai";
 ImportMapForSDL :: (names: [] string)
 {
   S :: #import,file "base_string.jai";
