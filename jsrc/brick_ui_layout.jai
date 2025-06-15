@@ -1,22 +1,17 @@
 #module_parameters(
   Color: Type = u32,
   V2: Type = Vector2,
-  HashLocFunc := DefaultHashLocFunc,
-  HashStringFunc := DefaultHashStringFunc,
+  LayoutHash := DefaultHash64,
   MAX_NESTING := 512)
 {
   Hash :: #import "Hash";
-  DefaultHashStringFunc :: (s: string) -> u64
+  DefaultHash64 :: (byte_arrays: ..[] u8) -> u64
   {
-    h := Hash.fnv1a_hash(s.data, s.count);
-    return h;
-  }
-
-  DefaultHashLocFunc :: (loc: Source_Code_Location) -> u64
-  {
-    h := Hash.fnv1a_hash(loc.fully_pathed_filename.data, loc.fully_pathed_filename.count);
-    h  = Hash.fnv1a_hash(xx,no_check loc.line_number, h);
-    h  = Hash.fnv1a_hash(xx,no_check loc.character_number, h);
+    h := Hash.FNV_64_OFFSET_BIAS;
+    for byte_arrays
+    {
+      h = Hash.fnv1a_hash(it.data, it.count, h);
+    }
     return h;
   }
 }
@@ -239,22 +234,23 @@ BoxKey :: struct
 operator == :: (a: BoxKey, b: BoxKey) -> bool { return a.hash == b.hash; }
 operator ! :: (a: BoxKey) -> bool { return !a.hash; }
 
-CreateKey :: (loc: Source_Code_Location) -> BoxKey
+CreateKey :: (loc: Source_Code_Location, seed: u64 = 0) -> BoxKey
 {
-  h := HashLocFunc(loc);
+  h := HashLocFunc(loc, seed);
   key := BoxKey.{hash};
   return key;
 }
 
-CreateKey :: (text: string) -> BoxKey
+CreateKey :: (text: string, seed: u64 = 0) -> BoxKey
 {
-  h := HashStringFunc(text);
+  h := HashStringFunc(text, seed);
   return BoxKey.{h};
 }
 
 BoxSpec :: struct
 {
   key: BoxKey;
+  autokey_seed: u64;
 
   layout: struct
   {
@@ -352,6 +348,9 @@ Merge :: (c: *s32, p: s32) {
 Merge :: (c: *float, p: float) {
   if c.* < 0.0 then c.* = p;
 }
+Merge :: (c: *u64, p: u64) {
+  if c.* == 0 then c.* = p;
+}
 Merge :: (c: *Color, p: Color) {
   if c.* == 0 then c.* = p;
 }
@@ -387,6 +386,8 @@ Merge :: (c: *BorderWidths, p: BorderWidths) {
   Merge(*c.between_children, p.between_children);
 }
 Merge :: (c: *BoxSpec, p: BoxSpec) {
+  Merge(*c.autokey_seed,         p.autokey_seed);
+
   Merge(*c.layout.sizing,        p.layout.sizing);
   Merge(*c.layout.padding,       p.layout.padding);
   Merge(*c.layout.child_gap,     p.layout.child_gap);
@@ -528,9 +529,9 @@ CreateBoxDirect :: (source_spec: BoxSpec, loc := #caller_location) -> *Box
   spec := source_spec;
   if !spec.key
   {
-    // spec.key = CreateKey(loc);
+    // spec.key = CreateKey(loc, spec.autokey_seed);
     stack_trace_string := get_stack_trace_string(context.stack_trace,, temp);
-    spec.key = CreateKey(stack_trace_string);
+    spec.key = CreateKey(stack_trace_string, spec.autokey_seed);
   }
   if spec.text.str then spec.text.str = copy_temporary_string(spec.text.str); // @todo This should live in some double-buffered array in layout_state
 
@@ -1312,6 +1313,28 @@ BoxesArray :: (which: BoxStorageArray) -> *[..] Box
 #scope_file;
 #import "Basic"; // for array_add, clamp, log_error
 #import "Math"; // Vector2, operator +
+
+//
+// Internal hash helpers
+//
+ObjectToByteArray :: (pointer: *$T) -> [] u8
+{
+  return []u8.{count = size_of(T), data = pointer.(*u8)};
+}
+
+HashStringFunc :: (s: string, init_seed: u64) -> u64
+{
+  seed := ObjectToByteArray(*init_seed);
+  str := cast([] u8) s;
+  return LayoutHash(seed, str);
+}
+HashLocFunc :: (loc: Source_Code_Location) -> u64
+{
+  filename := cast([] u8) loc.fully_pathed_filename;
+  line_number := ObjectToByteArray(*loc.line_number);
+  character_number := ObjectToByteArray(*loc.character_number);
+  return LayoutHash(seed, filename, line_number, character_number);
+}
 
 //
 // Internal math helpers

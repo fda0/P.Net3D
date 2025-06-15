@@ -6,6 +6,8 @@ UI_State :: struct
     win_p: V2;
     win_dim: V2;
 
+    category: enum {switches; stats; network;};
+
     show_stats: bool;
     noclip: bool;
     sun_camera: bool;
@@ -114,6 +116,8 @@ UI_BuildDeveloperWindow :: ()
   {
     Parent(CreateBox(.{layout = .{sizing = .{Grow(), Grow()}}}));
 
+
+
     // Category vertical bar
     {
       Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
@@ -124,8 +128,12 @@ UI_BuildDeveloperWindow :: ()
                          border = .{color = UI_BORDER_BG,
                                     widths = UI_BORDER_WIDTH}}));
 
-      CreateText("switches");
-      CreateText("?");
+      category_names := enum_names(type_of(category));
+      category_values := enum_values_as_enum(type_of(category));
+      for category_names
+      {
+        UI_Button(it, *category, category_values[it_index]);
+      }
     }
 
     // Menu content
@@ -159,13 +167,15 @@ UI_BuildDeveloperWindow :: ()
 // UI element library
 UI_Checkbox :: (label: string, checkbox_value: *bool)
 {
+  Layer(.{autokey_seed = Hash64Any(label, checkbox_value.(u64))});
+
   button := Signal(CreateBox(.{layout = .{sizing = .{Grow(), Fit()},
                                           padding = UI_BUTTON_PAD,
                                           child_align.y = .CENTER,
                                           child_gap = UI_WINDOW_GAP}}));
   Parent(button);
 
-  if button.flags & .HOVER then button.bg_color = Color32_SetAlphai(UI_YELLOW1, 128);
+  if button.flags & .HOVER then button.bg_color = UI_BUTTON_HOVER_BG;
 
   square_text := "";
   if checkbox_value
@@ -185,6 +195,38 @@ UI_Checkbox :: (label: string, checkbox_value: *bool)
     CreateText(square_text, .{text.font_size = square_length});
   }
   CreateText(label);
+}
+
+UI_Button :: (label: string, button_value: *$T, set_value: T)
+{
+  Layer(.{autokey_seed = Hash64Any(label, button_value.(u64), set_value)});
+
+  button := Signal(CreateBox(.{layout = .{sizing = .{Grow(Fit()), Fit()},
+                                          padding = UI_BUTTON_PAD,
+                                          child_align.x = .RIGHT,
+                                          child_align.y = .CENTER,
+                                          child_gap = UI_WINDOW_GAP}}));
+  Parent(button);
+
+  button.bg_color = UI_BUTTON_BG;
+  if button.flags & .HOVER then button.bg_color = UI_BUTTON_HOVER_BG;
+
+  label_box := CreateText(label);
+
+  if button_value
+  {
+    if button.flags & .CLICK then button_value.* = set_value;
+    if button_value.* == set_value
+    {
+      button.bg_color = UI_FG;
+      label_box.text.color = UI_BG;
+    }
+  }
+  else
+  {
+    label_box.text.color = UI_RED2;
+  }
+
 }
 
 Layout :: #import,file "brick_ui_layout.jai"(Color=Color32);
