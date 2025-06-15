@@ -1,11 +1,16 @@
+/* @todo
+- implementing floating,
+- implement mouse-box interactions like dragging, detect direct hover,
+*/
+
 #module_parameters(
   Color: Type = u32,
   V2: Type = Vector2,
-  LayoutHash := DefaultHash64,
+  LayoutHash := DefaultHash,
   MAX_NESTING := 512)
 {
   Hash :: #import "Hash";
-  DefaultHash64 :: (byte_arrays: ..[] u8) -> u64
+  DefaultHash :: (byte_arrays: ..[] u8) -> u64
   {
     h := Hash.FNV_64_OFFSET_BIAS;
     for byte_arrays
