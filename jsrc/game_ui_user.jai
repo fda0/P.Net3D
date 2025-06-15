@@ -8,7 +8,8 @@ UI_State :: struct
 
     show_stats: bool;
     noclip: bool;
-    check_tests: [4] bool;
+    sun_camera: bool;
+    show_colliders: bool;
   };
 };
 
@@ -41,6 +42,42 @@ UI_REGULAR_TEXT :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay,
 UI_SMALL_TEXT   :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(0.8)}};
 UI_FUNKY_TEXT   :: #run BoxSpec.{text = .{font = xx FONT_Family.Jacquard24,      font_size = Rem(1.5)}};
 UI_TEXT_PAD     :: #run BoxSpec.{layout.padding = PaddingV(Em(0.1), Em(0.4))};
+
+UI_DeveloperKeyShortcuts :: ()
+{
+  if (KEY_Pressed(.GRAVE))
+    G.debug.show_debug_window = !G.debug.show_debug_window;
+
+  if (KEY_Pressed(.RETURN))
+    G.ui.dev.noclip = !G.ui.dev.noclip;
+
+  if (KEY_Pressed(.BACKSPACE))
+    G.ui.dev.sun_camera = !G.ui.dev.sun_camera;
+
+  // move camera; calculate camera scale
+  if G.ui.dev.noclip
+  {
+    if (KEY_Held(.MouseLeft) && !G.debug.click_id)
+    {
+      rot_speed := 0.0004;
+      G.camera_angles.z += rot_speed * G.mouse_delta.x;
+      G.camera_angles.y += rot_speed * G.mouse_delta.y * (-2.0 / 3.0);
+      G.camera_angles.z = WrapFloat(-0.5, 0.5, G.camera_angles.z);
+      G.camera_angles.y = clamp(G.camera_angles.y, -0.2, 0.2);
+    }
+
+    move_dir: V3;
+    if (KEY_Held(.W)) move_dir.x += 1;
+    if (KEY_Held(.S)) move_dir.x -= 1;
+    if (KEY_Held(.A)) move_dir.y += 1;
+    if (KEY_Held(.D)) move_dir.y -= 1;
+    if (KEY_Held(.SPACE)) move_dir.z += 1;
+    if (KEY_Held(.LSHIFT) || KEY_Held(.RSHIFT)) move_dir.z -= 1;
+    move_dir = normalize(move_dir);
+    move_dir = Math.rotate(move_dir, RotationAroundAxis(-AxisV3(.Z)/* @todo why negation fixes things? */, G.camera_angles.z));
+    G.camera_p += move_dir * 4.0 * G.dt;
+  }
+}
 
 UI_BuildDeveloperWindow :: ()
 {
@@ -112,9 +149,9 @@ UI_BuildDeveloperWindow :: ()
       }
 
       UI_Checkbox("Noclip camera", *noclip);
-      UI_Checkbox("Sun camera", *check_tests[1]);
-      UI_Checkbox("Draw model collision", *check_tests[2]);
-      UI_Checkbox("Render normals", *check_tests[3]);
+      UI_Checkbox("Sun camera", *sun_camera);
+      UI_Checkbox("Show colliders", *show_colliders);
+      UI_Checkbox("Render normals", null);
     }
   }
 }
@@ -128,23 +165,23 @@ UI_Checkbox :: (label: string, checkbox_value: *bool)
                                           child_gap = UI_WINDOW_GAP}}));
   Parent(button);
 
-  if button.flags & .CLICK
-    checkbox_value.* = !checkbox_value.*;
-  if button.flags & .HOVER
-    button.bg_color = Color32_SetAlphai(UI_YELLOW1, 128);
+  if button.flags & .HOVER then button.bg_color = Color32_SetAlphai(UI_YELLOW1, 128);
 
-  // if checkbox_value.* then bg_color = lerp(bg_color, UI_RED1, 0.5);
+  square_text := "";
+  if checkbox_value
+  {
+    if button.flags & .CLICK then checkbox_value.* = !checkbox_value.*;
+    square_text = ifx checkbox_value.* then "X" else "";
+  }
+  else square_text = "/";
 
   {
-    square_text := ifx checkbox_value.* then "X" else "";
     square_length := Rem(1.5);
-
     Parent(CreateBox(.{layout = .{sizing = Size2(square_length),
                                   child_align = .{x = .CENTER, y = .CENTER}},
                        bg_color = UI_BUTTON_BG,
                        border = .{color = UI_FG, widths = UI_BORDER_WIDTH},
                        corner_radius = UI_RADIUS},));
-
     CreateText(square_text, .{text.font_size = square_length});
   }
   CreateText(label);

@@ -30,7 +30,7 @@ OBJ_Flags :: enum_flags u32
   ANIMATE_TRACKS;
 
   DRAW_MODEL;
-  DRAW_COLLISION;
+  DRAW_COLLIDERS;
 };
 
 OBJ_Storage :: enum_flags u32
@@ -97,7 +97,7 @@ OBJ_Init :: ()
 {
   // Sun
   {
-    sun := OBJ_Create(.OFFLINE, .DRAW_COLLISION);
+    sun := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS);
     sun.s.material = MATERIAL_CreateKey("tex.Leather011");
     sun.s.height = 0.5;
     sun.s.collider_vertices = OBJ_GetColliderFromRect2D(V2.{.5, .5});
@@ -111,7 +111,7 @@ OBJ_Init :: ()
 
   // Ground
   {
-    ground := OBJ_Create(.OFFLINE, .DRAW_COLLISION);
+    ground := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS);
     ground.s.collider_vertices = OBJ_GetColliderFromRect2D(V2.{100, 100});
     ground.s.material = MATERIAL_CreateKey("tex.Grass004");
     ground.s.texture_texels_per_m = 1.0;
@@ -132,7 +132,7 @@ OBJ_Init :: ()
     }
 
     {
-      flying_cube := OBJ_Create(.OFFLINE, .DRAW_COLLISION);
+      flying_cube := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS);
       flying_cube.s.p = V3.{0.5, 1.2, 1.};
       flying_cube.s.material = MATERIAL_CreateKey("tex.Tiles101");
       flying_cube.s.texture_texels_per_m = 1.;
@@ -152,7 +152,7 @@ OBJ_Init :: ()
         x := ifx wall <= 1 then i else (ifx wall == 2 then 0 else len);
         y := ifx wall >= 2 then i else (ifx wall == 0 then 0 else len);
 
-        block := OBJ_Create(.OFFLINE, .DRAW_COLLISION|.COLLIDE);
+        block := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS|.COLLIDE);
         if !OBJ_IsNil(block)
         {
           block.s.p = V3.{d*x - len*0.5*d, d*y - len*0.5*d, 0};
@@ -340,7 +340,7 @@ OBJ_Create :: (storage: OBJ_Storage, flags: OBJ_Flags) -> *Object
 
 OBJ_CreateWall :: (p: V2, dim: V2, height: float) -> *Object
 {
-  obj := OBJ_Create(.OFFLINE, .DRAW_COLLISION|.COLLIDE);
+  obj := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS|.COLLIDE);
   if !OBJ_IsNil(obj)
   {
     obj.s.p = V3.{xy = p};

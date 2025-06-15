@@ -100,8 +100,8 @@ WORLD_DrawObjects :: ()
   for *obj: G.obj.all_objects
   {
     draw_model := OBJ_HasAnyFlag(obj, .DRAW_MODEL);
-    draw_collision := (OBJ_HasAnyFlag(obj, .DRAW_COLLISION));
-    draw_model_collision := (draw_model && G.debug.draw_model_collision);
+    draw_colliders := (OBJ_HasAnyFlag(obj, .DRAW_COLLIDERS));
+    dev_draw_colliders := (draw_model && G.ui.dev.show_colliders);
 
     if draw_model
     {
@@ -119,12 +119,12 @@ WORLD_DrawObjects :: ()
       WORLD_DrawModel(obj.s.model, transform, obj.s.color, obj.l.animation_index, obj.l.animation_t);
     }
 
-    if draw_collision || draw_model_collision
+    if draw_colliders || draw_colliders
     {
       height := obj.s.height;
       material := obj.s.material;
 
-      if draw_model_collision
+      if draw_colliders
       {
         if !height  height = 0.2;
         if MATERIAL_IsZeroKey(material)  material = MATERIAL_CreateKey("tex.Leather011");

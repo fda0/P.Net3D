@@ -497,7 +497,7 @@ GPU_Iterate :: ()
   // World render pass
   {
     G.gpu.world_uniform.camera_transform = G.camera_transform;
-    if G.debug.sun_camera
+    if G.ui.dev.sun_camera
     {
       G.gpu.world_uniform.camera_transform = G.sun_camera_transform;
       G.gpu.world_uniform.camera_position = G.sun_camera_p;
