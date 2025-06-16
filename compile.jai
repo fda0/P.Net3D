@@ -1,3 +1,5 @@
+LOG_RUN :: true;
+
 #run build();
 build :: ()
 {
@@ -17,7 +19,7 @@ build :: ()
     if it == {
       case "clean_sdl"; clean_sdl = true;
       case "sdl";       build_sdl = true;
-      case "kill"; LogAndRun("raddbg --ipc kill_all"); // @todo use OS to kill processes
+      case "kill"; Run("raddbg --ipc kill_all"); // @todo use OS to kill processes
       case "-"; after_dash = true;
       case; log_error("Unknow argument: %", it);
     }
@@ -34,11 +36,11 @@ build :: ()
 
   if build_sdl
   {
-    error_message = "Encountered an error when building SDL3.";
+    error_message = "Encountered an error when building SDL3 & generating bindings.";
 
     stage1 := "cmake -S . -B build/win";
-    stage1b := tprint("% -DSDL3_DIR=../SDL/build/win", stage1);
     stage2 := "cmake --build build/win";
+    stage1b := join(stage1, " -DSDL3_DIR=../SDL/build/win");
 
     workdir := "libs/SDL";
     log("- building % -", workdir);
@@ -52,7 +54,7 @@ build :: ()
 
     workdir = "libs/SDL_image";
     log("- building % -", workdir);
-    Check(Run(tprint("% -DSDLIMAGE_VENDORED=OFF", stage1b), workdir));
+    Check(Run(join(stage1b, " -DSDLIMAGE_VENDORED=OFF"), workdir));
     Check(Run(stage2, workdir));
 
     log("- generating SDL bindings -");
@@ -70,6 +72,17 @@ build :: ()
                                  base_directory = "libs/",
                                  output_filename = "sdl3_base+image.jai"}));
     exit(0);
+  }
+
+  // copy SDL dll dependencies into build directory if missing
+  {
+    copies: [] struct {dst, src: string;} = .[
+      .{"build/SDL3.dll", "libs/SDL/build/win/Debug/SDL3.dll"},
+      .{"build/SDL3_net.dll", "libs/SDL_net/build/win/Debug/SDL3_net.dll"},
+      .{"build/SDL3_image.dll", "libs/SDL_image/build/win/Debug/SDL3_image.dll"},
+    ];
+    for copies
+      if !file_exists(it.dst) then copy_file(it.src, it.dst);
   }
 
   // @todo put these workspaces on separate threads
@@ -136,13 +149,8 @@ MessageLoop :: (w: Workspace, using config: BuildConfig)
 
 Run :: (args: string, work_dir := "") -> success:bool
 {
+  if LOG_RUN log("Run(`%`, `%`);", args, work_dir);
   return run_command(..break_command_into_strings(args), working_directory=work_dir).exit_code == 0;
-}
-
-LogAndRun :: (args: string)
-{
-  log("Custom command from build.jai: %", args);
-  run_command(..break_command_into_strings(args));
 }
 
 translate_precompiled_shader_headers :: ()
@@ -173,5 +181,6 @@ Check :: (success: bool, loc := #caller_location)
 #import "Compiler";
 #import "Basic";
 #import "File";
+#import "File_Utilities";
 #import "String";
 #import "Process";

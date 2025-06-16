@@ -1,7 +1,7 @@
 //
 // This file was auto-generated using the following command:
 //
-// jai ./compile.jai - sdl
+// jai ./compile.jai - sdl clean_sdl
 //
 
 /*

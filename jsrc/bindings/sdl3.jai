@@ -18,7 +18,7 @@ GenerateBindings :: (using config: BindingsConfig) -> bool
   base_dir = tprint("%/", base_dir);
  }
 
- output_path := tprint("%1%2", base_dir, output_filename);
+ output_path := join(base_dir, output_filename);
 
  footer_builder: String_Builder;
  opts: Generate_Bindings_Options;
@@ -28,7 +28,7 @@ GenerateBindings :: (using config: BindingsConfig) -> bool
  AddTarget :: (dir_name: string, lib_name: string) #expand
  {
   build_path   := tprint("%/build/win/%/", dir_name, opt_dir);
-  lib_path     := tprint("%1%2", base_dir, build_path);
+  lib_path     := join(base_dir, build_path);
   include_path := tprint("%1%2/include", base_dir, dir_name);
   source_file  := tprint("%1%2/include/%/%.h", base_dir, dir_name, lib_name, dir_name);
   array_add(*opts.libnames,      lib_name);
