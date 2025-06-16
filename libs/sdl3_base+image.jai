@@ -1,7 +1,7 @@
 //
 // This file was auto-generated using the following command:
 //
-// jai ./build.jai - sdl
+// jai ./compile.jai - sdl
 //
 
 /*
@@ -1451,7 +1451,7 @@ SDL_MINOR_VERSION :: 3;
 SDL_MICRO_VERSION :: 0;
 
 SDL_IMAGE_MAJOR_VERSION :: 3;
-SDL_IMAGE_MINOR_VERSION :: 1;
+SDL_IMAGE_MINOR_VERSION :: 3;
 SDL_IMAGE_MICRO_VERSION :: 0;
 
 /**
@@ -39110,14 +39110,16 @@ IMG_SaveJPG :: (surface: *SDL_Surface, file: *u8, quality: s32) -> bool #foreign
 IMG_SaveJPG_IO :: (surface: *SDL_Surface, dst: *SDL_IOStream, closeio: bool, quality: s32) -> bool #foreign sdl3_image;
 
 /**
-* Animated image support Currently only animated GIFs are supported.
+* Animated image support
+*
+* Currently only animated GIFs and WEBP images are supported.
 */
 IMG_Animation :: struct {
-    w:      s32;
-    h:      s32;
-    count:  s32;
-    frames: **SDL_Surface;
-    delays: *s32;
+    w:      s32; /**< The width of the frames */
+    h:      s32; /**< The height of the frames */
+    count:  s32; /**< The number of frames */
+    frames: **SDL_Surface; /**< An array of frames */
+    delays: *s32; /**< An array of frame delays, in milliseconds */
 }
 
 /**
@@ -39245,5 +39247,5 @@ IMG_LoadWEBPAnimation_IO :: (src: *SDL_IOStream) -> *IMG_Animation #foreign sdl3
 
 #import "Basic"; // For push_context
 
-    sdl3 :: #library,no_dll "bin/x64/SDL3";
-    sdl_net :: #library,no_dll "bin/x64/SDL_net";
+sdl3 :: #library,no_dll "SDL/build/win/Debug/SDL3";
+sdl3_image :: #library,no_dll "SDL_image/build/win/Debug/SDL3_image";

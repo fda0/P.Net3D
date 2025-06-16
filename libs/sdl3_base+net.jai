@@ -1,7 +1,7 @@
 //
 // This file was auto-generated using the following command:
 //
-// jai ./build.jai - sdl
+// jai ./compile.jai - sdl
 //
 
 /*
@@ -38381,5 +38381,5 @@ NET_WaitUntilInputAvailable :: (vsockets: **void, numsockets: s32, timeout: Sint
 
 #import "Basic"; // For push_context
 
-    sdl3 :: #library,no_dll "bin/x64/SDL3";
-    sdl_net :: #library,no_dll "bin/x64/SDL_net";
+sdl3 :: #library,no_dll "SDL/build/win/Debug/SDL3";
+sdl3_net :: #library,no_dll "SDL_net/build/win/Debug/SDL3_net";

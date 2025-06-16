@@ -5,57 +5,51 @@ BindingsConfig :: struct
 {
  targets: enum_flags {BASE; NET; IMAGE;};
  optimizations: enum {DEBUG; RELEASE;};
- input_dir: string;
+ base_directory: string;
  output_filename: string;
 };
 
 GenerateBindings :: (using config: BindingsConfig) -> bool
 {
- opts: Generate_Bindings_Options;
- opts.header = HEADER;
- opts.strip_flags = .FUNCTIONS_WITH_VALIST;
-
- FOOTER :: #string EOF
-    sdl3 :: #library,no_dll "bin/x64/SDL3";
-    sdl_net :: #library,no_dll "bin/x64/SDL_net";
-EOF
- // @todo revisit this comment bellow:
- // DLL provided by user not in bin, so use our own footer not generated library declaration
- opts.footer = FOOTER;
- opts.generate_library_declarations = false;
-
  opt_dir := ifx optimizations == .DEBUG then "Debug" else "Release";
- base_dir := input_dir;
+ base_dir := base_directory;
  if base_dir.count > 0 && !(ends_with(base_dir, "/") || ends_with(base_dir, "\\"))
  {
   base_dir = tprint("%/", base_dir);
  }
 
- if targets & .BASE
+ output_path := tprint("%1%2", base_dir, output_filename);
+
+ footer_builder: String_Builder;
+ opts: Generate_Bindings_Options;
+ opts.header = HEADER;
+ opts.strip_flags = .FUNCTIONS_WITH_VALIST;
+
+ AddTarget :: (dir_name: string, lib_name: string) #expand
  {
-  array_add(*opts.libnames, "SDL3");
-  array_add(*opts.libpaths,      tprint("%SDL/build/win/%/", base_dir, opt_dir));
-  array_add(*opts.include_paths, tprint("%SDL/include", base_dir));
-  array_add(*opts.source_files,  tprint("%SDL/include/SDL3/SDL.h", base_dir));
+  build_path   := tprint("%/build/win/%/", dir_name, opt_dir);
+  lib_path     := tprint("%1%2", base_dir, build_path);
+  include_path := tprint("%1%2/include", base_dir, dir_name);
+  source_file  := tprint("%1%2/include/%/%.h", base_dir, dir_name, lib_name, dir_name);
+  array_add(*opts.libnames,      lib_name);
+  array_add(*opts.libpaths,      lib_path);
+  array_add(*opts.include_paths, include_path);
+  array_add(*opts.source_files,  source_file);
+  print_to_builder(*footer_builder, "%1 :: #library,no_dll \"%2%3\";\n", to_lower_copy(lib_name), build_path, lib_name);
  }
- if targets & .NET
- {
-  array_add(*opts.libnames, "SDL3_net");
-  array_add(*opts.libpaths,      tprint("%SDL_net/build/win/%/", base_dir, opt_dir));
-  array_add(*opts.include_paths, tprint("%SDL_net/include", base_dir));
-  array_add(*opts.source_files,  tprint("%SDL_net/include/SDL3_net/SDL_net.h", base_dir));
- }
- if targets & .IMAGE
- {
-  array_add(*opts.libnames, "SDL3_image");
-  array_add(*opts.libpaths,      tprint("%SDL_image/build/win/%/", base_dir, opt_dir));
-  array_add(*opts.include_paths, tprint("%SDL_image/include", base_dir));
-  array_add(*opts.source_files,  tprint("%SDL_image/include/SDL3_image/SDL_image.h", base_dir));
- }
+
+ if targets & .BASE  then AddTarget("SDL", "SDL3");
+ if targets & .NET   then AddTarget("SDL_net", "SDL3_net");
+ if targets & .IMAGE then AddTarget("SDL_image", "SDL3_image");
+
+ // @todo revisit this comment bellow:
+ // DLL provided by user not in bin, so use our own footer not generated library declaration
+ opts.footer = builder_to_string(*footer_builder);
+ opts.generate_library_declarations = false;
 
  opts.visitor = sdl3_visitor;
  opts.generate_compile_time_struct_checks = false;
- return generate_bindings(opts, output_filename);
+ return generate_bindings(opts, output_path);
 }
 
 sdl3_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration_Visit_Result {
