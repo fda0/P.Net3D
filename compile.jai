@@ -17,7 +17,7 @@ build :: ()
     if it == {
       case "clean_sdl"; clean_sdl = true;
       case "sdl";       build_sdl = true;
-      case "kill"; LogAndRun("raddbg", "--ipc", "kill_all"); // @todo use OS to kill processes
+      case "kill"; LogAndRun("raddbg --ipc kill_all"); // @todo use OS to kill processes
       case "-"; after_dash = true;
       case; log_error("Unknow argument: %", it);
     }
@@ -34,20 +34,22 @@ build :: ()
 
   if build_sdl
   {
-    error_message := "Encountered an error when building SDL3.";
+    error_message = "Encountered an error when building SDL3.";
 
     log("- building SDL3 base -");
-    Check(Run("cmake", "-S", ".", "-B", "build/win", work_dir="libs/SDL"));
-    Check(Run("cmake", "--build", "build/win", work_dir="libs/SDL"));
+    workdir := "libs/SDL";
+    Check(Run("cmake -S . -B build/win", workdir));
+    Check(Run("cmake --build build/win", workdir));
 
     log("- building SDL net -");
-    Check(Run("cmake", "-S", ".", "-B", "build/win", "-DSDL3_DIR=../SDL/build/win", work_dir="libs/SDL_net"));
-    Check(Run("cmake", "--build", "build/win", work_dir="libs/SDL_net"));
+    workdir = "libs/SDL_net";
+    Check(Run("cmake -S . -B build/win -DSDL3_DIR=../SDL/build/win", workdir));
+    Check(Run("cmake --build build/win", workdir));
 
     log("- building SDL image -");
-    Check(Run("cmake", "-S", ".", "-B", "build/win", "-DSDL3_DIR=../SDL/build/win",
-              "-DSDLIMAGE_VENDORED=OFF", work_dir="libs/SDL_image"));
-    Check(Run("cmake", "--build", "build/win", work_dir="libs/SDL_image"));
+    workdir = "libs/SDL_image";
+    Check(Run("cmake -S . -B build/win -DSDL3_DIR=../SDL/build/win -DSDLIMAGE_VENDORED=OFF", workdir));
+    Check(Run("cmake --build build/win", workdir));
 
     log("- generating SDL bindings -");
     SDL :: #import,file "jsrc/bindings/sdl3.jai";
@@ -128,15 +130,15 @@ MessageLoop :: (w: Workspace, using config: BuildConfig)
   }
 }
 
-Run :: (args: ..string, work_dir := "") -> success:bool
+Run :: (args: string, work_dir := "") -> success:bool
 {
-  return run_command(..args, working_directory=work_dir).exit_code == 0;
+  return run_command(..break_command_into_strings(args), working_directory=work_dir).exit_code == 0;
 }
 
-LogAndRun :: (args: ..string)
+LogAndRun :: (args: string)
 {
-  log("Custom command from build.jai: %", join(..args, " "));
-  run_command(..args);
+  log("Custom command from build.jai: %", args);
+  run_command(..break_command_into_strings(args));
 }
 
 translate_precompiled_shader_headers :: ()
