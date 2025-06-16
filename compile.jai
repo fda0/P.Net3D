@@ -36,20 +36,24 @@ build :: ()
   {
     error_message = "Encountered an error when building SDL3.";
 
-    log("- building SDL3 base -");
+    stage1 := "cmake -S . -B build/win";
+    stage1b := tprint("% -DSDL3_DIR=../SDL/build/win", stage1);
+    stage2 := "cmake --build build/win";
+
     workdir := "libs/SDL";
-    Check(Run("cmake -S . -B build/win", workdir));
-    Check(Run("cmake --build build/win", workdir));
+    log("- building % -", workdir);
+    Check(Run(stage1, workdir));
+    Check(Run(stage2, workdir));
 
-    log("- building SDL net -");
     workdir = "libs/SDL_net";
-    Check(Run("cmake -S . -B build/win -DSDL3_DIR=../SDL/build/win", workdir));
-    Check(Run("cmake --build build/win", workdir));
+    log("- building % -", workdir);
+    Check(Run(stage1b, workdir));
+    Check(Run(stage2, workdir));
 
-    log("- building SDL image -");
     workdir = "libs/SDL_image";
-    Check(Run("cmake -S . -B build/win -DSDL3_DIR=../SDL/build/win -DSDLIMAGE_VENDORED=OFF", workdir));
-    Check(Run("cmake --build build/win", workdir));
+    log("- building % -", workdir);
+    Check(Run(tprint("% -DSDLIMAGE_VENDORED=OFF", stage1b), workdir));
+    Check(Run(stage2, workdir));
 
     log("- generating SDL bindings -");
     SDL :: #import,file "jsrc/bindings/sdl3.jai";
