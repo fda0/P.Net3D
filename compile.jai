@@ -50,7 +50,7 @@ build :: ()
     Check(Run("cmake", "--build", "build/win", work_dir="libs/SDL_image"));
 
     log("- generating SDL bindings -");
-    SDL :: #import,file "jsrc/bindings/make/sdl3.jai";
+    SDL :: #import,file "jsrc/bindings/sdl3.jai";
     Check(SDL.GenerateBindings(.{targets = .BASE,
                                  optimizations = .DEBUG,
                                  base_directory = "libs/",
