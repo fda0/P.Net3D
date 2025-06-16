@@ -1,62 +1,73 @@
 // Binding generation itself is taken from https://github.com/overlord-systems/jai-sdl3
 // It was modified to make it easier to build it with custom SDL3 revisions and "satellite" libraries like SDL_net or SDL_image.
 
-generate_bindings :: () -> bool
+BindingsConfig :: struct
 {
-  output_filename: string;
-  opts: Generate_Bindings_Options;
-  {
-    opts.header = HEADER;
-    #if OS == .WINDOWS
-    {
-      output_filename = "windows/windows.jai";
-      opts.strip_flags = .FUNCTIONS_WITH_VALIST;
+ targets: enum_flags {BASE; NET; IMAGE;};
+ optimizations: enum {DEBUG; RELEASE;};
+ input_dir: string;
+ output_filename: string;
+};
 
-      FOOTER :: #string EOF
-#if CPU == .X64 {
+GenerateBindings :: (using config: BindingsConfig) -> bool
+{
+ opts: Generate_Bindings_Options;
+ opts.header = HEADER;
+ opts.strip_flags = .FUNCTIONS_WITH_VALIST;
+
+ FOOTER :: #string EOF
     sdl3 :: #library,no_dll "bin/x64/SDL3";
-    sdl3_net :: #library,no_dll "bin/x64/SDL3_net";
-} else #if CPU == .ARM64 {
-    sdl3 :: #library,no_dll "bin/arm64/SDL3";
-}
+    sdl_net :: #library,no_dll "bin/x64/SDL_net";
 EOF
-      // DLL provided by user not in bin, so use our own footer not generated library declaration
-      opts.footer = FOOTER;
-      opts.generate_library_declarations = false;
+ // @todo revisit this comment bellow:
+ // DLL provided by user not in bin, so use our own footer not generated library declaration
+ opts.footer = FOOTER;
+ opts.generate_library_declarations = false;
 
-      #if CPU == .X64 {
-        array_add(*opts.libpaths, "SDL/build/win/Debug/");
-        array_add(*opts.libpaths, "SDL_net/build/win/Debug/");
-      }
+ opt_dir := ifx optimizations == .DEBUG then "Debug" else "Release";
+ base_dir := input_dir;
+ if base_dir.count > 0 && !(ends_with(base_dir, "/") || ends_with(base_dir, "\\"))
+ {
+  base_dir = tprint("%/", base_dir);
+ }
 
-      array_add(*opts.libnames, "SDL3");
-      array_add(*opts.libnames, "SDL3_net");
-    }
+ if targets & .BASE
+ {
+  array_add(*opts.libnames, "SDL3");
+  array_add(*opts.libpaths,      tprint("%SDL/build/win/%/", base_dir, opt_dir));
+  array_add(*opts.include_paths, tprint("%SDL/include", base_dir));
+  array_add(*opts.source_files,  tprint("%SDL/include/SDL3/SDL.h", base_dir));
+ }
+ if targets & .NET
+ {
+  array_add(*opts.libnames, "SDL3_net");
+  array_add(*opts.libpaths,      tprint("%SDL_net/build/win/%/", base_dir, opt_dir));
+  array_add(*opts.include_paths, tprint("%SDL_net/include", base_dir));
+  array_add(*opts.source_files,  tprint("%SDL_net/include/SDL3_net/SDL_net.h", base_dir));
+ }
+ if targets & .IMAGE
+ {
+  array_add(*opts.libnames, "SDL3_image");
+  array_add(*opts.libpaths,      tprint("%SDL_image/build/win/%/", base_dir, opt_dir));
+  array_add(*opts.include_paths, tprint("%SDL_image/include", base_dir));
+  array_add(*opts.source_files,  tprint("%SDL_image/include/SDL3_image/SDL_image.h", base_dir));
+ }
 
-    array_add(*opts.include_paths, "SDL/include");
-    array_add(*opts.include_paths, "SDL_net/include");
-    array_add(*opts.source_files, "SDL/include/SDL3/SDL.h");
-    array_add(*opts.source_files, "SDL_net/include/SDL3_net/SDL_net.h");
-
-    // array_add(*strip_prefixes, "");
-
-    opts.visitor = sdl3_visitor;
-    opts.generate_compile_time_struct_checks = false;
-  }
-
-  return generate_bindings(opts, output_filename);
+ opts.visitor = sdl3_visitor;
+ opts.generate_compile_time_struct_checks = false;
+ return generate_bindings(opts, output_filename);
 }
 
 sdl3_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration_Visit_Result {
 
-    if parent_decl return .RECURSE;
+ if parent_decl return .RECURSE;
 
-    if array_find(DECLARATIONS_TO_OMIT, decl.name) {
-        decl.decl_flags |= .OMIT_FROM_OUTPUT;
-        return .STOP;
-    }
+ if array_find(DECLARATIONS_TO_OMIT, decl.name) {
+  decl.decl_flags |= .OMIT_FROM_OUTPUT;
+  return .STOP;
+ }
 
-    return .RECURSE;
+ return .RECURSE;
 }
 
 #import "Basic";
@@ -65,33 +76,34 @@ sdl3_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration_V
 #import "Check";
 #import "Bindings_Generator";
 #import "File";
+#import "String";
 
 DECLARATIONS_TO_OMIT :: string.[
-    "_m_prefetch",
-    "__debugbreak",
+ "_m_prefetch",
+ "__debugbreak",
 
-    /*
+ /*
     Those are force inlined functions defined in the headers, so they don't appear in the library and so bindings generator complains.
 
     One way is to automatically remove inline, compile them into a DLL, and turn them into #c_call jai procs. However, this loses inline.
 
     The performant way is to rewrite them in pure jai code, however that introduces overhead of ensuring they are updated.
     */
-    "SDL_size_mul_check_overflow",
-    "SDL_size_mul_check_overflow_builtin",
-    "SDL_size_add_check_overflow",
-    "SDL_size_add_check_overflow_builtin",
-    "SDL_SwapFloat",
-    "SDL_MostSignificantBitIndex32",
-    "SDL_HasExactlyOneBitSet32",
-    "SDL_RectToFRect",
-    "SDL_PointInRect",
-    "SDL_RectEmpty",
-    "SDL_RectsEqual",
-    "SDL_PointInRectFloat",
-    "SDL_RectEmptyFloat",
-    "SDL_RectsEqualEpsilon",
-    "SDL_RectsEqualFloat",
+ "SDL_size_mul_check_overflow",
+ "SDL_size_mul_check_overflow_builtin",
+ "SDL_size_add_check_overflow",
+ "SDL_size_add_check_overflow_builtin",
+ "SDL_SwapFloat",
+ "SDL_MostSignificantBitIndex32",
+ "SDL_HasExactlyOneBitSet32",
+ "SDL_RectToFRect",
+ "SDL_PointInRect",
+ "SDL_RectEmpty",
+ "SDL_RectsEqual",
+ "SDL_PointInRectFloat",
+ "SDL_RectEmptyFloat",
+ "SDL_RectsEqualEpsilon",
+ "SDL_RectsEqualFloat",
 ];
 
 /*

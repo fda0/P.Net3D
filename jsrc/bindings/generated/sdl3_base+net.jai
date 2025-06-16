@@ -1,7 +1,7 @@
 //
 // This file was auto-generated using the following command:
 //
-// jai ./generate.jai
+// jai ./build.jai - sdl
 //
 
 /*
@@ -10433,14 +10433,14 @@ SDL_GetAudioStreamFrequencyRatio :: (stream: *SDL_AudioStream) -> float #foreign
 *
 * The frequency ratio is used to adjust the rate at which input data is
 * consumed. Changing this effectively modifies the speed and pitch of the
-* audio. A value greater than 1.0 will play the audio faster, and at a higher
-* pitch. A value less than 1.0 will play the audio slower, and at a lower
-* pitch.
+* audio. A value greater than 1.0f will play the audio faster, and at a
+* higher pitch. A value less than 1.0f will play the audio slower, and at a
+* lower pitch. 1.0f means play at normal speed.
 *
 * This is applied during SDL_GetAudioStreamData, and can be continuously
 * changed to create various effects.
 *
-* \param stream the stream the frequency ratio is being changed.
+* \param stream the stream on which the frequency ratio is being changed.
 * \param ratio the frequency ratio. 1.0 is normal speed. Must be between 0.01
 *              and 100.
 * \returns true on success or false on failure; call SDL_GetError() for more
@@ -10616,7 +10616,7 @@ SDL_SetAudioStreamInputChannelMap :: (stream: *SDL_AudioStream, chmap: *s32, cou
 * Channel maps are optional; most things do not need them, instead passing
 * data in the [order that SDL expects](CategoryAudio#channel-layouts).
 *
-* The output channel map reorders data that leaving a stream via
+* The output channel map reorders data that is leaving a stream via
 * SDL_GetAudioStreamData.
 *
 * Each item in the array represents an input channel, and its value is the
@@ -16938,15 +16938,16 @@ SDL_GetWindowTitle :: (window: *SDL_Window) -> *u8 #foreign sdl3;
 /**
 * Set the icon for a window.
 *
-* If this function is passed a surface with alternate representations, the
-* surface will be interpreted as the content to be used for 100% display
-* scale, and the alternate representations will be used for high DPI
-* situations. For example, if the original surface is 32x32, then on a 2x
-* macOS display or 200% display scale on Windows, a 64x64 version of the
-* image will be used, if available. If a matching version of the image isn't
-* available, the closest larger size image will be downscaled to the
-* appropriate size and be used instead, if available. Otherwise, the closest
-* smaller image will be upscaled and be used instead.
+* If this function is passed a surface with alternate representations added
+* using SDL_AddSurfaceAlternateImage(), the surface will be interpreted as
+* the content to be used for 100% display scale, and the alternate
+* representations will be used for high DPI situations. For example, if the
+* original surface is 32x32, then on a 2x macOS display or 200% display scale
+* on Windows, a 64x64 version of the image will be used, if available. If a
+* matching version of the image isn't available, the closest larger size
+* image will be downscaled to the appropriate size and be used instead, if
+* available. Otherwise, the closest smaller image will be upscaled and be
+* used instead.
 *
 * \param window the window to change.
 * \param icon an SDL_Surface structure containing the icon for the window.
@@ -16956,6 +16957,8 @@ SDL_GetWindowTitle :: (window: *SDL_Window) -> *u8 #foreign sdl3;
 * \threadsafety This function should only be called on the main thread.
 *
 * \since This function is available since SDL 3.2.0.
+*
+* \sa SDL_AddSurfaceAlternateImage
 */
 SDL_SetWindowIcon :: (window: *SDL_Window, icon: *SDL_Surface) -> bool #foreign sdl3;
 
@@ -17149,7 +17152,7 @@ SDL_GetWindowSafeArea :: (window: *SDL_Window, rect: *SDL_Rect) -> bool #foreign
 SDL_SetWindowAspectRatio :: (window: *SDL_Window, min_aspect: float, max_aspect: float) -> bool #foreign sdl3;
 
 /**
-* Get the size of a window's client area.
+* Get the aspect ratio of a window's client area.
 *
 * \param window the window to query the width and height from.
 * \param min_aspect a pointer filled in with the minimum aspect ratio of the
@@ -23496,15 +23499,16 @@ SDL_CreateCursor :: (data: *Uint8, mask: *Uint8, w: s32, h: s32, hot_x: s32, hot
 /**
 * Create a color cursor.
 *
-* If this function is passed a surface with alternate representations, the
-* surface will be interpreted as the content to be used for 100% display
-* scale, and the alternate representations will be used for high DPI
-* situations. For example, if the original surface is 32x32, then on a 2x
-* macOS display or 200% display scale on Windows, a 64x64 version of the
-* image will be used, if available. If a matching version of the image isn't
-* available, the closest larger size image will be downscaled to the
-* appropriate size and be used instead, if available. Otherwise, the closest
-* smaller image will be upscaled and be used instead.
+* If this function is passed a surface with alternate representations added
+* with SDL_AddSurfaceAlternateImage(), the surface will be interpreted as the
+* content to be used for 100% display scale, and the alternate
+* representations will be used for high DPI situations. For example, if the
+* original surface is 32x32, then on a 2x macOS display or 200% display scale
+* on Windows, a 64x64 version of the image will be used, if available. If a
+* matching version of the image isn't available, the closest larger size
+* image will be downscaled to the appropriate size and be used instead, if
+* available. Otherwise, the closest smaller image will be upscaled and be
+* used instead.
 *
 * \param surface an SDL_Surface structure representing the cursor image.
 * \param hot_x the x position of the cursor hot spot.
@@ -23516,6 +23520,7 @@ SDL_CreateCursor :: (data: *Uint8, mask: *Uint8, w: s32, h: s32, hot_x: s32, hot
 *
 * \since This function is available since SDL 3.2.0.
 *
+* \sa SDL_AddSurfaceAlternateImage
 * \sa SDL_CreateCursor
 * \sa SDL_CreateSystemCursor
 * \sa SDL_DestroyCursor
@@ -24838,9 +24843,9 @@ SDL_Event :: union {
     architectures) for this union, and GCC will use the alignment of the
     largest datatype within the union, which is 8 bytes on 64-bit
     architectures.
-
+    
     So... we'll add padding to force the size to be the same for both.
-
+    
     On architectures where pointers are 16 bytes, this needs rounding up to
     the next multiple of 16, 64, and on architectures where pointers are
     even larger the size of SDL_UserEvent will dominate as being 3 pointers.
@@ -25801,10 +25806,10 @@ SDL_GetPathInfo :: (path: *u8, info: *SDL_PathInfo) -> bool #foreign sdl3;
 * Enumerate a directory tree, filtered by pattern, and return a list.
 *
 * Files are filtered out if they don't match the string in `pattern`, which
-* may contain wildcard characters '\*' (match everything) and '?' (match one
+* may contain wildcard characters `*` (match everything) and `?` (match one
 * character). If pattern is NULL, no filtering is done and all results are
 * returned. Subdirectories are permitted, and are specified with a path
-* separator of '/'. Wildcard characters '\*' and '?' never match a path
+* separator of `/`. Wildcard characters `*` and `?` never match a path
 * separator.
 *
 * `flags` may be set to SDL_GLOB_CASEINSENSITIVE to make the pattern matching
@@ -30604,7 +30609,7 @@ SDL_hid_device_info :: struct {
 
     /** The USB interface which this logical device
     represents.
-
+    
     Valid only if the device is a USB HID device.
     Set to -1 in all other cases.
     */
@@ -38376,9 +38381,5 @@ NET_WaitUntilInputAvailable :: (vsockets: **void, numsockets: s32, timeout: Sint
 
 #import "Basic"; // For push_context
 
-#if CPU == .X64 {
     sdl3 :: #library,no_dll "bin/x64/SDL3";
-    sdl3_net :: #library,no_dll "bin/x64/SDL3_net";
-} else #if CPU == .ARM64 {
-    sdl3 :: #library,no_dll "bin/arm64/SDL3";
-}
+    sdl_net :: #library,no_dll "bin/x64/SDL_net";
