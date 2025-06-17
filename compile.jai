@@ -131,7 +131,6 @@ MessageLoop :: (w: Workspace, using config: BuildConfig)
   while true
   {
     message := compiler_wait_for_message();
-
     if message.kind == .PHASE
     {
       phase := message.(*Message_Phase);

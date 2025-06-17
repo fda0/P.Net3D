@@ -340,6 +340,7 @@ GAME_AutoLayoutApply :: (code: ..Code) #expand
 #load "game_gpu.jai";
 #load "game_gpu_batch.jai";
 #load "game_render_world.jai";
+#load "game_render_world_vertex.jai";
 #load "game_render_ui.jai";
 #load "game_font.jai";
 #load "game_util.jai";

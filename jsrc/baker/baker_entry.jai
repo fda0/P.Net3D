@@ -22,6 +22,30 @@ main :: ()
   print("Hello from Baker\n");
 }
 
+PIE_Builder :: struct
+{
+  file: String_Builder;
+  finalized: bool;
+
+  vertices: [..] WORLD_Vertex;
+  indices: [..] u16;
+
+  models: [..] PIE_Model;
+  skeletons: [..] PIE_Skeleton;
+  materials: [..] PIE_Material;
+};
+
+BK_State :: struct
+{
+  pie: PIE_Builder;
+
+  // tex: BAKER_TexState;
+};
+B: BK_State;
+
 #load "baker_gltf_models.jai";
 #import "Basic";
+#import "String";
 #load "../game/base_math.jai";
+#load "../game/pie_file_format.jai";
+#load "../game/game_render_world_vertex.jai";
