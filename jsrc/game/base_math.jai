@@ -1,3 +1,4 @@
+// TYPES
 V2 :: Vector2;
 V3 :: Vector3;
 V4 :: Vector4;
@@ -21,6 +22,13 @@ Mat4 :: struct // @todo change to row-major matrices in the future?
   #place _11; elem: [4][4] float = ---;
   #place _11; cols: [4]    V4    = ---;
 };
+
+IsInteger :: (T: Type) -> bool
+{
+  ti := cast(*Type_Info) T;
+  return ti.type == .INTEGER;
+}
+VectorTypes :: Type.[V2, V3, V4];
 
 // AXIS MATH
 Axis3 :: enum { X; Y; Z; };

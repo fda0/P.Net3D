@@ -34,12 +34,6 @@ ClearType :: (ptr: *$T)
   memset(ptr, 0, size_of(T));
 }
 
-IsInteger :: (T: Type) -> bool
-{
-  ti := cast(*Type_Info) T;
-  return ti.type == .INTEGER;
-}
-VectorTypes :: Type.[V2, V3, V4];
 
 CalculateMipMapCount :: (width: $T, height: T) -> T // @todo test
 #modify { return IsInteger(T), "Argument is not of an integer type."; }

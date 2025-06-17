@@ -11,16 +11,18 @@ build :: ()
   clean_sdl := false;
   build_sdl := false;
 
-
   after_dash := false;
   options := get_build_options();
   for options.compile_time_command_line
   {
-    if it == {
+    if !after_dash
+    {
+      if it == "-" after_dash = true;
+    }
+    else if it == {
       case "clean_sdl"; clean_sdl = true;
       case "sdl";       build_sdl = true;
-      case "kill"; Run("raddbg --ipc kill_all"); // @todo use OS to kill processes
-      case "-"; after_dash = true;
+      case "kill";      Run("raddbg --ipc kill_all"); // @todo use OS to kill processes
       case; log_error("Unknow argument: %", it);
     }
   }
@@ -81,8 +83,7 @@ build :: ()
       .{"build/SDL3_net.dll", "libs/SDL_net/build/win/Debug/SDL3_net.dll"},
       .{"build/SDL3_image.dll", "libs/SDL_image/build/win/Debug/SDL3_image.dll"},
     ];
-    for copies
-      if !file_exists(it.dst) then copy_file(it.src, it.dst);
+    for copies if !file_exists(it.dst) then copy_file(it.src, it.dst);
   }
 
   // @todo put these workspaces on separate threads
@@ -113,6 +114,12 @@ Build :: (using config: BuildConfig)
   options := get_build_options(w);
   options.output_path = "build";
   options.output_executable_name = output_name;
+
+  modules_path: [..] string;
+  array_add(*modules_path, "libs/");
+  array_add(*modules_path, ..options.import_path);
+  options.import_path = modules_path;
+
   set_build_options(options, w);
   compiler_begin_intercept(w);
   add_build_file(entry_file, w);

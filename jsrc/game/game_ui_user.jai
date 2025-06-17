@@ -5,7 +5,7 @@ UI_State :: struct
     show := true;
     win_p: V2;
 
-    category: enum {switches; stats; network;};
+    category: enum {switches; stats; assets; network;};
 
     // switches
     show_stats: bool;
@@ -42,7 +42,7 @@ UI_BUTTON_PAD :: #run Padding.{UI_WINDOW_GAP, UI_WINDOW_GAP, UI_WINDOW_GAP*0.5, 
 UI_HEADER_TEXT  :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1.5)},
                                  layout.padding = PaddingV(Rem(0.2), Rem(0.6))};
 UI_REGULAR_TEXT :: #run BoxSpec.{text = .{font = xx FONT_Family.PlayfairDisplay, font_size = Rem(1)}};
-UI_MONO_TEXT    :: #run BoxSpec.{text = .{font = xx FONT_Family.Inconsolata, font_size = Rem(0.8)},
+UI_MONO_TEXT    :: #run BoxSpec.{text = .{font = xx FONT_Family.Inconsolata, font_size = Rem(1)},
                                  layout.padding = PaddingV(Em(0.4))};
 
 UI_DeveloperKeyShortcuts :: ()
@@ -65,7 +65,7 @@ UI_BuildDeveloperWindow :: ()
 
   // Floating developer window
   Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
-                                sizing = .{width = Fit(SizeMin(Rem(30))), height = Size(Rem(30))}},
+                                sizing = .{width = Fit(SizeMin(Rem(35))), height = Size(Rem(30))}},
                      bg_color = UI_BG,
                      floating = .{attach_to = .ROOT, offset = Px(clamped_win_p)},
                      border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},
@@ -127,6 +127,11 @@ UI_BuildDeveloperWindow :: ()
       CreateText(tprint("World Camera: %", G.camera_p));
       CreateText(tprint("Camera - Player: %", G.camera_p - OBJ_Get(G.client.player_key, .NETWORK).s.p));
       CreateText(tprint("Camera angles: %", G.camera_angles));
+
+      case .assets;
+      Layers(UI_MONO_TEXT);
+      CreateText("what got loaded from .pie file?");
+      CreateText("hot-reload state");
 
       case .network;
       Layers(UI_MONO_TEXT);
