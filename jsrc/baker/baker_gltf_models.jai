@@ -91,10 +91,12 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
   model.is_skinned = data.animations_count > 0;
   array_resize(*model.meshes, xx data.materials_count);
 
-  // for * bk_mesh: model.meshes
+  for * bk_mesh: model.meshes
   {
     // Fetch material data
-    // gltf_material := data.materials[it_index];
+    assert(it_index < xx data.materials_count);
+    log("path: %, it_index: % / %; ptr: %; ptr+1: %\n", file_path, it_index, data.materials_count, *data.materials[it_index], *data.materials[it_index+1]);
+    gltf_material := data.materials[it_index];
 
     // Create material
     // bk_mesh.material_index = B.pie.materials.count;

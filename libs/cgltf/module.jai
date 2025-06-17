@@ -1,4 +1,5 @@
-// version 1.13
+// based on https://github.com/napina/jai_cgltf (version 1.13)
+// upgraded to a commit after version 1.15 - 08470a2b08980cd3221002a9b2ef29a37e3111dc
 
 cgltf_size :: #type u64;
 cgltf_ssize :: #type u64;
@@ -85,6 +86,7 @@ cgltf_type :: enum s32 {
 }
 
 cgltf_primitive_type :: enum s32 {
+	cgltf_primitive_type_invalid;
 	cgltf_primitive_type_points;
 	cgltf_primitive_type_lines;
 	cgltf_primitive_type_line_loop;
@@ -201,15 +203,6 @@ cgltf_accessor_sparse :: struct {
 	indices_component_type: cgltf_component_type;
 	values_buffer_view: *cgltf_buffer_view;
 	values_byte_offset: cgltf_size;
-	extras: cgltf_extras;
-	indices_extras: cgltf_extras;
-	values_extras: cgltf_extras;
-	extensions_count: cgltf_size;
-	extensions: *cgltf_extension;
-	indices_extensions_count: cgltf_size;
-	indices_extensions: *cgltf_extension;
-	values_extensions_count: cgltf_size;
-	values_extensions: *cgltf_extension;
 }
 
 cgltf_accessor :: struct {
@@ -249,12 +242,28 @@ cgltf_image :: struct {
 	extensions: *cgltf_extension;
 }
 
+cgltf_filter_type :: enum {
+	cgltf_filter_type_undefined :: 0;
+	cgltf_filter_type_nearest :: 9728;
+	cgltf_filter_type_linear :: 9729;
+	cgltf_filter_type_nearest_mipmap_nearest :: 9984;
+	cgltf_filter_type_linear_mipmap_nearest :: 9985;
+	cgltf_filter_type_nearest_mipmap_linear :: 9986;
+	cgltf_filter_type_linear_mipmap_linear :: 9987;
+};
+
+cgltf_wrap_mode :: enum {
+	cgltf_wrap_mode_clamp_to_edge :: 33071;
+	cgltf_wrap_mode_mirrored_repeat :: 33648;
+	cgltf_wrap_mode_repeat :: 10497;
+};
+
 cgltf_sampler :: struct {
 	name: *u8;
-	mag_filter: cgltf_int;
-	min_filter: cgltf_int;
-	wrap_s: cgltf_int;
-	wrap_t: cgltf_int;
+	mag_filter: cgltf_filter_type;
+	min_filter: cgltf_filter_type;
+	wrap_s: cgltf_wrap_mode;
+	wrap_t: cgltf_wrap_mode;
 	extras: cgltf_extras;
 	extensions_count: cgltf_size;
 	extensions: *cgltf_extension;
@@ -266,6 +275,8 @@ cgltf_texture :: struct {
 	sampler: *cgltf_sampler;
 	has_basisu: cgltf_bool;
 	basisu_image: *cgltf_image;
+	has_webp: cgltf_bool;
+	webp_image: *cgltf_image;
 	extras: cgltf_extras;
 	extensions_count: cgltf_size;
 	extensions: *cgltf_extension;
@@ -285,9 +296,6 @@ cgltf_texture_view :: struct {
 	scale: cgltf_float; /* equivalent to strength for occlusion_texture */
 	has_transform_: cgltf_bool;
 	transform: cgltf_texture_transform;
-	extras: cgltf_extras;
-	extensions_count: cgltf_size;
-	extensions: *cgltf_extension;
 }
 
 cgltf_pbr_metallic_roughness :: struct {
@@ -360,6 +368,26 @@ cgltf_iridescence :: struct {
 	iridescence_thickness_texture: cgltf_texture_view;
 }
 
+cgltf_diffuse_transmission :: struct
+{
+	diffuse_transmission_texture: cgltf_texture_view;
+	diffuse_transmission_factor: cgltf_float;
+	diffuse_transmission_color_factor: [3] cgltf_float;
+	diffuse_transmission_color_texture: cgltf_texture_view;
+};
+
+cgltf_anisotropy :: struct
+{
+	anisotropy_strength: cgltf_float;
+	anisotropy_rotation: cgltf_float;
+	anisotropy_texture: cgltf_texture_view;
+};
+
+cgltf_dispersion :: struct
+{
+	dispersion: cgltf_float;
+};
+
 cgltf_material :: struct {
 	name: *u8;
 	has_pbr_metallic_roughness: cgltf_bool;
@@ -372,6 +400,9 @@ cgltf_material :: struct {
 	has_sheen: cgltf_bool;
 	has_emissive_strength: cgltf_bool;
 	has_iridescence: cgltf_bool;
+	has_diffuse_transmission: cgltf_bool;
+	has_anisotropy: cgltf_bool;
+	has_dispersion: cgltf_bool;
 	pbr_metallic_roughness: cgltf_pbr_metallic_roughness;
 	pbr_specular_glossiness: cgltf_pbr_specular_glossiness;
 	clearcoat: cgltf_clearcoat;
@@ -382,6 +413,9 @@ cgltf_material :: struct {
 	volume: cgltf_volume;
 	emissive_strength: cgltf_emissive_strength;
 	iridescence: cgltf_iridescence;
+	diffuse_transmission: cgltf_diffuse_transmission;
+	anisotropy: cgltf_anisotropy;
+	dispersion: cgltf_dispersion;
 	normal_texture: cgltf_texture_view;
 	occlusion_texture: cgltf_texture_view;
 	emissive_texture: cgltf_texture_view;
@@ -413,7 +447,6 @@ cgltf_draco_mesh_compression :: struct {
 }
 
 cgltf_mesh_gpu_instancing :: struct {
-	buffer_view: *cgltf_buffer_view;
 	attributes: *cgltf_attribute;
 	attributes_count: cgltf_size;
 }
@@ -669,12 +702,15 @@ cgltf_free :: ( data: *cgltf_data ) #foreign cgltflib;
 cgltf_node_transform_local :: ( node: *cgltf_node, out_matrix: *cgltf_float ) #foreign cgltflib;
 cgltf_node_transform_world :: ( node: *cgltf_node, out_matrix: *cgltf_float ) #foreign cgltflib;
 
+cgltf_find_accessor :: (prim: *cgltf_primitive, type: cgltf_attribute_type, index: cgltf_int) -> *cgltf_accessor #foreign cgltflib;
+
 cgltf_buffer_view_data :: ( view: *cgltf_buffer_view ) -> *u8  #foreign cgltflib;
 
 cgltf_accessor_read_float :: ( accessor: *cgltf_accessor, index: cgltf_size, out: *cgltf_float, element_size: cgltf_size ) -> cgltf_bool #foreign cgltflib;
 cgltf_accessor_read_uint :: ( accessor: *cgltf_accessor, index: cgltf_size, out: *cgltf_uint, element_size: cgltf_size ) -> cgltf_bool #foreign cgltflib;
 cgltf_accessor_read_index :: ( accessor: *cgltf_accessor, index: cgltf_size ) -> cgltf_size #foreign cgltflib;
 cgltf_accessor_unpack_floats :: ( accessor: *cgltf_accessor, out: *cgltf_float, float_count: cgltf_size ) -> cgltf_size #foreign cgltflib;
+cgltf_accessor_unpack_indices :: (accessor: *cgltf_accessor, out: *void, out_component_size: cgltf_size, index_count: cgltf_size) -> cgltf_size #foreign cgltflib;
 
 cgltf_num_components :: ( type: cgltf_type ) -> cgltf_size #foreign cgltflib;
 cgltf_component_size :: ( component_type: cgltf_component_type ) -> cgltf_size #foreign cgltflib;
@@ -682,6 +718,23 @@ cgltf_calc_size :: ( type: cgltf_type, component_type: cgltf_component_type ) ->
 
 /* this function is deprecated and will be removed in the future; use cgltf_extras::data instead */
 cgltf_copy_extras_json :: ( data: *cgltf_data, extras: *cgltf_extras, dest: *u8, dest_size: *cgltf_size ) -> cgltf_result #foreign cgltflib;
+
+cgltf_mesh_index              :: (data: *cgltf_data,           object: *cgltf_mesh)              -> cgltf_size #foreign cgltflib;
+cgltf_material_index          :: (data: *cgltf_data,           object: *cgltf_material)          -> cgltf_size #foreign cgltflib;
+cgltf_accessor_index          :: (data: *cgltf_data,           object: *cgltf_accessor)          -> cgltf_size #foreign cgltflib;
+cgltf_buffer_view_index       :: (data: *cgltf_data,           object: *cgltf_buffer_view)       -> cgltf_size #foreign cgltflib;
+cgltf_buffer_index            :: (data: *cgltf_data,           object: *cgltf_buffer)            -> cgltf_size #foreign cgltflib;
+cgltf_image_index             :: (data: *cgltf_data,           object: *cgltf_image)             -> cgltf_size #foreign cgltflib;
+cgltf_texture_index           :: (data: *cgltf_data,           object: *cgltf_texture)           -> cgltf_size #foreign cgltflib;
+cgltf_sampler_index           :: (data: *cgltf_data,           object: *cgltf_sampler)           -> cgltf_size #foreign cgltflib;
+cgltf_skin_index              :: (data: *cgltf_data,           object: *cgltf_skin)              -> cgltf_size #foreign cgltflib;
+cgltf_camera_index            :: (data: *cgltf_data,           object: *cgltf_camera)            -> cgltf_size #foreign cgltflib;
+cgltf_light_index             :: (data: *cgltf_data,           object: *cgltf_light)             -> cgltf_size #foreign cgltflib;
+cgltf_node_index              :: (data: *cgltf_data,           object: *cgltf_node)              -> cgltf_size #foreign cgltflib;
+cgltf_scene_index             :: (data: *cgltf_data,           object: *cgltf_scene)             -> cgltf_size #foreign cgltflib;
+cgltf_animation_index         :: (data: *cgltf_data,           object: *cgltf_animation)         -> cgltf_size #foreign cgltflib;
+cgltf_animation_sampler_index :: (animation: *cgltf_animation, object: *cgltf_animation_sampler) -> cgltf_size #foreign cgltflib;
+cgltf_animation_channel_index :: (animation: *cgltf_animation, object: *cgltf_animation_channel) -> cgltf_size #foreign cgltflib;
 
 #scope_file
 
