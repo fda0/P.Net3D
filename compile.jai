@@ -127,7 +127,32 @@ Build :: (using config: BuildConfig)
   set_build_options(options, w);
   compiler_begin_intercept(w);
   add_build_file(entry_file, w);
-  MessageLoop(w, config);
+
+  ExecuteMessageLoopOnNewThread(w, config);
+}
+
+ExecuteMessageLoopOnNewThread :: (w: Workspace, config: BuildConfig)
+{
+  ThreadData :: struct
+  {
+    w: Workspace;
+    config: BuildConfig;
+  };
+
+  ThreadMessageLoop :: (thread: *Thread) -> s64
+  {
+    data := cast(*ThreadData) thread.data;
+    MessageLoop(data.w, data.config);
+    return 0;
+  }
+
+  #import "Thread";
+  data := New(ThreadData);
+  data.w = w;
+  thread := New(Thread);
+  thread.data = data;
+  thread_init(thread, ThreadMessageLoop);
+  thread_start(thread);
 }
 
 MessageLoop :: (w: Workspace, using config: BuildConfig)

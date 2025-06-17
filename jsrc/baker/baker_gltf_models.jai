@@ -99,7 +99,7 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
     gltf_material := data.materials[it_index];
 
     // Create material
-    // bk_mesh.material_index = B.pie.materials.count;
+    bk_mesh.material_index = B.pie.materials.count;
     {
       // pie_material := array_add(*B.pie.materials);
     //   BK_SetDefaultsPIEMaterial(pie_material);
