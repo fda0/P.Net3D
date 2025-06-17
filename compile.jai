@@ -10,20 +10,17 @@ build :: ()
   // Parse command-line arguments
   clean_sdl := false;
   build_sdl := false;
+  build_cgltf := false;
 
-  after_dash := false;
   options := get_build_options();
   for options.compile_time_command_line
   {
-    if !after_dash
-    {
-      if it == "-" after_dash = true;
-    }
-    else if it == {
+    if it == {
       case "clean_sdl"; clean_sdl = true;
       case "sdl";       build_sdl = true;
+      case "cgltf";     build_cgltf = true;
       case "kill";      Run("raddbg --ipc kill_all"); // @todo use OS to kill processes
-      case; log_error("Unknow argument: %", it);
+      case; log_error("Unknow argument: %", it); exit(1);
     }
   }
 
@@ -60,7 +57,7 @@ build :: ()
     Check(Run(stage2, workdir));
 
     log("- generating SDL bindings -");
-    SDL :: #import,file "jsrc/bindings/sdl3.jai";
+    SDL :: #import,file "jsrc/bindings/generate_bindings_sdl3.jai";
     Check(SDL.GenerateBindings(.{targets = .BASE,
                                  optimizations = .DEBUG,
                                  base_directory = "libs/",
@@ -84,6 +81,13 @@ build :: ()
       .{"build/SDL3_image.dll", "libs/SDL_image/build/win/Debug/SDL3_image.dll"},
     ];
     for copies if !file_exists(it.dst) then copy_file(it.src, it.dst);
+  }
+
+  if build_cgltf
+  {
+    CGLTF :: #import,file "jsrc/bindings/build_cgltf.jai";
+    CGLTF.Build();
+    exit(0);
   }
 
   // @todo put these workspaces on separate threads

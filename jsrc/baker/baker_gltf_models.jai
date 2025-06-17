@@ -1,4 +1,5 @@
-#import "gltf_parser";
+// #import "gltf_parser";
+#import "cgltf";
 
 BK_GLTF_Spec :: struct
 {
@@ -41,8 +42,38 @@ BK_GLTF_Model :: struct
 BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
 {
   // Parse .gltf file & load buffers
-  data := gltf_parse_file(file_path);
-  gltf_load_buffers(*data);
+  // data := gltf_parse_file(file_path);
+  // gltf_load_buffers(*data);
+
+  options := cgltf_options.{
+    // memory = .{
+    //   alloc_func = M_FakeMalloc,
+    //   free_func = M_FakeFree,
+    // },
+  };
+
+  data: *cgltf_data;
+  res := cgltf_parse_file(*options, temp_c_string(file_path), *data);
+  if res != .cgltf_result_success
+  {
+    log_error("[GLTF LOADER] Failed to parse %", file_path);
+    return;
+  }
+
+  res = cgltf_load_buffers(*options, data, temp_c_string(file_path));
+  if res != .cgltf_result_success
+  {
+    log_error("[GLTF LOADER] Failed to load buffers, %", file_path);
+    return;
+  }
+
+  res = cgltf_validate(data);
+  if res != .cgltf_result_success
+  {
+    log_error("[GLTF LOADER] Failed to validate data, %", file_path);
+    return;
+  }
+
 
   //
   // Prepare strings based on file_path
@@ -57,18 +88,18 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
   model: BK_GLTF_Model;
   model.name = ifx spec.name then spec.name else file_name_no_ext;
   model.spec = spec;
-  model.is_skinned = data.animations.count > 0;
-  array_resize(*model.meshes, data.materials.count);
+  model.is_skinned = data.animations_count > 0;
+  array_resize(*model.meshes, xx data.materials_count);
 
-  for * bk_mesh: model.meshes
+  // for * bk_mesh: model.meshes
   {
     // Fetch material data
-    gltf_material := data.materials[it_index];
+    // gltf_material := data.materials[it_index];
 
     // Create material
-    bk_mesh.material_index = B.pie.materials.count;
+    // bk_mesh.material_index = B.pie.materials.count;
     {
-      pie_material := array_add(*B.pie.materials);
+      // pie_material := array_add(*B.pie.materials);
     //   BK_SetDefaultsPIEMaterial(pie_material);
 
     //   // Fill material name
