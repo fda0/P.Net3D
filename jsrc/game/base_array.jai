@@ -1,5 +1,4 @@
-// This file implements common string-like operations for array views
-
+// Common string-like operations for array views
 ArrayRange :: (first: *$T, last: *T) -> [] T
 {
   res: [] T;
@@ -54,6 +53,15 @@ ArraySuffix :: (array: [] $T, count: s64) -> [] T
   return res;
 }
 
+// Dynamic array helpers
+array_add_many :: (array: *[..] $T, alloc_count: s64, $initialize:=true) -> allocated_slice: [] T
+{
+  initial_count := array.count;
+  new_count := initial_count + alloc_count;
+  array_resize(array, new_count, initialize);
+  result := ArraySubarray(array, initial_count, new_count);
+  return result;
+}
 
 #scope_file
 #import "Basic"; // for clamp

@@ -40,10 +40,6 @@ BK_GLTF_Model :: struct
 
 BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
 {
-  // Parse .gltf file & load buffers
-  // data := gltf_parse_file(file_path);
-  // gltf_load_buffers(*data);
-
   options := cgltf_options.{
     // memory = .{
     //   alloc_func = M_FakeMalloc,
@@ -51,6 +47,7 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
     // },
   };
 
+  // Parse .gltf file & load buffers
   data: *cgltf_data;
   res := cgltf_parse_file(*options, temp_c_string(file_path), *data);
   if res != .cgltf_result_success
@@ -178,44 +175,46 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
   // The hierarchy of .gltf files might be a bit confusing.
   // Division into meshes and primitives wasn't strictly
   // necessary (it could have been merged into one) but it is what it is.
-  // ForU64(gltf_mesh_index, data.meshes_count)
-  // {
-  //   cgltf_mesh *gltf_mesh = data.meshes + gltf_mesh_index;
+  for gltf_mesh_index: MakeRange(data.meshes_count)
+  {
+    gltf_mesh := *data.meshes[gltf_mesh_index];
 
-  //   ForU64(gltf_primitive_index, gltf_mesh.primitives_count)
-  //   {
-  //     cgltf_primitive *primitive = gltf_mesh.primitives + gltf_primitive_index;
+    for gltf_primitive_index: MakeRange(gltf_mesh.primitives_count)
+    {
+      primitive := *gltf_mesh.primitives[gltf_primitive_index];
 
-  //     // Our internal groups things into common meshes based on common material.
-  //     U32 mesh_index = BK_GLTF_FindMaterialIndex(data, primitive.material);
-  //     BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
+      // Our internal groups things into common meshes based on common material.
+      mesh_index := BK_GLTF_FindMaterialIndex(data, primitive.material);
+      bk_mesh := *model.meshes[mesh_index];
 
-  //     if (primitive.type != cgltf_primitive_type_triangles)
-  //     {
-  //       M_LOG(M_GLTFWarning,
-  //         "[GLTF LOADER] Primitive with non triangle type (%u) skipped",
-  //         primitive.type);
-  //       continue;
-  //     }
+      if primitive.type != .cgltf_primitive_type_triangles
+      {
+        log("[GLTF LOADER] Primitive with non triangle type (%) skipped", primitive.type, flags=.WARNING);
+        continue;
+      }
 
-  //     M_Check(primitive.indices);
-  //     {
-  //       U64 index_start_offset = bk_mesh.positions.used/3;
+      // Unpack indices from gltf primitive to bk_mesh.
+      // Check(primitive.indices != null);
+      // {
+      //   index_start_offset := bk_mesh.positions.count / 3;
 
-  //       cgltf_accessor *accessor = primitive.indices;
-  //       M_Check(accessor.type == cgltf_type_scalar);
-  //       U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &bk_mesh.indices);
+      //   accessor := primitive.indices;
+      //   Check(accessor.type == cgltf_type_scalar);
+      //   numbers := BK_GLTF_UnpackAccessor(accessor, &bk_mesh.indices);
 
-  //       if (index_start_offset)
-  //       {
-  //         ForU64(i, accessor.count)
-  //         {
-  //           U32 value = numbers[i] + index_start_offset;
-  //           M_Check(value <= U16_MAX);
-  //           numbers[i] = value;
-  //         }
-  //       }
-  //     }
+      //   // Since we are possibly merging multiple primitives into one mesh
+      //   // (we batch meshes based on common material) - we have to add
+      //   // index offset to the indicies from gltf primitve.
+      //   if index_start_offset
+      //   {
+      //     for MakeRange(accessor.count)
+      //     {
+      //       value := numbers[it] + index_start_offset;
+      //       Check(value <= U16_MAX);
+      //       numbers[it] = value;
+      //     }
+      //   }
+      // }
 
   //     ForU64(attribute_index, primitive.attributes_count)
   //     {
@@ -279,8 +278,8 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
 
   //       BK_GLTF_UnpackAccessor(accessor, save_buf);
   //     }
-  //   }
-  // }
+    }
+  }
 
   // //
   // //
@@ -391,4 +390,98 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
 
   // // Reset tmp arena
   // Arena_PopScope(scratch);
+}
+
+BK_GLTF_FindJointIndex :: (skin: *cgltf_skin, find_node: *cgltf_node) -> u64
+{
+  for joint_index: MakeRange(skin.joints_count)
+    if find_node == skin.joints[joint_index]
+      return joint_index;
+
+  Check(false, "Joint index not found");
+  return skin.joints_count;
+}
+
+BK_GLTF_FindMaterialIndex :: (data: *cgltf_data, find_material: *cgltf_material) -> u32
+{
+  for material_index: MakeRange(data.materials_count.(u32))
+    if find_material == data.materials + material_index
+      return material_index;
+
+  Check(false, "Material index not found");
+  return data.materials_count.(u32);
+}
+
+BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: [..] *$T) -> slice: [] T
+{
+  comp_count := cgltf_num_components(accessor.type);
+  total_count := accessor.count * comp_count;
+  comp_size := cgltf_component_size(accessor.component_type);
+
+  if accessor.component_type == .cgltf_component_type_r_32f
+  {
+    Check(T == float);
+    numbers_slice := array_add_many(buffer, total_count);
+    unpacked_count := cgltf_accessor_unpack_floats(accessor, *numbers[0], total_count);
+    Check(unpacked_count == total_count);
+    return numbers_slice;
+  }
+
+  numbers_slice := array_add_many(buffer, total_count);
+
+  if size_of(T) >= comp_size
+  {
+    unpacked_count := cgltf_accessor_unpack_indices(accessor, *numbers_slice[0], size_of(T), total_count);
+    M_Check(unpacked_count == total_count);
+  }
+  else
+  {
+    auto_release_temp();
+    bytes_to_allocate := comp_size * total_count;
+    tmp_nums: [..] u8 = .{allocator = temp};
+    array_resize(*tmp_nums, bytes_to_allocate);
+
+    // // Alloc tmp buffer
+    // Arena_Scope scope = Arena_PushScope(BAKER.tmp);
+    // void *tmp_nums = Arena_AllocateBytes(scope.a, bytes_to_allocate, comp_size, false);
+
+    // // Copy big type into tmp buffer
+    // U64 unpacked = cgltf_accessor_unpack_indices(accessor, tmp_nums, comp_size, total_count);
+    // M_Check(unpacked == total_count);
+
+    // // Copy into numbers_slice with checked truncation
+    // ForU64(i, total_count)
+    // {
+    //   // Load value from tmp_nums into U64
+    //   U64 value = 0;
+    //   if      (comp_size == 8) value = ((U64 *)tmp_nums)[i];
+    //   else if (comp_size == 4) value = ((U32 *)tmp_nums)[i];
+    //   else if (comp_size == 2) value = ((U16 *)tmp_nums)[i];
+    //   else if (comp_size == 1) value = ((U8 *)tmp_nums)[i];
+    //   else M_Check(!"Unsupported comp_size downconversion");
+
+    //   // Store into buffer backed array with truncation
+    //   if (buffer.elem_size == 1)
+    //   {
+    //     M_Check(value <= U8_MAX);
+    //     ((U8 *)numbers_slice)[i] = (U8)value;
+    //   }
+    //   else if (buffer.elem_size == 2)
+    //   {
+    //     M_Check(value <= U16_MAX);
+    //     ((U16 *)numbers_slice)[i] = (U16)value;
+    //   }
+    //   else if (buffer.elem_size == 4)
+    //   {
+    //     M_Check(value <= U32_MAX);
+    //     ((U32 *)numbers_slice)[i] = (U32)value;
+    //   }
+    //   else
+    //     M_Check(!"Unsupported elem_size downconversion");
+    // }
+
+    // Arena_PopScope(scope);
+  }
+
+  return numbers_slice;
 }

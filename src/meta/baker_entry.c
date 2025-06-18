@@ -13,7 +13,7 @@
 // 3rd party libraries
 #pragma warning(push, 2)
 #define CGLTF_IMPLEMENTATION
-#include "cgltf.h"
+#include "cgltf/cgltf.h"
 #include "bc7enc.h"
 #pragma warning(pop)
 
