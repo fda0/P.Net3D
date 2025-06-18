@@ -1,4 +1,3 @@
-// #import "gltf_parser";
 #import "cgltf";
 
 BK_GLTF_Spec :: struct
