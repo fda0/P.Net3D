@@ -194,27 +194,27 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
       }
 
       // Unpack indices from gltf primitive to bk_mesh.
-      // Check(primitive.indices != null);
-      // {
-      //   index_start_offset := bk_mesh.positions.count / 3;
+      Check(primitive.indices != null);
+      {
+        index_start_offset: u64 = xx (bk_mesh.positions.count / 3);
 
-      //   accessor := primitive.indices;
-      //   Check(accessor.type == cgltf_type_scalar);
-      //   numbers := BK_GLTF_UnpackAccessor(accessor, &bk_mesh.indices);
+        accessor := primitive.indices;
+        Check(accessor.type == .cgltf_type_scalar);
+        numbers := BK_GLTF_UnpackAccessor(accessor, *bk_mesh.indices);
 
-      //   // Since we are possibly merging multiple primitives into one mesh
-      //   // (we batch meshes based on common material) - we have to add
-      //   // index offset to the indicies from gltf primitve.
-      //   if index_start_offset
-      //   {
-      //     for MakeRange(accessor.count)
-      //     {
-      //       value := numbers[it] + index_start_offset;
-      //       Check(value <= U16_MAX);
-      //       numbers[it] = value;
-      //     }
-      //   }
-      // }
+        // Since we are possibly merging multiple primitives into one mesh
+        // (we batch meshes based on common material) - we have to add
+        // index offset to the indicies from gltf primitve.
+        if index_start_offset
+        {
+          for MakeRange(accessor.count)
+          {
+            value := numbers[it] + index_start_offset;
+            Check(value <= U16_MAX);
+            numbers[it] = cast,no_check(u16) value;
+          }
+        }
+      }
 
   //     ForU64(attribute_index, primitive.attributes_count)
   //     {
@@ -412,7 +412,7 @@ BK_GLTF_FindMaterialIndex :: (data: *cgltf_data, find_material: *cgltf_material)
   return data.materials_count.(u32);
 }
 
-BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: [..] *$T) -> slice: [] T
+BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: *[..] $T) -> slice: [] T
 {
   comp_count := cgltf_num_components(accessor.type);
   total_count := accessor.count * comp_count;
@@ -420,26 +420,33 @@ BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: [..] *$T) -> slice
 
   if accessor.component_type == .cgltf_component_type_r_32f
   {
-    Check(T == float);
-    numbers_slice := array_add_many(buffer, total_count);
-    unpacked_count := cgltf_accessor_unpack_floats(accessor, *numbers[0], total_count);
-    Check(unpacked_count == total_count);
-    return numbers_slice;
+    #if T == float
+    {
+      numbers_slice := array_add_many(buffer, xx total_count);
+      unpacked_count := cgltf_accessor_unpack_floats(accessor, *numbers_slice[0], total_count);
+      Check(unpacked_count == total_count);
+      return numbers_slice;
+    }
+    else
+    {
+      Check(false, "Component type % requires a buffer array of type float. Instead got: %",
+            accessor.component_type, type_of(buffer));
+    }
   }
 
-  numbers_slice := array_add_many(buffer, total_count);
+  numbers_slice := array_add_many(buffer, xx total_count);
 
   if size_of(T) >= comp_size
   {
     unpacked_count := cgltf_accessor_unpack_indices(accessor, *numbers_slice[0], size_of(T), total_count);
-    M_Check(unpacked_count == total_count);
+    Check(unpacked_count == total_count);
   }
   else
   {
     // Alloc tmp buffer
     auto_release_temp();
     bytes_to_allocate := comp_size * total_count;
-    tmp_nums := talloc(bytes_to_allocate);
+    tmp_nums := talloc(xx bytes_to_allocate);
 
     // Unpack big integers into tmp_nums
     unpacked_count := cgltf_accessor_unpack_indices(accessor, tmp_nums, comp_size, total_count);
@@ -459,18 +466,18 @@ BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: [..] *$T) -> slice
       }
 
       // Store into buffer backed array with truncation
-      if buffer.elem_size == {
+      #if size_of(T) == {
         case 1;
         Check(value <= U8_MAX);
-        numbers_slice = cast,no_check(u8) value;
+        numbers_slice[it] = cast,no_check(u8) value;
         case 2;
         Check(value <= U16_MAX);
-        numbers_slice = cast,no_check(u16) value;
+        numbers_slice[it] = cast,no_check(u16) value;
         case 4;
         Check(value <= U32_MAX);
-        numbers_slice = cast,no_check(u32) value;
+        numbers_slice[it] = cast,no_check(u32) value;
         case;
-        Check(false, "Unsupported elem_size downconversion");
+        assert(false, "Unsupported size_of(T) == % for downconversion", size_of(T));
       }
     }
   }

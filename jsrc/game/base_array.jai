@@ -59,7 +59,7 @@ array_add_many :: (array: *[..] $T, alloc_count: s64, $initialize:=true) -> allo
   initial_count := array.count;
   new_count := initial_count + alloc_count;
   array_resize(array, new_count, initialize);
-  result := ArraySubarray(array, initial_count, new_count);
+  result := ArraySubarray(array.*, initial_count, new_count);
   return result;
 }
 
