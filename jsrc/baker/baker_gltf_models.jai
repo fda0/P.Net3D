@@ -216,68 +216,48 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
         }
       }
 
-  //     ForU64(attribute_index, primitive.attributes_count)
-  //     {
-  //       cgltf_attribute *attribute = primitive.attributes + attribute_index;
-  //       cgltf_accessor *accessor = attribute.data;
+      for attribute_index: MakeRange(primitive.attributes_count)
+      {
+        attribute := *primitive.attributes[attribute_index];
+        accessor := attribute.data;
 
-  //       U64 comp_count = cgltf_num_components(accessor.type);
-  //       BK_Buffer *save_buf = 0;
+        comp_count := cgltf_num_components(accessor.type);
 
-  //       switch (attribute.type)
-  //       {
-  //         case cgltf_attribute_type_position:
-  //         {
-  //           save_buf = &bk_mesh.positions;
-  //           M_Check(comp_count == 3);
-  //           M_Check(accessor.component_type == cgltf_component_type_r_32f);
-  //         } break;
+        if attribute.type == {
+          case .cgltf_attribute_type_position;
+          Check(comp_count == 3);
+          Check(accessor.component_type == .cgltf_component_type_r_32f);
+          BK_GLTF_UnpackAccessor(accessor, *bk_mesh.positions);
 
-  //         case cgltf_attribute_type_normal:
-  //         {
-  //           save_buf = &bk_mesh.normals;
-  //           M_Check(comp_count == 3);
-  //           M_Check(accessor.component_type == cgltf_component_type_r_32f);
-  //         } break;
+          case .cgltf_attribute_type_normal;
+          Check(comp_count == 3);
+          Check(accessor.component_type == .cgltf_component_type_r_32f);
+          BK_GLTF_UnpackAccessor(accessor, *bk_mesh.normals);
 
-  //         case cgltf_attribute_type_tangent:
-  //         {
-  //           M_LOG(M_GLTFDebug, "[GLTF LOADER] Attribute with type tangent skipped");
-  //           continue;
-  //         } break;
+          case .cgltf_attribute_type_tangent;
+          log("[GLTF LOADER] Attribute with type tangent skipped", flags=.VERBOSE_ONLY);
+          continue;
 
-  //         case cgltf_attribute_type_texcoord:
-  //         {
-  //           save_buf = &bk_mesh.texcoords;
-  //           M_Check(comp_count == 2);
-  //           M_Check(accessor.component_type == cgltf_component_type_r_32f);
-  //         } break;
+          case .cgltf_attribute_type_texcoord;
+          Check(comp_count == 2);
+          Check(accessor.component_type == .cgltf_component_type_r_32f);
+          BK_GLTF_UnpackAccessor(accessor, *bk_mesh.texcoords);
 
-  //         case cgltf_attribute_type_joints:
-  //         {
-  //           save_buf = &bk_mesh.joint_indices;
-  //           M_Check(comp_count == 4);
-  //           //M_Check(accessor.component_type == cgltf_component_type_r_8u);
-  //         } break;
+          case .cgltf_attribute_type_joints;
+          Check(comp_count == 4);
+          //Check(accessor.component_type == .cgltf_component_type_r_8u);
+          BK_GLTF_UnpackAccessor(accessor, *bk_mesh.joint_indices);
 
-  //         case cgltf_attribute_type_weights:
-  //         {
-  //           save_buf = &bk_mesh.weights;
-  //           M_Check(comp_count == 4);
-  //           M_Check(accessor.component_type == cgltf_component_type_r_32f);
-  //         } break;
+          case .cgltf_attribute_type_weights;
+          Check(comp_count == 4);
+          Check(accessor.component_type == .cgltf_component_type_r_32f);
+          BK_GLTF_UnpackAccessor(accessor, *bk_mesh.weights);
 
-  //         default:
-  //         {
-  //           M_LOG(M_GLTFWarning,
-  //             "[GLTF LOADER] Attribute with unknown type (%u) skipped",
-  //             attribute.type);
-  //           continue;
-  //         } break;
-  //       }
-
-  //       BK_GLTF_UnpackAccessor(accessor, save_buf);
-  //     }
+          case;
+          log("[GLTF LOADER] Attribute with unknown type (%) skipped", attribute.type, flags=.WARNING);
+          continue;
+        }
+      }
     }
   }
 
@@ -418,19 +398,17 @@ BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: *[..] $T) -> slice
   total_count := accessor.count * comp_count;
   comp_size := cgltf_component_size(accessor.component_type);
 
-  if accessor.component_type == .cgltf_component_type_r_32f
+  #if T == float
   {
-    #if T == float
     {
+      Check(accessor.component_type == .cgltf_component_type_r_32f,
+            "Expected component_type to be r_32f when buffer type is float. Instead got %.",
+            accessor.component_type);
+
       numbers_slice := array_add_many(buffer, xx total_count);
       unpacked_count := cgltf_accessor_unpack_floats(accessor, *numbers_slice[0], total_count);
       Check(unpacked_count == total_count);
       return numbers_slice;
-    }
-    else
-    {
-      Check(false, "Component type % requires a buffer array of type float. Instead got: %",
-            accessor.component_type, type_of(buffer));
     }
   }
 
@@ -466,18 +444,18 @@ BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: *[..] $T) -> slice
       }
 
       // Store into buffer backed array with truncation
-      #if size_of(T) == {
-        case 1;
+      #if T == {
+        case u8;
         Check(value <= U8_MAX);
         numbers_slice[it] = cast,no_check(u8) value;
-        case 2;
+        case u16;
         Check(value <= U16_MAX);
         numbers_slice[it] = cast,no_check(u16) value;
-        case 4;
+        case u32;
         Check(value <= U32_MAX);
         numbers_slice[it] = cast,no_check(u32) value;
         case;
-        assert(false, "Unsupported size_of(T) == % for downconversion", size_of(T));
+        Check(false, "Downconversion for % is not supported.", T);
       }
     }
   }
