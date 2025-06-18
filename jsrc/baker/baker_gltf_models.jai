@@ -366,7 +366,189 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
 
 BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
 {
-  // @impl
+  model.has_skeleton = true;
+  model.skeleton_index = xx B.pie.skeletons.count;
+  pie_skel := array_add(*B.pie.skeletons);
+
+  // Root transform
+  pie_skel.root_transform = model.spec_transform;
+
+  Check(data.skins_count == 1);
+  skin := data.skins;
+  joints_count := skin.joints_count;
+
+  // Joints data
+  {
+    // unpack inverse bind matrices
+    {
+      inv_bind := skin.inverse_bind_matrices;
+      Check(inv_bind != null);
+      Check(inv_bind.count == joints_count);
+      Check(inv_bind.component_type == .cgltf_component_type_r_32f);
+      Check(inv_bind.type == .cgltf_type_mat4);
+
+      comp_count := cgltf_num_components(inv_bind.type);
+      Check(comp_count == 16);
+
+      auto_release_temp();
+      temp_matrices := NewArray(xx inv_bind.count, Mat4,, temp);
+      float_count := comp_count * inv_bind.count;
+      unpacked_count := cgltf_accessor_unpack_floats(inv_bind, *temp_matrices[0].flat[0], float_count);
+      Check(unpacked_count == float_count);
+      PIE_ListAddArray(*B.pie.file, *pie_skel.inverse_matrices, temp_matrices);
+    }
+
+    // child hierarchy indices
+    // {
+    //   U32 *indices = PIE_ListReserve(&B.pie.file, &pie_skel.child_index_buf, U32, joints_count);
+    //   RngU32 *ranges = PIE_ListReserve(&B.pie.file, &pie_skel.child_index_ranges, RngU32, joints_count);
+
+    //   U32 indices_count = 0;
+    //   ForU64(joint_index, joints_count)
+    //   {
+    //     cgltf_node *joint = skin.joints[joint_index];
+
+    //     ForU64(child_index, joint.children_count)
+    //     {
+    //       cgltf_node *child = joint.children[child_index];
+    //       U64 child_joint_index = BK_GLTF_FindJointIndex(skin, child);
+
+    //       if (child_index == 0)
+    //         ranges[joint_index].min = indices_count;
+
+    //       M_Check(indices_count < joints_count);
+    //       indices[indices_count] = child_joint_index;
+    //       indices_count += 1;
+
+    //       ranges[joint_index].max = indices_count;
+    //     }
+    //   }
+    // }
+
+    // rest pose transformations
+    // {
+    //   // Translations
+    //   PIE_ListStart(&B.pie.file, &pie_skel.translations, TYPE_V3);
+    //   ForU64(joint_index, joints_count)
+    //   {
+    //     cgltf_node *joint = skin.joints[joint_index];
+    //     ForArray(i, joint.translation)
+    //       *PIE_Reserve(&B.pie.file, float, 1) = joint.translation[i];
+    //   }
+    //   PIE_ListEnd(&B.pie.file, &pie_skel.translations);
+
+    //   // Rotations
+    //   PIE_ListStart(&B.pie.file, &pie_skel.rotations, TYPE_Quat);
+    //   ForU64(joint_index, joints_count)
+    //   {
+    //     cgltf_node *joint = skin.joints[joint_index];
+    //     ForArray(i, joint.rotation)
+    //       *PIE_Reserve(&B.pie.file, float, 1) = joint.rotation[i];
+    //   }
+    //   PIE_ListEnd(&B.pie.file, &pie_skel.rotations);
+
+    //   // Scales
+    //   PIE_ListStart(&B.pie.file, &pie_skel.scales, TYPE_V3);
+    //   ForU64(joint_index, joints_count)
+    //   {
+    //     cgltf_node *joint = skin.joints[joint_index];
+    //     ForArray(i, joint.scale)
+    //       *PIE_Reserve(&B.pie.file, float, 1) = joint.scale[i];
+    //   }
+    //   PIE_ListEnd(&B.pie.file, &pie_skel.scales);
+    // }
+
+    // First allocate all strings in one continuous chunk.
+    // Track min&max paris of each string.
+  //   RngU32 *name_ranges = AllocZeroed(BAKER.tmp, RngU32, joints_count);
+  //   ForU64(joint_index, joints_count)
+  //   {
+  //     cgltf_node *joint = skin.joints[joint_index];
+  //     name_ranges[joint_index].min = B.pie.file.used;
+  //     Pr_Cstr(&B.pie.file, joint.name);
+  //     name_ranges[joint_index].max = B.pie.file.used;
+  //   }
+
+  //   // Memcpy name strign ranges into the file
+  //   {
+  //     RngU32 *dst_name_ranges = PIE_ListReserve(&B.pie.file, &pie_skel.name_ranges, RngU32, joints_count);
+  //     Memcpy(dst_name_ranges, name_ranges, pie_skel.name_ranges.size);
+  //   }
+  }
+
+  // // Animations
+  // if (data.animations_count)
+  // {
+  //   U32 anims_count = (U32)data.animations_count;
+  //   PIE_Animation *pie_animations = PIE_ListReserve(&B.pie.file, &pie_skel.anims, PIE_Animation, anims_count);
+
+  //   ForU32(animation_index, anims_count)
+  //   {
+  //     PIE_Animation *pie_anim = pie_animations + animation_index;
+  //     cgltf_animation *gltf_anim = data.animations + animation_index;
+  //     float t_min = FLT_MAX;
+  //     float t_max = -FLT_MAX;
+
+  //     // Name string
+  //     PIE_ListStart(&B.pie.file, &pie_anim.name, TYPE_U8);
+  //     Pr_Cstr(&B.pie.file, gltf_anim.name);
+  //     PIE_ListEnd(&B.pie.file, &pie_anim.name);
+
+  //     // Channels
+  //     U32 channels_count = (U32)gltf_anim.channels_count;
+  //     PIE_AnimationChannel *pie_channels = PIE_ListReserve(&B.pie.file, &pie_anim.channels,
+  //                                                             PIE_AnimationChannel, channels_count);
+
+  //     ForU32(channel_index, channels_count)
+  //     {
+  //       PIE_AnimationChannel *pie_chan = pie_channels + channel_index;
+  //       cgltf_animation_channel *gltf_chan = gltf_anim.channels + channel_index;
+  //       cgltf_animation_sampler *gltf_sampler = gltf_chan.sampler;
+  //       M_Check(gltf_sampler.interpolation == cgltf_interpolation_type_linear);
+  //       M_Check(gltf_sampler.input.count == gltf_sampler.output.count);
+
+  //       U32 sample_count = (U32)gltf_sampler.input.count;
+  //       pie_chan.joint_index = BK_GLTF_FindJointIndex(skin, gltf_chan.target_node);
+
+  //       switch (gltf_chan.target_path)
+  //       {
+  //         default:
+  //         M_Check(false && "Unsupported channel target"); break;
+
+  //         case cgltf_animation_path_type_translation:
+  //         pie_chan.type = AN_Translation; break;
+
+  //         case cgltf_animation_path_type_rotation:
+  //         pie_chan.type = AN_Rotation; break;
+
+  //         case cgltf_animation_path_type_scale:
+  //         pie_chan.type = AN_Scale; break;
+  //       }
+
+  //       // inputs
+  //       float *in_nums = PIE_ListReserve(&B.pie.file, &pie_chan.inputs, float, sample_count);
+  //       U64 in_unpacked = cgltf_accessor_unpack_floats(gltf_sampler.input, in_nums, sample_count);
+  //       M_Check(in_unpacked == sample_count);
+
+  //       ForU32(i, sample_count)
+  //       {
+  //         float n = in_nums[i];
+  //         if (n > t_max) t_max = n;
+  //         if (n < t_min) t_min = n;
+  //       }
+
+  //       // outputs
+  //       U32 out_comp_count = (U32)cgltf_num_components(gltf_sampler.output.type);
+  //       U32 out_count = out_comp_count * sample_count;
+  //       float *out_nums = PIE_ListReserve(&B.pie.file, &pie_chan.outputs, float, out_count);
+  //       U64 out_unpacked = cgltf_accessor_unpack_floats(gltf_sampler.output, out_nums, out_count);
+  //       M_Check(out_unpacked == out_count);
+  //     }
+
+  //     pie_anim.t_min = t_min;
+  //     pie_anim.t_max = t_max;
+  //   }
+  // }
 }
 
 BK_GLTF_ExportModelToPie :: (bk_model: BK_GLTF_Model)

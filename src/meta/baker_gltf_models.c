@@ -33,9 +33,6 @@ static U32 BK_GLTF_FindMaterialIndex(cgltf_data *data, cgltf_material *find_mate
 
 static void BK_GLTF_ExportSkeletonToPie(PIE_Builder *build, BK_GLTF_Model *model, cgltf_data *data)
 {
-  if (model->has_skeleton)
-    return;
-
   model->has_skeleton = true;
   model->skeleton_index = build->skeletons_count;
   build->skeletons_count += 1;

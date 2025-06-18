@@ -24,22 +24,29 @@ PIE_Align :: (sb: *String_Builder, alignment: s64)
   }
 }
 
-PIE_AlignType :: (sb: *String_Builder, $type: Type)
+PIE_AlignType :: (sb_owner: *String_Builder, $type: Type)
 {
-  PIE_Align(sb, align_of(type));
+  PIE_Align(sb_owner, align_of(type));
 }
 
-PIE_ListStart :: (builder_owner: *String_Builder, list: *PIE_List, $type: Type)
+PIE_ListStart :: (sb_owner: *String_Builder, list: *PIE_List, $type: Type)
 {
   Check(!list.size);
-  PIE_AlignType(builder_owner, type);
-  list.offset = xx builder_string_length(builder_owner);
+  PIE_AlignType(sb_owner, type);
+  list.offset = xx builder_string_length(sb_owner);
 }
 
-PIE_ListEnd :: (builder_owner: *String_Builder, list: *PIE_List)
+PIE_ListEnd :: (sb_owner: *String_Builder, list: *PIE_List)
 {
   Check(!list.size);
-  builder_length := builder_string_length(builder_owner);
+  builder_length := builder_string_length(sb_owner);
   Check(builder_length >= list.offset);
   list.size = xx (builder_length - list.offset);
+}
+
+PIE_ListAddArray :: (sb_owner: *String_Builder, list: *PIE_List, array: [] $T)
+{
+  PIE_ListStart(sb_owner, list, T);
+  append(sb_owner, array.data.(*u8), size_of(T) * array.count);
+  PIE_ListEnd(sb_owner, list);
 }
