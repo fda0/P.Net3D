@@ -31,7 +31,7 @@ UI_FinishFrame :: ()
       print("[%] render_command: % (%)\n", G.frame_number, cmd, cmd.box.loc);
 
     c4 := ColorV4_32(cmd.color);
-    c32 := Color32_V4(c4);
+    c32 := Color32_RGBAf(c4);
 
     shape := UI_Shape.{
       p_min = cmd.p,

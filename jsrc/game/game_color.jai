@@ -35,9 +35,11 @@ Color32_RGBf :: (r: float, g: float, b: float) -> Color32
   return Color32_RGBAi(ri, gi, bi, 255);
 }
 
-Color32_Grayf :: (rgb: float) -> Color32 { return Color32_RGBf(rgb, rgb, rgb); }
-Color32_V3 :: (color: V3) -> Color32 { return Color32_RGBf(color.x, color.y, color.z); }
-Color32_V4 :: (color: V4) -> Color32 { return Color32_RGBAf(color.x, color.y, color.z, color.w); }
+Color32_Grayf :: (rgb: float)       -> Color32 { return Color32_RGBf(rgb, rgb, rgb); }
+Color32_RGBf  :: (color: V3)        -> Color32 { return Color32_RGBf(color.x, color.y, color.z); }
+Color32_RGBf  :: (color: [3] float) -> Color32 { return Color32_RGBf(color[0], color[1], color[2]); }
+Color32_RGBAf :: (color: V4)        -> Color32 { return Color32_RGBAf(color.x, color.y, color.z, color.w); }
+Color32_RGBAf :: (color: [4] float) -> Color32 { return Color32_RGBAf(color[0], color[1], color[2], color[3]); }
 
 lerp :: (c0: Color32, c1: Color32, t: float) -> Color32
 {
@@ -46,7 +48,7 @@ lerp :: (c0: Color32, c1: Color32, t: float) -> Color32
   vec0 := ColorV4_32(c0);
   vec1 := ColorV4_32(c1);
   lerped := lerp(vec0, vec1, t);
-  res := Color32_V4(lerped);
+  res := Color32_RGBAf(lerped);
   return res;
 }
 

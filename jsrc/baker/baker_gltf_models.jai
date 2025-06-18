@@ -74,10 +74,7 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
     return;
   }
 
-
-  //
   // Prepare strings based on file_path
-  //
   dir_path, file_name_no_ext, _, _ := path_decomp(file_path);
 
   // Collect data from .gltf file
@@ -91,124 +88,128 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
   model.is_skinned = data.animations_count > 0;
   array_resize(*model.meshes, xx data.materials_count);
 
-  for * bk_mesh: model.meshes
+  for * bk_mesh, mesh_index: model.meshes
   {
     // Fetch material data
-    assert(it_index < xx data.materials_count);
-    log("path: %, it_index: % / %; ptr: %; ptr+1: %\n", file_path, it_index, data.materials_count, *data.materials[it_index], *data.materials[it_index+1]);
-    gltf_material := data.materials[it_index];
+    assert(mesh_index < xx data.materials_count);
+    gltf_material := data.materials[mesh_index];
 
     // Create material
     bk_mesh.material_index = B.pie.materials.count;
     {
-      // pie_material := array_add(*B.pie.materials);
-    //   BK_SetDefaultsPIEMaterial(pie_material);
+      pie_material := array_add(*B.pie.materials);
+      BK_SetDefaultsPIEMaterial(pie_material);
 
-    //   // Fill material name
-    //   {
-    //     PIE_ListStart(*B.pie.file, &pie_material->name, TYPE_U8);
-    //     Pr_S8(&B.pie.file, model.name);
-    //     Pr_Cstr(&B.pie.file, ".m");
-    //     Pr_U32(&B.pie.file, mesh_index);
-    //     Pr_Cstr(&B.pie.file, ".");
-    //     Pr_Cstr(&B.pie.file, gltf_material->name);
-    //     PIE_ListEnd(&B.pie.file, &pie_material->name);
-    //   }
-
-    //   S8 diffuse_tex_path = {};
-    //   S8 normal_tex_path = {};
-    //   S8 specular_tex_path = {};
-
-    //   if (gltf_material->normal_texture.texture)
-    //   {
-    //     const char *uri = gltf_material->normal_texture.texture->image->uri;
-    //     normal_tex_path = S8_ConcatDirFile(scratch.a, dir_path, S8_FromCstr(uri));
-    //   }
-
-    //   if (gltf_material->has_pbr_metallic_roughness)
-    //   {
-    //     cgltf_pbr_metallic_roughness *metal = &gltf_material->pbr_metallic_roughness;
-    //     pie_material->params.diffuse   = Color32_V4(*(V4 *)metal->base_color_factor);
-    //     pie_material->params.roughness = metal->roughness_factor;
-    //   }
-
-    //   if (gltf_material->has_pbr_specular_glossiness)
-    //   {
-    //     cgltf_pbr_specular_glossiness *gloss = &gltf_material->pbr_specular_glossiness;
-    //     pie_material->params.diffuse   = Color32_V4(*(V4 *)gloss->diffuse_factor);
-    //     pie_material->params.specular  = Color32_V3(*(V3 *)gloss->specular_factor);
-    //     pie_material->params.roughness = 1.f - gloss->glossiness_factor;
-
-    //     if (gloss->diffuse_texture.texture)
-    //     {
-    //       const char *uri = gloss->diffuse_texture.texture->image->uri;
-    //       diffuse_tex_path = S8_ConcatDirFile(scratch.a, dir_path, S8_FromCstr(uri));
-    //     }
-
-    //     if (gloss->specular_glossiness_texture.texture)
-    //     {
-    //       const char *uri = gloss->specular_glossiness_texture.texture->image->uri;
-    //       specular_tex_path = S8_ConcatDirFile(scratch.a, dir_path, S8_FromCstr(uri));
-    //     }
+      // Fill material name
+      {
+        PIE_ListStart(*B.pie.file, *pie_material.name, u8);
+        print_to_builder(*B.pie.file, "%.m%.%", model.name, mesh_index, gltf_material.name);
+        PIE_ListEnd(*B.pie.file, *pie_material.name);
       }
 
-    //   if (gltf_material->alpha_mode != cgltf_alpha_mode_opaque)
-    //   pie_material->params.flags |= PIE_MaterialFlag_HasAlpha;
+      diffuse_tex_path := "";
+      normal_tex_path := "";
+      specular_tex_path := "";
 
-    //   // Prepare tex_paths array
-    //   // These are expected to be in a fixed order for now
-    //   // So if any in the chain is missing we have to drop all subsequent textures.
-    //   S8 tex_paths[3] = {};
-    //   U32 tex_paths_count = 0;
+      if gltf_material.normal_texture.texture
+      {
+        uri := to_string(gltf_material.normal_texture.texture.image.uri);
+        normal_tex_path = tprint("%/%", dir_path, uri);
+      }
 
-    //   if (diffuse_tex_path.size)
-    //   tex_paths[tex_paths_count++] = diffuse_tex_path;
+      if gltf_material.has_pbr_metallic_roughness
+      {
+        metal := *gltf_material.pbr_metallic_roughness;
+        pie_material.params.diffuse   = xx Color32_RGBAf(metal.base_color_factor);
+        pie_material.params.roughness = metal.roughness_factor;
+      }
 
-    //   if (tex_paths_count == 1 && normal_tex_path.size)
-    //   tex_paths[tex_paths_count++] = normal_tex_path;
+      if gltf_material.has_pbr_specular_glossiness
+      {
+        gloss := *gltf_material.pbr_specular_glossiness;
+        pie_material.params.diffuse   = xx Color32_RGBAf(gloss.diffuse_factor);
+        pie_material.params.specular  = xx Color32_RGBf(gloss.specular_factor);
+        pie_material.params.roughness = 1.0 - gloss.glossiness_factor;
 
-    //   if (tex_paths_count == 2 && specular_tex_path.size)
-    //   tex_paths[tex_paths_count++] = specular_tex_path;
+        if gloss.diffuse_texture.texture
+        {
+          uri := to_string(gloss.diffuse_texture.texture.image.uri);
+          diffuse_tex_path = tprint("%/%", dir_path, uri);
+        }
 
-    //   if (tex_paths_count)
-    //   BK_TEX_LoadPaths(pie_material, tex_paths, tex_paths_count);
-    // }
+        if gloss.specular_glossiness_texture.texture
+        {
+          uri := to_string(gloss.specular_glossiness_texture.texture.image.uri);
+          specular_tex_path = tprint(dir_path, uri);
+        }
+      }
+
+      if (gltf_material.alpha_mode != .cgltf_alpha_mode_opaque)
+        pie_material.params.flags |= .HasAlpha;
+
+      // Prepare tex_paths array
+      // These are expected to be in a fixed order for now
+      // So if any in the chain is missing we have to drop all subsequent textures.
+      tex_paths: [3] string;
+      tex_paths_count := 0;
+
+      if diffuse_tex_path
+      {
+        tex_paths[tex_paths_count] = diffuse_tex_path;
+        tex_paths_count += 1;
+      }
+
+      if tex_paths_count == 1 && normal_tex_path
+      {
+        tex_paths[tex_paths_count] = normal_tex_path;
+        tex_paths_count += 1;
+      }
+
+      if tex_paths_count == 2 && specular_tex_path
+      {
+        tex_paths[tex_paths_count] = specular_tex_path;
+        tex_paths_count += 1;
+      }
+
+      if tex_paths_count
+        BK_TEX_LoadPaths(pie_material, ArrayPrefix(tex_paths, tex_paths_count));
+    }
   }
 
   // The hierarchy of .gltf files might be a bit confusing.
   // Division into meshes and primitives wasn't strictly
   // necessary (it could have been merged into one) but it is what it is.
-  // ForU64(gltf_mesh_index, data->meshes_count)
+  // ForU64(gltf_mesh_index, data.meshes_count)
   // {
-  //   cgltf_mesh *gltf_mesh = data->meshes + gltf_mesh_index;
+  //   cgltf_mesh *gltf_mesh = data.meshes + gltf_mesh_index;
 
-  //   ForU64(gltf_primitive_index, gltf_mesh->primitives_count)
+  //   ForU64(gltf_primitive_index, gltf_mesh.primitives_count)
   //   {
-  //     cgltf_primitive *primitive = gltf_mesh->primitives + gltf_primitive_index;
+  //     cgltf_primitive *primitive = gltf_mesh.primitives + gltf_primitive_index;
 
   //     // Our internal groups things into common meshes based on common material.
-  //     U32 mesh_index = BK_GLTF_FindMaterialIndex(data, primitive->material);
+  //     U32 mesh_index = BK_GLTF_FindMaterialIndex(data, primitive.material);
   //     BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
 
-  //     if (primitive->type != cgltf_primitive_type_triangles)
+  //     if (primitive.type != cgltf_primitive_type_triangles)
   //     {
   //       M_LOG(M_GLTFWarning,
   //         "[GLTF LOADER] Primitive with non triangle type (%u) skipped",
-  //         primitive->type);
+  //         primitive.type);
   //       continue;
   //     }
 
-  //     M_Check(primitive->indices);
+  //     M_Check(primitive.indices);
   //     {
-  //       U64 index_start_offset = bk_mesh->positions.used/3;
+  //       U64 index_start_offset = bk_mesh.positions.used/3;
 
-  //       cgltf_accessor *accessor = primitive->indices;
-  //       M_Check(accessor->type == cgltf_type_scalar);
-  //       U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &bk_mesh->indices);
+  //       cgltf_accessor *accessor = primitive.indices;
+  //       M_Check(accessor.type == cgltf_type_scalar);
+  //       U16 *numbers = BK_GLTF_UnpackAccessor(accessor, &bk_mesh.indices);
 
   //       if (index_start_offset)
   //       {
-  //         ForU64(i, accessor->count)
+  //         ForU64(i, accessor.count)
   //         {
   //           U32 value = numbers[i] + index_start_offset;
   //           M_Check(value <= U16_MAX);
@@ -217,28 +218,28 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
   //       }
   //     }
 
-  //     ForU64(attribute_index, primitive->attributes_count)
+  //     ForU64(attribute_index, primitive.attributes_count)
   //     {
-  //       cgltf_attribute *attribute = primitive->attributes + attribute_index;
-  //       cgltf_accessor *accessor = attribute->data;
+  //       cgltf_attribute *attribute = primitive.attributes + attribute_index;
+  //       cgltf_accessor *accessor = attribute.data;
 
-  //       U64 comp_count = cgltf_num_components(accessor->type);
+  //       U64 comp_count = cgltf_num_components(accessor.type);
   //       BK_Buffer *save_buf = 0;
 
-  //       switch (attribute->type)
+  //       switch (attribute.type)
   //       {
   //         case cgltf_attribute_type_position:
   //         {
-  //           save_buf = &bk_mesh->positions;
+  //           save_buf = &bk_mesh.positions;
   //           M_Check(comp_count == 3);
-  //           M_Check(accessor->component_type == cgltf_component_type_r_32f);
+  //           M_Check(accessor.component_type == cgltf_component_type_r_32f);
   //         } break;
 
   //         case cgltf_attribute_type_normal:
   //         {
-  //           save_buf = &bk_mesh->normals;
+  //           save_buf = &bk_mesh.normals;
   //           M_Check(comp_count == 3);
-  //           M_Check(accessor->component_type == cgltf_component_type_r_32f);
+  //           M_Check(accessor.component_type == cgltf_component_type_r_32f);
   //         } break;
 
   //         case cgltf_attribute_type_tangent:
@@ -249,30 +250,30 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
 
   //         case cgltf_attribute_type_texcoord:
   //         {
-  //           save_buf = &bk_mesh->texcoords;
+  //           save_buf = &bk_mesh.texcoords;
   //           M_Check(comp_count == 2);
-  //           M_Check(accessor->component_type == cgltf_component_type_r_32f);
+  //           M_Check(accessor.component_type == cgltf_component_type_r_32f);
   //         } break;
 
   //         case cgltf_attribute_type_joints:
   //         {
-  //           save_buf = &bk_mesh->joint_indices;
+  //           save_buf = &bk_mesh.joint_indices;
   //           M_Check(comp_count == 4);
-  //           //M_Check(accessor->component_type == cgltf_component_type_r_8u);
+  //           //M_Check(accessor.component_type == cgltf_component_type_r_8u);
   //         } break;
 
   //         case cgltf_attribute_type_weights:
   //         {
-  //           save_buf = &bk_mesh->weights;
+  //           save_buf = &bk_mesh.weights;
   //           M_Check(comp_count == 4);
-  //           M_Check(accessor->component_type == cgltf_component_type_r_32f);
+  //           M_Check(accessor.component_type == cgltf_component_type_r_32f);
   //         } break;
 
   //         default:
   //         {
   //           M_LOG(M_GLTFWarning,
   //             "[GLTF LOADER] Attribute with unknown type (%u) skipped",
-  //             attribute->type);
+  //             attribute.type);
   //           continue;
   //         } break;
   //       }
@@ -290,18 +291,18 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
   // ForU32(mesh_index, model.meshes_count)
   // {
   //   BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
-  //   M_Check(bk_mesh->positions.used % 3 == 0);
-  //   bk_mesh->verts_count = bk_mesh->positions.used / 3;
+  //   M_Check(bk_mesh.positions.used % 3 == 0);
+  //   bk_mesh.verts_count = bk_mesh.positions.used / 3;
 
-  //   M_Check(bk_mesh->normals.used % 3 == 0);
-  //   M_Check(bk_mesh->verts_count == bk_mesh->normals.used / 3);
+  //   M_Check(bk_mesh.normals.used % 3 == 0);
+  //   M_Check(bk_mesh.verts_count == bk_mesh.normals.used / 3);
 
   //   if (model.is_skinned)
   //   {
-  //     M_Check(bk_mesh->joint_indices.used % 4 == 0);
-  //     M_Check(bk_mesh->verts_count == bk_mesh->joint_indices.used / 4);
-  //     M_Check(bk_mesh->weights.used % 4 == 0);
-  //     M_Check(bk_mesh->verts_count == bk_mesh->weights.used / 4);
+  //     M_Check(bk_mesh.joint_indices.used % 4 == 0);
+  //     M_Check(bk_mesh.verts_count == bk_mesh.joint_indices.used / 4);
+  //     M_Check(bk_mesh.weights.used % 4 == 0);
+  //     M_Check(bk_mesh.verts_count == bk_mesh.weights.used / 4);
   //   }
   // }
 
@@ -313,9 +314,9 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
   //   ForU32(mesh_index, model.meshes_count)
   //   {
   //     BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
-  //     ForU32(i, bk_mesh->verts_count)
+  //     ForU32(i, bk_mesh.verts_count)
   //     {
-  //       V3 p = *(V3*)BK_BufferAtFloat(&bk_mesh->positions, i*3);
+  //       V3 p = *(V3*)BK_BufferAtFloat(&bk_mesh.positions, i*3);
   //       p = V3_Rotate(p, spec.rot); // We want to query Z after rotation is applied.
   //       biggest_z = Max(biggest_z, p.z);
   //       lowest_z = Min(lowest_z, p.z);
@@ -352,9 +353,9 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
   // if (model.is_skinned)
   // {
   //   // Joints
-  //   M_Check(data->skins_count == 1);
-  //   M_Check(data->skins[0].joints_count <= U32_MAX);
-  //   model.joints_count = (U32)data->skins[0].joints_count;
+  //   M_Check(data.skins_count == 1);
+  //   M_Check(data.skins[0].joints_count <= U32_MAX);
+  //   model.joints_count = (U32)data.skins[0].joints_count;
   // }
 
   // // Sekeleton export
@@ -370,13 +371,13 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
   //     ForU32(mesh_index, model.meshes_count)
   //     {
   //       BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
-  //       ForU32(i, bk_mesh->verts_count)
+  //       ForU32(i, bk_mesh.verts_count)
   //       {
-  //         V3 *position = (V3*)BK_BufferAtFloat(&bk_mesh->positions, i*3);
+  //         V3 *position = (V3*)BK_BufferAtFloat(&bk_mesh.positions, i*3);
   //         V4 p = V4_From_XYZ_W(*position, 1.f);
   //         p = V4_MulM4(model.spec_transform, p);
 
-  //         V3 *normal = (V3*)BK_BufferAtFloat(&bk_mesh->normals, i*3);
+  //         V3 *normal = (V3*)BK_BufferAtFloat(&bk_mesh.normals, i*3);
   //         V3 n = V3_Rotate(*normal, spec.rot);
 
   //         *position = V3_FromV4_XYZ(p);

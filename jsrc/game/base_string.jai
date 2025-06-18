@@ -157,6 +157,5 @@ STR_DecodeUTF8 :: (str: string) -> codepoint:u32, byte_length:s64
   return codepoint, byte_length;
 }
 
-
 #scope_file
 #import "Basic"; // for clamp
