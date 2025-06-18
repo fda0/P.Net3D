@@ -243,6 +243,11 @@ Slerp :: (a: Quat, b_: Quat, t: float) -> Quat
 }
 
 // MATRIX MATH
+operator == :: (a: Mat4, b: Mat4) -> bool
+{
+  return memcmp(*a, *b, size_of(Mat4)) == 0;
+}
+
 ScaleMatrix :: (scale: V3) -> Mat4
 {
   res: Mat4;
@@ -392,11 +397,35 @@ multiply :: (m: Mat4, n: Mat4) -> Mat4
 
   return result;
 }
+operator * :: (a: Mat4, b: Mat4) -> Mat4 { return inline multiply(a, b); }
 
-operator * :: (a: Mat4, b: Mat4) -> Mat4
+
+multiply :: (m: Mat4, vec: V4) -> V4
 {
-  return inline multiply(a, b);
+  // @todo SIMD
+  res: V4 = ---;
+  res.x = vec.component[0] * m.cols[0].x;
+  res.y = vec.component[0] * m.cols[0].y;
+  res.z = vec.component[0] * m.cols[0].z;
+  res.w = vec.component[0] * m.cols[0].w;
+
+  res.x += vec.component[1] * m.cols[1].x;
+  res.y += vec.component[1] * m.cols[1].y;
+  res.z += vec.component[1] * m.cols[1].z;
+  res.w += vec.component[1] * m.cols[1].w;
+
+  res.x += vec.component[2] * m.cols[2].x;
+  res.y += vec.component[2] * m.cols[2].y;
+  res.z += vec.component[2] * m.cols[2].z;
+  res.w += vec.component[2] * m.cols[2].w;
+
+  res.x += vec.component[3] * m.cols[3].x;
+  res.y += vec.component[3] * m.cols[3].y;
+  res.z += vec.component[3] * m.cols[3].z;
+  res.w += vec.component[3] * m.cols[3].w;
+  return res;
 }
+operator * :: (m: Mat4, vec: V4) -> V4 { return inline multiply(m, vec); }
 
 transpose :: (m: Mat4) -> Mat4
 {

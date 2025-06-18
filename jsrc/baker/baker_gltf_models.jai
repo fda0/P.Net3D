@@ -279,92 +279,99 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
     }
   }
 
-  // // Calculate model spec transforms
-  // {
-  //   // query highest and lowest Z position
-  //   float biggest_z = -FLT_MAX;
-  //   float lowest_z = FLT_MAX;
-  //   ForU32(mesh_index, model.meshes_count)
-  //   {
-  //     BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
-  //     ForU32(i, bk_mesh.verts_count)
-  //     {
-  //       V3 p = *(V3*)BK_BufferAtFloat(&bk_mesh.positions, i*3);
-  //       p = V3_Rotate(p, spec.rot); // We want to query Z after rotation is applied.
-  //       biggest_z = Max(biggest_z, p.z);
-  //       lowest_z = Min(lowest_z, p.z);
-  //     }
-  //   }
+  // Calculate model spec transforms
+  {
+    // query highest and lowest Z position
+    biggest_z := -FLOAT32_MAX;
+    lowest_z := FLOAT32_MAX;
+    for bk_mesh: model.meshes
+    {
+      for MakeRange(bk_mesh.verts_count)
+      {
+        p := V3.{
+          bk_mesh.positions[it*3 + 0],
+          bk_mesh.positions[it*3 + 1],
+          bk_mesh.positions[it*3 + 2],
+        };
+        p = Rotate(p, spec.rot); // We want to query Z after rotation is applied.
+        biggest_z = max(biggest_z, p.z);
+        lowest_z = min(lowest_z, p.z);
+      }
+    }
 
-  //   float height_fix = 1.f;
-  //   if (spec.height)
-  //   {
-  //     float current_height = biggest_z - lowest_z;
-  //     height_fix = spec.height / current_height;
-  //   }
+    height_fix := 1.0;
+    if spec.height
+    {
+      current_height := biggest_z - lowest_z;
+      height_fix = spec.height / current_height;
+    }
 
-  //   V3 ground_fix = (V3){};
-  //   if (!spec.disable_z0)
-  //   {
-  //     ground_fix = (V3){0,0,-lowest_z};
-  //   }
+    ground_fix: V3;
+    if !spec.disable_z0
+    {
+      ground_fix = V3.{0,0,-lowest_z};
+    }
 
-  //   // Apply scales to ground fix
-  //   float total_scale = spec.scale * height_fix;
-  //   ground_fix = V3_Scale(ground_fix, total_scale);
-  //   V3 total_move = V3_Add(spec.move, ground_fix);
+    // Apply scales to ground fix
+    total_scale := spec.scale * height_fix;
+    ground_fix = ground_fix * total_scale;
+    total_move := spec.move + ground_fix;
 
-  //   // Get spec transforms
-  //   Mat4 mat_scale = Mat4_ScaleF(total_scale);
-  //   Mat4 mat_rotate = Mat4_Rotation_Quat(spec.rot);
-  //   Mat4 mat_move = Mat4_Translation(total_move);
+    // Get spec transforms
+    mat_scale := ScaleMatrix(total_scale);
+    mat_rotate := RotationMatrix(spec.rot);
+    mat_move := TranslationMatrix(total_move);
 
-  //   // Calculate final transform
-  //   model.spec_transform = Mat4_Mul(mat_move, Mat4_Mul(mat_rotate, mat_scale));
-  // }
+    // Calculate final transform
+    model.spec_transform = (mat_move * (mat_rotate * mat_scale));
+  }
 
-  // if (model.is_skinned)
-  // {
-  //   // Joints
-  //   M_Check(data.skins_count == 1);
-  //   M_Check(data.skins[0].joints_count <= U32_MAX);
-  //   model.joints_count = (U32)data.skins[0].joints_count;
-  // }
+  if model.is_skinned
+  {
+    // Joints
+    Check(data.skins_count == 1);
+    Check(data.skins[0].joints_count <= U32_MAX);
+    model.joints_count = data.skins[0].joints_count.(u32);
+  }
 
-  // // Sekeleton export
-  // if (model.is_skinned)
-  // {
-  //   BK_GLTF_ExportSkeletonToPie(build, &model, data);
-  // }
+  // Sekeleton export
+  if model.is_skinned
+  {
+    BK_GLTF_ExportSkeletonToPie(*model, data);
+  }
 
-  // if (!model.is_skinned) // apply transformations directly to rigid mesh
-  // {
-  //   if (!Mat4_IsIdentity(model.spec_transform))
-  //   {
-  //     ForU32(mesh_index, model.meshes_count)
-  //     {
-  //       BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
-  //       ForU32(i, bk_mesh.verts_count)
-  //       {
-  //         V3 *position = (V3*)BK_BufferAtFloat(&bk_mesh.positions, i*3);
-  //         V4 p = V4_From_XYZ_W(*position, 1.f);
-  //         p = V4_MulM4(model.spec_transform, p);
+  if !model.is_skinned // apply transformations directly to rigid mesh
+  {
+    if model.spec_transform != DiagonalMatrix()
+    {
+      for bk_mesh: model.meshes
+      {
+        for MakeRange(bk_mesh.verts_count)
+        {
+          position := (*bk_mesh.positions[it*3]).(*V3);
+          p :=  model.spec_transform * V4.{xyz = position, w = 1.0};
+          position.* = p.xyz;
 
-  //         V3 *normal = (V3*)BK_BufferAtFloat(&bk_mesh.normals, i*3);
-  //         V3 n = V3_Rotate(*normal, spec.rot);
+          normal := (*bk_mesh.normals[it*3]).(*V3);
+          n := Rotate(normal.*, spec.rot);
+          normal.* = n;
+        }
+      }
+    }
+  }
 
-  //         *position = V3_FromV4_XYZ(p);
-  //         *normal = n;
-  //       }
-  //     }
-  //   }
-  // }
+  // Vertices export
+  BK_GLTF_ExportModelToPie(model);
+}
 
-  // // Vertices export
-  // BK_GLTF_ExportModelToPie(build, &model);
+BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
+{
+  // @impl
+}
 
-  // // Reset tmp arena
-  // Arena_PopScope(scratch);
+BK_GLTF_ExportModelToPie :: (bk_model: BK_GLTF_Model)
+{
+  // @impl
 }
 
 BK_GLTF_FindJointIndex :: (skin: *cgltf_skin, find_node: *cgltf_node) -> u64
