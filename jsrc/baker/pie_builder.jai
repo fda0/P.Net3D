@@ -20,7 +20,7 @@ PIE_Align :: (sb: *String_Builder, alignment: s64)
     to_align := alignment - missaligned_bytes;
     buffer: [256] u8; // array with zeroes
     assert(to_align <= buffer.count);
-    append(sb, *buffer[0], to_align);
+    append(sb, buffer.data, to_align);
   }
 }
 

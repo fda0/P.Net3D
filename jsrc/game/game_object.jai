@@ -330,7 +330,7 @@ OBJ_Create :: (storage: OBJ_Storage, flags: OBJ_Flags) -> *Object
 
   obj.s.key.serial_number = G.obj.serial_counter;
   G.obj.serial_counter = max(G.obj.serial_counter + 1, 1);
-  obj.s.key.index = cast(u32)((cast(u64)obj - cast(u64)*G.obj.all_objects[0]) / size_of(Object));
+  obj.s.key.index = ((obj.(u64) - G.obj.all_objects.data.(u64)) / size_of(Object)).(u32);
 
   obj.s.flags = flags;
   obj.s.init = true;

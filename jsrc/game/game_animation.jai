@@ -104,16 +104,16 @@ ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: floa
 
         if channel.type == .Rotation
         {
-          q0 := (cast(*Quat) *channel.outputs[0])[sample_start];
-          q1 := (cast(*Quat) *channel.outputs[0])[sample_end];
+          q0 := channel.outputs.data.(*Quat)[sample_start];
+          q1 := channel.outputs.data.(*Quat)[sample_end];
           value := Slerp(q0, q1, t); // @todo NLerp with "neighborhood operator" could be used here?
 
           rotations[channel.joint_index] = value;
         }
         else
         {
-          v0 := (cast(*V3) *channel.outputs[0])[sample_start];
-          v1 := (cast(*V3) *channel.outputs[0])[sample_end];
+          v0 := channel.outputs.data.(*V3)[sample_start];
+          v1 := channel.outputs.data.(*V3)[sample_end];
           value := lerp(v0, v1, t);
 
           if channel.type == .Translation

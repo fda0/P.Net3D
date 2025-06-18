@@ -16,7 +16,7 @@ ClearAddress :: (dst: *void, count: s64)
 ClearArray :: (arr: [] $T)
 {
   if arr.count
-    memset(*arr[0], 0, size_of(T)*arr.count);
+    memset(arr.data, 0, size_of(T)*arr.count);
 }
 
 ClearType :: (ptr: *$T)

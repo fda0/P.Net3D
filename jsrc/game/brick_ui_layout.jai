@@ -331,7 +331,7 @@ ActiveLayers :: () -> [] BoxSpec
 {
   using layout_state;
   result: [] BoxSpec;
-  result.data = *layers[0];
+  result.data = layers.data;
   result.count = layers_count;
   return result;
 }

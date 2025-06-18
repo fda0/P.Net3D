@@ -393,7 +393,7 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       auto_release_temp();
       temp_matrices := NewArray(xx inv_bind.count, Mat4,, temp);
       float_count := comp_count * inv_bind.count;
-      unpacked_count := cgltf_accessor_unpack_floats(inv_bind, *temp_matrices[0].flat[0], float_count);
+      unpacked_count := cgltf_accessor_unpack_floats(inv_bind, temp_matrices.data.(*float), float_count);
       Check(unpacked_count == float_count);
       PIE_ListAddArray(*B.pie.file, *pie_skel.inverse_matrices, temp_matrices);
     }
@@ -590,7 +590,7 @@ BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: *[..] $T) -> slice
             accessor.component_type);
 
       numbers_slice := array_add_many(buffer, xx total_count);
-      unpacked_count := cgltf_accessor_unpack_floats(accessor, *numbers_slice[0], total_count);
+      unpacked_count := cgltf_accessor_unpack_floats(accessor, numbers_slice.data, total_count);
       Check(unpacked_count == total_count);
       return numbers_slice;
     }
@@ -600,7 +600,7 @@ BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: *[..] $T) -> slice
 
   if size_of(T) >= comp_size
   {
-    unpacked_count := cgltf_accessor_unpack_indices(accessor, *numbers_slice[0], size_of(T), total_count);
+    unpacked_count := cgltf_accessor_unpack_indices(accessor, numbers_slice.data, size_of(T), total_count);
     Check(unpacked_count == total_count);
   }
   else

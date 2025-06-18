@@ -292,7 +292,7 @@ FONT_CreateGlyphInLayer :: (layer: *FONT_Layer, hash: u64, orig_width: u16, orig
 FONT_LayerIndexFromPointer :: (layer: *FONT_Layer) -> u8
 {
   using G.font;
-  index := (layer.(u64) - (*layers[0]).(u64)) / size_of(FONT_Layer);
+  index := (layer.(u64) - layers.data.(u64)) / size_of(FONT_Layer);
   return index.(u8);
 }
 

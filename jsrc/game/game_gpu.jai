@@ -124,7 +124,7 @@ GPU_Init :: ()
         num_uniform_buffers = 1,
 
         format = SDL_GPU_SHADERFORMAT_DXIL,
-        code = *g_WORLD_DxShaderVS[0],
+        code = g_WORLD_DxShaderVS.data,
         code_size = size_of(type_of(g_WORLD_DxShaderVS)),
         entrypoint = "World_DxShaderSkinnedVS",
       };
@@ -141,7 +141,7 @@ GPU_Init :: ()
         num_uniform_buffers = 1,
 
         format = SDL_GPU_SHADERFORMAT_DXIL,
-        code = *g_WORLD_DxShaderPS[0],
+        code = g_WORLD_DxShaderPS.data,
         code_size = size_of(type_of(g_WORLD_DxShaderPS)),
         entrypoint = "World_DxShaderSkinnedPS",
       };
@@ -182,7 +182,7 @@ GPU_Init :: ()
       },
     ];
     pipeline.vertex_input_state.num_vertex_buffers = VERTEX_BUFFERS.count;
-    pipeline.vertex_input_state.vertex_buffer_descriptions = *VERTEX_BUFFERS[0];
+    pipeline.vertex_input_state.vertex_buffer_descriptions = VERTEX_BUFFERS.data;
 
     VERTEX_ATTRIBS :: SDL_GPUVertexAttribute.[
       .{format = .SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
@@ -207,7 +207,7 @@ GPU_Init :: ()
       },
     ];
     pipeline.vertex_input_state.num_vertex_attributes = VERTEX_ATTRIBS.count;
-    pipeline.vertex_input_state.vertex_attributes = *VERTEX_ATTRIBS[0];
+    pipeline.vertex_input_state.vertex_attributes = VERTEX_ATTRIBS.data;
 
     // Create main pipeline
     G.gpu.world_pipelines[0] = SDL_CreateGPUGraphicsPipeline(G.gpu.device, *pipeline);
@@ -279,7 +279,7 @@ GPU_Init :: ()
         num_uniform_buffers = 1,
 
         format = SDL_GPU_SHADERFORMAT_DXIL,
-        code = *g_UI_DxShaderVS[0],
+        code = g_UI_DxShaderVS.data,
         code_size = size_of(type_of(g_UI_DxShaderVS)),
         entrypoint = "UI_DxShaderVS",
       };
@@ -296,7 +296,7 @@ GPU_Init :: ()
         num_uniform_buffers = 0,
 
         format = SDL_GPU_SHADERFORMAT_DXIL,
-        code = *g_UI_DxShaderPS[0],
+        code = g_UI_DxShaderPS.data,
         code_size = size_of(type_of(g_UI_DxShaderPS)),
         entrypoint = "UI_DxShaderPS",
       };
@@ -357,7 +357,7 @@ GPU_Iterate :: ()
         G.gpu.dummy_instance_buffer,
         GPU_BATCH_GetPosesBatch().buffer.handle,
       ];
-      SDL_BindGPUVertexStorageBuffers(pass, 0, *storage_bufs[0], storage_bufs.count);
+      SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs.data, storage_bufs.count);
 
     }
     //
@@ -420,7 +420,7 @@ GPU_Iterate :: ()
         gpu_instances.buffer.handle,
         GPU_BATCH_GetPosesBatch().buffer.handle,
       ];
-      SDL_BindGPUVertexStorageBuffers(pass, 0, *storage_bufs[0], storage_bufs.count);
+      SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs.data, storage_bufs.count);
 
       for mesh: model.meshes
       {
@@ -567,17 +567,17 @@ GPU_Iterate :: ()
     // Upload buffers to GPU
     {
       transfer_size := size_of(type_of(G.gpu.ui.indices[0])) * G.gpu.ui.indices_count;
-      GPU_TransferBuffer(cmd, G.gpu.ui.gpu_indices, *G.gpu.ui.indices[0], xx transfer_size);
+      GPU_TransferBuffer(cmd, G.gpu.ui.gpu_indices, G.gpu.ui.indices.data, xx transfer_size);
     }
     if (G.gpu.ui.shapes_count)
     {
       transfer_size := size_of(type_of(G.gpu.ui.shapes[0])) * G.gpu.ui.shapes_count;
-      GPU_TransferBuffer(cmd, G.gpu.ui.gpu_shape_buffer, *G.gpu.ui.shapes[0], xx transfer_size);
+      GPU_TransferBuffer(cmd, G.gpu.ui.gpu_shape_buffer, G.gpu.ui.shapes.data, xx transfer_size);
     }
     if (G.gpu.ui.clips_count)
     {
       transfer_size := size_of(type_of(G.gpu.ui.clips[0])) * G.gpu.ui.clips_count;
-      GPU_TransferBuffer(cmd, G.gpu.ui.gpu_clip_buffer, *G.gpu.ui.clips[0], xx transfer_size);
+      GPU_TransferBuffer(cmd, G.gpu.ui.gpu_clip_buffer, G.gpu.ui.clips.data, xx transfer_size);
     }
 
     // Start pass
@@ -603,7 +603,7 @@ GPU_Iterate :: ()
       G.gpu.ui.gpu_shape_buffer,
       G.gpu.ui.gpu_clip_buffer,
     ];
-    SDL_BindGPUVertexStorageBuffers(pass, 0, *storage_bufs[0], storage_bufs.count);
+    SDL_BindGPUVertexStorageBuffers(pass, 0, storage_bufs.data, storage_bufs.count);
 
     // Bind index buffer
     binding_ind := SDL_GPUBufferBinding.{buffer = G.gpu.ui.gpu_indices};

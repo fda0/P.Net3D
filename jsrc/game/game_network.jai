@@ -209,7 +209,7 @@ NET_IterateReceive :: ()
         if user
         {
           user.last_msg_timestamp = G.timestamp;
-          user_id: u64 = (user.(u64) - (*G.server.users[0]).(u64)) / size_of(NET_User);
+          user_id: u64 = (user.(u64) - G.server.users.data.(u64)) / size_of(NET_User);
           player_id = user_id.(u16);
         }
       }
@@ -423,7 +423,7 @@ NET_IterateSend :: ()
 
 NET_PayloadAlloc :: (size: u32) -> *u8
 {
-  buf_start := *G.net.packet_payload_buf[0];
+  buf_start := G.net.packet_payload_buf.data;
 
   if G.net.payload_used + size > G.net.packet_payload_buf.count
   {
@@ -452,7 +452,7 @@ NET_PayloadAppendType :: (value: $T)
 NET_RecalculatePacketHeader :: ()
 {
   using G.net;
-  payload := string.{payload_used, *packet_payload_buf[0]};
+  payload := string.{payload_used, packet_payload_buf.data};
   packet_header.magic_value = NET_MAGIC_VALUE;
   packet_header.payload_hash = Hash64Any(payload).(u16, trunc);
 }

@@ -72,7 +72,7 @@ WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, color: Color32, anima
 
     transforms := ANIM_GetPoseTransforms(model.skeleton, animation_index, animation_t);
     transfer_size := transforms.count * size_of(type_of(transforms[0]));
-    GPU_BATCH_TransferUploadBytes(GPU_BATCH_GetPosesBatch(), *transforms[0], xx transfer_size, xx transforms.count);
+    GPU_BATCH_TransferUploadBytes(GPU_BATCH_GetPosesBatch(), transforms.data, xx transfer_size, xx transforms.count);
   }
 
   instance_batch := GPU_BATCH_FindOrCreateBundle(.{type = .ModelInstances, model_key = model_key});
@@ -152,7 +152,7 @@ WORLD_DrawObjects :: ()
           1,3,2,1,0,3, // Bottom
         ];
 
-        cube_verts_map := *cube_verts_map_array[0];
+        cube_verts_map := cube_verts_map_array.data;
         if (face_count == 1) // generate top mesh only
           cube_verts_map += 6*WORLD_Dir.T.(u32);
 
@@ -229,7 +229,7 @@ WORLD_DrawObjects :: ()
       }
 
       // Transfer verts to GPU
-      WORLD_DrawVertices(material, *mesh_verts[0], mesh_verts_count);
+      WORLD_DrawVertices(material, mesh_verts.data, mesh_verts_count);
     }
   }
 }

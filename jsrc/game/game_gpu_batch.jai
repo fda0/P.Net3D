@@ -293,7 +293,7 @@ GPU_BATCH_PostFrame :: ()
 
 GPU_BATCH_GetPosesBatch :: () -> *GPU_Batch
 {
-  return *G.gpu.mem.batches[0];
+  return G.gpu.mem.batches.data;
 }
 
 GPU_BATCH_Init :: ()

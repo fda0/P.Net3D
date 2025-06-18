@@ -172,7 +172,7 @@ ASSET_LoadPieFile :: (file_path: string)
 
   header := PIE_LOAD_OffsetSizeToArray(0, size_of(PIE_Header), PIE_Header);
   if err return;
-  pie.header = *header[0];
+  pie.header = header.data;
 
   hashable := STR_Skip(PIE_LOAD_File(), size_of(type_of(pie.header.file_hash)));
   calculated_hash := Hash64Any(PIE_MAGIC_HASH_SEED, hashable);
@@ -182,7 +182,7 @@ ASSET_LoadPieFile :: (file_path: string)
 
   links := PIE_LOAD_ListToArray(pie.header.links, PIE_Links);
   if err return;
-  pie.links = *links[0];
+  pie.links = links.data;
 
   models := PIE_LOAD_ListToArray(pie.links.models.list, PIE_Model);
   materials := PIE_LOAD_ListToArray(pie.links.materials, PIE_Material);
