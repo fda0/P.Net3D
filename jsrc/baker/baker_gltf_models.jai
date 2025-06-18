@@ -261,28 +261,23 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
     }
   }
 
-  // //
-  // //
-  // //
+  // Validate buffer counts
+  for * model.meshes
+  {
+    Check(it.positions.count % 3 == 0);
+    it.verts_count = xx (it.positions.count / 3);
 
-  // // Validate buffer counts
-  // ForU32(mesh_index, model.meshes_count)
-  // {
-  //   BK_GLTF_Mesh *bk_mesh = model.meshes + mesh_index;
-  //   M_Check(bk_mesh.positions.used % 3 == 0);
-  //   bk_mesh.verts_count = bk_mesh.positions.used / 3;
+    Check(it.normals.count % 3 == 0);
+    Check(it.verts_count == it.normals.count / 3);
 
-  //   M_Check(bk_mesh.normals.used % 3 == 0);
-  //   M_Check(bk_mesh.verts_count == bk_mesh.normals.used / 3);
-
-  //   if (model.is_skinned)
-  //   {
-  //     M_Check(bk_mesh.joint_indices.used % 4 == 0);
-  //     M_Check(bk_mesh.verts_count == bk_mesh.joint_indices.used / 4);
-  //     M_Check(bk_mesh.weights.used % 4 == 0);
-  //     M_Check(bk_mesh.verts_count == bk_mesh.weights.used / 4);
-  //   }
-  // }
+    if model.is_skinned
+    {
+      Check(it.joint_indices.count % 4 == 0);
+      Check(it.verts_count == it.joint_indices.count / 4);
+      Check(it.weights.count % 4 == 0);
+      Check(it.verts_count == it.weights.count / 4);
+    }
+  }
 
   // // Calculate model spec transforms
   // {
