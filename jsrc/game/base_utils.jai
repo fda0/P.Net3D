@@ -8,18 +8,18 @@ EnumCount :: ($t: Type) -> s64
 }
 
 //
-ClearAddress :: (dst: *void, count: s64)
+ZeroAddress :: (dst: *void, count: s64)
 {
   memset(dst, 0, count);
 }
 
-ClearArray :: (arr: [] $T)
+ZeroArray :: (arr: [] $T)
 {
   if arr.count
     memset(arr.data, 0, size_of(T)*arr.count);
 }
 
-ClearType :: (ptr: *$T)
+ZeroType :: (ptr: *$T)
 {
   memset(ptr, 0, size_of(T));
 }

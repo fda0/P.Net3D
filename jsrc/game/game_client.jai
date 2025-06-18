@@ -126,7 +126,7 @@ CLIENT_InsertSnapshot :: (snaps: *CLIENT_ObjSnapshots, insert_at_tick_id: u64, n
       // optimized branch
       // tick_id is much-newer than latest_server_at_tick
       // we can safely clear the whole circle buffer
-      ClearArray(snaps.tick_states);
+      ZeroArray(snaps.tick_states);
     }
     else
     {

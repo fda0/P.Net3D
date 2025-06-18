@@ -100,7 +100,7 @@ FONT_MaybeResizeAtlasTexture :: ()
       SDL_SetGPUTextureName(G.gpu.device, G.gpu.ui.gpu_atlas_texture, "UI Atlas Texture");
     }
 
-    ClearArray(layers);
+    ZeroArray(layers);
     // Pre-seed layers to be full.
     // This isn't necessary but will result in more optimal fill order.
     for * layers
@@ -361,7 +361,7 @@ FONT_GetGlyph :: (codepoint: u32, preferred_font: FONT_Family, pixel_height: u16
       // Copy bitmap into a new buffer in a correct format (RGBA) with margin
       glyph_pixels_size = bitmap_and_margin_dim.x * bitmap_and_margin_dim.y * 4;
       glyph_pixels = talloc(glyph_pixels_size);
-      ClearAddress(glyph_pixels, glyph_pixels_size); // clear margin
+      ZeroAddress(glyph_pixels, glyph_pixels_size); // clear margin
 
       if bitmap.pixel_mode == xx FT_Pixel_Mode_.GRAY
       {
@@ -406,7 +406,7 @@ FONT_GetGlyph :: (codepoint: u32, preferred_font: FONT_Family, pixel_height: u16
     active_layer_index %= layers.count;
 
     active_layer := *layers[active_layer_index];
-    ClearType(active_layer);
+    ZeroType(active_layer);
 
     slot = FONT_CreateGlyphInLayer(active_layer, hash, xx bitmap_dim.x, xx bitmap_dim.y);
   }
