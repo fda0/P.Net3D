@@ -436,51 +436,43 @@ BK_GLTF_UnpackAccessor :: (accessor: *cgltf_accessor, buffer: [..] *$T) -> slice
   }
   else
   {
+    // Alloc tmp buffer
     auto_release_temp();
     bytes_to_allocate := comp_size * total_count;
-    tmp_nums: [..] u8 = .{allocator = temp};
-    array_resize(*tmp_nums, bytes_to_allocate);
+    tmp_nums := talloc(bytes_to_allocate);
 
-    // // Alloc tmp buffer
-    // Arena_Scope scope = Arena_PushScope(BAKER.tmp);
-    // void *tmp_nums = Arena_AllocateBytes(scope.a, bytes_to_allocate, comp_size, false);
+    // Unpack big integers into tmp_nums
+    unpacked_count := cgltf_accessor_unpack_indices(accessor, tmp_nums, comp_size, total_count);
+    Check(unpacked_count == total_count);
 
-    // // Copy big type into tmp buffer
-    // U64 unpacked = cgltf_accessor_unpack_indices(accessor, tmp_nums, comp_size, total_count);
-    // M_Check(unpacked == total_count);
+    // Copy into numbers_slice and check against truncation
+    for MakeRange(total_count)
+    {
+      // Load value from tmp_nums into u64
+      value: u64;
+      if comp_size == {
+        case 8; value = tmp_nums.(*u64)[it];
+        case 4; value = tmp_nums.(*u32)[it];
+        case 2; value = tmp_nums.(*u16)[it];
+        case 1; value = tmp_nums.(*u8)[it];
+        case; Check(false, "Unsupported comp_size downconversion");
+      }
 
-    // // Copy into numbers_slice with checked truncation
-    // ForU64(i, total_count)
-    // {
-    //   // Load value from tmp_nums into U64
-    //   U64 value = 0;
-    //   if      (comp_size == 8) value = ((U64 *)tmp_nums)[i];
-    //   else if (comp_size == 4) value = ((U32 *)tmp_nums)[i];
-    //   else if (comp_size == 2) value = ((U16 *)tmp_nums)[i];
-    //   else if (comp_size == 1) value = ((U8 *)tmp_nums)[i];
-    //   else M_Check(!"Unsupported comp_size downconversion");
-
-    //   // Store into buffer backed array with truncation
-    //   if (buffer.elem_size == 1)
-    //   {
-    //     M_Check(value <= U8_MAX);
-    //     ((U8 *)numbers_slice)[i] = (U8)value;
-    //   }
-    //   else if (buffer.elem_size == 2)
-    //   {
-    //     M_Check(value <= U16_MAX);
-    //     ((U16 *)numbers_slice)[i] = (U16)value;
-    //   }
-    //   else if (buffer.elem_size == 4)
-    //   {
-    //     M_Check(value <= U32_MAX);
-    //     ((U32 *)numbers_slice)[i] = (U32)value;
-    //   }
-    //   else
-    //     M_Check(!"Unsupported elem_size downconversion");
-    // }
-
-    // Arena_PopScope(scope);
+      // Store into buffer backed array with truncation
+      if buffer.elem_size == {
+        case 1;
+        Check(value <= U8_MAX);
+        numbers_slice = cast,no_check(u8) value;
+        case 2;
+        Check(value <= U16_MAX);
+        numbers_slice = cast,no_check(u16) value;
+        case 4;
+        Check(value <= U32_MAX);
+        numbers_slice = cast,no_check(u32) value;
+        case;
+        Check(false, "Unsupported elem_size downconversion");
+      }
+    }
   }
 
   return numbers_slice;
