@@ -55,11 +55,10 @@ ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: floa
 
   // mix default rest pose + animation channels using temporary memory
   {
-    scratch := ScopeScratch();
-
-    translations := array_copy(skeleton.bind_translations,, scratch);
-    rotations    := array_copy(skeleton.bind_rotations,,    scratch);
-    scales       := array_copy(skeleton.bind_scales,,       scratch);
+    auto_release_temp();
+    translations := array_copy(skeleton.bind_translations,, temp);
+    rotations    := array_copy(skeleton.bind_rotations,,    temp);
+    scales       := array_copy(skeleton.bind_scales,,       temp);
 
     // Overwrite translations, rotations, scales with values from animation
     if anim_index < skeleton.animations.count

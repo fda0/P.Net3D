@@ -102,6 +102,8 @@ build :: ()
           output_name = "Treasure",
           entry_file = "jsrc/game/game_sdl_entry.jai",
           icon_path = "res/ico/coin.ico"});
+
+  MessageLoop();
 }
 
 BuildConfig :: struct
@@ -111,6 +113,14 @@ BuildConfig :: struct
   entry_file: string;
   icon_path: string;
 };
+
+BuildInProgress :: struct
+{
+  w: Workspace;
+  using config: BuildConfig;
+};
+
+builds_in_progress: [..] BuildInProgress;
 
 Build :: (using config: BuildConfig)
 {
@@ -125,46 +135,36 @@ Build :: (using config: BuildConfig)
   options.import_path = modules_path;
 
   set_build_options(options, w);
-  compiler_begin_intercept(w);
+  compiler_begin_intercept(w, .SKIP_ALL);
   add_build_file(entry_file, w);
 
-  ExecuteMessageLoopOnNewThread(w, config);
+  array_add(*builds_in_progress, .{w, config});
 }
 
-ExecuteMessageLoopOnNewThread :: (w: Workspace, config: BuildConfig)
+MessageLoop :: ()
 {
-  ThreadData :: struct
-  {
-    w: Workspace;
-    config: BuildConfig;
-  };
-
-  ThreadMessageLoop :: (thread: *Thread) -> s64
-  {
-    data := cast(*ThreadData) thread.data;
-    MessageLoop(data.w, data.config);
-    return 0;
-  }
-
-  #import "Thread";
-  data := New(ThreadData);
-  data.w = w;
-  thread := New(Thread);
-  thread.data = data;
-  thread_init(thread, ThreadMessageLoop);
-  thread_start(thread);
-}
-
-MessageLoop :: (w: Workspace, using config: BuildConfig)
-{
-  while true
+  finished_builds := 0;
+  while finished_builds < builds_in_progress.count
   {
     message := compiler_wait_for_message();
+    if message.kind == .COMPLETE then finished_builds += 1;
     if message.kind == .PHASE
     {
       phase := message.(*Message_Phase);
       if phase.phase == .POST_WRITE_EXECUTABLE
       {
+        // Find config that matches this workspace
+        config: BuildConfig;
+        for builds_in_progress
+        {
+          if it.w == message.workspace
+          {
+            config = it.config;
+            break;
+          }
+        }
+
+        using config;
         if icon_path
         {
           exe_filename := tprint("%/%", get_build_options(message.workspace).output_path, phase.executable_name);
@@ -177,8 +177,6 @@ MessageLoop :: (w: Workspace, using config: BuildConfig)
         }
       }
     }
-
-    if message.kind == .COMPLETE break;
   }
 }
 
