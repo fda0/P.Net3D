@@ -390,7 +390,6 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       comp_count := cgltf_num_components(inv_bind.type);
       Check(comp_count == 16);
 
-      auto_release_temp();
       temp_matrices := NewArray(xx inv_bind.count, Mat4,, temp);
       float_count := comp_count * inv_bind.count;
       unpacked_count := cgltf_accessor_unpack_floats(inv_bind, temp_matrices.data.(*float), float_count);
@@ -399,31 +398,32 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
     }
 
     // child hierarchy indices
-    // {
-    //   U32 *indices = PIE_ListReserve(&B.pie.file, &pie_skel.child_index_buf, U32, joints_count);
-    //   RngU32 *ranges = PIE_ListReserve(&B.pie.file, &pie_skel.child_index_ranges, RngU32, joints_count);
+    {
+      // temp_indices := NewArray(
+      // U32 *indices = PIE_ListReserve(&B.pie.file, &pie_skel.child_index_buf, U32, joints_count);
+      // RngU32 *ranges = PIE_ListReserve(&B.pie.file, &pie_skel.child_index_ranges, RngU32, joints_count);
 
-    //   U32 indices_count = 0;
-    //   ForU64(joint_index, joints_count)
-    //   {
-    //     cgltf_node *joint = skin.joints[joint_index];
+      // U32 indices_count = 0;
+      // ForU64(joint_index, joints_count)
+      // {
+      //   cgltf_node *joint = skin.joints[joint_index];
 
-    //     ForU64(child_index, joint.children_count)
-    //     {
-    //       cgltf_node *child = joint.children[child_index];
-    //       U64 child_joint_index = BK_GLTF_FindJointIndex(skin, child);
+      //   ForU64(child_index, joint.children_count)
+      //   {
+      //     cgltf_node *child = joint.children[child_index];
+      //     U64 child_joint_index = BK_GLTF_FindJointIndex(skin, child);
 
-    //       if (child_index == 0)
-    //         ranges[joint_index].min = indices_count;
+      //     if (child_index == 0)
+      //       ranges[joint_index].min = indices_count;
 
-    //       M_Check(indices_count < joints_count);
-    //       indices[indices_count] = child_joint_index;
-    //       indices_count += 1;
+      //     M_Check(indices_count < joints_count);
+      //     indices[indices_count] = child_joint_index;
+      //     indices_count += 1;
 
-    //       ranges[joint_index].max = indices_count;
-    //     }
-    //   }
-    // }
+      //     ranges[joint_index].max = indices_count;
+      //   }
+      // }
+    }
 
     // rest pose transformations
     // {

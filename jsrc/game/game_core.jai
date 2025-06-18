@@ -317,15 +317,27 @@ GAME_ParseCommandLineArguments :: (args: [] string)
 GAME_AutoLayoutApply :: (code: ..Code) #expand
 {
   // @impl
+  log_error("GAME_AutoLayoutApply called but not implemented");
 }
 
-
 // Includes and stuff
+#import "Basic";
+#import "Bit_Operations";
+#import "File";
+#import "Thread";
+String :: #import "String";
+
+#load "base_utils.jai";
+#load "base_string.jai";
+#load "base_memory.jai";
+#load "base_hash.jai";
+#load "base_math.jai";
+
+#load "pie_file_format.jai";
+
 #load "game_ui_text.jai";
 #load "game_ui_core.jai";
 #load "game_ui_user.jai";
-
-#load "game_base.jai"; // this loads  a bunch of other files too
 #load "game_color.jai";
 #load "game_key.jai";
 #load "game_animation.jai";
@@ -346,4 +358,3 @@ GAME_AutoLayoutApply :: (code: ..Code) #expand
 #load "game_util.jai";
 #load "game_precompiled_shaders_tmp.jai";
 #load "game_pie_loader.jai";
-#load "pie_file_format.jai";

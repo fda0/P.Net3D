@@ -25,7 +25,7 @@ PIE_AnimationChannelType :: enum u32
 
 PIE_AnimationChannel :: struct
 {
-  joint_index30_type2: u32; // [u32 | (PIE_AnimationChannelType << 30)]
+  joint_index30_type2: u32;  // [u32 | (PIE_AnimationChannelType << 30)] // @todo this is silly, simplify
   inputs: PIE_ListT(float);  // float * count
   outputs: PIE_ListT(float); // float * (3 or 4 [V3 or Quat]) * count
 };
