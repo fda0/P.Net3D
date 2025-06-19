@@ -106,7 +106,7 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
       BK_SetDefaultsPIEMaterial(pie_material);
 
       // Fill material name
-      PIE_FileSetPrint(*pie_material.name, "%.m%.%", model.name, mesh_index, gltf_material.name);
+      PIE_FileSetPrint(*pie_material.name, "%.m%.%", model.name, mesh_index, to_string(gltf_material.name));
 
       diffuse_tex_path := "";
       normal_tex_path := "";

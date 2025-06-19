@@ -33,7 +33,6 @@ BK_State :: struct
 };
 B: BK_State;
 
-
 BK_SetDefaultsPIEMaterial :: (pie_material: *PIE_Material)
 {
   pie_material.params.diffuse = xx Color32_RGBi(128,128,128);
@@ -41,11 +40,9 @@ BK_SetDefaultsPIEMaterial :: (pie_material: *PIE_Material)
   pie_material.params.roughness = 0.5;
 }
 
-
 Check :: (arg: bool, message := "", args: .. Any, loc := #caller_location) #no_debug #expand {
   if !arg && assert_helper(message, ..args, loc) then debug_break();
 }
-
 
 #load "pie_builder.jai";
 #load "baker_gltf_models.jai";
