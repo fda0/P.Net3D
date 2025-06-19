@@ -28,8 +28,8 @@ cgltf_result :: enum s32 {
 }
 
 cgltf_memory_options :: struct {
-	alloc: #type ( user: *void, size: cgltf_size ) -> *void;
-	free: #type ( user: *void, ptr: *void );
+	alloc: #type ( user: *void, size: cgltf_size ) -> *void #c_call;
+	free: #type ( user: *void, ptr: *void ) #c_call;
 	user_data: *void;
 }
 

@@ -1,5 +1,7 @@
 main :: ()
 {
+  PIE_Init();
+
   // Load .gltf models
   {
     rot_x := RotationAroundAxis(AxisV3(.X), 0.25);

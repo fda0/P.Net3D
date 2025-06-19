@@ -11,6 +11,17 @@ PIE_Builder :: struct
   materials: [..] PIE_Material;
 };
 
+PIE_Init :: ()
+{
+  using B.pie;
+  remember_allocators(*file);
+  remember_allocators(*vertices);
+  remember_allocators(*indices);
+  remember_allocators(*models);
+  remember_allocators(*skeletons);
+  remember_allocators(*materials);
+}
+
 PIE_Align :: (sb: *String_Builder, alignment: s64)
 {
   sb_length := builder_string_length(sb);
