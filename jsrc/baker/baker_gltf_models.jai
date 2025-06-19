@@ -437,54 +437,46 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
     }
 
     // rest pose transformations
-    // {
-    //   // Translations
-    //   PIE_ListStart(&B.pie.file, &pie_skel.translations, TYPE_V3);
-    //   ForU64(joint_index, joints_count)
-    //   {
-    //     cgltf_node *joint = skin.joints[joint_index];
-    //     ForArray(i, joint.translation)
-    //       *PIE_Reserve(&B.pie.file, float, 1) = joint.translation[i];
-    //   }
-    //   PIE_ListEnd(&B.pie.file, &pie_skel.translations);
+    {
+      // Translations
+      PIE_ListStart(*B.pie.file, *pie_skel.translations, V3);
+      for joint_index: MakeRange(joints_count)
+      {
+        joint := skin.joints[joint_index];
+        for joint.translation PIE_ListAppend(*B.pie.file, it);
+      }
+      PIE_ListEnd(*B.pie.file, *pie_skel.translations);
 
-    //   // Rotations
-    //   PIE_ListStart(&B.pie.file, &pie_skel.rotations, TYPE_Quat);
-    //   ForU64(joint_index, joints_count)
-    //   {
-    //     cgltf_node *joint = skin.joints[joint_index];
-    //     ForArray(i, joint.rotation)
-    //       *PIE_Reserve(&B.pie.file, float, 1) = joint.rotation[i];
-    //   }
-    //   PIE_ListEnd(&B.pie.file, &pie_skel.rotations);
+      // Rotations
+      PIE_ListStart(*B.pie.file, *pie_skel.rotations, Quat);
+      for joint_index: MakeRange(joints_count)
+      {
+        joint := skin.joints[joint_index];
+        for joint.rotation PIE_ListAppend(*B.pie.file, it);
+      }
+      PIE_ListEnd(*B.pie.file, *pie_skel.rotations);
 
-    //   // Scales
-    //   PIE_ListStart(&B.pie.file, &pie_skel.scales, TYPE_V3);
-    //   ForU64(joint_index, joints_count)
-    //   {
-    //     cgltf_node *joint = skin.joints[joint_index];
-    //     ForArray(i, joint.scale)
-    //       *PIE_Reserve(&B.pie.file, float, 1) = joint.scale[i];
-    //   }
-    //   PIE_ListEnd(&B.pie.file, &pie_skel.scales);
-    // }
+      // Scales
+      PIE_ListStart(*B.pie.file, *pie_skel.scales, V3);
+      for joint_index: MakeRange(joints_count)
+      {
+        joint := skin.joints[joint_index];
+        for joint.scale PIE_ListAppend(*B.pie.file, it);
+      }
+      PIE_ListEnd(*B.pie.file, *pie_skel.scales);
+    }
 
     // First allocate all strings in one continuous chunk.
     // Track min&max paris of each string.
-  //   RngU32 *name_ranges = AllocZeroed(BAKER.tmp, RngU32, joints_count);
-  //   ForU64(joint_index, joints_count)
-  //   {
-  //     cgltf_node *joint = skin.joints[joint_index];
-  //     name_ranges[joint_index].min = B.pie.file.used;
-  //     Pr_Cstr(&B.pie.file, joint.name);
-  //     name_ranges[joint_index].max = B.pie.file.used;
-  //   }
-
-  //   // Memcpy name strign ranges into the file
-  //   {
-  //     RngU32 *dst_name_ranges = PIE_ListReserve(&B.pie.file, &pie_skel.name_ranges, RngU32, joints_count);
-  //     Memcpy(dst_name_ranges, name_ranges, pie_skel.name_ranges.size);
-  //   }
+    temp_name_ranges := NewArray(xx joints_count, Range(u32));
+    for joint_index: MakeRange(joints_count)
+    {
+      temp_name_ranges[joint_index].min = xx builder_string_length(*B.pie.file);
+      joint := skin.joints[joint_index];
+      append(*B.pie.file, to_string(joint.name));
+      temp_name_ranges[joint_index].max = xx builder_string_length(*B.pie.file);
+    }
+    PIE_ListAddArray(*B.pie.file, *pie_skel.name_ranges, temp_name_ranges);
   }
 
   // // Animations
