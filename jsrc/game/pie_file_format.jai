@@ -41,8 +41,8 @@ PIE_Skeleton :: struct
 {
   // each of these has the same count of elements (joints_count)
   inverse_matrices: PIE_ListT(Mat4);
-  child_index_buffer: PIE_ListT(s32);
-  child_index_ranges: PIE_ListT(Range(s32));
+  child_index_buffer: PIE_ListT(s32); // @todo use u16 here?
+  child_index_ranges: PIE_ListT(Range(s32)); // @todo use u16 here?
   translations: PIE_ListT(V3);
   rotations: PIE_ListT(Quat);
   scales: PIE_ListT(V3);

@@ -388,7 +388,7 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
 
   // Joints data
   {
-    // unpack inverse bind matrices
+    // Unpack inverse bind matrices.
     {
       inv_bind := skin.inverse_bind_matrices;
       Check(inv_bind != null);
@@ -406,33 +406,34 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       PIE_ListAddArray(*B.pie.file, *pie_skel.inverse_matrices, temp_matrices);
     }
 
-    // child hierarchy indices
+    // Child hierarchy indices.
     {
-      temp_indices := NewArray(joints_count, u32);
+      temp_indices := NewArray(xx joints_count, s32);
+      temp_ranges := NewArray(xx joints_count, Range(s32));
 
-      indices_count: u32;
+      indices_counter: s32;
       for joint_index: MakeRange(joints_count)
       {
-        joint := *skin.joints[joint_index];
+        joint := skin.joints[joint_index];
 
         for child_index: MakeRange(joint.children_count)
         {
-          cgltf_node *child = joint.children[child_index];
-          U64 child_joint_index = BK_GLTF_FindJointIndex(skin, child);
+          child := joint.children[child_index];
+          child_joint_index := BK_GLTF_FindJointIndex(skin, child);
 
-          if (child_index == 0)
-            ranges[joint_index].min = indices_count;
+          if child_index == 0
+            temp_ranges[joint_index].min = indices_counter;
 
-          M_Check(indices_count < joints_count);
-          indices[indices_count] = child_joint_index;
-          indices_count += 1;
+          Check(indices_counter < xx joints_count);
+          temp_indices[indices_counter] = child_joint_index;
+          indices_counter += 1;
 
-          ranges[joint_index].max = indices_count;
+          temp_ranges[joint_index].max = indices_counter;
         }
       }
 
-      U32 *indices = PIE_ListReserve(&B.pie.file, &pie_skel.child_index_buf, U32, joints_count);
-      RngU32 *ranges = PIE_ListReserve(&B.pie.file, &pie_skel.child_index_ranges, RngU32, joints_count);
+      PIE_ListAddArray(*B.pie.file, *pie_skel.child_index_buffer, temp_indices);
+      PIE_ListAddArray(*B.pie.file, *pie_skel.child_index_ranges, temp_ranges);
     }
 
     // rest pose transformations
@@ -566,14 +567,14 @@ BK_GLTF_ExportModelToPie :: (bk_model: BK_GLTF_Model)
   // @impl
 }
 
-BK_GLTF_FindJointIndex :: (skin: *cgltf_skin, find_node: *cgltf_node) -> u64
+BK_GLTF_FindJointIndex :: (skin: *cgltf_skin, find_node: *cgltf_node) -> s32
 {
   for joint_index: MakeRange(skin.joints_count)
     if find_node == skin.joints[joint_index]
-      return joint_index;
+      return xx joint_index;
 
   Check(false, "Joint index not found");
-  return skin.joints_count;
+  return xx skin.joints_count;
 }
 
 BK_GLTF_FindMaterialIndex :: (data: *cgltf_data, find_material: *cgltf_material) -> u32

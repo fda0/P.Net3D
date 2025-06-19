@@ -40,8 +40,9 @@ PIE_AlignType :: (sb_owner: *String_Builder, $type: Type)
   PIE_Align(sb_owner, align_of(type));
 }
 
-PIE_ListStart :: (sb_owner: *String_Builder, list: *PIE_List, $type: Type)
+PIE_ListStart :: (sb_owner: *String_Builder, list: *PIE_ListT($list_type), $type: Type)
 {
+  #assert(list_type == type);
   Check(!list.size);
   PIE_AlignType(sb_owner, type);
   list.offset = xx builder_string_length(sb_owner);
@@ -55,8 +56,9 @@ PIE_ListEnd :: (sb_owner: *String_Builder, list: *PIE_List)
   list.size = xx (builder_length - list.offset);
 }
 
-PIE_ListAddArray :: (sb_owner: *String_Builder, list: *PIE_List, array: [] $T)
+PIE_ListAddArray :: (sb_owner: *String_Builder, list: *PIE_ListT($list_type), array: [] $T)
 {
+  #assert(list_type == T);
   PIE_ListStart(sb_owner, list, T);
   append(sb_owner, array.data.(*u8), size_of(T) * array.count);
   PIE_ListEnd(sb_owner, list);
