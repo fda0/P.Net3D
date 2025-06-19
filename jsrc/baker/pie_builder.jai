@@ -1,7 +1,6 @@
 PIE_Builder :: struct
 {
   file: Flat_Pool;
-  finalized: bool;
 
   active_list: *PIE_List;
   active_list_type: Type;
@@ -14,7 +13,11 @@ PIE_Builder :: struct
   materials: [..] PIE_Material;
 };
 
-PIE_Init :: ()
+//
+// Init, Finalize, Save to file
+//
+
+PIE_InitBuilder :: ()
 {
   using B.pie;
   file.alignment = 1; // We are doing our own, tightly packed, precise alignment on per-type basis.
@@ -24,8 +27,41 @@ PIE_Init :: ()
   remember_allocators(*models);
   remember_allocators(*skeletons);
   remember_allocators(*materials);
+
+  PIE_FileAllocType(PIE_Header);
 }
 
+PIE_FinalizeBuilder :: ()
+{
+  using B.pie;
+
+  // Prepare PIE_Links and append it to memory
+  links: PIE_Links;
+  PIE_ListSetArray(*links.models.vertices, vertices);
+  PIE_ListSetArray(*links.models.indices, indices);
+  PIE_ListSetArray(*links.models.list, models);
+  PIE_ListSetArray(*links.skeletons, skeletons);
+  PIE_ListSetArray(*links.materials, materials);
+
+  // Prepare PIE_Header
+  header := file.memory_base.(*PIE_Header);
+  PIE_ListSetValue(*header.links, links);
+
+  // Calculate hash
+  hashable_file := STR_Range(header.(*u8) + size_of(PIE_Header), file.current_point);
+  header.file_hash = Hash64Any(PIE_MAGIC_HASH_SEED, hashable_file);
+}
+
+PIE_SaveToFile :: (file_path: string)
+{
+  using B.pie;
+  content := STR_Range(file.memory_base, file.current_point);
+  write_entire_file(file_path, content);
+}
+
+//
+// File buffer / List helers
+//
 PIE_CurrentFileOffset :: () -> u32
 {
   using B.pie;
@@ -94,7 +130,9 @@ PIE_ListEnd :: ()
 // AllocInFile
 PIE_FileAllocBytes :: (size: s64) -> *void
 {
-  return get(*B.pie.file, size);
+  bytes := get(*B.pie.file, size);
+  memset(bytes, 0, size);
+  return bytes;
 }
 
 PIE_FileAllocType :: ($T: Type) -> *T
@@ -152,6 +190,13 @@ PIE_ListAllocArray :: (list: *PIE_ListT($LT), count: s64, $T: Type) -> [] T
 }
 
 // ListSet
+PIE_ListSetValue :: (list: *PIE_ListT($LT), value: $T)
+{
+  PIE_ListStart(list);
+  PIE_FileAppendValue(value);
+  PIE_ListEnd();
+}
+
 PIE_ListSetArray :: (list: *PIE_ListT($LT), array: [] $T)
 {
   PIE_ListStart(list);

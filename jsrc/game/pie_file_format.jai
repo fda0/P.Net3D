@@ -129,9 +129,9 @@ PIE_Links :: struct
   materials: PIE_ListT(PIE_Material);
 };
 
-PIE_MAGIC_HASH_SEED :: (0xB5EADC0D + 0);
+PIE_MAGIC_HASH_SEED :: (0xB5EADC0D + 0); // @todo use 64 bits
 PIE_Header :: struct
 {
   file_hash: u64; // of everything after itself (the first 8 bytes) - seeded with PIE_MAGIC_HASH_SEED
-  links: PIE_List;
+  links: PIE_ListT(PIE_Links);
 };

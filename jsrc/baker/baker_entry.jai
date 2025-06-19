@@ -1,6 +1,6 @@
 main :: ()
 {
-  PIE_Init();
+  PIE_InitBuilder();
 
   // Load .gltf models
   {
@@ -21,7 +21,8 @@ main :: ()
     BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf", BK_GLTF_Spec.{disable_z0 = true, height = 5.0, name = "Tree"});
   }
 
-  print("Hello from Baker\n");
+  PIE_FinalizeBuilder();
+  PIE_SaveToFile("jai_data.pie");
 }
 
 BK_State :: struct
@@ -52,8 +53,11 @@ Check :: (arg: bool, message := "", args: .. Any, loc := #caller_location) #no_d
 #import "Basic";
 #import "String";
 #import "Flat_Pool";
+#import "File";
 #load "../game/base_utils.jai";
 #load "../game/base_math.jai";
+#load "../game/base_string.jai";
+#load "../game/base_hash.jai";
 #load "../game/base_array.jai";
 #load "../game/pie_file_format.jai";
 #load "../game/game_render_world_vertex.jai";
