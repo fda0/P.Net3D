@@ -77,3 +77,4 @@ PIE_ListAddArray :: (sb: *String_Builder, list: *PIE_ListT($list_type), array: [
   append(sb, array.data.(*u8), size_of(T) * array.count);
   PIE_ListEnd(sb, list);
 }
+

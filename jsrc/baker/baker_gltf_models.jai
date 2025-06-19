@@ -408,10 +408,10 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
 
     // Child hierarchy indices.
     {
-      temp_indices := NewArray(xx joints_count, s32);
-      temp_ranges := NewArray(xx joints_count, Range(s32));
+      temp_indices := NewArray(xx joints_count, u32);
+      temp_ranges := NewArray(xx joints_count, Range(u32));
 
-      indices_counter: s32;
+      indices_counter: u32;
       for joint_index: MakeRange(joints_count)
       {
         joint := skin.joints[joint_index];
@@ -479,59 +479,51 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
     PIE_ListAddArray(*B.pie.file, *pie_skel.name_ranges, temp_name_ranges);
   }
 
-  // // Animations
-  // if (data.animations_count)
-  // {
-  //   U32 anims_count = (U32)data.animations_count;
-  //   PIE_Animation *pie_animations = PIE_ListReserve(&B.pie.file, &pie_skel.anims, PIE_Animation, anims_count);
+  // Animations
+  if data.animations_count
+  {
+    pie_animations_temp := NewArray(xx data.animations_count, PIE_Animation);
+    for * pie_anim: pie_animations_temp
+    {
+      gltf_anim := *data.animations[it_index];
+      t_min := FLOAT32_MAX;
+      t_max := -FLOAT32_MAX;
 
-  //   ForU32(animation_index, anims_count)
-  //   {
-  //     PIE_Animation *pie_anim = pie_animations + animation_index;
-  //     cgltf_animation *gltf_anim = data.animations + animation_index;
-  //     float t_min = FLT_MAX;
-  //     float t_max = -FLT_MAX;
+      // Name string
+      PIE_ListStart(*B.pie.file, *pie_anim.name, u8);
+      append(*B.pie.file, to_string(gltf_anim.name));
+      PIE_ListEnd(*B.pie.file, *pie_anim.name);
 
-  //     // Name string
-  //     PIE_ListStart(&B.pie.file, &pie_anim.name, TYPE_U8);
-  //     Pr_Cstr(&B.pie.file, gltf_anim.name);
-  //     PIE_ListEnd(&B.pie.file, &pie_anim.name);
+      // Channels
+      // U32 channels_count = (U32)gltf_anim.channels_count;
+      // PIE_AnimationChannel *pie_channels = PIE_ListReserve(&B.pie.file, &pie_anim.channels,
+      //                                                         PIE_AnimationChannel, channels_count);
+      pie_channels_temp := NewArray(xx gltf_anim.channels_count, PIE_AnimationChannel);
+      for * pie_chan: pie_channels_temp
+      {
+        gltf_chan := *gltf_anim.channels[it_index];
+        gltf_sampler := gltf_chan.sampler;
+        Check(gltf_sampler.interpolation == .cgltf_interpolation_type_linear);
+        Check(gltf_sampler.input.count == gltf_sampler.output.count);
 
-  //     // Channels
-  //     U32 channels_count = (U32)gltf_anim.channels_count;
-  //     PIE_AnimationChannel *pie_channels = PIE_ListReserve(&B.pie.file, &pie_anim.channels,
-  //                                                             PIE_AnimationChannel, channels_count);
+        sample_count := gltf_sampler.input.count;
+        joint_index := BK_GLTF_FindJointIndex(skin, gltf_chan.target_node);
 
-  //     ForU32(channel_index, channels_count)
-  //     {
-  //       PIE_AnimationChannel *pie_chan = pie_channels + channel_index;
-  //       cgltf_animation_channel *gltf_chan = gltf_anim.channels + channel_index;
-  //       cgltf_animation_sampler *gltf_sampler = gltf_chan.sampler;
-  //       M_Check(gltf_sampler.interpolation == cgltf_interpolation_type_linear);
-  //       M_Check(gltf_sampler.input.count == gltf_sampler.output.count);
+        channel_type: PIE_AnimationChannelType;
+        if gltf_chan.target_path == {
+          case; Check(false, "Unsupported channel target");
+          case .cgltf_animation_path_type_translation; channel_type = .Translation;
+          case .cgltf_animation_path_type_rotation;    channel_type = .Rotation;
+          case .cgltf_animation_path_type_scale;       channel_type = .Scale;
+        }
 
-  //       U32 sample_count = (U32)gltf_sampler.input.count;
-  //       pie_chan.joint_index = BK_GLTF_FindJointIndex(skin, gltf_chan.target_node);
+        pie_chan.joint_index30_type2 = (joint_index << 2) | (channel_type & 3).(u32);
 
-  //       switch (gltf_chan.target_path)
-  //       {
-  //         default:
-  //         M_Check(false && "Unsupported channel target"); break;
 
-  //         case cgltf_animation_path_type_translation:
-  //         pie_chan.type = AN_Translation; break;
-
-  //         case cgltf_animation_path_type_rotation:
-  //         pie_chan.type = AN_Rotation; break;
-
-  //         case cgltf_animation_path_type_scale:
-  //         pie_chan.type = AN_Scale; break;
-  //       }
-
-  //       // inputs
-  //       float *in_nums = PIE_ListReserve(&B.pie.file, &pie_chan.inputs, float, sample_count);
-  //       U64 in_unpacked = cgltf_accessor_unpack_floats(gltf_sampler.input, in_nums, sample_count);
-  //       M_Check(in_unpacked == sample_count);
+        // // inputs
+        // float *in_nums = PIE_ListReserve(&B.pie.file, &pie_chan.inputs, float, sample_count);
+        // U64 in_unpacked = cgltf_accessor_unpack_floats(gltf_sampler.input, in_nums, sample_count);
+        // M_Check(in_unpacked == sample_count);
 
   //       ForU32(i, sample_count)
   //       {
@@ -546,12 +538,12 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
   //       float *out_nums = PIE_ListReserve(&B.pie.file, &pie_chan.outputs, float, out_count);
   //       U64 out_unpacked = cgltf_accessor_unpack_floats(gltf_sampler.output, out_nums, out_count);
   //       M_Check(out_unpacked == out_count);
-  //     }
+      }
 
   //     pie_anim.t_min = t_min;
   //     pie_anim.t_max = t_max;
-  //   }
-  // }
+    }
+  }
 }
 
 BK_GLTF_ExportModelToPie :: (bk_model: BK_GLTF_Model)
@@ -559,7 +551,7 @@ BK_GLTF_ExportModelToPie :: (bk_model: BK_GLTF_Model)
   // @impl
 }
 
-BK_GLTF_FindJointIndex :: (skin: *cgltf_skin, find_node: *cgltf_node) -> s32
+BK_GLTF_FindJointIndex :: (skin: *cgltf_skin, find_node: *cgltf_node) -> u32
 {
   for joint_index: MakeRange(skin.joints_count)
     if find_node == skin.joints[joint_index]
