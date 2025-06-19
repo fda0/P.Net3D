@@ -106,11 +106,7 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
       BK_SetDefaultsPIEMaterial(pie_material);
 
       // Fill material name
-      {
-        PIE_ListStart(*pie_material.name);
-        PIE_FileAppendPrint("%.m%.%", model.name, mesh_index, gltf_material.name);
-        PIE_ListEnd();
-      }
+      PIE_FileSetPrint(*pie_material.name, "%.m%.%", model.name, mesh_index, gltf_material.name);
 
       diffuse_tex_path := "";
       normal_tex_path := "";
@@ -399,17 +395,20 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       comp_count := cgltf_num_components(inv_bind.type);
       Check(comp_count == 16);
 
-      temp_matrices := NewArray(xx inv_bind.count, Mat4);
+      PIE_ListStart(*pie_skel.inverse_matrices);
+      matrices := PIE_AllocArrayInFile(xx inv_bind.count, Mat4);
       float_count := comp_count * inv_bind.count;
-      unpacked_count := cgltf_accessor_unpack_floats(inv_bind, temp_matrices.data.(*float), float_count);
+      unpacked_count := cgltf_accessor_unpack_floats(inv_bind, matrices.data.(*float), float_count);
       Check(unpacked_count == float_count);
-      PIE_ListSetArray(*pie_skel.inverse_matrices, temp_matrices);
+      PIE_ListEnd();
     }
 
     // Child hierarchy indices.
     {
-      temp_indices := NewArray(xx joints_count, u32);
       temp_ranges := NewArray(xx joints_count, Range(u32));
+
+      PIE_ListStart(*pie_skel.child_index_buffer);
+      indices := PIE_AllocArrayInFile(xx joints_count, u32);
 
       indices_counter: u32;
       for joint_index: MakeRange(joints_count)
@@ -425,14 +424,13 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
             temp_ranges[joint_index].min = indices_counter;
 
           Check(indices_counter < xx joints_count);
-          temp_indices[indices_counter] = child_joint_index;
+          indices[indices_counter] = child_joint_index;
           indices_counter += 1;
 
           temp_ranges[joint_index].max = indices_counter;
         }
       }
-
-      PIE_ListSetArray(*pie_skel.child_index_buffer, temp_indices);
+      PIE_ListEnd();
       PIE_ListSetArray(*pie_skel.child_index_ranges, temp_ranges);
     }
 
@@ -443,7 +441,7 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       for joint_index: MakeRange(joints_count)
       {
         joint := skin.joints[joint_index];
-        for joint.translation PIE_FileAppendValue(it);
+        PIE_FileAppendValue(V3.{component = joint.translation});
       }
       PIE_ListEnd();
 
@@ -452,7 +450,7 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       for joint_index: MakeRange(joints_count)
       {
         joint := skin.joints[joint_index];
-        for joint.rotation PIE_FileAppendValue(it);
+        PIE_FileAppendValue(Quat.{component = joint.rotation});
       }
       PIE_ListEnd();
 
@@ -461,13 +459,13 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       for joint_index: MakeRange(joints_count)
       {
         joint := skin.joints[joint_index];
-        for joint.scale PIE_FileAppendValue(it);
+        PIE_FileAppendValue(V3.{component = joint.scale});
       }
       PIE_ListEnd();
     }
 
-    // First allocate all strings in one continuous chunk.
-    // Track min&max paris of each string.
+    // First allocate all strings in file in one continuous chunk.
+    // Track min&max paris of each string and put them in file at the end.
     temp_name_ranges := NewArray(xx joints_count, Range(u32));
     for joint_index: MakeRange(joints_count)
     {
@@ -482,8 +480,8 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
   // Animations
   if data.animations_count
   {
-    pie_animations_temp := NewArray(xx data.animations_count, PIE_Animation);
-    for * pie_anim: pie_animations_temp
+    pie_animations := PIE_ListAllocArray(*pie_skel.anims, xx data.animations_count, PIE_Animation);
+    for * pie_anim: pie_animations
     {
       gltf_anim := *data.animations[it_index];
       t_min := FLOAT32_MAX;
@@ -493,11 +491,8 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       PIE_ListSetString(*pie_anim.name, to_string(gltf_anim.name));
 
       // Channels
-      // U32 channels_count = (U32)gltf_anim.channels_count;
-      // PIE_AnimationChannel *pie_channels = PIE_ListReserve(&B.pie.file, &pie_anim.channels,
-      //                                                         PIE_AnimationChannel, channels_count);
-      pie_channels_temp := NewArray(xx gltf_anim.channels_count, PIE_AnimationChannel);
-      for * pie_chan: pie_channels_temp
+      pie_channels := PIE_ListAllocArray(*pie_anim.channels, xx gltf_anim.channels_count, PIE_AnimationChannel);
+      for * pie_chan: pie_channels
       {
         gltf_chan := *gltf_anim.channels[it_index];
         gltf_sampler := gltf_chan.sampler;
@@ -518,28 +513,28 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
         pie_chan.joint_index30_type2 = (joint_index << 2) | (channel_type & 3).(u32);
 
 
-        // // inputs
-        // float *in_nums = PIE_ListReserve(&B.pie.file, &pie_chan.inputs, float, sample_count);
-        // U64 in_unpacked = cgltf_accessor_unpack_floats(gltf_sampler.input, in_nums, sample_count);
-        // M_Check(in_unpacked == sample_count);
+        // inputs
+        in_nums := PIE_ListAllocArray(*pie_chan.inputs, xx sample_count, float);
+        in_unpacked_count := cgltf_accessor_unpack_floats(gltf_sampler.input, in_nums.data, sample_count);
+        Check(in_unpacked_count == sample_count);
 
-  //       ForU32(i, sample_count)
-  //       {
-  //         float n = in_nums[i];
-  //         if (n > t_max) t_max = n;
-  //         if (n < t_min) t_min = n;
-  //       }
+        for MakeRange(sample_count)
+        {
+          n := in_nums[it];
+          if n > t_max then t_max = n;
+          if n < t_min then t_min = n;
+        }
 
-  //       // outputs
-  //       U32 out_comp_count = (U32)cgltf_num_components(gltf_sampler.output.type);
-  //       U32 out_count = out_comp_count * sample_count;
-  //       float *out_nums = PIE_ListReserve(&B.pie.file, &pie_chan.outputs, float, out_count);
-  //       U64 out_unpacked = cgltf_accessor_unpack_floats(gltf_sampler.output, out_nums, out_count);
-  //       M_Check(out_unpacked == out_count);
+        // outputs
+        out_comp_count := cgltf_num_components(gltf_sampler.output.type);
+        out_count := out_comp_count * sample_count;
+        out_nums := PIE_ListAllocArray(*pie_chan.outputs, xx out_count, float);
+        out_unpacked_count := cgltf_accessor_unpack_floats(gltf_sampler.output, out_nums.data, out_count);
+        Check(out_unpacked_count == out_count);
       }
 
-  //     pie_anim.t_min = t_min;
-  //     pie_anim.t_max = t_max;
+      pie_anim.t_min = t_min;
+      pie_anim.t_max = t_max;
     }
   }
 }

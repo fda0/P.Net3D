@@ -100,7 +100,6 @@ PIE_AllocBytesInFile :: (size: s64) -> *void
 PIE_AllocTypeInFile :: ($T: Type) -> *T
 {
   using B.pie;
-  Check(active_list_type == T);
   Check(PIE_FileIsAlignedToType(T));
   return PIE_AllocBytesInFile(size_of(T));
 }
@@ -108,7 +107,6 @@ PIE_AllocTypeInFile :: ($T: Type) -> *T
 PIE_AllocArrayInFile :: (count: s64, $T: Type) -> [] T
 {
   using B.pie;
-  Check(active_list_type == T);
   Check(PIE_FileIsAlignedToType(T));
 
   result: [] T;
@@ -133,7 +131,7 @@ PIE_FileAppendArray :: (array: [] $T)
 PIE_FileAppendString :: (str: string)
 {
   using B.pie;
-  Check(active_list_type == u8);
+  Check(!active_list_type || active_list_type == u8);
   PIE_FileAppendArray(cast([] u8) str);
 }
 
@@ -142,6 +140,15 @@ PIE_FileAppendPrint :: (format_string: string, args: .. Any)
   auto_release_temp();
   printed := tprint(format_string, ..args);
   PIE_FileAppendString(printed);
+}
+
+// ListAlloc
+PIE_ListAllocArray :: (list: *PIE_ListT($LT), count: s64, $T: Type) -> [] T
+{
+  PIE_ListStart(list);
+  result := PIE_AllocArrayInFile(count, T);
+  PIE_ListEnd();
+  return result;
 }
 
 // ListSet
@@ -156,5 +163,12 @@ PIE_ListSetString :: (list: *PIE_ListT($LT), str: string)
 {
   PIE_ListStart(list);
   PIE_FileAppendString(str);
+  PIE_ListEnd();
+}
+
+PIE_FileSetPrint :: (list: *PIE_ListT($LT), format_string: string, args: .. Any)
+{
+  PIE_ListStart(list);
+  PIE_FileAppendPrint(format_string, ..args);
   PIE_ListEnd();
 }
