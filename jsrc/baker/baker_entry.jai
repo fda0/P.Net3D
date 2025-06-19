@@ -51,6 +51,7 @@ Check :: (arg: bool, message := "", args: .. Any, loc := #caller_location) #no_d
 #load "baker_textures.jai";
 #import "Basic";
 #import "String";
+#import "Flat_Pool";
 #load "../game/base_utils.jai";
 #load "../game/base_math.jai";
 #load "../game/base_array.jai";

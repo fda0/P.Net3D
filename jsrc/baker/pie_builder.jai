@@ -1,7 +1,10 @@
 PIE_Builder :: struct
 {
-  file: String_Builder;
+  file: Flat_Pool;
   finalized: bool;
+
+  active_list: *PIE_List;
+  active_list_type: Type;
 
   vertices: [..] WORLD_Vertex;
   indices: [..] u16;
@@ -14,7 +17,8 @@ PIE_Builder :: struct
 PIE_Init :: ()
 {
   using B.pie;
-  remember_allocators(*file);
+  file.alignment = 1; // We are doing our own, tightly packed, precise alignment on per-type basis.
+  init(*file, reserve = Gigabyte(2));
   remember_allocators(*vertices);
   remember_allocators(*indices);
   remember_allocators(*models);
@@ -22,59 +26,135 @@ PIE_Init :: ()
   remember_allocators(*materials);
 }
 
-PIE_Align :: (sb: *String_Builder, alignment: s64)
+PIE_CurrentFileOffset :: () -> u32
 {
-  sb_length := builder_string_length(sb);
-  missaligned_bytes := sb_length % alignment;
+  using B.pie;
+  offset := file.current_point.(u64) - file.memory_base.(u64);
+  return xx offset;
+}
+
+// Alignment
+PIE_AlignFile :: (alignment: s64)
+{
+  using B.pie;
+
+  current_offset := PIE_CurrentFileOffset();
+  missaligned_bytes := current_offset % alignment;
   if missaligned_bytes
   {
     to_align := alignment - missaligned_bytes;
-    buffer: [256] u8; // array with zeroes
-    assert(to_align <= buffer.count);
-    append(sb, buffer.data, to_align);
+    align_bytes_memory := get(*file, to_align);
+    memset(align_bytes_memory, 0, to_align);
   }
 }
 
-PIE_AlignType :: (sb: *String_Builder, $type: Type)
+PIE_AlignFileToType :: ($T: Type)
 {
-  PIE_Align(sb, align_of(type));
+  PIE_AlignFile(align_of(T));
 }
 
-
-// @todo imporve the api so the usage looks more like:
-// list_ctx := PIE_ListStart(PIE.b.file, some_list); // is something other than PIE.b.file ever used? shoudl that be implicit?
-// PIE_ListAdd(list_ctx, some_data); // This does typechecking between some_data and some_list types (could be done statically!).
-// PIE_ListEnd(list_ctx);
-//
-// rename PIE_ListAddArray -> PIE_ListArray
-//
-
-PIE_ListStart :: (sb: *String_Builder, list: *PIE_ListT($list_type), $type: Type)
+PIE_FileIsAlignedToType :: ($T: Type) -> bool
 {
-  #assert(list_type == type);
+  current_offset := PIE_CurrentFileOffset();
+  alignment := align_of(T);
+  missaligned_bytes := current_offset % alignment;
+  return missaligned_bytes == 0;
+}
+
+// ListStart / ListEnd
+PIE_ListStart :: (list: *PIE_ListT($LT))
+{
+  using B.pie;
   Check(!list.size);
-  PIE_AlignType(sb, type);
-  list.offset = xx builder_string_length(sb);
+  Check(!active_list && !active_list_type);
+  active_list = list;
+  active_list_type = LT;
+
+  PIE_AlignFileToType(LT);
+  list.offset = PIE_CurrentFileOffset();
 }
 
-PIE_ListEnd :: (sb: *String_Builder, list: *PIE_List)
+PIE_ListEnd :: ()
 {
-  Check(!list.size);
-  builder_length := builder_string_length(sb);
-  Check(builder_length >= list.offset);
-  list.size = xx (builder_length - list.offset);
+  using B.pie;
+  Check(active_list && active_list_type);
+  Check(!active_list.size);
+
+  current_offset := PIE_CurrentFileOffset();
+  Check(current_offset >= active_list.offset);
+  active_list.size = current_offset - active_list.offset;
+
+  active_list_type_size := active_list_type.(*Type_Info).runtime_size;
+  Check(active_list.size % active_list_type_size == 0);
+
+  active_list = null;
+  memset(*active_list_type, 0, size_of(Type));
 }
 
-PIE_ListAppend :: (sb: *String_Builder, value: $T)
+// AllocInFile
+PIE_AllocBytesInFile :: (size: s64) -> *void
 {
-  append(sb, (*value).(*u8), size_of(T));
+  return get(*B.pie.file, size);
 }
 
-PIE_ListAddArray :: (sb: *String_Builder, list: *PIE_ListT($list_type), array: [] $T)
+PIE_AllocTypeInFile :: ($T: Type) -> *T
 {
-  #assert(list_type == T);
-  PIE_ListStart(sb, list, T);
-  append(sb, array.data.(*u8), size_of(T) * array.count);
-  PIE_ListEnd(sb, list);
+  using B.pie;
+  Check(active_list_type == T);
+  Check(PIE_FileIsAlignedToType(T));
+  return PIE_AllocBytesInFile(size_of(T));
 }
 
+PIE_AllocArrayInFile :: (count: s64, $T: Type) -> [] T
+{
+  using B.pie;
+  Check(active_list_type == T);
+  Check(PIE_FileIsAlignedToType(T));
+
+  result: [] T;
+  result.count = count;
+  result.data = PIE_AllocBytesInFile(count * size_of(T));
+  return result;
+}
+
+// FileAppend
+PIE_FileAppendValue :: (value: $T)
+{
+  dst := PIE_AllocTypeInFile(T);
+  dst.* = value;
+}
+
+PIE_FileAppendArray :: (array: [] $T)
+{
+  dst := PIE_AllocArrayInFile(array.count, T);
+  memcpy(dst.data, array.data, size_of(T)*array.count);
+}
+
+PIE_FileAppendString :: (str: string)
+{
+  using B.pie;
+  Check(active_list_type == u8);
+  PIE_FileAppendArray(cast([] u8) str);
+}
+
+PIE_FileAppendPrint :: (format_string: string, args: .. Any)
+{
+  auto_release_temp();
+  printed := tprint(format_string, ..args);
+  PIE_FileAppendString(printed);
+}
+
+// ListSet
+PIE_ListSetArray :: (list: *PIE_ListT($LT), array: [] $T)
+{
+  PIE_ListStart(list);
+  PIE_FileAppendArray(array);
+  PIE_ListEnd();
+}
+
+PIE_ListSetString :: (list: *PIE_ListT($LT), str: string)
+{
+  PIE_ListStart(list);
+  PIE_FileAppendString(str);
+  PIE_ListEnd();
+}

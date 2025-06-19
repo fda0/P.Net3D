@@ -107,9 +107,9 @@ BK_GLTF_Load :: (file_path: string, spec: BK_GLTF_Spec)
 
       // Fill material name
       {
-        PIE_ListStart(*B.pie.file, *pie_material.name, u8);
-        print_to_builder(*B.pie.file, "%.m%.%", model.name, mesh_index, gltf_material.name);
-        PIE_ListEnd(*B.pie.file, *pie_material.name);
+        PIE_ListStart(*pie_material.name);
+        PIE_FileAppendPrint("%.m%.%", model.name, mesh_index, gltf_material.name);
+        PIE_ListEnd();
       }
 
       diffuse_tex_path := "";
@@ -403,7 +403,7 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       float_count := comp_count * inv_bind.count;
       unpacked_count := cgltf_accessor_unpack_floats(inv_bind, temp_matrices.data.(*float), float_count);
       Check(unpacked_count == float_count);
-      PIE_ListAddArray(*B.pie.file, *pie_skel.inverse_matrices, temp_matrices);
+      PIE_ListSetArray(*pie_skel.inverse_matrices, temp_matrices);
     }
 
     // Child hierarchy indices.
@@ -432,38 +432,38 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
         }
       }
 
-      PIE_ListAddArray(*B.pie.file, *pie_skel.child_index_buffer, temp_indices);
-      PIE_ListAddArray(*B.pie.file, *pie_skel.child_index_ranges, temp_ranges);
+      PIE_ListSetArray(*pie_skel.child_index_buffer, temp_indices);
+      PIE_ListSetArray(*pie_skel.child_index_ranges, temp_ranges);
     }
 
     // rest pose transformations
     {
       // Translations
-      PIE_ListStart(*B.pie.file, *pie_skel.translations, V3);
+      PIE_ListStart(*pie_skel.translations);
       for joint_index: MakeRange(joints_count)
       {
         joint := skin.joints[joint_index];
-        for joint.translation PIE_ListAppend(*B.pie.file, it);
+        for joint.translation PIE_FileAppendValue(it);
       }
-      PIE_ListEnd(*B.pie.file, *pie_skel.translations);
+      PIE_ListEnd();
 
       // Rotations
-      PIE_ListStart(*B.pie.file, *pie_skel.rotations, Quat);
+      PIE_ListStart(*pie_skel.rotations);
       for joint_index: MakeRange(joints_count)
       {
         joint := skin.joints[joint_index];
-        for joint.rotation PIE_ListAppend(*B.pie.file, it);
+        for joint.rotation PIE_FileAppendValue(it);
       }
-      PIE_ListEnd(*B.pie.file, *pie_skel.rotations);
+      PIE_ListEnd();
 
       // Scales
-      PIE_ListStart(*B.pie.file, *pie_skel.scales, V3);
+      PIE_ListStart(*pie_skel.scales);
       for joint_index: MakeRange(joints_count)
       {
         joint := skin.joints[joint_index];
-        for joint.scale PIE_ListAppend(*B.pie.file, it);
+        for joint.scale PIE_FileAppendValue(it);
       }
-      PIE_ListEnd(*B.pie.file, *pie_skel.scales);
+      PIE_ListEnd();
     }
 
     // First allocate all strings in one continuous chunk.
@@ -471,12 +471,12 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
     temp_name_ranges := NewArray(xx joints_count, Range(u32));
     for joint_index: MakeRange(joints_count)
     {
-      temp_name_ranges[joint_index].min = xx builder_string_length(*B.pie.file);
+      temp_name_ranges[joint_index].min = PIE_CurrentFileOffset();
       joint := skin.joints[joint_index];
-      append(*B.pie.file, to_string(joint.name));
-      temp_name_ranges[joint_index].max = xx builder_string_length(*B.pie.file);
+      PIE_FileAppendString(to_string(joint.name));
+      temp_name_ranges[joint_index].max = PIE_CurrentFileOffset();
     }
-    PIE_ListAddArray(*B.pie.file, *pie_skel.name_ranges, temp_name_ranges);
+    PIE_ListSetArray(*pie_skel.name_ranges, temp_name_ranges);
   }
 
   // Animations
@@ -490,9 +490,7 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       t_max := -FLOAT32_MAX;
 
       // Name string
-      PIE_ListStart(*B.pie.file, *pie_anim.name, u8);
-      append(*B.pie.file, to_string(gltf_anim.name));
-      PIE_ListEnd(*B.pie.file, *pie_anim.name);
+      PIE_ListSetString(*pie_anim.name, to_string(gltf_anim.name));
 
       // Channels
       // U32 channels_count = (U32)gltf_anim.channels_count;
