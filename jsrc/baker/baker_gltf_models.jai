@@ -396,7 +396,7 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       Check(comp_count == 16);
 
       PIE_ListStart(*pie_skel.inverse_matrices);
-      matrices := PIE_AllocArrayInFile(xx inv_bind.count, Mat4);
+      matrices := PIE_FileAllocArray(xx inv_bind.count, Mat4);
       float_count := comp_count * inv_bind.count;
       unpacked_count := cgltf_accessor_unpack_floats(inv_bind, matrices.data.(*float), float_count);
       Check(unpacked_count == float_count);
@@ -408,7 +408,7 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
       temp_ranges := NewArray(xx joints_count, Range(u32));
 
       PIE_ListStart(*pie_skel.child_index_buffer);
-      indices := PIE_AllocArrayInFile(xx joints_count, u32);
+      indices := PIE_FileAllocArray(xx joints_count, u32);
 
       indices_counter: u32;
       for joint_index: MakeRange(joints_count)
@@ -541,7 +541,111 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
 
 BK_GLTF_ExportModelToPie :: (bk_model: BK_GLTF_Model)
 {
-  // @impl
+  pie_model := array_add(*B.pie.models);
+
+  // Name string
+  PIE_ListSetString(*pie_model.name, bk_model.name);
+
+  pie_model.is_skinned = bk_model.is_skinned;
+  pie_model.skeleton_index = bk_model.skeleton_index;
+
+  pie_meshes := PIE_ListAllocArray(*pie_model.meshes, bk_model.meshes.count, PIE_Mesh);
+
+  for bk_mesh, mesh_index: bk_model.meshes
+  {
+    pie_mesh := *pie_meshes[mesh_index];
+    pie_mesh.material_index = xx bk_mesh.material_index;
+    pie_mesh.vertices_start_index = xx (B.pie.vertices.count / size_of(WORLD_Vertex));
+
+    // vertices
+    for vert_i: MakeRange(bk_mesh.verts_count)
+    {
+      vert: WORLD_Vertex;
+
+      // POS
+      vert.p = V3.{
+        bk_mesh.positions[vert_i*3 + 0],
+        bk_mesh.positions[vert_i*3 + 1],
+        bk_mesh.positions[vert_i*3 + 2],
+      };
+
+      // NORMAL
+      vert.normal = V3.{
+        bk_mesh.normals[vert_i*3 + 0],
+        bk_mesh.normals[vert_i*3 + 1],
+        bk_mesh.normals[vert_i*3 + 2],
+      };
+
+      // NORMAL validation
+      {
+        normal_lensq := length_squared(vert.normal);
+        if normal_lensq < 0.001
+        {
+          log("[GLTF LOADER] Found normal equal to zero", flags=.WARNING);
+          vert.normal = V3.{0,0,1};
+        }
+        else if normal_lensq < 0.9 || normal_lensq > 1.1
+        {
+          log("[GLTF LOADER] Normal wasn't normalized", flags=.WARNING);
+          vert.normal = vert.normal * invsqrt(normal_lensq);
+        }
+      }
+
+      // UV
+      vert.uv = V2.{
+        bk_mesh.texcoords[vert_i*2 + 0],
+        bk_mesh.texcoords[vert_i*2 + 1],
+      };
+
+      // SKINNED specific
+      if pie_model.is_skinned
+      {
+        joint_indices: [4] u32 = .[
+          bk_mesh.joint_indices[vert_i*4 + 0],
+          bk_mesh.joint_indices[vert_i*4 + 1],
+          bk_mesh.joint_indices[vert_i*4 + 2],
+          bk_mesh.joint_indices[vert_i*4 + 3],
+        ];
+
+        // Validate joint indices
+        for joint_indices
+        {
+          if it >= bk_model.joints_count
+            log("[GLTF LOADER] Joint index overflow. %u >= %u", it, bk_model.joints_count, flags=.WARNING);
+        }
+
+        vert.joints_packed4 = (joint_indices[0] |
+                               (joint_indices[1] << 8) |
+                               (joint_indices[2] << 16) |
+                               (joint_indices[3] << 24));
+
+        weights := V4.{
+          bk_mesh.weights[vert_i*4 + 0],
+          bk_mesh.weights[vert_i*4 + 1],
+          bk_mesh.weights[vert_i*4 + 2],
+          bk_mesh.weights[vert_i*4 + 3],
+        };
+
+        // Validate weights
+        weight_sum := weights.x + weights.y + weights.z + weights.w;
+        if weight_sum < 0.9 || weight_sum > 1.1
+          log("[GLTF LOADER] Weight sum == %f (should be 1)", weight_sum, flags=.WARNING);
+
+        vert.joint_weights = weights;
+      }
+
+      array_add(*B.pie.vertices, vert);
+    }
+
+    // Indices
+    {
+      pie_mesh.indices_start_index = xx B.pie.indices.count;
+      pie_mesh.indices_count += xx bk_mesh.indices.count;
+
+      dst := array_add_many(*B.pie.indices, bk_mesh.indices.count);
+      memcpy(dst.data, bk_mesh.indices.data, bk_mesh.indices.count);
+    }
+  }
 }
 
 BK_GLTF_FindJointIndex :: (skin: *cgltf_skin, find_node: *cgltf_node) -> u32

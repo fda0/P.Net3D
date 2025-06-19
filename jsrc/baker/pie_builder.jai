@@ -34,7 +34,7 @@ PIE_CurrentFileOffset :: () -> u32
 }
 
 // Alignment
-PIE_AlignFile :: (alignment: s64)
+PIE_FileAlign :: (alignment: s64)
 {
   using B.pie;
 
@@ -48,9 +48,9 @@ PIE_AlignFile :: (alignment: s64)
   }
 }
 
-PIE_AlignFileToType :: ($T: Type)
+PIE_FileAlignToType :: ($T: Type)
 {
-  PIE_AlignFile(align_of(T));
+  PIE_FileAlign(align_of(T));
 }
 
 PIE_FileIsAlignedToType :: ($T: Type) -> bool
@@ -70,7 +70,7 @@ PIE_ListStart :: (list: *PIE_ListT($LT))
   active_list = list;
   active_list_type = LT;
 
-  PIE_AlignFileToType(LT);
+  PIE_FileAlignToType(LT);
   list.offset = PIE_CurrentFileOffset();
 }
 
@@ -92,39 +92,39 @@ PIE_ListEnd :: ()
 }
 
 // AllocInFile
-PIE_AllocBytesInFile :: (size: s64) -> *void
+PIE_FileAllocBytes :: (size: s64) -> *void
 {
   return get(*B.pie.file, size);
 }
 
-PIE_AllocTypeInFile :: ($T: Type) -> *T
+PIE_FileAllocType :: ($T: Type) -> *T
 {
   using B.pie;
   Check(PIE_FileIsAlignedToType(T));
-  return PIE_AllocBytesInFile(size_of(T));
+  return PIE_FileAllocBytes(size_of(T));
 }
 
-PIE_AllocArrayInFile :: (count: s64, $T: Type) -> [] T
+PIE_FileAllocArray :: (count: s64, $T: Type) -> [] T
 {
   using B.pie;
   Check(PIE_FileIsAlignedToType(T));
 
   result: [] T;
   result.count = count;
-  result.data = PIE_AllocBytesInFile(count * size_of(T));
+  result.data = PIE_FileAllocBytes(count * size_of(T));
   return result;
 }
 
 // FileAppend
 PIE_FileAppendValue :: (value: $T)
 {
-  dst := PIE_AllocTypeInFile(T);
+  dst := PIE_FileAllocType(T);
   dst.* = value;
 }
 
 PIE_FileAppendArray :: (array: [] $T)
 {
-  dst := PIE_AllocArrayInFile(array.count, T);
+  dst := PIE_FileAllocArray(array.count, T);
   memcpy(dst.data, array.data, size_of(T)*array.count);
 }
 
@@ -146,7 +146,7 @@ PIE_FileAppendPrint :: (format_string: string, args: .. Any)
 PIE_ListAllocArray :: (list: *PIE_ListT($LT), count: s64, $T: Type) -> [] T
 {
   PIE_ListStart(list);
-  result := PIE_AllocArrayInFile(count, T);
+  result := PIE_FileAllocArray(count, T);
   PIE_ListEnd();
   return result;
 }

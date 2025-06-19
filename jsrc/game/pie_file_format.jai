@@ -64,7 +64,7 @@ PIE_Mesh :: struct
 PIE_Model :: struct
 {
   name: PIE_ListT(u8);
-  is_skinned: u8;
+  is_skinned: bool;
   skeleton_index: u32 ; // for skinned only
   meshes: PIE_ListT(PIE_Mesh);
 };
