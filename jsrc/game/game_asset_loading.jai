@@ -335,9 +335,9 @@ ASSET_InitModels :: ()
       model.skeleton = *G.ast.skeletons[pie_model.skeleton_index];
     }
 
-    model.meshes = NewArray(pie_model.meshes.count, ASSET_Mesh);
-
     pie_meshes := PIE_LOAD_ListToArray(pie_model.meshes, PIE_Mesh);
+    model.meshes = NewArray(pie_meshes.count, ASSET_Mesh);
+
     for *mesh: model.meshes
     {
       pie_mesh := *pie_meshes[it_index];
@@ -369,7 +369,6 @@ ASSET_InitSkeletons :: ()
     pie_skel := *pie_skeletons[it_index];
     skel.root_transform = pie_skel.root_transform;
 
-    skel.joints_count       = xx pie_skel.inverse_matrices.count;
     skel.inverse_matrices   = PIE_LOAD_ListToArray(pie_skel.inverse_matrices, Mat4);
     skel.child_index_buffer = PIE_LOAD_ListToArray(pie_skel.child_index_buffer, s32);
     skel.child_index_ranges = PIE_LOAD_ListToArray(pie_skel.child_index_ranges, Range(s32));
@@ -377,6 +376,7 @@ ASSET_InitSkeletons :: ()
     skel.bind_rotations     = PIE_LOAD_ListToArray(pie_skel.rotations, Quat);
     skel.bind_scales        = PIE_LOAD_ListToArray(pie_skel.scales, V3);
     name_ranges            := PIE_LOAD_ListToArray(pie_skel.name_ranges, Range(u32));
+    skel.joints_count       = xx skel.inverse_matrices.count;
     PIE_LOAD_Check(skel.joints_count == skel.inverse_matrices.count, "joints_count != inverse_matrices.count");
     PIE_LOAD_Check(skel.joints_count == skel.child_index_buffer.count, "joints_count != child_index_buffer.count");
     PIE_LOAD_Check(skel.joints_count == skel.child_index_ranges.count, "joints_count != child_index_ranges.count");
@@ -403,7 +403,7 @@ ASSET_InitSkeletons :: ()
       anim.t_max = pie_anim.t_max;
 
       pie_channels := PIE_LOAD_ListToArray(pie_anim.channels, PIE_AnimationChannel);
-      anim.channels = NewArray(pie_anim.channels.count, ASSET_AnimationChannel);
+      anim.channels = NewArray(pie_channels.count, ASSET_AnimationChannel);
 
       for *chan: anim.channels
       {

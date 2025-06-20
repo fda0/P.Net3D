@@ -242,6 +242,33 @@ Slerp :: (a: Quat, b_: Quat, t: float) -> Quat
   return normalize(res);
 }
 
+SlowMultiply :: (a: Quat, b: Quat) -> Quat
+{
+  // @todo SIMD
+  res: Quat = ---;
+  res.x = b.w * +a.x;
+  res.y = b.z * -a.x;
+  res.z = b.y * +a.x;
+  res.w = b.x * -a.x;
+
+  res.x += b.z * +a.y;
+  res.y += b.w * +a.y;
+  res.z += b.x * -a.y;
+  res.w += b.y * -a.y;
+
+  res.x += b.y * -a.z;
+  res.y += b.x * +a.z;
+  res.z += b.w * +a.z;
+  res.w += b.z * -a.z;
+
+  res.x += b.x * +a.w;
+  res.y += b.y * +a.w;
+  res.z += b.z * +a.w;
+  res.w += b.w * +a.w;
+  return res;
+}
+
+
 // MATRIX MATH
 operator == :: (a: Mat4, b: Mat4) -> bool
 {

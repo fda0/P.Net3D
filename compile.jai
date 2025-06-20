@@ -1,11 +1,12 @@
 LOG_RUN :: true;
+BUILD_DIRECTORY :: "build";
 
 #run build();
 build :: ()
 {
   modify_print_style();
   set_build_options_dc(.{do_output=false});
-  make_directory_if_it_does_not_exist("build");
+  make_directory_if_it_does_not_exist(BUILD_DIRECTORY);
 
   // Parse command-line arguments
   clean_sdl := false;
@@ -126,7 +127,7 @@ Build :: (using config: BuildConfig)
 {
   w := compiler_create_workspace(workspace_name);
   options := get_build_options(w);
-  options.output_path = "build";
+  options.output_path = BUILD_DIRECTORY;
   options.output_executable_name = output_name;
 
   modules_path: [..] string;

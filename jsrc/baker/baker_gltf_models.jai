@@ -510,7 +510,7 @@ BK_GLTF_ExportSkeletonToPie :: (model: *BK_GLTF_Model, data: *cgltf_data)
           case .cgltf_animation_path_type_scale;       channel_type = .Scale;
         }
 
-        pie_chan.joint_index30_type2 = (joint_index << 2) | (channel_type & 3).(u32);
+        pie_chan.joint_index30_type2 = joint_index | (channel_type << 30).(u32);
 
 
         // inputs
@@ -555,7 +555,7 @@ BK_GLTF_ExportModelToPie :: (bk_model: BK_GLTF_Model)
   {
     pie_mesh := *pie_meshes[mesh_index];
     pie_mesh.material_index = xx bk_mesh.material_index;
-    pie_mesh.vertices_start_index = xx (B.pie.vertices.count / size_of(WORLD_Vertex));
+    pie_mesh.vertices_start_index = xx B.pie.vertices.count;
 
     // vertices
     for vert_i: MakeRange(bk_mesh.verts_count)
@@ -641,9 +641,7 @@ BK_GLTF_ExportModelToPie :: (bk_model: BK_GLTF_Model)
     {
       pie_mesh.indices_start_index = xx B.pie.indices.count;
       pie_mesh.indices_count += xx bk_mesh.indices.count;
-
-      dst := array_add_many(*B.pie.indices, bk_mesh.indices.count);
-      memcpy(dst.data, bk_mesh.indices.data, bk_mesh.indices.count);
+      array_add_copy(*B.pie.indices, bk_mesh.indices);
     }
   }
 }

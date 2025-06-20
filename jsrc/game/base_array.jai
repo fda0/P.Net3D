@@ -63,5 +63,12 @@ array_add_many :: (array: *[..] $T, alloc_count: s64, $initialize:=true) -> allo
   return result;
 }
 
+array_add_copy :: (array: *[..] $T, copy_from: [] T) -> allocated_slice: [] T
+{
+  dst := array_add_many(array, copy_from.count, initialize=false);
+  memcpy(dst.data, copy_from.data, copy_from.count*size_of(T));
+  return dst;
+}
+
 #scope_file
 #import "Basic"; // for clamp

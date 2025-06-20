@@ -19,8 +19,9 @@ static Axis2 Axis2_Other(Axis2 axis)
 #define Max(a, b) ((a) > (b) ? (a) : (b))
 #define Clamp(min, max, val) (((val)<(min)) ? (min) : ((val)>(max))?(max):(val))
 
-#define TURNS_TO_RAD (2.f*SDL_PI_F)
-#define RAD_TO_TURNS (1.f/(2.f*SDL_PI_F))
+#define TAU_F (6.283185f)
+#define TURNS_TO_RAD TAU_F
+#define RAD_TO_TURNS (1.f/TAU_F)
 
 static float FSquare(float a) { return a*a; }
 static float FSqrt(float a) { return SDL_sqrtf(a); }

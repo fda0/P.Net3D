@@ -49,6 +49,10 @@ static void PIE_ListEnd(Printer *printer_owner, PIE_List *list)
   U32 type_size = TYPE_GetSize(list->type);
   M_Check(list->size % type_size == 0);
   list->count = list->size / type_size;
+
+  // deprecation - jai version can work without these fields
+  // list->count = 0;
+  // list->type = 0;
 }
 static void *PIE_ListReserveBytes(Printer *p, PIE_List *list, TYPE_ENUM type, U32 count)
 {
