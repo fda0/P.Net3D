@@ -139,6 +139,7 @@ PIE_FileAllocType :: ($T: Type) -> *T
 {
   using B.pie;
   Check(PIE_FileIsAlignedToType(T));
+  Check(!active_list_type || active_list_type == T);
   return PIE_FileAllocBytes(size_of(T));
 }
 
@@ -146,6 +147,7 @@ PIE_FileAllocArray :: (count: s64, $T: Type) -> [] T
 {
   using B.pie;
   Check(PIE_FileIsAlignedToType(T));
+  Check(!active_list_type || active_list_type == T);
 
   result: [] T;
   result.count = count;
@@ -165,7 +167,6 @@ PIE_FileAppendValue :: (value: $T)
 PIE_FileAppendArray :: (array: [] $T)
 {
   using B.pie;
-  Check(!active_list_type || active_list_type == T);
   dst := PIE_FileAllocArray(array.count, T);
   memcpy(dst.data, array.data, size_of(T)*array.count);
 }
@@ -173,7 +174,6 @@ PIE_FileAppendArray :: (array: [] $T)
 PIE_FileAppendString :: (str: string)
 {
   using B.pie;
-  Check(!active_list_type || active_list_type == u8);
   PIE_FileAppendArray(cast([] u8) str);
 }
 

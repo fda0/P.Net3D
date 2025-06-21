@@ -78,13 +78,52 @@ BK_TEX_LoadPaths :: (pie_material: *PIE_Material, paths: [] string)
     pie_material.tex.layers = xx paths.count;
 
     pie_textures_count := pie_material.tex.lods * pie_material.tex.layers;
-    pie_textures := PIE_ListAllocArray(*pie_material.tex.sections, pie_textures_count, PIE_MaterialTexSection);
+    pie_texture_sections := PIE_ListAllocArray(*pie_material.tex.sections, pie_textures_count, PIE_MaterialTexSection);
 
-  //   PIE_ListStart(&build.file, &pie_material.tex.full_data, TYPE_U8);
+    PIE_ListStart(*pie_material.tex.full_data);
 
-  //   // Iterate over fliles
-  //   if (pie_material.tex.format == PIE_Tex_R8G8B8A8)
-  //   {
+    // Iterate over fliles
+    if pie_material.tex.format == .R8G8B8A8
+    {
+      pie_texture_index := 0;
+      for file, file_index: files
+      {
+        // Iterate over lods
+        for lod_index: MakeRange(lods_count)
+        {
+          surf := file.surfs[lod_index];
+
+          Check(pie_texture_index < pie_textures_count);
+          pie_sect := *pie_texture_sections[pie_texture_index];
+          pie_texture_index += 1;
+
+          // Calc
+          pie_data_size := surf.w * surf.h * size_of(u32);
+
+          // Fill texture data
+          pie_sect.width = xx surf.w;
+          pie_sect.height = xx surf.h;
+          pie_sect.lod = xx lod_index;
+          pie_sect.layer = xx file_index;
+          pie_sect.data_offset = PIE_CurrentFileOffset() - pie_material.tex.full_data.offset;
+          pie_sect.data_size = xx pie_data_size;
+
+          // Alloc data buffer
+          pie_data := PIE_FileAllocBytes(pie_data_size);
+
+          // Copy data to .pie file buffer
+          if surf.w * size_of(u32) == surf.pitch
+            memcpy(pie_data, surf.pixels, pie_data_size);
+          else
+            Check(false, "Surface pitch has to be equal to with byte size currently.");
+
+          SDL_DestroySurface(surf);
+        }
+      }
+    }
+    else if pie_material.tex.format == .BC7_RGBA
+    {
+      Check(false, "BC7 path not implemented");
   //     U32 pie_texture_index = 0;
   //     ForU32(file_index, paths_count)
   //     {
@@ -95,52 +134,8 @@ BK_TEX_LoadPaths :: (pie_material: *PIE_Material, paths: [] string)
   //       {
   //         SDL_Surface *surf = file.surfs[lod_index];
 
-  //         M_Check(pie_texture_index < pie_textures_count);
-  //         PIE_MaterialTexSection *pie_tex = pie_textures + pie_texture_index;
-  //         pie_texture_index += 1;
-
-  //         // Calc
-  //         U32 pie_data_size = surf.w * surf.h * sizeof(U32);
-
-  //         // Fill texture data
-  //         pie_tex.width = surf.w;
-  //         pie_tex.height = surf.h;
-  //         pie_tex.lod = lod_index;
-  //         pie_tex.layer = file_index;
-  //         pie_tex.data_offset = build.file.used - pie_material.tex.full_data.offset;
-  //         pie_tex.data_size = pie_data_size;
-
-  //         // Alloc data buffer
-  //         U8 *pie_data = PIE_Reserve(&build.file, U8, pie_data_size);
-
-  //         // Copy data to .pie file buffer
-  //         if (surf.w * sizeof(U32) == surf.pitch)
-  //         {
-  //           Memcpy(pie_data, surf.pixels, pie_data_size);
-  //         }
-  //         else
-  //         {
-  //           M_Check(false && !"not implemnted");
-  //         }
-
-  //         SDL_DestroySurface(surf);
-  //       }
-  //     }
-  //   }
-  //   else if (pie_material.tex.format == PIE_Tex_BC7_RGBA)
-  //   {
-  //     U32 pie_texture_index = 0;
-  //     ForU32(file_index, paths_count)
-  //     {
-  //       BK_TexFile *file = files + file_index;
-
-  //       // Iterate over lods
-  //       ForU32(lod_index, lods_count)
-  //       {
-  //         SDL_Surface *surf = file.surfs[lod_index];
-
-  //         M_Check(pie_texture_index < pie_textures_count);
-  //         PIE_MaterialTexSection *pie_tex = pie_textures + pie_texture_index;
+  //         Check(pie_texture_index < pie_textures_count);
+  //         PIE_MaterialTexSection *pie_sect = pie_texture_sections + pie_texture_index;
   //         pie_texture_index += 1;
 
   //         // Calculate data buffer dimensions
@@ -149,12 +144,12 @@ BK_TEX_LoadPaths :: (pie_material: *PIE_Material, paths: [] string)
   //         I32 pie_data_size = lod_chunks_per_w*lod_chunks_per_h * sizeof(U64)*2;
 
   //         // Fill texture data
-  //         pie_tex.width = surf.w;
-  //         pie_tex.height = surf.h;
-  //         pie_tex.lod = lod_index;
-  //         pie_tex.layer = file_index;
-  //         pie_tex.data_offset = build.file.used - pie_material.tex.full_data.offset;
-  //         pie_tex.data_size = pie_data_size;
+  //         pie_sect.width = surf.w;
+  //         pie_sect.height = surf.h;
+  //         pie_sect.lod = lod_index;
+  //         pie_sect.layer = file_index;
+  //         pie_sect.data_offset = build.file.used - pie_material.tex.full_data.offset;
+  //         pie_sect.data_size = pie_data_size;
 
   //         // Alloc data buffer
   //         U8 *pie_data = PIE_Reserve(&build.file, U8, pie_data_size);
@@ -194,21 +189,18 @@ BK_TEX_LoadPaths :: (pie_material: *PIE_Material, paths: [] string)
   //           }
   //         }
 
-  //         M_Check(pie_pixels == pie_data_end);
+  //         Check(pie_pixels == pie_data_end);
   //         SDL_DestroySurface(surf);
   //       }
   //     }
-  //   }
+    }
 
-  //   PIE_ListEnd(&build.file, &pie_material.tex.full_data);
+    PIE_ListEnd();
   }
 
-  // if (errors)
-  // {
-  //   ForU32(file_index, paths_count)
-  //   {
-  //     BK_TexFile *file = files + file_index;
-  //     if (file.surfs[0]) SDL_DestroySurface(file.surfs[0]);
-  //   }
-  // }
+  if errors
+  {
+    for files
+      if it.surfs[0] then SDL_DestroySurface(it.surfs[0]);
+  }
 }
