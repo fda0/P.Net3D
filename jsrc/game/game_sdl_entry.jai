@@ -7,6 +7,7 @@ main :: ()
 
 PLATFORM_Init :: ()
 {
+  G.time_launch = current_time_monotonic();
   G.dpi_scaling = 1;
 
   ok := SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -60,8 +61,10 @@ PLATFORM_Init :: ()
     y := ifx G.init_window_p.y > 0 then xx G.init_window_p.y else cast(s32) SDL_WINDOWPOS_UNDEFINED();
     SDL_SetWindowPosition(G.window, x, y);
   }
+  G.time_init_sdl = current_time_monotonic();
 
   GAME_Init();
+  G.time_init_game = current_time_monotonic();
 
   if ok && !G.headless
     SDL_ShowWindow(G.window);
@@ -71,6 +74,8 @@ PLATFORM_Init :: ()
     log_error("Failed to initialize SDL window\n");
     exit(1);
   }
+
+  G.time_init_finished = current_time_monotonic();
 }
 
 PLATFORM_Iterate :: ()

@@ -10,6 +10,13 @@ GAME_State :: struct {
   dt: float; // frame delta time
   at: float; // animation time
 
+  // startup profiling
+  time_launch: Apollo_Time;
+  time_init_sdl: Apollo_Time;
+  time_init_game: Apollo_Time;
+  time_init_finished: Apollo_Time;
+  time_finished_first_iterate: Apollo_Time;
+
   // component states
   gpu: GPU_State;
   ast: ASSET_State;
@@ -258,6 +265,20 @@ GAME_Iterate :: ()
 
   // Post frame logic
   reset_temporary_storage();
+
+  if !G.time_finished_first_iterate
+  {
+    G.time_finished_first_iterate = current_time_monotonic();
+    ms :: to_milliseconds;
+
+    init_total := G.time_init_finished - G.time_launch;
+    init_sdl := G.time_init_sdl - G.time_launch;
+    init_game := G.time_init_game - G.time_init_sdl;
+    log("Init Total: %ms; Init SDL: %ms; Init Game: %ms", ms(init_total), ms(init_sdl), ms(init_game));
+
+    first_iter := G.time_finished_first_iterate - G.time_init_finished;
+    log("First iteration (excluding init): %ms", ms(first_iter));
+  }
 
   if G.headless
   {

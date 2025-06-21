@@ -1,4 +1,5 @@
 Color32 :: #type,distinct u32;
+ColorV4 :: V4;
 
 Color32_RGBAi :: (r: u32, g: u32, b: u32, a: u32) -> Color32
 {
@@ -51,9 +52,6 @@ lerp :: (c0: Color32, c1: Color32, t: float) -> Color32
   res := Color32_RGBAf(lerped);
   return res;
 }
-
-
-ColorV4 :: V4;
 
 ColorV4_32 :: (packed: Color32) -> ColorV4
 {
