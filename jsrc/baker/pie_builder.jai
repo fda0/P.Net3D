@@ -48,7 +48,7 @@ PIE_FinalizeBuilder :: ()
   PIE_ListSetValue(*header.links, links);
 
   // Calculate hash
-  hashable_file := STR_Range(header.(*u8) + size_of(PIE_Header), file.current_point);
+  hashable_file := STR_Range(header.(*u8) + size_of(type_of(PIE_Header.file_hash)), file.current_point);
   header.file_hash = Hash64Any(PIE_MAGIC_HASH_SEED, hashable_file);
 }
 

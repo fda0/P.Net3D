@@ -45,7 +45,7 @@ main :: ()
   }
 
   PIE_FinalizeBuilder();
-  PIE_SaveToFile("jai_data.pie");
+  PIE_SaveToFile("data.pie");
 }
 
 BK_State :: struct
