@@ -219,7 +219,7 @@ PIE_ListSetString :: (list: *PIE_ListT($LT), str: string)
   PIE_ListEnd();
 }
 
-PIE_FileSetPrint :: (list: *PIE_ListT($LT), format_string: string, args: .. Any)
+PIE_ListSetPrint :: (list: *PIE_ListT($LT), format_string: string, args: .. Any)
 {
   #assert(LT == u8);
   PIE_ListStart(list);

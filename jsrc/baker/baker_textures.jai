@@ -55,7 +55,7 @@ BK_TEX_LoadPaths :: (pie_material: *PIE_Material, paths: [] string)
     for * files
     {
       lod_dim := Vec2(s32).{orig_width, orig_height};
-      for lod_index: MakeRange(lods_count)
+      for lod_index: MakeRange(1, lods_count)
       {
         Check(lod_dim.x > 1 || lod_dim.y > 1);
         lod_dim = max(lod_dim / 2, 1);
@@ -202,5 +202,34 @@ BK_TEX_LoadPaths :: (pie_material: *PIE_Material, paths: [] string)
   {
     for files
       if it.surfs[0] then SDL_DestroySurface(it.surfs[0]);
+  }
+}
+
+BK_TEX_LoadPBRs :: (tex_name: string, specular_color: Color32)
+{
+  // Allocate and prepare PIE_Material & array of PIE_Texture
+  pie_material := array_add(*B.pie.materials);
+  BK_SetDefaultsPIEMaterial(pie_material);
+
+  PIE_ListSetPrint(*pie_material.name, "tex.%", tex_name);
+  pie_material.params.specular = xx specular_color;
+
+  {
+    auto_release_temp();
+    push_allocator(temp);
+
+    // Prepare file_paths
+    postfixes :: string.[
+      "Color.jpg",
+      "NormalGL.jpg",
+      "Roughness.jpg",
+    ];
+    file_paths: [postfixes.count] string;
+
+    for postfixes
+      file_paths[it_index] = tprint("../res/tex/%1/%1_1K-JPG_%", tex_name, it);
+
+    // Load textures
+    BK_TEX_LoadPaths(pie_material, file_paths);
   }
 }
