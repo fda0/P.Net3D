@@ -471,9 +471,40 @@ Vec2 :: struct($T: Type)
   x, y: T;
 };
 
+// vec x vec
 operator + :: (a: Vec2($T), b: Vec2(T)) -> Vec2(T) {
   return .{a.x+b.x, a.y+b.y};
 }
+operator - :: (a: Vec2($T), b: Vec2(T)) -> Vec2(T) {
+  return .{a.x-b.x, a.y-b.y};
+}
+operator * :: (a: Vec2($T), b: Vec2(T)) -> Vec2(T) {
+  return .{a.x*b.x, a.y*b.y};
+}
+operator / :: (a: Vec2($T), b: Vec2(T)) -> Vec2(T) {
+  return .{a.x/b.x, a.y/b.y};
+}
+min :: (a: Vec2($T), b: Vec2(T)) -> Vec2(T) {
+  return .{min(a.x,b.x), min(a.y,b.y)};
+}
+max :: (a: Vec2($T), b: Vec2(T)) -> Vec2(T) {
+  return .{max(a.x,b.x), max(a.y,b.y)};
+}
+
+// vec x scalar
+operator * :: (v: Vec2($T), scalar: T) -> Vec2(T) {
+  return .{v.x*scalar, v.y*scalar};
+}
+operator / :: (v: Vec2($T), scalar: T) -> Vec2(T) {
+  return .{v.x/scalar, v.y/scalar};
+}
+min :: (v: Vec2($T), scalar: T) -> Vec2(T) {
+  return .{min(v.x,scalar), min(v.y,scalar)};
+}
+max :: (v: Vec2($T), scalar: T) -> Vec2(T) {
+  return .{max(v.x,scalar), max(v.y,scalar)};
+}
+
 
 // We wrap some math operations here to change its units from radians to turns.
 // For now there is a bunch of needless unit conversions which will be eliminated

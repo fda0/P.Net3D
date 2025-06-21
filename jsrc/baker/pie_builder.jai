@@ -156,12 +156,16 @@ PIE_FileAllocArray :: (count: s64, $T: Type) -> [] T
 // FileAppend
 PIE_FileAppendValue :: (value: $T)
 {
+  using B.pie;
+  Check(!active_list_type || active_list_type == T);
   dst := PIE_FileAllocType(T);
   dst.* = value;
 }
 
 PIE_FileAppendArray :: (array: [] $T)
 {
+  using B.pie;
+  Check(!active_list_type || active_list_type == T);
   dst := PIE_FileAllocArray(array.count, T);
   memcpy(dst.data, array.data, size_of(T)*array.count);
 }
@@ -183,6 +187,7 @@ PIE_FileAppendPrint :: (format_string: string, args: .. Any)
 // ListAlloc
 PIE_ListAllocArray :: (list: *PIE_ListT($LT), count: s64, $T: Type) -> [] T
 {
+  #assert(LT == T);
   PIE_ListStart(list);
   result := PIE_FileAllocArray(count, T);
   PIE_ListEnd();
@@ -192,6 +197,7 @@ PIE_ListAllocArray :: (list: *PIE_ListT($LT), count: s64, $T: Type) -> [] T
 // ListSet
 PIE_ListSetValue :: (list: *PIE_ListT($LT), value: $T)
 {
+  #assert(LT == T);
   PIE_ListStart(list);
   PIE_FileAppendValue(value);
   PIE_ListEnd();
@@ -199,6 +205,7 @@ PIE_ListSetValue :: (list: *PIE_ListT($LT), value: $T)
 
 PIE_ListSetArray :: (list: *PIE_ListT($LT), array: [] $T)
 {
+  #assert(LT == T);
   PIE_ListStart(list);
   PIE_FileAppendArray(array);
   PIE_ListEnd();
@@ -206,6 +213,7 @@ PIE_ListSetArray :: (list: *PIE_ListT($LT), array: [] $T)
 
 PIE_ListSetString :: (list: *PIE_ListT($LT), str: string)
 {
+  #assert(LT == u8);
   PIE_ListStart(list);
   PIE_FileAppendString(str);
   PIE_ListEnd();
@@ -213,6 +221,7 @@ PIE_ListSetString :: (list: *PIE_ListT($LT), str: string)
 
 PIE_FileSetPrint :: (list: *PIE_ListT($LT), format_string: string, args: .. Any)
 {
+  #assert(LT == u8);
   PIE_ListStart(list);
   PIE_FileAppendPrint(format_string, ..args);
   PIE_ListEnd();

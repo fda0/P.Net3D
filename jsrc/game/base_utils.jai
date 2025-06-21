@@ -1,3 +1,5 @@
+#import "Bit_Operations";
+
 Kilobyte :: v => v * 1024;
 Megabyte :: v => v * 1024 * 1024;
 Gigabyte :: v => v * 1024 * 1024 * 1024;

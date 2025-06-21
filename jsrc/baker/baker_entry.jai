@@ -29,7 +29,12 @@ BK_State :: struct
 {
   pie: PIE_Builder;
 
-  // tex: BAKER_TexState;
+  tex: struct
+  {
+    // bc7enc_compress_block_params params;
+    // SDL_Surface *bc7_block_surf;
+    format: PIE_TexFormat;
+  };
 };
 B: BK_State;
 
@@ -51,6 +56,7 @@ Check :: (arg: bool, message := "", args: .. Any, loc := #caller_location) #no_d
 #import "String";
 #import "Flat_Pool";
 #import "File";
+#import "sdl3_base+image";
 #load "../game/base_utils.jai";
 #load "../game/base_math.jai";
 #load "../game/base_string.jai";
