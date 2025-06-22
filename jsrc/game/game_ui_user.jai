@@ -5,7 +5,7 @@ UI_State :: struct
     show := true;
     win_p: V2;
 
-    category: enum {switches; stats; assets; network;};
+    category: enum {stats; switches; assets; network;};
 
     // switches
     show_stats: bool;
@@ -116,18 +116,18 @@ UI_BuildDeveloperWindow :: ()
 
     // Per category body
     if #complete category == {
-      case .switches;
-      UI_Checkbox("Noclip camera", *noclip);
-      UI_Checkbox("Sun camera", *sun_camera);
-      UI_Checkbox("Show colliders", *show_colliders);
-      UI_Checkbox("Render normals", null);
-
       case .stats;
       Layers(UI_MONO_TEXT);
       CreateText(tprint("dt: %ms; fps: %", Round(G.dt*1000), Round(1.0 / G.dt)));
       CreateText(tprint("World Camera: %", G.camera_p));
       CreateText(tprint("Camera - Player: %", G.camera_p - OBJ_Get(G.client.player_key, .NETWORK).s.p));
       CreateText(tprint("Camera angles: %", G.camera_angles));
+
+      case .switches;
+      UI_Checkbox("Noclip camera", *noclip);
+      UI_Checkbox("Sun camera", *sun_camera);
+      UI_Checkbox("Show colliders", *show_colliders);
+      UI_Checkbox("Render normals", null);
 
       case .assets;
       Layers(UI_MONO_TEXT);
