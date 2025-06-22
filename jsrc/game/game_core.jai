@@ -1,6 +1,7 @@
 G: GAME_State; // Global GAME_State variable
 
-GAME_State :: struct {
+GAME_State :: struct
+{
   // core game state
   in_shutdown: bool;
   frame_number: s64;
@@ -20,6 +21,7 @@ GAME_State :: struct {
   // component states
   gpu: GPU_State;
   ast: ASSET_State;
+  hr: HOT_RELOAD_State;
   font: FONT_State;
   obj: OBJ_State;
   net: NET_State;
@@ -72,6 +74,7 @@ GAME_Init :: ()
     ASSET_InitPostGPU();
     FONT_Init();
     UI_ClearRenderCounters();
+    HOT_RELOAD_InitWatcher();
   }
 
   NET_Init();
@@ -264,6 +267,8 @@ GAME_Iterate :: ()
     ASSET_PostFrame();
   }
 
+  HOT_RELOAD_Iterate();
+
   // Post frame logic
   reset_temporary_storage();
 
@@ -275,10 +280,10 @@ GAME_Iterate :: ()
     init_total := G.time_init_finished - G.time_launch;
     init_sdl := G.time_init_sdl - G.time_launch;
     init_game := G.time_init_game - G.time_init_sdl;
-    log("Init Total: %ms; Init SDL: %ms; Init Game: %ms", ms(init_total), ms(init_sdl), ms(init_game));
+    log("[TIMING] Init Total: %ms; Init SDL: %ms; Init Game: %ms", ms(init_total), ms(init_sdl), ms(init_game));
 
     first_iter := G.time_finished_first_iterate - G.time_init_finished;
-    log("First iteration (excluding init): %ms", ms(first_iter));
+    log("[TIMING] First iteration (excluding init): %ms", ms(first_iter));
   }
 
   if G.headless
@@ -364,6 +369,7 @@ String :: #import "String";
 #load "game_animation.jai";
 #load "game_asset.jai";
 #load "game_asset_loading.jai";
+#load "game_asset_hot_reload.jai";
 #load "game_object.jai";
 #load "game_object_collider.jai";
 #load "game_network.jai";

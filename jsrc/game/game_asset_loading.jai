@@ -2,14 +2,14 @@ ASSET_InitPreGPU :: ()
 {
   using,only(err) G.ast.pie;
 
-  init(*G.ast.arena);
+  init(*G.ast.arena, Gigabyte(32));
   {
     push_allocator(G.ast.arena);
-    if !err  ASSET_LoadPieFile("data.pie");
-    if !err  ASSET_InitSkeletons();
-    if !err  ASSET_InitMaterials();
-    if !err  ASSET_InitModels();
-    if !err  ASSET_InitShaders();
+    if !err ASSET_LoadPieFile("data.pie");
+    if !err ASSET_InitSkeletons();
+    if !err ASSET_InitMaterials();
+    if !err ASSET_InitModels();
+    if !err ASSET_InitShaders();
   }
 }
 

@@ -60,7 +60,13 @@ STR_Suffix :: (str: string, count: s64) -> string
   return res;
 }
 
-STR_Match :: (a: string, b: string, flags: STR_MatchFlags) -> bool
+STR_EndsWith :: (haystack: string, needle: string, flags: STR_MatchFlags = 0) -> bool
+{
+  h := STR_Suffix(haystack, needle.count);
+  return STR_Match(h, needle, flags);
+}
+
+STR_Match :: (a: string, b: string, flags: STR_MatchFlags = 0) -> bool
 {
   result := false;
   if (a.count == b.count || flags & .RightSideSloppy)

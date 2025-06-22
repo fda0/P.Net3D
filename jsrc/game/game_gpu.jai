@@ -93,10 +93,6 @@ GPU_Init :: ()
     G.gpu.sample_count = .SDL_GPU_SAMPLECOUNT_4;
   }
 
-  color_desc := SDL_GPUColorTargetDescription.{
-    format = SDL_GetGPUSwapchainTextureFormat(G.gpu.device, G.window),
-  };
-
   // Texture sampler
   {
     sampler_info := SDL_GPUSamplerCreateInfo.{
@@ -111,6 +107,63 @@ GPU_Init :: ()
     };
     G.gpu.mesh_tex_sampler = SDL_CreateGPUSampler(G.gpu.device, *sampler_info);
   }
+
+  G.gpu.dummy_instance_buffer = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
+    xx Kilobyte(1), "Dummy instance storage buffer");
+
+  // Shadow map
+  {
+    G.gpu.shadow_tex = GPU_CreateDepthTexture(GPU_SHADOW_MAP_DIM, GPU_SHADOW_MAP_DIM, true);
+    G.gpu.dummy_shadow_tex = GPU_CreateDepthTexture(16, 16, true);
+
+    sampler_info := SDL_GPUSamplerCreateInfo.{
+      min_filter = .SDL_GPU_FILTER_LINEAR,
+      mag_filter = .SDL_GPU_FILTER_LINEAR,
+      mipmap_mode = .SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
+      address_mode_u = .SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+      address_mode_v = .SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+      address_mode_w = .SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
+      min_lod = 0,
+      max_lod = 100,
+    };
+    G.gpu.shadow_sampler = SDL_CreateGPUSampler(G.gpu.device, *sampler_info);
+  }
+
+  // UI sampler
+  {
+    sampler_info := SDL_GPUSamplerCreateInfo.{
+      min_filter = .SDL_GPU_FILTER_LINEAR,
+      mag_filter = .SDL_GPU_FILTER_LINEAR,
+    };
+    G.gpu.ui.gpu_atlas_sampler = SDL_CreateGPUSampler(G.gpu.device, *sampler_info);
+  }
+
+  // UI buffers
+  {
+    G.gpu.ui.gpu_indices =
+    GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, size_of(type_of(G.gpu.ui.indices)), "UI Index Buffer");
+    G.gpu.ui.gpu_shape_buffer =
+    GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, size_of(type_of(G.gpu.ui.shapes)), "UI Shapes Storage Buffer");
+    G.gpu.ui.gpu_clip_buffer =
+    GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, size_of(type_of(G.gpu.ui.clips)), "UI Clips Storage Buffer");
+  }
+
+  GPU_InitPipelines();
+  GPU_ResizeFramebuffer();
+}
+
+GPU_InitPipelines :: ()
+{
+  // Release pipelines if they exist
+  {
+    for G.gpu.world_pipelines
+      SDL_ReleaseGPUGraphicsPipeline(G.gpu.device, it);
+    SDL_ReleaseGPUGraphicsPipeline(G.gpu.device, G.gpu.ui_pipeline);
+  }
+
+  color_desc := SDL_GPUColorTargetDescription.{
+    format = SDL_GetGPUSwapchainTextureFormat(G.gpu.device, G.window),
+  };
 
   // WORLD pipeline
   {
@@ -230,46 +283,6 @@ GPU_Init :: ()
     SDL_ReleaseGPUShader(G.gpu.device, fragment_shader);
   }
 
-  G.gpu.dummy_instance_buffer = GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ,
-    xx Kilobyte(1), "Dummy instance storage buffer");
-
-  // Shadow map
-  {
-    G.gpu.shadow_tex = GPU_CreateDepthTexture(GPU_SHADOW_MAP_DIM, GPU_SHADOW_MAP_DIM, true);
-    G.gpu.dummy_shadow_tex = GPU_CreateDepthTexture(16, 16, true);
-
-    sampler_info := SDL_GPUSamplerCreateInfo.{
-      min_filter = .SDL_GPU_FILTER_LINEAR,
-      mag_filter = .SDL_GPU_FILTER_LINEAR,
-      mipmap_mode = .SDL_GPU_SAMPLERMIPMAPMODE_LINEAR,
-      address_mode_u = .SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
-      address_mode_v = .SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
-      address_mode_w = .SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE,
-      min_lod = 0,
-      max_lod = 100,
-    };
-    G.gpu.shadow_sampler = SDL_CreateGPUSampler(G.gpu.device, *sampler_info);
-  }
-
-  // UI sampler
-  {
-    sampler_info := SDL_GPUSamplerCreateInfo.{
-      min_filter = .SDL_GPU_FILTER_LINEAR,
-      mag_filter = .SDL_GPU_FILTER_LINEAR,
-    };
-    G.gpu.ui.gpu_atlas_sampler = SDL_CreateGPUSampler(G.gpu.device, *sampler_info);
-  }
-
-  // UI buffers
-  {
-    G.gpu.ui.gpu_indices =
-    GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_INDEX, size_of(type_of(G.gpu.ui.indices)), "UI Index Buffer");
-    G.gpu.ui.gpu_shape_buffer =
-    GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, size_of(type_of(G.gpu.ui.shapes)), "UI Shapes Storage Buffer");
-    G.gpu.ui.gpu_clip_buffer =
-    GPU_CreateBuffer(SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, size_of(type_of(G.gpu.ui.clips)), "UI Clips Storage Buffer");
-  }
-
   // UI pipeline
   {
     binary_vs := ASSET_GetShader(.UI_VS);
@@ -337,8 +350,6 @@ GPU_Init :: ()
     SDL_ReleaseGPUShader(G.gpu.device, vertex_shader);
     SDL_ReleaseGPUShader(G.gpu.device, fragment_shader);
   }
-
-  GPU_ResizeFramebuffer();
 }
 
 GPU_Iterate :: ()

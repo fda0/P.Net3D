@@ -238,5 +238,6 @@ ASSET_AnimNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index:s32, 
 // Shader
 ASSET_GetShader :: (type: ASSET_ShaderType) -> string
 {
+  if xx type >= G.ast.shaders.count then return "";
   return G.ast.shaders[type];
 }
