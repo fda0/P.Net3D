@@ -1,4 +1,4 @@
-LOG_RUN :: true;
+LOG_RUN :: false;
 BUILD_DIRECTORY :: "build";
 
 #run build();
@@ -9,23 +9,56 @@ build :: ()
   make_directory_if_it_does_not_exist(BUILD_DIRECTORY);
 
   // Parse command-line arguments
-  clean_sdl := false;
-  build_sdl := false;
-  build_cgltf := false;
+  kill_processes := false;
+  clean_targets: enum_flags {
+    BUILD;
+    SDL;
+    ALL :: ~0;
+  };
+  build_targets: enum_flags {
+    TREASURE;
+    BAKER;
+    SDL;
+    CGLTF;
+    ALL :: ~0;
+  };
 
   options := get_build_options();
   for options.compile_time_command_line
   {
     if it == {
-      case "clean_sdl"; clean_sdl = true;
-      case "sdl";       build_sdl = true;
-      case "cgltf";     build_cgltf = true;
-      case "kill";      Run("raddbg --ipc kill_all"); // @todo use OS to kill processes
-      case; log_error("Unknow argument: %", it); exit(1);
+      case "kill";        kill_processes = true;
+      case "clean_sdl";   clean_targets |= .SDL;
+      case "clean_build"; clean_targets |= .BUILD;
+      case "clean_all";   clean_targets |= .ALL;
+      case "treasure";    build_targets |= .TREASURE;
+      case "baker";       build_targets |= .BAKER;
+      case "sdl";         build_targets |= .SDL;
+      case "cgltf";       build_targets |= .CGLTF;
+      case "build_all";   build_targets |= .ALL;
+      case; log_error("Unknown argument: %", it); exit(1);
     }
   }
 
-  if clean_sdl
+  if build_targets == 0
+  {
+    build_targets = .TREASURE | .BAKER;
+    log("No build targets provided. Adding defaults: treasure baker");
+  }
+
+  if kill_processes
+  {
+    Run("taskkill /im Treasure.exe", silent=true);
+    Run("taskkill /im Baker.exe", silent=true);
+  }
+
+  if clean_targets & .BUILD
+  {
+    log("- deleting build directory -");
+    delete_directory("build");
+  }
+
+  if clean_targets & .SDL
   {
     log("- deleting SDL build directories -");
     delete_directory("libs/SDL/build");
@@ -34,7 +67,7 @@ build :: ()
     delete_directory("libs/SDL_ttf/build");
   }
 
-  if build_sdl
+  if build_targets & .SDL
   {
     error_message = "Encountered an error when building SDL3 & generating bindings.";
 
@@ -71,7 +104,6 @@ build :: ()
                                  optimizations = .DEBUG,
                                  base_directory = "libs/",
                                  output_filename = "sdl3_base+image.jai"}));
-    exit(0);
   }
 
   // copy SDL dll dependencies into build directory if missing
@@ -84,25 +116,27 @@ build :: ()
     for copies if !file_exists(it.dst) then copy_file(it.src, it.dst);
   }
 
-  if build_cgltf
+  if build_targets & .CGLTF
   {
     CGLTF :: #import,file "jsrc/bindings/build_cgltf.jai";
     CGLTF.Build();
-    exit(0);
   }
 
-  // @todo put these workspaces on separate threads
-  // @todo someway to auto-launch baker in the background?
-  // @todo baker should have an option to be long-running background process in the future (for hot-reloading)
-  Build(.{workspace_name = "Baker",
-          output_name = "Baker",
-          entry_file = "jsrc/baker/baker_entry.jai",
-          icon_path = "res/ico/cook.ico"});
+  if build_targets & .BAKER
+  {
+    Build(.{workspace_name = "Baker",
+            output_name = "Baker",
+            entry_file = "jsrc/baker/baker_entry.jai",
+            icon_path = "res/ico/cook.ico"});
+  }
 
-  Build(.{workspace_name = "Game",
-          output_name = "Treasure",
-          entry_file = "jsrc/game/game_sdl_entry.jai",
-          icon_path = "res/ico/coin.ico"});
+  if build_targets & .TREASURE
+  {
+    Build(.{workspace_name = "Treasure",
+            output_name = "Treasure",
+            entry_file = "jsrc/game/game_sdl_entry.jai",
+            icon_path = "res/ico/coin.ico"});
+  }
 
   MessageLoop();
 }
@@ -129,6 +163,7 @@ Build :: (using config: BuildConfig)
   options := get_build_options(w);
   options.output_path = BUILD_DIRECTORY;
   options.output_executable_name = output_name;
+  options.text_output_flags = .OUTPUT_TIMING_INFO;
 
   modules_path: [..] string;
   array_add(*modules_path, "libs/");
@@ -181,10 +216,10 @@ MessageLoop :: ()
   }
 }
 
-Run :: (args: string, work_dir := "") -> success:bool
+Run :: (args: string, work_dir := "", silent := false) -> success:bool
 {
   if LOG_RUN log("Run(`%`, `%`);", args, work_dir);
-  return run_command(..break_command_into_strings(args), working_directory=work_dir).exit_code == 0;
+  return run_command(..break_command_into_strings(args), working_directory=work_dir, capture_and_return_output=silent).exit_code == 0;
 }
 
 translate_precompiled_shader_headers :: ()
