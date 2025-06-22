@@ -77,7 +77,7 @@ GPU_BATCH_TargetMatch :: (a: GPU_BATCH_Target, b: GPU_BATCH_Target) -> bool
 GPU_BATCH_FindBundle :: (target: GPU_BATCH_Target) -> *GPU_Batch
 {
   batch: *GPU_Batch;
-  for 0..G.gpu.mem.batches_count-1
+  for MakeRange(G.gpu.mem.batches_count)
   {
     search := *G.gpu.mem.batches[it];
     if (GPU_BATCH_TargetMatch(search.target, target))
@@ -270,7 +270,7 @@ GPU_BATCH_UploadAllBatches :: (cmd: *SDL_GPUCommandBuffer)
 {
   copy_pass := SDL_BeginGPUCopyPass(cmd);
 
-  for batch_index: 0..G.gpu.mem.batches_count-1
+  for batch_index: MakeRange(G.gpu.mem.batches_count)
   {
     batch := *G.gpu.mem.batches[batch_index];
     GPU_BATCH_UploadBatch(copy_pass, batch);
@@ -281,7 +281,7 @@ GPU_BATCH_UploadAllBatches :: (cmd: *SDL_GPUCommandBuffer)
 
 GPU_BATCH_PostFrame :: ()
 {
-  for batch_index: 0..G.gpu.mem.batches_count-1
+  for batch_index: MakeRange(G.gpu.mem.batches_count)
   {
     batch := *G.gpu.mem.batches[batch_index];
     assert(!batch.transfer_first);
@@ -307,7 +307,7 @@ GPU_BATCH_Init :: ()
 
 GPU_BATCH_Deinit :: ()
 {
-  for batch_index: 0..G.gpu.mem.batches_count-1
+  for batch_index: MakeRange(G.gpu.mem.batches_count)
   {
     batch := *G.gpu.mem.batches[batch_index];
     if (batch.buffer)

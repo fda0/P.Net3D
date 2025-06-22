@@ -370,7 +370,7 @@ GPU_Iterate :: ()
     // Dynamic meshes
     //
     {
-      for batch_index: 0..G.gpu.mem.batches_count-1
+      for batch_index: MakeRange(G.gpu.mem.batches_count)
       {
         gpu_verts := *G.gpu.mem.batches[batch_index];
         if (gpu_verts.target.type != .MeshVertices)
@@ -413,7 +413,7 @@ GPU_Iterate :: ()
     //
     // Models
     //
-    for batch_index: 0..G.gpu.mem.batches_count-1
+    for batch_index: MakeRange(G.gpu.mem.batches_count)
     {
       gpu_instances := *G.gpu.mem.batches[batch_index];
       if gpu_instances.target.type != .ModelInstances  continue;

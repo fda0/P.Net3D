@@ -49,7 +49,7 @@ OBJ_UpdateColliderNormals :: (obj: *Object)
     normals := *obj.l.collider_normals;
 
     elem_count := verts.values.count;
-    for 0..elem_count-1
+    for MakeRange(elem_count)
     {
       next_it := (it + 1) % elem_count;
       normals.values[it] = NormalFromSegment(verts.values[it], verts.values[next_it]);

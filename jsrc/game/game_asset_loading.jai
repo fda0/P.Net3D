@@ -240,9 +240,9 @@ ASSET_InitMaterials :: ()
       {
         map: *u32 = SDL_MapGPUTransferBuffer(G.gpu.device, trans_buf, false);
         pixel := map;
-        for y: 0..dim-1
+        for y: MakeRange(dim)
         {
-          for x: 0..dim-1
+          for x: MakeRange(dim)
           {
             pixel[0] = xx ifx x & y & and_mask then 0xff000000 else 0xffFF00FF;
             pixel += 1;

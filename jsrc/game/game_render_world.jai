@@ -156,7 +156,7 @@ WORLD_DrawObjects :: ()
         if (face_count == 1) // generate top mesh only
           cube_verts_map += 6*WORLD_Dir.T.(u32);
 
-        for mesh_index: 0..mesh_verts_count-1
+        for mesh_index: MakeRange(mesh_verts_count)
         {
           cube_index := cube_verts_map[mesh_index];
           mesh_verts[mesh_index].p = cube_verts[cube_index];
@@ -170,7 +170,7 @@ WORLD_DrawObjects :: ()
       w2 := length(collision.values[2] - collision.values[3]);
       w3 := length(collision.values[3] - collision.values[0]);
 
-      for face_i: 0..face_count-1
+      for face_i: MakeRange(face_count)
       {
         face_dir := face_i.(WORLD_Dir);
         if (face_count == 1) face_dir = .T;
@@ -220,7 +220,7 @@ WORLD_DrawObjects :: ()
           case .B; normal = V3.{0,0,-1};
         }
 
-        for vert_i: 0..vertices_per_face-1
+        for vert_i: MakeRange(vertices_per_face)
         {
           i := (face_i * vertices_per_face) + vert_i;
           mesh_verts[i].uv = face_uvs[vert_i];

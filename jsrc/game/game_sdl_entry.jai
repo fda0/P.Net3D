@@ -118,7 +118,7 @@ PLATFORM_Iterate :: ()
 
       num_keys: s32;
       key_states := SDL_GetKeyboardState(*num_keys);
-      for 0..num_keys-1
+      for MakeRange(num_keys)
         KEY_Update(xx it, key_states[it]);
     }
 

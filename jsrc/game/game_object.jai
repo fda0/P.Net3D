@@ -146,7 +146,7 @@ OBJ_Init :: ()
     for wall: 0..3
     {
       len := 32;
-      for i: 0..len-1
+      for i: MakeRange(len)
       {
         d := 0.5;
         x := ifx wall <= 1 then i else (ifx wall == 2 then 0 else len);
@@ -168,9 +168,9 @@ OBJ_Init :: ()
     x_count := 8;
     y_count := 8;
 
-    for y: 0..y_count-1
+    for y: MakeRange(y_count)
     {
-      for x: 0..x_count-1
+      for x: MakeRange(x_count)
       {
         x_half_count := x_count/2;
         y_half_count := y_count/2;
