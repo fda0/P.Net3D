@@ -1,5 +1,8 @@
+// @speed - multithread
+// @speed - cache
 main :: ()
 {
+  Timer("init");
   B.tex.format = .R8G8B8A8;
 
   PIE_InitBuilder();
@@ -21,6 +24,7 @@ main :: ()
 
     BK_GLTF_Load("../res/models/Flag.glb", BK_GLTF_Spec.{height = 1.0, rot = rot_x});
     BK_GLTF_Load("../res/models/tree_low-poly/scene.gltf", BK_GLTF_Spec.{disable_z0 = true, height = 5.0, name = "Tree"});
+    Timer("GLTF models loaded");
   }
 
   // Load texture files
@@ -42,6 +46,7 @@ main :: ()
     BK_TEX_LoadPBRs("Tiles087", spec_big);
     BK_TEX_LoadPBRs("Tiles101", spec_big);
     BK_TEX_LoadPBRs("TestPBR001", spec_mid);
+    Timer("PBR textures loaded");
   }
 
   // Compile shaders
@@ -85,10 +90,12 @@ main :: ()
     PIE_ListSetArray(*array_add(*B.pie.shaders).data, world_ps);
     PIE_ListSetArray(*array_add(*B.pie.shaders).data, ui_vs);
     PIE_ListSetArray(*array_add(*B.pie.shaders).data, ui_ps);
+    Timer("Shaders compiled");
   }
 
   PIE_FinalizeBuilder();
   PIE_SaveToFile("data.pie");
+  Timer("Saved to file");
 }
 
 BK_State :: struct
@@ -101,6 +108,9 @@ BK_State :: struct
     // SDL_Surface *bc7_block_surf;
     format: PIE_TexFormat;
   };
+
+  init_time: Apollo_Time;
+  last_time: Apollo_Time;
 };
 B: BK_State;
 
@@ -115,19 +125,37 @@ Check :: (arg: bool, message := "", args: .. Any, loc := #caller_location) #no_d
   if !arg && assert_helper(message, ..args, loc) then debug_break();
 }
 
-#load "pie_builder.jai";
-#load "baker_gltf_models.jai";
-#load "baker_textures.jai";
+Timer :: (label: string)
+{
+  new_time := current_time_monotonic();
+  if !B.init_time
+  {
+    B.init_time = new_time;
+    B.last_time = new_time;
+  }
+  else
+  {
+    delta_itself := new_time - B.last_time;
+    delta_total := new_time - B.init_time;
+    ms :: to_milliseconds;
+    log("[Timer %] itself: %ms; total: %ms", label, ms(delta_itself), ms(delta_total));
+    B.last_time = new_time;
+  }
+}
+
 #import "Basic";
 #import "String";
 #import "Flat_Pool";
 #import "File";
 #import "sdl3_base+image";
-#load "../game/base_utils.jai";
-#load "../game/base_math.jai";
-#load "../game/base_string.jai";
-#load "../game/base_hash.jai";
-#load "../game/base_array.jai";
-#load "../game/pie_file_format.jai";
-#load "../game/game_render_world_vertex.jai";
-#load "../game/game_color.jai"; // @todo rename to base_color
+#load "baker_gltf_models.jai";
+#load "baker_textures.jai";
+#load "pie_builder.jai";
+#load "../shared/base_utils.jai";
+#load "../shared/base_math.jai";
+#load "../shared/base_string.jai";
+#load "../shared/base_hash.jai";
+#load "../shared/base_array.jai";
+#load "../shared/base_color.jai";
+#load "../shared/pie_file_format.jai";
+#load "../shared/game_render_world_shared.jai";

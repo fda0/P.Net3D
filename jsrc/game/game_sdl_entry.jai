@@ -176,7 +176,7 @@ SDL_BUTTON_RMASK : SDL_MouseButtonFlags : (1 << 2);
 using,map(ImportMapForSDL) SDL :: #import "sdl3_base+net";
 ImportMapForSDL :: (names: [] string)
 {
-  S :: #import,file "base_string.jai";
+  S :: #import,file "../shared/base_string.jai";
   B :: #import "Basic";
 
   for *names

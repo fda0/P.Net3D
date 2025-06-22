@@ -348,18 +348,18 @@ GAME_AutoLayoutApply :: (code: ..Code) #expand
 #import "Thread";
 String :: #import "String";
 
-#load "base_utils.jai";
-#load "base_string.jai";
-#load "base_memory.jai";
-#load "base_hash.jai";
-#load "base_math.jai";
-
-#load "pie_file_format.jai";
+#load "../shared/base_utils.jai";
+#load "../shared/base_string.jai";
+#load "../shared/base_memory.jai";
+#load "../shared/base_hash.jai";
+#load "../shared/base_math.jai";
+#load "../shared/base_color.jai";
+#load "../shared/pie_file_format.jai";
+#load "../shared/game_render_world_shared.jai";
 
 #load "game_ui_text.jai";
 #load "game_ui_core.jai";
 #load "game_ui_user.jai";
-#load "game_color.jai";
 #load "game_key.jai";
 #load "game_animation.jai";
 #load "game_asset.jai";
@@ -373,7 +373,6 @@ String :: #import "String";
 #load "game_gpu.jai";
 #load "game_gpu_batch.jai";
 #load "game_render_world.jai";
-#load "game_render_world_vertex.jai";
 #load "game_render_ui.jai";
 #load "game_font.jai";
 #load "game_util.jai";
