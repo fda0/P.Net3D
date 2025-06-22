@@ -9,7 +9,7 @@ PIE_List :: struct
   count: u32; // @todo simplify: remove this
   offset: u32;
   size: u32;
-};
+}
 
 PIE_ListT :: struct($T: Type)
 {
@@ -21,21 +21,21 @@ PIE_AnimationChannelType :: enum u32
   Translation;
   Rotation;
   Scale;
-};
+}
 
 PIE_AnimationChannel :: struct
 {
   joint_index30_type2: u32;  // [u32 | (PIE_AnimationChannelType << 30)] // @todo this is silly, simplify
   inputs: PIE_ListT(float);  // float * count
   outputs: PIE_ListT(float); // float * (3 or 4 [V3 or Quat]) * count
-};
+}
 
 PIE_Animation :: struct
 {
   name: PIE_ListT(u8);
   t_min, t_max: float;
   channels: PIE_ListT(PIE_AnimationChannel);
-};
+}
 
 PIE_Skeleton :: struct
 {
@@ -50,16 +50,16 @@ PIE_Skeleton :: struct
 
   anims: PIE_ListT(PIE_Animation);
   root_transform: Mat4;
-};
+}
 
 PIE_Mesh :: struct
 {
   material_index: u32;
 
-  vertices_start_index: s32;
-  indices_start_index: s32;
-  indices_count: s32;
-};
+  vertices_start_index: u32;
+  indices_start_index: u32;
+  indices_count: u32;
+}
 
 PIE_Model :: struct
 {
@@ -67,7 +67,7 @@ PIE_Model :: struct
   is_skinned: bool;
   skeleton_index: u32 ; // for skinned only
   meshes: PIE_ListT(PIE_Mesh);
-};
+}
 
 PIE_MaterialTexSection :: struct
 {
@@ -78,19 +78,19 @@ PIE_MaterialTexSection :: struct
   // relative to full_data of Material
   data_offset: u32;
   data_size: u32;
-};
+}
 
 PIE_TexFormat :: enum u32
 {
   Empty;
   R8G8B8A8;
   BC7_RGBA;
-};
+}
 
 PIE_MaterialFlags :: enum_flags u32
 {
   HasAlpha;
-};
+}
 
 PIE_MaterialParams :: struct
 {
@@ -98,7 +98,7 @@ PIE_MaterialParams :: struct
   diffuse: u32;
   specular: u32;
   roughness: float; // [0:1]
-};
+}
 
 PIE_Material :: struct
 {
@@ -114,7 +114,12 @@ PIE_Material :: struct
     full_data: PIE_ListT(u8);
     sections: PIE_ListT(PIE_MaterialTexSection);
   };
-};
+}
+
+PIE_Shader :: struct
+{
+  data: PIE_ListT(u8);
+}
 
 PIE_Links :: struct
 {
@@ -127,11 +132,13 @@ PIE_Links :: struct
 
   skeletons: PIE_ListT(PIE_Skeleton);
   materials: PIE_ListT(PIE_Material);
-};
+
+  shaders: PIE_ListT(PIE_Shader);
+}
 
 PIE_MAGIC_HASH_SEED :: (0xB5EADC0D + 0); // @todo use 64 bits
 PIE_Header :: struct
 {
   file_hash: u64; // of everything after itself (the first 8 bytes) - seeded with PIE_MAGIC_HASH_SEED
   links: PIE_ListT(PIE_Links);
-};
+}

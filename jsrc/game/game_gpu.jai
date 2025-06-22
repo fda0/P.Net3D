@@ -114,6 +114,9 @@ GPU_Init :: ()
 
   // WORLD pipeline
   {
+    binary_vs := ASSET_GetShader(.WORLD_VS);
+    binary_ps := ASSET_GetShader(.WORLD_PS);
+
     vertex_shader: *SDL_GPUShader;
     {
       create_info := SDL_GPUShaderCreateInfo.{
@@ -124,8 +127,8 @@ GPU_Init :: ()
         num_uniform_buffers = 1,
 
         format = SDL_GPU_SHADERFORMAT_DXIL,
-        code = g_WORLD_DxShaderVS.data,
-        code_size = size_of(type_of(g_WORLD_DxShaderVS)),
+        code = binary_vs.data,
+        code_size = xx binary_vs.count,
         entrypoint = "World_DxShaderSkinnedVS",
       };
       vertex_shader = SDL_CreateGPUShader(G.gpu.device, *create_info);
@@ -141,8 +144,8 @@ GPU_Init :: ()
         num_uniform_buffers = 1,
 
         format = SDL_GPU_SHADERFORMAT_DXIL,
-        code = g_WORLD_DxShaderPS.data,
-        code_size = size_of(type_of(g_WORLD_DxShaderPS)),
+        code = binary_ps.data,
+        code_size = xx binary_ps.count,
         entrypoint = "World_DxShaderSkinnedPS",
       };
       fragment_shader = SDL_CreateGPUShader(G.gpu.device, *create_info);
@@ -269,6 +272,9 @@ GPU_Init :: ()
 
   // UI pipeline
   {
+    binary_vs := ASSET_GetShader(.UI_VS);
+    binary_ps := ASSET_GetShader(.UI_PS);
+
     vertex_shader: *SDL_GPUShader;
     {
       create_info := SDL_GPUShaderCreateInfo.{
@@ -279,8 +285,8 @@ GPU_Init :: ()
         num_uniform_buffers = 1,
 
         format = SDL_GPU_SHADERFORMAT_DXIL,
-        code = g_UI_DxShaderVS.data,
-        code_size = size_of(type_of(g_UI_DxShaderVS)),
+        code = binary_vs.data,
+        code_size = xx binary_vs.count,
         entrypoint = "UI_DxShaderVS",
       };
       vertex_shader = SDL_CreateGPUShader(G.gpu.device, *create_info);
@@ -296,8 +302,8 @@ GPU_Init :: ()
         num_uniform_buffers = 0,
 
         format = SDL_GPU_SHADERFORMAT_DXIL,
-        code = g_UI_DxShaderPS.data,
-        code_size = size_of(type_of(g_UI_DxShaderPS)),
+        code = binary_ps.data,
+        code_size = xx binary_ps.count,
         entrypoint = "UI_DxShaderPS",
       };
       fragment_shader = SDL_CreateGPUShader(G.gpu.device, *create_info);
@@ -446,8 +452,8 @@ GPU_Iterate :: ()
           SDL_BindGPUFragmentSamplers(pass, 1, *binding_sampl, 1);
         }
 
-        SDL_DrawGPUIndexedPrimitives(pass, xx mesh.indices_count, gpu_instances.element_count,
-          xx mesh.indices_start_index, mesh.vertices_start_index, 0);
+        SDL_DrawGPUIndexedPrimitives(pass, mesh.indices_count, gpu_instances.element_count,
+          mesh.indices_start_index, xx mesh.vertices_start_index, 0);
       }
     }
   }

@@ -154,7 +154,7 @@ ANIM_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: floa
   return time;
 }
 
-ANIM_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] Mat4, joint_index: s32, parent_transform: Mat4)
+ANIM_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] Mat4, joint_index: u32, parent_transform: Mat4)
 {
   if (joint_index >= skeleton.joints_count)
   {
@@ -165,7 +165,7 @@ ANIM_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] Mat4, 
   mats[joint_index] = parent_transform * mats[joint_index];
 
   child_range := skeleton.child_index_ranges[joint_index];
-  for child_range.min..child_range.max-1
+  for child_range
   {
     if it >= skeleton.joints_count
     {

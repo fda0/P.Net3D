@@ -18,6 +18,17 @@ ASSET_State :: struct
   model_vertices: *SDL_GPUBuffer;
   model_indices: *SDL_GPUBuffer;
   skeletons: [] ASSET_Skeleton;
+
+  // Shaders
+  shaders: [] string;
+};
+
+ASSET_ShaderType :: enum
+{
+  WORLD_VS;
+  WORLD_PS;
+  UI_VS;
+  UI_PS;
 };
 
 ASSET_Type :: enum
@@ -104,15 +115,15 @@ ASSET_Material :: struct
 ASSET_Mesh :: struct
 {
   material: MATERIAL_Key;
-  vertices_start_index: s32;
-  indices_start_index: s32;
-  indices_count: s32;
+  vertices_start_index: u32;
+  indices_start_index: u32;
+  indices_count: u32;
 };
 
 ASSET_AnimationChannel :: struct
 {
   type: PIE_AnimationChannelType;
-  joint_index: s32;
+  joint_index: u32;
   inputs: [] float;
   outputs: [] float; // .count = inputs.count * (ifx type == .Rotation then 4 else 3);
 };
@@ -129,11 +140,11 @@ ASSET_Skeleton :: struct
   root_transform: Mat4;
   animations: [] ASSET_Animation;
 
-  joints_count: s32; // all arrays below have count equal to joints_count
+  joints_count: u32; // all arrays below have count equal to joints_count
   joint_names: [] string;
   inverse_matrices: [] Mat4; // inverse bind matrices
-  child_index_buffer: [] s32;
-  child_index_ranges: [] Range(s32);
+  child_index_buffer: [] u32;
+  child_index_ranges: [] Range(u32);
 
   bind_translations: [] V3;
   bind_rotations: [] Quat;
@@ -157,6 +168,7 @@ ASSET_PieFile :: struct
   links: *PIE_Links;
   models: [] PIE_Model;
   materials: [] PIE_Material;
+  shaders: [] PIE_Shader;
 };
 
 ASSET_MaterialIsNil :: (a: *ASSET_Material) -> bool
@@ -221,4 +233,10 @@ ASSET_AnimNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index:s32, 
       return xx it_index, true;
   }
   return 0, false;
+}
+
+// Shader
+ASSET_GetShader :: (type: ASSET_ShaderType) -> string
+{
+  return G.ast.shaders[type];
 }

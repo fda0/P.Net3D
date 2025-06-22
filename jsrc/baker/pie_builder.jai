@@ -11,6 +11,8 @@ PIE_Builder :: struct
   models: [..] PIE_Model;
   skeletons: [..] PIE_Skeleton;
   materials: [..] PIE_Material;
+
+  shaders: [..] PIE_Shader;
 };
 
 //
@@ -42,6 +44,7 @@ PIE_FinalizeBuilder :: ()
   PIE_ListSetArray(*links.models.list, models);
   PIE_ListSetArray(*links.skeletons, skeletons);
   PIE_ListSetArray(*links.materials, materials);
+  PIE_ListSetArray(*links.shaders, shaders);
 
   // Prepare PIE_Header
   header := file.memory_base.(*PIE_Header);

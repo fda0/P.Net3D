@@ -1,4 +1,4 @@
-ASSET_Init :: ()
+ASSET_InitPreGPU :: ()
 {
   using,only(err) G.ast.pie;
 
@@ -9,7 +9,13 @@ ASSET_Init :: ()
     if !err  ASSET_InitSkeletons();
     if !err  ASSET_InitMaterials();
     if !err  ASSET_InitModels();
+    if !err  ASSET_InitShaders();
   }
+}
+
+ASSET_InitPostGPU :: ()
+{
+  using,only(err) G.ast.pie;
 
   // Texture thread init
   if !err
@@ -38,6 +44,13 @@ ASSET_PostFrame :: ()
     if flags & .LOADED
       loaded_t = min(1.0, loaded_t + G.dt * LOAD_T_SPEED);
   }
+}
+
+ASSET_InitShaders :: ()
+{
+  G.ast.shaders = NewArray(G.ast.pie.shaders.count, string);
+  for G.ast.pie.shaders
+    G.ast.shaders[it_index] = PIE_LOAD_ListToString(it.data);
 }
 
 // TEXTURE THREAD
@@ -75,7 +88,7 @@ ASSET_LoadTextureFromPieToGPU :: (material: *ASSET_Material, material_index: s64
   gpu_full_data := PIE_LOAD_ListToString(pie_material.tex.full_data);
 
   // MaterialTextures - it contains a mapping from big buffer to individual pieces of texture layers and lods
-  pie_texture_sections := PIE_LOAD_ListToArray(pie_material.tex.sections, PIE_MaterialTexSection);
+  pie_texture_sections := PIE_LOAD_ListToArray(pie_material.tex.sections);
 
   lods_count := pie_material.tex.lods;
   generate_lods := false;
@@ -180,15 +193,17 @@ ASSET_LoadPieFile :: (file_path: string)
     tprint("Calculated hash (%) doesn't match file hash (%).", calculated_hash, pie.header.file_hash));
   if err return;
 
-  links := PIE_LOAD_ListToArray(pie.header.links, PIE_Links);
+  links := PIE_LOAD_ListToArray(pie.header.links);
   if err return;
   pie.links = links.data;
 
-  models := PIE_LOAD_ListToArray(pie.links.models.list, PIE_Model);
-  materials := PIE_LOAD_ListToArray(pie.links.materials, PIE_Material);
+  models := PIE_LOAD_ListToArray(pie.links.models.list);
+  materials := PIE_LOAD_ListToArray(pie.links.materials);
+  shaders := PIE_LOAD_ListToArray(pie.links.shaders);
   if err return;
   pie.models = models;
   pie.materials = materials;
+  pie.shaders = shaders;
 }
 
 // MATERIALS
@@ -335,7 +350,7 @@ ASSET_InitModels :: ()
       model.skeleton = *G.ast.skeletons[pie_model.skeleton_index];
     }
 
-    pie_meshes := PIE_LOAD_ListToArray(pie_model.meshes, PIE_Mesh);
+    pie_meshes := PIE_LOAD_ListToArray(pie_model.meshes);
     model.meshes = NewArray(pie_meshes.count, ASSET_Mesh);
 
     for *mesh: model.meshes
@@ -361,7 +376,7 @@ ASSET_InitSkeletons :: ()
 {
   using,only(pie) G.ast;
 
-  pie_skeletons := PIE_LOAD_ListToArray(pie.links.skeletons, PIE_Skeleton);
+  pie_skeletons := PIE_LOAD_ListToArray(pie.links.skeletons);
   G.ast.skeletons = NewArray(pie_skeletons.count, ASSET_Skeleton);
 
   for *skel: G.ast.skeletons
@@ -369,13 +384,13 @@ ASSET_InitSkeletons :: ()
     pie_skel := *pie_skeletons[it_index];
     skel.root_transform = pie_skel.root_transform;
 
-    skel.inverse_matrices   = PIE_LOAD_ListToArray(pie_skel.inverse_matrices, Mat4);
-    skel.child_index_buffer = PIE_LOAD_ListToArray(pie_skel.child_index_buffer, s32);
-    skel.child_index_ranges = PIE_LOAD_ListToArray(pie_skel.child_index_ranges, Range(s32));
-    skel.bind_translations  = PIE_LOAD_ListToArray(pie_skel.translations, V3);
-    skel.bind_rotations     = PIE_LOAD_ListToArray(pie_skel.rotations, Quat);
-    skel.bind_scales        = PIE_LOAD_ListToArray(pie_skel.scales, V3);
-    name_ranges            := PIE_LOAD_ListToArray(pie_skel.name_ranges, Range(u32));
+    skel.inverse_matrices   = PIE_LOAD_ListToArray(pie_skel.inverse_matrices);
+    skel.child_index_buffer = PIE_LOAD_ListToArray(pie_skel.child_index_buffer);
+    skel.child_index_ranges = PIE_LOAD_ListToArray(pie_skel.child_index_ranges);
+    skel.bind_translations  = PIE_LOAD_ListToArray(pie_skel.translations);
+    skel.bind_rotations     = PIE_LOAD_ListToArray(pie_skel.rotations);
+    skel.bind_scales        = PIE_LOAD_ListToArray(pie_skel.scales);
+    name_ranges            := PIE_LOAD_ListToArray(pie_skel.name_ranges);
     skel.joints_count       = xx skel.inverse_matrices.count;
     PIE_LOAD_Check(skel.joints_count == skel.inverse_matrices.count, "joints_count != inverse_matrices.count");
     PIE_LOAD_Check(skel.joints_count == skel.child_index_buffer.count, "joints_count != child_index_buffer.count");
@@ -391,7 +406,7 @@ ASSET_InitSkeletons :: ()
       it.* = STR_Substring(PIE_LOAD_File(), name_ranges[it_index].min, name_ranges[it_index].max);
 
     // Animations
-    pie_anims := PIE_LOAD_ListToArray(pie_skel.anims, PIE_Animation);
+    pie_anims := PIE_LOAD_ListToArray(pie_skel.anims);
     skel.animations = NewArray(pie_anims.count, ASSET_Animation);
 
     for *anim: skel.animations
@@ -402,23 +417,23 @@ ASSET_InitSkeletons :: ()
       anim.t_min = pie_anim.t_min;
       anim.t_max = pie_anim.t_max;
 
-      pie_channels := PIE_LOAD_ListToArray(pie_anim.channels, PIE_AnimationChannel);
+      pie_channels := PIE_LOAD_ListToArray(pie_anim.channels);
       anim.channels = NewArray(pie_channels.count, ASSET_AnimationChannel);
 
       for *chan: anim.channels
       {
         pie_chan := *pie_channels[it_index];
 
-        pie_joint_index := ((pie_chan.joint_index30_type2 << 2) >> 2).(s32);
+        pie_joint_index := ((pie_chan.joint_index30_type2 << 2) >> 2).(u32);
         pie_transform_type := cast(PIE_AnimationChannelType) (pie_chan.joint_index30_type2 >> 30);
         chan.joint_index = pie_joint_index;
         chan.type = pie_transform_type;
-        chan.inputs = PIE_LOAD_ListToArray(pie_chan.inputs, float);
+        chan.inputs = PIE_LOAD_ListToArray(pie_chan.inputs);
 
         comp_count := ifx chan.type == .Rotation then 4 else 3;
         PIE_LOAD_Check(comp_count * chan.inputs.count * size_of(float) == pie_chan.outputs.size,
           tprint("Animation channel %*%*% != %", comp_count, chan.inputs.count, size_of(float), pie_chan.outputs.size));
-        chan.outputs = PIE_LOAD_ListToArray(pie_chan.outputs, float);
+        chan.outputs = PIE_LOAD_ListToArray(pie_chan.outputs);
       }
     }
   }

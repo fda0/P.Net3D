@@ -44,6 +44,49 @@ main :: ()
     BK_TEX_LoadPBRs("TestPBR001", spec_mid);
   }
 
+  // Compile shaders
+  {
+    #import "dxc_compiler";
+
+    base_dir := "../jsrc/shader/";
+    source_flags := read_entire_file(join(base_dir, "shader_flags.h"));
+    source_util := read_entire_file(join(base_dir, "shader_util.hlsl"));
+
+    GetArgs :: (source_file: string, entry: string, shader_type: Shader_Type) -> Dxc_Shader_Compiler_Args #expand
+    {
+      source_path := join(base_dir, source_file);
+      source := read_entire_file(source_path);
+
+      full_source := join(source_flags, source_util, source);
+
+      config := Dxc_Shader_Compiler_Args.{
+        shader_name = entry,
+        shader_source = full_source,
+        shader_model_version = "6_0",
+        shader_type = shader_type,
+        entry_point = entry,
+        // defines: [] string;
+        // extra_args: [] string;
+        // add_debug_info: bool;
+        // warnings_as_error: bool;
+        // skip_optimization: bool;
+        // compile_as_spirv: bool;
+        // use_spirv_1_4: bool;
+      };
+      return config;
+    }
+
+    world_vs := DXC_Compile(GetArgs("shader_world.hlsl", "WORLD_DxShaderVS", .Vertex));
+    world_ps := DXC_Compile(GetArgs("shader_world.hlsl", "WORLD_DxShaderPS", .Fragment));
+    ui_vs := DXC_Compile(GetArgs("shader_ui.hlsl", "UI_DxShaderVS", .Vertex));
+    ui_ps := DXC_Compile(GetArgs("shader_ui.hlsl", "UI_DxShaderPS", .Fragment));
+    // @todo Things like entrypoint name could be saved into .pie file too.
+    PIE_ListSetArray(*array_add(*B.pie.shaders).data, world_vs);
+    PIE_ListSetArray(*array_add(*B.pie.shaders).data, world_ps);
+    PIE_ListSetArray(*array_add(*B.pie.shaders).data, ui_vs);
+    PIE_ListSetArray(*array_add(*B.pie.shaders).data, ui_ps);
+  }
+
   PIE_FinalizeBuilder();
   PIE_SaveToFile("data.pie");
 }
