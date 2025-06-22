@@ -6,7 +6,6 @@ build :: ()
 {
   modify_print_style();
   set_build_options_dc(.{do_output=false});
-  make_directory_if_it_does_not_exist(BUILD_DIRECTORY);
 
   // Parse command-line arguments
   kill_processes := false;
@@ -57,6 +56,7 @@ build :: ()
     log("- deleting build directory -");
     delete_directory("build");
   }
+  make_directory_if_it_does_not_exist(BUILD_DIRECTORY);
 
   if clean_targets & .SDL
   {
