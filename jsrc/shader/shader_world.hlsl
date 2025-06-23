@@ -35,28 +35,29 @@ struct WORLD_DX_Vertex
 
 struct WORLD_DX_Fragment
 {
-  V4   shadow_p   : TEXCOORD0; // position in shadow space
-  V3   world_p    : TEXCOORD1;
-  V2   uv         : TEXCOORD2;
-  Mat3 normal_rot : TEXCOORD3;
-  V4   vertex_p   : SV_Position;
+  V4   shadow_p      : TEXCOORD0; // position in shadow space
+  V3   world_p       : TEXCOORD1;
+  U32  picking_color : TEXCOORD2;
+  V2   uv            : TEXCOORD3;
+  Mat3 normal_rot    : TEXCOORD4;
+  V4   vertex_p      : SV_Position;
 };
 
-struct WORLD_DX_Instance
+struct WORLD_DX_InstanceModel
 {
   Mat4 transform;
-  U32 color;
+  U32 picking_color;
   U32 pose_offset; // in indices; unused for rigid
 };
-StructuredBuffer<WORLD_DX_Instance> InstanceBuf : register(t0);
+StructuredBuffer<WORLD_DX_InstanceModel> InstanceBuf : register(t0);
 StructuredBuffer<Mat4> SkinningPoseBuf : register(t1);
 
 WORLD_DX_Fragment WORLD_DxShaderVS(WORLD_DX_Vertex vert)
 {
   // Position
-  WORLD_DX_Instance instance;
+  WORLD_DX_InstanceModel instance;
   instance.transform = Mat4_Identity();
-  instance.color = 0;
+  instance.picking_color = ~0u;
   instance.pose_offset = 0;
 
   if (UV.flags & WORLD_FLAG_UseInstanceBuffer)
@@ -102,6 +103,7 @@ WORLD_DX_Fragment WORLD_DxShaderVS(WORLD_DX_Vertex vert)
   WORLD_DX_Fragment frag;
   frag.shadow_p = mul(UV.shadow_transform, world_p);
   frag.world_p = world_p.xyz;
+  frag.picking_color = instance.picking_color;
   frag.uv = vert.uv;
   frag.normal_rot = normal_rotation;
   frag.vertex_p = vertex_p;
@@ -116,46 +118,52 @@ SamplerState MaterialSampler : register(s1, space2);
 V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
 {
   V3 fog_color = UnpackColor32(UP.fog_color).xyz;
+  V3 material_diffuse = UnpackColor32(UP.material_diffuse).xyz;
+
+  // Load diffuse texture
+  if (UP.flags & WORLD_FLAG_SampleTexDiffuse)
+  {
+    V4 tex_diffuse_raw = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 0.f));
+    if (tex_diffuse_raw.a <= 0.1419588476419449f) // @todo this should be a material parameter
+      discard;
+
+    V3 tex_diffuse = tex_diffuse_raw.xyz;
+    tex_diffuse = lerp(fog_color, tex_diffuse, UP.material_loaded_t);
+    material_diffuse = tex_diffuse;
+  }
+
+  if (UP.flags & WORLD_FLAG_PixelEarlyExit)
+  {
+    return UnpackColor32(frag.picking_color);
+  }
+
   V3 sky_ambient = UnpackColor32(UP.sky_ambient).xyz;
   V3 sun_diffuse = UnpackColor32(UP.sun_diffuse).xyz;
   V3 sun_specular = UnpackColor32(UP.sun_specular).xyz;
-  V3 material_diffuse = UnpackColor32(UP.material_diffuse).xyz;
   V3 material_specular = UnpackColor32(UP.material_specular).xyz;
   float material_roughness = UP.material_roughness;
 
   V3 face_normal = mul(frag.normal_rot, V3(0,0,1));
   V3 pixel_normal = face_normal;
 
-  // Load data from material texture
+  // Load normal texture
+  if (UP.flags & WORLD_FLAG_SampleTexNormal)
   {
-    if (UP.flags & WORLD_FLAG_SampleTexDiffuse)
-    {
-      V4 tex_diffuse_raw = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 0.f));
-      if (tex_diffuse_raw.a <= 0.1419588476419449f)
-        discard;
+    V3 tex_normal = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 1.f)).xyz;
+    // swizzle normal components into engine format - @todo do this in asset baker
+    tex_normal.y = 1.f - tex_normal.y;
+    tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
 
-      V3 tex_diffuse = tex_diffuse_raw.xyz;
-      tex_diffuse = lerp(fog_color, tex_diffuse, UP.material_loaded_t);
-      material_diffuse = tex_diffuse;
-    }
+    tex_normal = lerp(pixel_normal, tex_normal, UP.material_loaded_t);
+    pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
+  }
 
-    if (UP.flags & WORLD_FLAG_SampleTexNormal)
-    {
-      V3 tex_normal = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 1.f)).xyz;
-      // swizzle normal components into engine format - @todo do this in asset baker
-      tex_normal.y = 1.f - tex_normal.y;
-      tex_normal = tex_normal*2.f - 1.f; // transform from [0, 1] to [-1; 1]
-
-      tex_normal = lerp(pixel_normal, tex_normal, UP.material_loaded_t);
-      pixel_normal = normalize(mul(frag.normal_rot, tex_normal));
-    }
-
-    if (UP.flags & WORLD_FLAG_SampleTexRoughness)
-    {
-      float tex_roughness = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 2.f)).x;
-      tex_roughness = lerp(0.5f, tex_roughness, UP.material_loaded_t);
-      material_roughness = tex_roughness;
-    }
+   // Load roughness texture
+  if (UP.flags & WORLD_FLAG_SampleTexRoughness)
+  {
+    float tex_roughness = MaterialTexture.Sample(MaterialSampler, V3(frag.uv, 2.f)).x;
+    tex_roughness = lerp(0.5f, tex_roughness, UP.material_loaded_t);
+    material_roughness = tex_roughness;
   }
 
   // Shadow mapping
@@ -215,7 +223,7 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
   V3 color_specular = specular_factor * sun_specular * material_specular;
   V3 color = color_ambient + (color_diffuse + color_specular) * (1.f - shadow);
 
-  if (UP.flags & WORLD_Flag_DrawBorderAtUVEdge)
+  if (UP.flags & WORLD_FLAG_DrawBorderAtUVEdge)
   {
     float u = frac(frag.uv.x);
     float v = frac(frag.uv.y);

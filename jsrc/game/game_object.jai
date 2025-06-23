@@ -7,7 +7,7 @@ OBJ_NIL :: Object.{};
 
 OBJ_State :: struct
 {
-  serial_counter: u32 = 1; // incremented and assigned to each new Object
+  serial_counter: u16 = 1; // incremented and assigned to each new Object
 
   offline_objects: [OBJ_MAX_OFFLINE_OBJECTS] Object;
   network_objects: [OBJ_MAX_NETWORK_OBJECTS] Object;
@@ -31,6 +31,8 @@ OBJ_Flags :: enum_flags u32
 
   DRAW_MODEL;
   DRAW_COLLIDERS;
+
+  MOUSE_PICKING;
 };
 
 OBJ_Storage :: enum_flags u32
@@ -45,8 +47,8 @@ OBJ_Storage :: enum_flags u32
 
 OBJ_Key :: struct
 {
-  serial_number: u32;
-  index: u32;
+  serial_number: u16;
+  index: u16;
 };
 
 OBJ_Sync :: struct
@@ -60,7 +62,7 @@ OBJ_Sync :: struct
   moved_dp: V3; // move that Object did after collision simulation
 
   // visuals
-  color: Color32;
+  color: Color32; // unused?
   rotation: Quat;
   model: MODEL_Key; // used by DrawModel
   material: MATERIAL_Key; // used by DrawCollision
@@ -210,6 +212,18 @@ lerp :: (prev: OBJ_Sync, next: OBJ_Sync, t: float) -> OBJ_Sync
   return res;
 }
 
+OBJ_KeyToColor :: (key: OBJ_Key) -> Color32
+{
+  #assert(size_of(OBJ_Key) == size_of(Color32));
+  return (*key).(*Color32).*;
+}
+
+OBJ_ColorToKey :: (color: Color32) -> OBJ_Key
+{
+  #assert(size_of(OBJ_Key) == size_of(Color32));
+  return (*color).(*OBJ_Key).*;
+}
+
 OBJ_GetNil :: () -> *Object
 {
   return *OBJ_NIL;
@@ -328,7 +342,7 @@ OBJ_Create :: (storage: OBJ_Storage, flags: OBJ_Flags) -> *Object
 
   obj.s.key.serial_number = G.obj.serial_counter;
   G.obj.serial_counter = max(G.obj.serial_counter + 1, 1);
-  obj.s.key.index = ((obj.(u64) - G.obj.all_objects.data.(u64)) / size_of(Object)).(u32);
+  obj.s.key.index = xx ((obj.(u64) - G.obj.all_objects.data.(u64)) / size_of(Object));
 
   obj.s.flags = flags;
   obj.s.init = true;

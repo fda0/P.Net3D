@@ -16,4 +16,5 @@ WORLD_ShaderFlags :: enum_flags u32 // @todo generate hlsl header for shaders ou
   SampleTexRoughness;
   ApplyShadows;
   DrawBorderAtUVEdge;
+  PixelEarlyExit;
 };

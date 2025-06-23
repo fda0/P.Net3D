@@ -354,15 +354,16 @@ GPU_InitPipelines :: ()
 
 GPU_Iterate :: ()
 {
-  GPU_RenderWorld :: (cmd: *SDL_GPUCommandBuffer, pass: *SDL_GPURenderPass, is_depth_prepass: bool)
+  GPU_RenderWorld :: (cmd: *SDL_GPUCommandBuffer, pass: *SDL_GPURenderPass, mode: enum { RENDER; DEPTH; MOUSE_PICKING; })
   {
-    pipeline_index := ifx is_depth_prepass then 1 else 0;
+    simplified_pipeline := ifx mode == .RENDER then false else true;
+    pipeline_index := ifx simplified_pipeline then 1 else 0;
     SDL_BindGPUGraphicsPipeline(pass, G.gpu.world_pipelines[pipeline_index]);
 
     // Bind shadow texture sampler to fragment shader
     {
       binding_sampl := SDL_GPUTextureSamplerBinding.{
-        texture = ifx is_depth_prepass then G.gpu.dummy_shadow_tex else G.gpu.shadow_tex,
+        texture = ifx simplified_pipeline then G.gpu.dummy_shadow_tex else G.gpu.shadow_tex,
         sampler = G.gpu.shadow_sampler,
       };
       SDL_BindGPUFragmentSamplers(pass, 0, *binding_sampl, 1);
@@ -380,14 +381,13 @@ GPU_Iterate :: ()
     //
     // Dynamic meshes
     //
+    if mode != .MOUSE_PICKING
     {
       for batch_index: MakeRange(G.gpu.mem.batches_count)
       {
         gpu_verts := *G.gpu.mem.batches[batch_index];
-        if (gpu_verts.target.type != .MeshVertices)
-        continue;
-        if (!gpu_verts.element_count)
-        continue;
+        if gpu_verts.target.type != .MeshVertices then continue;
+        if !gpu_verts.element_count then continue;
 
         // Bind vertex buffer
         SDL_BindGPUVertexBuffers(pass, 0, *(SDL_GPUBufferBinding.{buffer = gpu_verts.buffer.handle}), 1);
@@ -395,8 +395,8 @@ GPU_Iterate :: ()
         material := ASSET_GetMaterial(gpu_verts.target.material_key);
 
         // Uniforms
-        WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material);
-        if (MATERIAL_MatchKey(material.key, MATERIAL_CreateKey("tex.Clay002")))
+        WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material, simplified_pipeline);
+        if MATERIAL_MatchKey(material.key, MATERIAL_CreateKey("tex.Clay002"))
         {
           G.gpu.world_uniform.flags |= .DrawBorderAtUVEdge;
         }
@@ -444,9 +444,9 @@ GPU_Iterate :: ()
         material := ASSET_GetMaterial(mesh.material);
 
         // Uniforms
-        WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material);
+        WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material, simplified_pipeline);
         G.gpu.world_uniform.flags |= .UseInstanceBuffer;
-        if model.is_skinned  G.gpu.world_uniform.flags |= .DoMeshSkinning;
+        if model.is_skinned then G.gpu.world_uniform.flags |= .DoMeshSkinning;
         if MODEL_MatchKey(model.key, MODEL_CreateKey("Tree"))
         {
           //G.gpu.world_uniform.flags |= .LessShadows;
@@ -507,12 +507,34 @@ GPU_Iterate :: ()
   {
     depth_target.texture = G.gpu.shadow_tex;
     pass := SDL_BeginGPURenderPass(cmd, null, 0, *depth_target);
-    GPU_RenderWorld(cmd, pass, true);
+    GPU_RenderWorld(cmd, pass, .DEPTH);
     SDL_EndGPURenderPass(pass);
+  }
+
+
+  // Mouse picking pass
+  {
+    // color_target := SDL_GPUColorTargetInfo.{
+    //   clear_color = .{
+    //     r = GPU_CLEAR_COLOR_R,
+    //     g = GPU_CLEAR_COLOR_G,
+    //     b = GPU_CLEAR_COLOR_B,
+    //     a = GPU_CLEAR_COLOR_A,
+    //   },
+    //   load_op = .SDL_GPU_LOADOP_CLEAR,
+    //   store_op = .SDL_GPU_STOREOP_STORE,
+    //   texture = swapchain_tex, // @todo change
+    //   cycle = true, // ?
+    // };
+
+    // pass := SDL_BeginGPURenderPass(cmd, *color_target, 1, *depth_target);
+    // GPU_RenderWorld(cmd, pass, .RENDER);
+    // SDL_EndGPURenderPass(pass);
   }
 
   // World render pass
   {
+    // Set camera position
     G.gpu.world_uniform.camera_transform = G.camera_transform;
     if G.ui.dev.sun_camera
     {
@@ -520,6 +542,7 @@ GPU_Iterate :: ()
       G.gpu.world_uniform.camera_position = G.sun_camera_p;
     }
 
+    // Set depth texture
     depth_target.texture = G.gpu.tex_depth;
 
     color_target := SDL_GPUColorTargetInfo.{
@@ -530,6 +553,7 @@ GPU_Iterate :: ()
         a = GPU_CLEAR_COLOR_A,
       },
       load_op = .SDL_GPU_LOADOP_CLEAR,
+      store_op = .SDL_GPU_STOREOP_STORE,
     };
 
     if G.gpu.tex_msaa
@@ -542,13 +566,11 @@ GPU_Iterate :: ()
     }
     else
     {
-      color_target.load_op = .SDL_GPU_LOADOP_CLEAR;
-      color_target.store_op = .SDL_GPU_STOREOP_STORE;
       color_target.texture = swapchain_tex;
     }
 
     pass := SDL_BeginGPURenderPass(cmd, *color_target, 1, *depth_target);
-    GPU_RenderWorld(cmd, pass, false);
+    GPU_RenderWorld(cmd, pass, .RENDER);
     SDL_EndGPURenderPass(pass);
   }
 

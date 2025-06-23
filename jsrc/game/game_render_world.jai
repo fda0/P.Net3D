@@ -31,11 +31,11 @@ WORLD_Uniform :: struct
 WORLD_InstanceModel :: struct
 {
   transform: Mat4;
-  color: Color32;
+  picking_color: Color32;
   pose_offset: u32; // in indices; unused for rigid
 };
 
-WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Material)
+WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Material, simplified_pipeline: bool)
 {
   uniform.material_loaded_t = material.stream.loaded_t;
   uniform.material_diffuse = xx material.params.diffuse;
@@ -43,6 +43,12 @@ WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Mater
   uniform.material_roughness = xx material.params.roughness;
 
   uniform.flags = .ApplyShadows;
+
+  if simplified_pipeline
+  {
+    uniform.flags |= .PixelEarlyExit;
+  }
+
   if material.has_texture
   {
     if material.texture_layers >= 1  uniform.flags |= .SampleTexDiffuse;
@@ -51,9 +57,10 @@ WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Mater
   }
 }
 
-WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, color: Color32, animation_index: s32, animation_t: float)
+WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, animation_index: s32, animation_t: float,
+                    picking_color: Color32 = 0)
 {
-  instance := WORLD_InstanceModel.{transform = transform, color = color};
+  instance := WORLD_InstanceModel.{transform = transform, picking_color = picking_color};
   model := ASSET_GetModel(model_key);
   if model.is_skinned
   {
@@ -96,7 +103,7 @@ WORLD_DrawObjects :: ()
         transform = transform * rot_mat; // rotate first, translate second
       }
 
-      WORLD_DrawModel(obj.s.model, transform, obj.s.color, obj.l.animation_index, obj.l.animation_t);
+      WORLD_DrawModel(obj.s.model, transform, obj.l.animation_index, obj.l.animation_t, OBJ_KeyToColor(obj.s.key));
     }
 
     if draw_colliders || debug_colliders

@@ -59,6 +59,7 @@ main :: ()
         print_to_builder(*b, "#define WORLD_FLAG_% (1u << %u)\n", it, it_index);
       return builder_to_string(*b);
     };
+    // log("generated source_flags:\n%", source_flags);
 
     base_dir := "../jsrc/shader/";
     source_util := read_entire_file(join(base_dir, "shader_util.hlsl"));
