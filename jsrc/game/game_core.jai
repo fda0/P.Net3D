@@ -41,6 +41,7 @@ GAME_State :: struct
   window_borderless: bool;
   window_on_top: bool;
   window_autolayout: bool;
+  server_exit_on_disconnect: bool;
 
   // user input
   mouse: V2;
@@ -265,9 +266,9 @@ GAME_Iterate :: ()
     UI_ClearRenderCounters();
     // UI_PostFrame();
     ASSET_PostFrame();
-  }
 
-  HOT_RELOAD_Iterate();
+    HOT_RELOAD_Iterate();
+  }
 
   // Post frame logic
   reset_temporary_storage();
@@ -329,7 +330,7 @@ GAME_ParseCommandLineArguments :: (args: [] string)
         case "-top";        G.window_on_top = true;
         case "-autolayout"; G.window_autolayout = true;
         case "-server";     G.net.is_server = true;
-        // case "-exit-;on-dc" G.server.exit_on_disconnect = true;
+        case "-exit-on-dc"; G.server_exit_on_disconnect = true;
 
         case;
         log_error("Invalid command line argument %s.\n", arg);

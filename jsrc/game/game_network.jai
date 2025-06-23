@@ -37,6 +37,7 @@ LOG_NetClient :: 4;
 LOG_NetCatchup :: 5;
 LOG_NetTick :: 6;
 LOG_NetSend :: 7;
+LOG_Important :: 8;
 
 Nlog :: (net_category: s64 /* @todo use user flags instead in the future */, format_string: string, args: .. Any, loc := #caller_location, flags := Log_Flags.NONE, user_flags : u32 = 0, section : *Log_Section = null)
 {
@@ -523,13 +524,34 @@ NET_PacketSendAndResetPayloadBroadcast :: ()
   }
 }
 
-
-
 NET_IterateTimeoutUsers :: ()
 {
-  // @impl
+  if NET_IsServer()
+  {
+    for *G.server.users
+    {
+      if !it.address continue;
+      if it.last_msg_timestamp + NET_TIMEOUT_DISCONNECT_MS < G.timestamp
+      {
+        Nlog(LOG_NetInfo, "Timeout. Removing user #%", it_index);
+
+        if G.server_exit_on_disconnect
+        {
+          Nlog(LOG_Important, "Quitting server on client disconnect because -exit-on-dc argument was used.");
+          G.in_shutdown = true;
+        }
+
+        NET_RemoveUser(it);
+      }
+    }
+  }
 }
 
+NET_RemoveUser :: (user: *NET_User)
+{
+  SDLNet_UnrefAddress(user.address);
+  user.* = .{};
+}
 
 NET_UserMatch :: (a: *NET_User, b: *NET_User) -> bool
 {
