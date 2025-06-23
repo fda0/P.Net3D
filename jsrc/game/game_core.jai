@@ -47,10 +47,9 @@ GAME_State :: struct
   mouse: V2;
   mouse_delta: V2;
   mouse_scroll: V2;
-  keys: [KEY_Code.COUNT] Key;
-  // mouse in world-space
   world_mouse_valid: bool;
   world_mouse: V2;
+  keys: [KEY_Code.COUNT] Key;
 
   // sun
   sun_dir: V3; // normalized
@@ -195,9 +194,7 @@ GAME_Iterate :: ()
       G.camera_transform = projection * (rot * transl);
     }
 
-    ANIM_AnimateObjects();
-
-    // calculate mouse in world space (at Z == 0) from screen mouse
+    // calculate mouse in screen space -> mouse in world space (at Z == 0)
     {
       view_mouse := V2.{
         (G.mouse.x / G.window_dim.x) *  2.0 - 1.0,
@@ -233,6 +230,7 @@ GAME_Iterate :: ()
       }
     }
 
+    ANIM_AnimateObjects();
 
     marker := OBJ_Get(G.obj.pathing_marker, .OFFLINE);
     if !OBJ_IsNil(marker)
@@ -375,7 +373,6 @@ String :: #import "String";
 #load "game_asset_hot_reload.jai";
 #load "game_object.jai";
 #load "game_object_collider.jai";
-#load "game_object_mesh.jai";
 #load "game_network.jai";
 #load "game_client.jai";
 #load "game_server.jai";
