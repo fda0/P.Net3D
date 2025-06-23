@@ -82,7 +82,6 @@ TICK_AdvanceSimulation :: ()
   for * obj: G.obj.all_objects
   {
     if !OBJ_HasAnyFlag(obj, .MOVE) continue;
-    OBJ_UpdateColliderNormals(obj);
 
     // movement simulation
     obj_dp := obj.s.desired_dp.xy;
@@ -94,18 +93,17 @@ TICK_AdvanceSimulation :: ()
       closest_obstacle_separation_dist := FLOAT32_MAX;
       closest_obstacle_wall_normal: V2;
 
-      obj_verts := obj.s.collider_vertices;
-      OBJ_OffsetCollider(*obj_verts, obj_pos);
+      obj_collider := obj.s.collider;
+      OBJ_OffsetCollider(*obj_collider, obj_pos);
 
       for * obstacle: G.obj.all_objects
       {
         if obj == obstacle continue;
         if !OBJ_HasAnyFlag(obstacle, .COLLIDE) continue;
-        OBJ_UpdateColliderNormals(obstacle);
 
         obstacle_pos := obstacle.s.p.xy;
-        obstacle_verts := obstacle.s.collider_vertices;
-        OBJ_OffsetCollider(*obstacle_verts, obstacle_pos);
+        obstacle_collider := obstacle.s.collider;
+        OBJ_OffsetCollider(*obstacle_collider, obstacle_pos);
 
         biggest_dist := -FLOAT32_MAX;
         wall_normal: V2;
@@ -115,15 +113,14 @@ TICK_AdvanceSimulation :: ()
         // and from the perspective of the obstacle.
         for sat_iteration: 0..1
         {
-          use_obj_normals := !sat_iteration;
-          normals := ifx use_obj_normals then obj.l.collider_normals else obstacle.l.collider_normals;
+          normal_source := ifx sat_iteration == 0 then obstacle_collider else obj_collider;
 
-          projection_obj := OBJ_CalculateColliderProjection(*normals, *obj_verts);
-          projection_obstacle := OBJ_CalculateColliderProjection(*normals, *obstacle_verts);
+          projection_obj := OBJ_CalculateColliderProjection(normal_source, obj_collider);
+          projection_obstacle := OBJ_CalculateColliderProjection(normal_source, obstacle_collider);
 
           for MakeRange(projection_obj.ranges.count)
           {
-            normal := normals.values[it];
+            normal := normal_source.normals[it];
             obstacle_dir := obstacle_pos - obj_pos;
             if dot(normal, obstacle_dir) < 0
             continue;

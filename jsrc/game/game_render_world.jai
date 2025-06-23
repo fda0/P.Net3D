@@ -129,17 +129,17 @@ WORLD_DrawObjects :: ()
       bot_z := obj.s.p.z;
       top_z := bot_z + height;
 
-      collision := obj.s.collider_vertices;
+      collider := obj.s.collider;
       {
         cube_verts := V3.[
-          V3.{xy=collision.values[0], z=bot_z}, // 0
-          V3.{xy=collision.values[1], z=bot_z}, // 1
-          V3.{xy=collision.values[2], z=bot_z}, // 2
-          V3.{xy=collision.values[3], z=bot_z}, // 3
-          V3.{xy=collision.values[0], z=top_z}, // 4
-          V3.{xy=collision.values[1], z=top_z}, // 5
-          V3.{xy=collision.values[2], z=top_z}, // 6
-          V3.{xy=collision.values[3], z=top_z}, // 7
+          V3.{xy=collider.vertices[0], z=bot_z}, // 0
+          V3.{xy=collider.vertices[1], z=bot_z}, // 1
+          V3.{xy=collider.vertices[2], z=bot_z}, // 2
+          V3.{xy=collider.vertices[3], z=bot_z}, // 3
+          V3.{xy=collider.vertices[0], z=top_z}, // 4
+          V3.{xy=collider.vertices[1], z=top_z}, // 5
+          V3.{xy=collider.vertices[2], z=top_z}, // 6
+          V3.{xy=collider.vertices[3], z=top_z}, // 7
         ];
 
         // mapping to expand verts to walls (each wall is made out of 2 triangles)
@@ -165,10 +165,10 @@ WORLD_DrawObjects :: ()
         }
       }
 
-      w0 := length(collision.values[0] - collision.values[1]);
-      w1 := length(collision.values[1] - collision.values[2]);
-      w2 := length(collision.values[2] - collision.values[3]);
-      w3 := length(collision.values[3] - collision.values[0]);
+      w0 := length(collider.vertices[0] - collider.vertices[1]);
+      w1 := length(collider.vertices[1] - collider.vertices[2]);
+      w2 := length(collider.vertices[2] - collider.vertices[3]);
+      w3 := length(collider.vertices[3] - collider.vertices[0]);
 
       for face_i: MakeRange(face_count)
       {
@@ -204,11 +204,10 @@ WORLD_DrawObjects :: ()
             it.* *= face_scale;
         }
 
-        OBJ_UpdateColliderNormals(obj);
-        obj_norm_E := V3.{xy=obj.l.collider_normals.values[0]};
-        obj_norm_W := V3.{xy=obj.l.collider_normals.values[2]};
-        obj_norm_N := V3.{xy=obj.l.collider_normals.values[1]};
-        obj_norm_S := V3.{xy=obj.l.collider_normals.values[3]};
+        obj_norm_E := V3.{xy=collider.normals[0]};
+        obj_norm_W := V3.{xy=collider.normals[2]};
+        obj_norm_N := V3.{xy=collider.normals[1]};
+        obj_norm_S := V3.{xy=collider.normals[3]};
         normal: V3;
         if face_dir ==
         {

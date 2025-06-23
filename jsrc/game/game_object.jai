@@ -71,7 +71,7 @@ OBJ_Sync :: struct
   is_pathing: bool;
   pathing_dest_p: V2;
 
-  collider_vertices: OBJ_Collider;
+  collider: OBJ_Collider;
 };
 
 OBJ_Local :: struct
@@ -82,9 +82,6 @@ OBJ_Local :: struct
 
   animation_index: s32;
   animation_t: float;
-
-  collider_normals_are_updated: bool;
-  collider_normals: OBJ_Collider;
 };
 
 Object :: struct
@@ -100,7 +97,7 @@ OBJ_Init :: ()
     sun := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS);
     sun.s.material = MATERIAL_CreateKey("tex.Leather011");
     sun.s.height = 0.5;
-    sun.s.collider_vertices = OBJ_GetColliderFromRect2D(V2.{.5, .5});
+    sun.s.collider = OBJ_ColliderFromRect(.{.5, .5});
     G.obj.sun = sun.s.key;
   }
 
@@ -112,7 +109,7 @@ OBJ_Init :: ()
   // Ground
   {
     ground := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS);
-    ground.s.collider_vertices = OBJ_GetColliderFromRect2D(V2.{100, 100});
+    ground.s.collider = OBJ_ColliderFromRect(.{100, 100});
     ground.s.material = MATERIAL_CreateKey("tex.Grass004");
     ground.s.texture_texels_per_m = 1.0;
   }
@@ -128,7 +125,7 @@ OBJ_Init :: ()
 
     {
       rotated_wall := OBJ_CreateWall(V2.{0.75*off, -0.5*off}, V2.{thickness, 5.*thickness}, 1);
-      OBJ_RotateCollider(*rotated_wall.s.collider_vertices, 0.1);
+      OBJ_RotateCollider(*rotated_wall.s.collider, 0.1);
     }
 
     {
@@ -137,7 +134,7 @@ OBJ_Init :: ()
       flying_cube.s.material = MATERIAL_CreateKey("tex.Tiles101");
       flying_cube.s.texture_texels_per_m = 1.;
       flying_cube.s.height = 0.3;
-      flying_cube.s.collider_vertices = OBJ_GetColliderFromRect2D(V2.{1., 1.});
+      flying_cube.s.collider = OBJ_ColliderFromRect(.{1., 1.});
     }
   }
 
@@ -156,7 +153,8 @@ OBJ_Init :: ()
         if !OBJ_IsNil(block)
         {
           block.s.p = V3.{d*x - len*0.5*d, d*y - len*0.5*d, 0};
-          OBJ_SetColliderFromCube(block, V3.{d,d,d});
+          block.s.collider = OBJ_ColliderFromRect(.{d,d});
+          block.s.height = d;
           block.s.material = MATERIAL_CreateKey("tex.Clay002");
         }
       }
@@ -344,7 +342,7 @@ OBJ_CreateWall :: (p: V2, dim: V2, height: float) -> *Object
   if !OBJ_IsNil(obj)
   {
     obj.s.p = V3.{xy = p};
-    obj.s.collider_vertices = OBJ_GetColliderFromRect2D(dim);
+    obj.s.collider = OBJ_ColliderFromRect(dim);
     obj.s.material = MATERIAL_CreateKey("tex.Bricks071");
     obj.s.texture_texels_per_m = 1;
     obj.s.color = Color32_Grayf(1);
@@ -362,8 +360,8 @@ OBJ_CreatePlayer :: (model: MODEL_Key) -> *Object
   if !OBJ_IsNil(obj)
   {
     dim := 0.4;
-    OBJ_SetColliderFromCube(obj, V3.{dim,dim,dim});
-
+    obj.s.collider = OBJ_ColliderFromRect(.{dim,dim});
+    obj.s.height = dim;
     obj.s.model = model;
     obj.s.color = Color32_Grayf(1);
     obj.s.rotation = RotationAroundAxis(AxisV3(.Z), -0.5);

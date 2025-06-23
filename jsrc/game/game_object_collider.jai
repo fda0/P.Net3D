@@ -1,6 +1,7 @@
 OBJ_Collider :: struct
 {
-  values: [OBJ_MAX_COLLIDER_VERTS] V2;
+  vertices: [OBJ_MAX_COLLIDER_VERTS] V2;
+  normals: [OBJ_MAX_COLLIDER_VERTS] V2;
 };
 
 OBJ_ColliderProjection :: struct
@@ -8,65 +9,52 @@ OBJ_ColliderProjection :: struct
   ranges: [OBJ_MAX_COLLIDER_VERTS] Range(float);
 };
 
-OBJ_GetColliderFromRect2D :: (dim: V2) -> OBJ_Collider
+OBJ_ColliderFromRect :: (dim: V2) -> OBJ_Collider
 {
   p0 := dim * -0.5;
   p1 := dim * 0.5;
 
   res: OBJ_Collider;
-  res.values[0] = .{p1.x, p0.y}; // SE
-  res.values[1] = .{p1.x, p1.y}; // NE
-  res.values[2] = .{p0.x, p1.y}; // NW
-  res.values[3] = .{p0.x, p0.y}; // SW
+  res.vertices[0] = .{p1.x, p0.y}; // SE
+  res.vertices[1] = .{p1.x, p1.y}; // NE
+  res.vertices[2] = .{p0.x, p1.y}; // NW
+  res.vertices[3] = .{p0.x, p0.y}; // SW
+  OBJ_ColliderCalculateNormals(*res);
   return res;
-}
-
-OBJ_SetColliderFromCube :: (obj: *Object, dim: V3)
-{
-  obj.s.collider_vertices = OBJ_GetColliderFromRect2D(dim.xy);
-  obj.l.collider_normals_are_updated = false;
-  obj.s.height = dim.z;
 }
 
 OBJ_RotateCollider :: (collider: *OBJ_Collider, turns: float)
 {
-  for *collider.values
+  for *collider.vertices
     it.* = Rotate(it.*, turns);
+  OBJ_ColliderCalculateNormals(collider);
 }
 
 OBJ_OffsetCollider :: (collider: *OBJ_Collider, offset: V2)
 {
-  for *collider.values
+  for *collider.vertices
     it.* += offset;
 }
 
-OBJ_UpdateColliderNormals :: (obj: *Object)
+OBJ_ColliderCalculateNormals :: (using collider: *OBJ_Collider)
 {
-  if !obj.l.collider_normals_are_updated
+  for MakeRange(OBJ_MAX_COLLIDER_VERTS)
   {
-    obj.l.collider_normals_are_updated = true;
-    verts := *obj.s.collider_vertices;
-    normals := *obj.l.collider_normals;
-
-    elem_count := verts.values.count;
-    for MakeRange(elem_count)
-    {
-      next_it := (it + 1) % elem_count;
-      normals.values[it] = NormalFromSegment(verts.values[it], verts.values[next_it]);
-    }
+    next_it := (it + 1) % OBJ_MAX_COLLIDER_VERTS;
+    normals[it] = NormalFromSegment(vertices[it], vertices[next_it]);
   }
 }
 
-OBJ_CalculateColliderProjection :: (normals: *OBJ_Collider, verts: *OBJ_Collider) -> OBJ_ColliderProjection
+OBJ_CalculateColliderProjection :: (normals_source: OBJ_Collider, vertices_source: OBJ_Collider) -> OBJ_ColliderProjection
 {
   res: OBJ_ColliderProjection;
-  for normal: normals.values
+  for normal: normals_source.normals
   {
     projection := *res.ranges[it_index];
     projection.min = FLOAT32_MAX;
     projection.max = -FLOAT32_MAX;
 
-    for vert: verts.values
+    for vert: vertices_source.vertices
     {
       inner := dot(normal, vert);
       projection.min = min(inner, projection.min);
