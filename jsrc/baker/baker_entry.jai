@@ -53,8 +53,14 @@ main :: ()
   {
     #import "dxc_compiler";
 
+    source_flags :: #run -> string {
+      b: String_Builder;
+      for enum_names(WORLD_ShaderFlags)
+        print_to_builder(*b, "#define WORLD_FLAG_% (1u << %u)\n", it, it_index);
+      return builder_to_string(*b);
+    };
+
     base_dir := "../jsrc/shader/";
-    source_flags := read_entire_file(join(base_dir, "shader_flags.h"));
     source_util := read_entire_file(join(base_dir, "shader_util.hlsl"));
 
     GetArgs :: (source_file: string, entry: string, shader_type: Shader_Type) -> Dxc_Shader_Compiler_Args #expand

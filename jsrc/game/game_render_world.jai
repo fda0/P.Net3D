@@ -9,17 +9,6 @@ WORLD_Dir :: enum u32
   COUNT;
 };
 
-WORLD_ShaderFlags :: enum_flags u32 // @todo generate hlsl header for shaders out of this
-{
-  DoMeshSkinning;
-  UseInstanceBuffer;
-  SampleTexDiffuse;
-  SampleTexNormal;
-  SampleTexRoughness;
-  ApplyShadows;
-  DrawBorderAtUVEdge;
-};
-
 WORLD_Uniform :: struct
 {
   camera_transform: Mat4;
