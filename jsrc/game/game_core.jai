@@ -50,6 +50,7 @@ GAME_State :: struct
   world_mouse_valid: bool;
   world_mouse: V2;
   keys: [KEY_Code.COUNT] Key;
+  hover_object: OBJ_Key;
 
   // sun
   sun_dir: V3; // normalized
@@ -94,6 +95,11 @@ GAME_Iterate :: ()
     G.tick_timestamp_accumulator += delta_timestamp;
     G.dt = delta_timestamp * 0.001;
     G.at = WrapFloat(0, 1000, G.at + G.dt);
+  }
+
+  if !G.headless
+  {
+    GPU_ReadbackMousePickingTexture();
   }
 
   // pre frame calls

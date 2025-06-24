@@ -66,6 +66,16 @@ for_expansion :: (using queue: Queue, body: Code, flags: For_Flags) #expand
   }
 }
 
+QueueIsFull :: (using queue: Queue) -> bool
+{
+  return count == MAX_CAPACITY;
+}
+
+QueueIsEmpty :: (using queue: Queue) -> bool
+{
+  return count <= 0;
+}
+
 QueuePush :: (using queue: *Queue) -> *queue.T
 {
   push_at_index := (start_offset + count) % MAX_CAPACITY;

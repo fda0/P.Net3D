@@ -31,6 +31,7 @@ WORLD_Uniform :: struct
 WORLD_InstanceModel :: struct
 {
   transform: Mat4;
+  color: Color32;
   picking_color: Color32;
   pose_offset: u32; // in indices; unused for rigid
 };
@@ -58,9 +59,14 @@ WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Mater
 }
 
 WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, animation_index: s32, animation_t: float,
-                    picking_color: Color32 = 0)
+                    color: Color32, picking_color: Color32 = 0)
 {
-  instance := WORLD_InstanceModel.{transform = transform, picking_color = picking_color};
+  instance := WORLD_InstanceModel.{
+    transform = transform,
+    color = color,
+    picking_color = picking_color
+  };
+
   model := ASSET_GetModel(model_key);
   if model.is_skinned
   {
@@ -103,7 +109,9 @@ WORLD_DrawObjects :: ()
         transform = transform * rot_mat; // rotate first, translate second
       }
 
-      WORLD_DrawModel(obj.s.model, transform, obj.l.animation_index, obj.l.animation_t, OBJ_KeyToColor(obj.s.key));
+      hover_color := Color32_RGBf(1,1,1);
+      if obj.s.key == G.hover_object then hover_color = Color32_RGBf(1, Sin01(G.at*2.5), Cos01(G.at*2.5));
+      WORLD_DrawModel(obj.s.model, transform, obj.l.animation_index, obj.l.animation_t, hover_color, OBJ_KeyToColor(obj.s.key));
     }
 
     if draw_colliders || debug_colliders

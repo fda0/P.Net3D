@@ -35,17 +35,19 @@ struct WORLD_DX_Vertex
 
 struct WORLD_DX_Fragment
 {
-  V4   shadow_p      : TEXCOORD0; // position in shadow space
-  V3   world_p       : TEXCOORD1;
-  U32  picking_color : TEXCOORD2;
-  V2   uv            : TEXCOORD3;
-  Mat3 normal_rot    : TEXCOORD4;
-  V4   vertex_p      : SV_Position;
+  V4   shadow_p       : TEXCOORD0; // position in shadow space
+  V3   world_p        : TEXCOORD1;
+  U32  instance_color : TEXCOORD2;
+  U32  picking_color  : TEXCOORD3;
+  V2   uv             : TEXCOORD4;
+  Mat3 normal_rot     : TEXCOORD5;
+  V4   vertex_p       : SV_Position;
 };
 
 struct WORLD_DX_InstanceModel
 {
   Mat4 transform;
+  U32 color;
   U32 picking_color;
   U32 pose_offset; // in indices; unused for rigid
 };
@@ -57,7 +59,8 @@ WORLD_DX_Fragment WORLD_DxShaderVS(WORLD_DX_Vertex vert)
   // Position
   WORLD_DX_InstanceModel instance;
   instance.transform = Mat4_Identity();
-  instance.picking_color = ~0u;
+  instance.color = ~0;
+  instance.picking_color = 0;
   instance.pose_offset = 0;
 
   if (UV.flags & WORLD_FLAG_UseInstanceBuffer)
@@ -103,6 +106,7 @@ WORLD_DX_Fragment WORLD_DxShaderVS(WORLD_DX_Vertex vert)
   WORLD_DX_Fragment frag;
   frag.shadow_p = mul(UV.shadow_transform, world_p);
   frag.world_p = world_p.xyz;
+  frag.instance_color = instance.color;
   frag.picking_color = instance.picking_color;
   frag.uv = vert.uv;
   frag.normal_rot = normal_rotation;
@@ -119,6 +123,7 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
 {
   V3 fog_color = UnpackColor32(UP.fog_color).xyz;
   V3 material_diffuse = UnpackColor32(UP.material_diffuse).xyz;
+  V3 instance_color = UnpackColor32(frag.instance_color).xyz;
 
   // Load diffuse texture
   if (UP.flags & WORLD_FLAG_SampleTexDiffuse)
@@ -131,6 +136,8 @@ V4 WORLD_DxShaderPS(WORLD_DX_Fragment frag) : SV_Target0
     tex_diffuse = lerp(fog_color, tex_diffuse, UP.material_loaded_t);
     material_diffuse = tex_diffuse;
   }
+
+  material_diffuse *= instance_color;
 
   if (UP.flags & WORLD_FLAG_PixelEarlyExit)
   {

@@ -31,8 +31,7 @@ OBJ_Flags :: enum_flags u32
 
   DRAW_MODEL;
   DRAW_COLLIDERS;
-
-  MOUSE_PICKING;
+  // MOUSE_PICKING;
 };
 
 OBJ_Storage :: enum_flags u32
@@ -234,10 +233,9 @@ OBJ_IsNil :: (obj: *Object) -> bool
   return obj == *OBJ_NIL;
 }
 
-OBJ_KeyMatch :: (a: OBJ_Key, b: OBJ_Key) -> bool
+operator == :: (a: OBJ_Key, b: OBJ_Key) -> bool
 {
-  return (a.serial_number == b.serial_number &&
-          a.index == b.index);
+  return (a.serial_number == b.serial_number && a.index == b.index);
 }
 
 OBJ_Get :: (key: OBJ_Key, storage_mask: OBJ_Storage) -> *Object
@@ -260,8 +258,7 @@ OBJ_Get :: (key: OBJ_Key, storage_mask: OBJ_Storage) -> *Object
   if index_in_valid_storage
   {
     obj := *G.obj.all_objects[key.index];
-    if OBJ_KeyMatch(obj.s.key, key)
-      result = obj;
+    if obj.s.key == key then result = obj;
   }
   return result;
 }

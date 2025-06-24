@@ -7,14 +7,24 @@ GPU_CLEAR_COLOR_G :: 0.78;
 GPU_CLEAR_COLOR_B :: 0.96;
 GPU_CLEAR_COLOR_A :: 1.0;
 
+GPU_FrameReadback :: struct
+{
+  fence: *SDL_GPUFence;
+  download_transfer_buffer: *SDL_GPUTransferBuffer;
+  buffer_w, buffer_h: u32;
+}
+
 GPU_State :: struct
 {
   device: *SDL_GPUDevice;
   mem: GPU_BATCH_State;
 
+  readback_queue: Queue(8, GPU_FrameReadback);
+
   tex_depth: *SDL_GPUTexture;
   tex_msaa: *SDL_GPUTexture;
   tex_resolve: *SDL_GPUTexture;
+  tex_mouse_picking: *SDL_GPUTexture;
 
   shadow_tex: *SDL_GPUTexture;
   shadow_sampler: *SDL_GPUSampler;
@@ -56,6 +66,7 @@ GPU_State :: struct
 
   // sdl properties
   clear_depth_props: SDL_PropertiesID;
+  clear_mouse_picking_props: SDL_PropertiesID;
   clear_color_props: SDL_PropertiesID;
 }
 
@@ -64,23 +75,19 @@ GPU_Init :: ()
   // preapre props
   {
     G.gpu.clear_depth_props = SDL_CreateProperties();
-    SDL_SetFloatProperty(G.gpu.clear_depth_props,
-      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_DEPTH_FLOAT,
-      GPU_CLEAR_DEPTH_FLOAT);
+    SDL_SetFloatProperty(G.gpu.clear_depth_props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_DEPTH_FLOAT, GPU_CLEAR_DEPTH_FLOAT);
+
+    G.gpu.clear_mouse_picking_props = SDL_CreateProperties();
+    SDL_SetFloatProperty(G.gpu.clear_mouse_picking_props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_R_FLOAT, 0.0);
+    SDL_SetFloatProperty(G.gpu.clear_mouse_picking_props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_G_FLOAT, 0.0);
+    SDL_SetFloatProperty(G.gpu.clear_mouse_picking_props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_B_FLOAT, 0.0);
+    SDL_SetFloatProperty(G.gpu.clear_mouse_picking_props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_A_FLOAT, 0.0);
 
     G.gpu.clear_color_props = SDL_CreateProperties();
-    SDL_SetFloatProperty(G.gpu.clear_color_props,
-      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_R_FLOAT,
-      GPU_CLEAR_COLOR_R);
-    SDL_SetFloatProperty(G.gpu.clear_color_props,
-      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_G_FLOAT,
-      GPU_CLEAR_COLOR_G);
-    SDL_SetFloatProperty(G.gpu.clear_color_props,
-      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_B_FLOAT,
-      GPU_CLEAR_COLOR_B);
-    SDL_SetFloatProperty(G.gpu.clear_color_props,
-      SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_A_FLOAT,
-      GPU_CLEAR_COLOR_A);
+    SDL_SetFloatProperty(G.gpu.clear_color_props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_R_FLOAT, GPU_CLEAR_COLOR_R);
+    SDL_SetFloatProperty(G.gpu.clear_color_props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_G_FLOAT, GPU_CLEAR_COLOR_G);
+    SDL_SetFloatProperty(G.gpu.clear_color_props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_B_FLOAT, GPU_CLEAR_COLOR_B);
+    SDL_SetFloatProperty(G.gpu.clear_color_props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_A_FLOAT, GPU_CLEAR_COLOR_A);
   }
 
   // check for msaa 4 support
@@ -381,7 +388,6 @@ GPU_Iterate :: ()
     //
     // Dynamic meshes
     //
-    if mode != .MOUSE_PICKING
     {
       for batch_index: MakeRange(G.gpu.mem.batches_count)
       {
@@ -511,40 +517,33 @@ GPU_Iterate :: ()
     SDL_EndGPURenderPass(pass);
   }
 
+  // Set camera position
+  G.gpu.world_uniform.camera_transform = G.camera_transform;
+  if G.ui.dev.sun_camera
+  {
+    G.gpu.world_uniform.camera_transform = G.sun_camera_transform;
+    G.gpu.world_uniform.camera_position = G.sun_camera_p;
+  }
+
+  // Set depth texture (it will be used twice (mouse_picking & main world render) but that's fine due to cycling I think).
+  depth_target.texture = G.gpu.tex_depth;
 
   // Mouse picking pass
   {
-    // color_target := SDL_GPUColorTargetInfo.{
-    //   clear_color = .{
-    //     r = GPU_CLEAR_COLOR_R,
-    //     g = GPU_CLEAR_COLOR_G,
-    //     b = GPU_CLEAR_COLOR_B,
-    //     a = GPU_CLEAR_COLOR_A,
-    //   },
-    //   load_op = .SDL_GPU_LOADOP_CLEAR,
-    //   store_op = .SDL_GPU_STOREOP_STORE,
-    //   texture = swapchain_tex, // @todo change
-    //   cycle = true, // ?
-    // };
+    color_target := SDL_GPUColorTargetInfo.{
+      load_op = .SDL_GPU_LOADOP_CLEAR,
+      store_op = .SDL_GPU_STOREOP_STORE,
+      texture = G.gpu.tex_mouse_picking,
+      cycle = true,
+    };
 
-    // pass := SDL_BeginGPURenderPass(cmd, *color_target, 1, *depth_target);
-    // GPU_RenderWorld(cmd, pass, .RENDER);
-    // SDL_EndGPURenderPass(pass);
+    pass := SDL_BeginGPURenderPass(cmd, *color_target, 1, *depth_target);
+    GPU_RenderWorld(cmd, pass, .MOUSE_PICKING);
+    SDL_EndGPURenderPass(pass);
   }
 
   // World render pass
   {
-    // Set camera position
-    G.gpu.world_uniform.camera_transform = G.camera_transform;
-    if G.ui.dev.sun_camera
-    {
-      G.gpu.world_uniform.camera_transform = G.sun_camera_transform;
-      G.gpu.world_uniform.camera_position = G.sun_camera_p;
-    }
-
-    // Set depth texture
-    depth_target.texture = G.gpu.tex_depth;
-
     color_target := SDL_GPUColorTargetInfo.{
       clear_color = .{
         r = GPU_CLEAR_COLOR_R,
@@ -655,21 +654,92 @@ GPU_Iterate :: ()
     SDL_EndGPURenderPass(pass);
   }
 
-  SDL_SubmitGPUCommandBuffer(cmd);
+  // Submit command buffer
+  if !QueueIsFull(G.gpu.readback_queue)
+  {
+    readback := QueuePush(*G.gpu.readback_queue);
+
+    window_width := cast(u32) G.window_dim.x;
+    window_height := cast(u32) G.window_dim.y;
+
+    readback.buffer_w = window_width;
+    readback.buffer_h = window_height;
+
+    download_info := SDL_GPUTransferBufferCreateInfo.{
+      usage = .SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD,
+      size = window_width * window_height * 4,
+    };
+    readback.download_transfer_buffer = SDL_CreateGPUTransferBuffer(G.gpu.device, *download_info);
+
+    copy_pass := SDL_BeginGPUCopyPass(cmd);
+    src := SDL_GPUTextureRegion.{
+      texture = G.gpu.tex_mouse_picking,
+      w = window_width,
+      h = window_height,
+      d = 1,
+    };
+    dst := SDL_GPUTextureTransferInfo.{
+      transfer_buffer = readback.download_transfer_buffer,
+    };
+    SDL_DownloadFromGPUTexture(copy_pass, *src, *dst);
+    SDL_EndGPUCopyPass(copy_pass);
+
+    readback.fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cmd);
+    assert(readback.fence != null);
+  }
+  else
+  {
+    log("GPU readback queue is full. Skipping frame readback.", flags=.VERBOSE_ONLY);
+    SDL_SubmitGPUCommandBuffer(cmd);
+  }
 }
 
+GPU_ReadbackMousePickingTexture :: ()
+{
+  using,only(readback_queue, device) G.gpu;
+  if !QueueIsEmpty(readback_queue)
+  {
+    if readback_queue.count > 3
+      log("GPU readback queue count = %. Interesting... Should we try to catch up?", readback_queue.count, flags=.VERBOSE_ONLY);
+
+    peeked := QueuePeek(readback_queue);
+    if SDL_QueryGPUFence(device, peeked.fence)
+    {
+      QueuePop(*readback_queue);
+      SDL_ReleaseGPUFence(device, peeked.fence);
+      downloaded_data: *u32 = SDL_MapGPUTransferBuffer(device, peeked.download_transfer_buffer, false);
+
+      hover_object: OBJ_Key;
+      mouse_x := Round(G.mouse.x).(s64);
+      mouse_y := Round(G.mouse.y).(s64);
+      if mouse_x >= 0 && mouse_x < peeked.buffer_w &&
+         mouse_y >= 0 && mouse_y < peeked.buffer_h
+      {
+        offset := mouse_x + mouse_y * peeked.buffer_w;
+        downloaded_color := downloaded_data[offset];
+        hover_object = OBJ_ColorToKey(xx downloaded_color);
+      }
+      G.hover_object = hover_object;
+
+      SDL_UnmapGPUTransferBuffer(device, peeked.download_transfer_buffer);
+      SDL_ReleaseGPUTransferBuffer(device, peeked.download_transfer_buffer);
+    }
+  }
+}
 
 GPU_ResizeFramebuffer :: ()
 {
   SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_depth);
   SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_msaa);
   SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_resolve);
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_mouse_picking);
 
   window_width := cast(u32) G.window_dim.x;
   window_height := cast(u32) G.window_dim.y;
   G.gpu.tex_depth = GPU_CreateDepthTexture(window_width, window_height, false);
   G.gpu.tex_msaa = GPU_CreateMSAATexture(window_width, window_height);
   G.gpu.tex_resolve = GPU_CreateResolveTexture(window_width, window_height);
+  G.gpu.tex_mouse_picking = GPU_CreateMousePickingTexture(window_width, window_height);
 }
 
 GPU_CreateBuffer :: (usage: SDL_GPUBufferUsageFlags, size: u32, name: string) -> *SDL_GPUBuffer
@@ -709,8 +779,7 @@ GPU_CreateDepthTexture :: (width: u32, height: u32, used_in_sampler: bool) -> *S
 
 GPU_CreateMSAATexture :: (width: u32, height: u32) -> *SDL_GPUTexture
 {
-  if (G.gpu.sample_count == .SDL_GPU_SAMPLECOUNT_1)
-  return null;
+  if G.gpu.sample_count == .SDL_GPU_SAMPLECOUNT_1 return null;
 
   info := SDL_GPUTextureCreateInfo.{
     type = .SDL_GPU_TEXTURETYPE_2D,
@@ -731,8 +800,7 @@ GPU_CreateMSAATexture :: (width: u32, height: u32) -> *SDL_GPUTexture
 
 GPU_CreateResolveTexture :: (width: u32, height: u32) -> *SDL_GPUTexture
 {
-  if (G.gpu.sample_count == .SDL_GPU_SAMPLECOUNT_1)
-  return null;
+  if G.gpu.sample_count == .SDL_GPU_SAMPLECOUNT_1 return null;
 
   info := SDL_GPUTextureCreateInfo.{
     type = .SDL_GPU_TEXTURETYPE_2D,
@@ -742,12 +810,32 @@ GPU_CreateResolveTexture :: (width: u32, height: u32) -> *SDL_GPUTexture
     layer_count_or_depth = 1,
     num_levels = 1,
     sample_count = .SDL_GPU_SAMPLECOUNT_1,
-    usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
+    usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER, // @todo remove SAMPLER?
     props = G.gpu.clear_color_props,
   };
 
   result := SDL_CreateGPUTexture(G.gpu.device, *info);
   assert(!!result); // @todo report err
+  return result;
+}
+
+GPU_CreateMousePickingTexture :: (width: u32, height: u32) -> *SDL_GPUTexture
+{
+  info := SDL_GPUTextureCreateInfo.{
+    type = .SDL_GPU_TEXTURETYPE_2D,
+    format = .R8G8B8A8_UNORM,
+    width = width,
+    height = height,
+    layer_count_or_depth = 1,
+    num_levels = 1,
+    sample_count = .SDL_GPU_SAMPLECOUNT_1,
+    usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET,
+    props = G.gpu.clear_mouse_picking_props,
+  };
+
+  result := SDL_CreateGPUTexture(G.gpu.device, *info);
+  assert(!!result); // @todo report err
+  SDL_SetGPUTextureName(G.gpu.device, result, "MousePickingTexture");
   return result;
 }
 
