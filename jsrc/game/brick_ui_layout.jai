@@ -1140,7 +1140,7 @@ LayoutEnd :: ()
 //
 Siblings :: (first_box: *Box, body: Code, flags: For_Flags) #expand
 {
-  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added.
+  #assert(flags == 0); // Support for .REVERSE could be added.
 
   box := first_box;
   box_index := 0;
@@ -1158,7 +1158,7 @@ Siblings :: (first_box: *Box, body: Code, flags: For_Flags) #expand
 
 TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 {
-  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added but it shouldn't be needed.
+  #assert(flags == 0); // Support for .REVERSE could be added but it shouldn't be needed.
 
   /* Example traversal order for a tree with 10 boxes.
         [10 (root)]
@@ -1216,7 +1216,7 @@ TreeDepthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 
 TreeBreadthFirst :: (root: *Box, body: Code, flags: For_Flags) #expand
 {
-  #assert !(flags & (.REVERSE | .POINTER)); // Support for .REVERSE could be added but it shouldn't be needed.
+  #assert(flags == 0); // Support for .REVERSE could be added but it shouldn't be needed.
 
   /* Example traversal order for a tree with 10 boxes.
         [ 0 (root)]

@@ -7,8 +7,7 @@ CLIENT_State :: struct
   playable_tick_deltas: TickDeltas; // used to control playback catch-up
 
   // circular buffer with tick inputs
-  inputs_qbuf: [NET_MAX_INPUT_TICKS] TICK_PlayerInput;
-  inputs_range: Range(u64);
+  input_queue: Queue(NET_MAX_INPUT_TICKS, TICK_PlayerInput);
 
   //
   player_key: OBJ_Key;
@@ -190,7 +189,7 @@ CLIENT_PollInput :: () -> *TICK_PlayerInput
     if KEY_Held(.D) dir.y -= 1;
   }
 
-  input: *TICK_PlayerInput = Q_Push(G.client.inputs_qbuf, *G.client.inputs_range);
+  input: *TICK_PlayerInput = QueuePush(*G.client.input_queue);
   Initialize(input);
 
   input.move_dir = normalize(dir);

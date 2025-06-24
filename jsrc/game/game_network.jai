@@ -395,22 +395,15 @@ NET_IterateSend :: ()
       inputs: NET_SendInputs;
       input_counter: u16;
 
-      for G.client.inputs_range
+      for G.client.input_queue
       {
-        if (input_counter >= inputs.inputs.count)
+        if input_counter >= inputs.inputs.count
         {
           assert(false);
           break;
         }
 
-        peek := Q_PeekAt(G.client.inputs_qbuf, *G.client.inputs_range, it);
-        if (!peek)
-        {
-          assert(false);
-          break;
-        }
-
-        inputs.inputs[input_counter] = peek;
+        inputs.inputs[input_counter] = it;
         input_counter += 1;
       }
 

@@ -76,18 +76,16 @@ MakeRange :: (min: $T, max: T) -> Range(T)
 
 for_expansion :: (range: Range($T), body: Code, flags: For_Flags) #expand
 {
-  #assert !(flags & (.REVERSE | .POINTER)); // @todo extend support
-
-  loop_iteration := 0;
-  loop_it := range.min;
-  loop_end := range.max;
+  #assert(flags == 0); // @todo extend support
+  `it_index := 0;
+  `it := range.min;
   while true
   {
-    if loop_it >= loop_end  break;
-    `it := loop_it;
-    `it_index := loop_iteration;
-    loop_it += 1;
-    loop_iteration += 1;
+    if it >= range.max break;
+    defer {
+      it += 1;
+      it_index += 1;
+    }
     #insert body;
   }
 }
