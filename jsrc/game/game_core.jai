@@ -383,4 +383,5 @@ String :: #import "String";
 #load "game_render_ui.jai";
 #load "game_font.jai";
 #load "game_util.jai";
+#load "game_tests.jai";
 #load "game_pie_loader.jai";

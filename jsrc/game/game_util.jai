@@ -46,88 +46,70 @@ TickDeltas_UpdateCatchup :: (td: *TickDeltas, current_delta: u16)
     td.tick_catchup = 0;
 }
 
-Queue :: struct($MAX_COUNT: s64, $T: Type)
+Queue :: struct($MAX_CAPACITY: s64, $T: Type)
 {
-  range: Range(s64); // @todo simplify, offset,count?
-  buffer: [MAX_COUNT] T;
+  start_offset: s64;
+  count: s64;
+  buffer: [MAX_CAPACITY] T;
 }
 
 for_expansion :: (using queue: Queue, body: Code, flags: For_Flags) #expand
 {
   #assert(flags == 0); // @todo extend support
   `it_index := 0;
-  range_index := range.min;
   while true
   {
-    if range_index >= range.max break;
-    `it := buffer[range_index % MAX_COUNT];
-    defer {
-      range_index += 1;
-      it_index += 1;
-    }
+    if it_index >= count break;
+    `it := buffer[(start_offset + it_index) % MAX_CAPACITY];
+    defer it_index += 1;
     #insert body;
   }
 }
 
 QueuePush :: (using queue: *Queue) -> *queue.T
 {
-  assert(range.min <= range.max);
-  current_index := range.max % MAX_COUNT;
-
-  // truncate min if it overlaps with current
-  if range.min != range.max // check that queue is not empty
+  push_at_index := (start_offset + count) % MAX_CAPACITY;
+  count += 1;
+  if count > MAX_CAPACITY
   {
-    min_index := range.min % MAX_COUNT;
-    if min_index == current_index
-    {
-      range.min += 1;
-    }
+    push_at_index = start_offset % MAX_CAPACITY;
+    start_offset = (start_offset + 1) % MAX_CAPACITY;
+    count = MAX_CAPACITY;
   }
-
-  // advance max
-  range.max += 1;
-
-  res := *buffer[current_index];
-  return res;
+  return *buffer[push_at_index];
 }
 
-QueuePeek :: (using queue: Queue) -> *queue.T
+QueuePush :: (queue: *Queue, value: queue.T)
 {
-  assert(range.min <= range.max);
-  if range.min >= range.max
-    return null;
-
-  current_index := range.min % MAX_COUNT;
-  res := *buffer[current_index];
-  return res;
+  QueuePush(queue).* = value;
 }
 
-QueuePop :: (using queue: *Queue) -> *queue.T
+QueuePeekPointer :: (using queue: *Queue, depth := 0) -> *queue.T
 {
-  res := Q_Peek(queue);
-
-  // advance min
-  if res
-    range.min += 1;
-
-  return res;
+  if count <= depth then return null;
+  peek_index := (start_offset + depth) % MAX_CAPACITY;
+  return *buffer[peek_index];
 }
 
-
-
-Q_PeekAt :: (using queue: *Queue, peek_index: u64) -> *queue.T
+QueuePeek :: (using queue: Queue, depth := 0) -> queue.T
 {
-  assert(range.min <= range.max);
-  if range.min >= range.max
-    return null;
-
-  if !(peek_index >= range.min && peek_index < range.max)
-    return null;
-
-  index := peek_index % xx MAX_COUNT;
-  res := *buffer[index];
-  return res;
+  default: T;
+  if count <= depth then return default;
+  peek_index := (start_offset + depth) % MAX_CAPACITY;
+  return buffer[peek_index];
 }
+
+QueuePop :: (using queue: *Queue) -> queue.T
+{
+  result := QueuePeek(queue);
+  if count > 0
+  {
+    start_offset = (start_offset + 1) % MAX_CAPACITY;
+    count -= 1;
+  }
+  return result;
+}
+
 
 Q_Push :: (arr: [] $T, range: *Range(u64)) -> *T
 {
