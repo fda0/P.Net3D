@@ -48,8 +48,8 @@ TickDeltas_UpdateCatchup :: (td: *TickDeltas, current_delta: u16)
 
 Queue :: struct($MAX_CAPACITY: s64, $T: Type)
 {
-  start_offset: s64;
   count: s64;
+  start_offset: s64;
   buffer: [MAX_CAPACITY] T;
 }
 
@@ -108,63 +108,4 @@ QueuePop :: (using queue: *Queue) -> queue.T
     count -= 1;
   }
   return result;
-}
-
-
-Q_Push :: (arr: [] $T, range: *Range(u64)) -> *T
-{
-  assert(range.min <= range.max);
-  current_index := range.max % arr.count.(u64);
-
-  // truncate min if it overlaps with current
-  if range.min != range.max // check that queue is not empty
-  {
-    min_index := range.min % arr.count.(u64);
-    if min_index == current_index
-    {
-      range.min += 1;
-    }
-  }
-
-  // advance max
-  range.max += 1;
-
-  res := *arr[current_index];
-  return res;
-}
-
-Q_Peek :: (arr: [] $T, range: *Range(u64)) -> *T
-{
-  assert(range.min <= range.max);
-  if range.min >= range.max
-    return null;
-
-  current_index := range.min % arr.count.(u64);
-  res := *arr[current_index];
-  return res;
-}
-
-Q_Pop :: (arr: [] $T, range: *Range(u64)) -> *T
-{
-  res := Q_Peek(arr, range);
-
-  // advance min
-  if (res)
-    range.min += 1;
-
-  return res;
-}
-
-Q_PeekAt :: (arr: [] $T, range: *Range(u64), peek_index: u64) -> *T
-{
-  assert(range.min <= range.max);
-  if range.min >= range.max
-    return null;
-
-  if !(peek_index >= range.min && peek_index < range.max)
-    return null;
-
-  index := peek_index % xx arr.count;
-  res := *arr[index];
-  return res;
 }

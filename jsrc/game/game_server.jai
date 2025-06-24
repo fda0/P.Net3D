@@ -1,7 +1,6 @@
 SERVER_PlayerInputs :: struct
 {
-  qbuf: [NET_MAX_INPUT_TICKS] TICK_PlayerInput;
-  playback_range: Range(u64);
+  input_queue: Queue(NET_MAX_INPUT_TICKS, TICK_PlayerInput);
   latest_client_tick_id: u64;
   last_input: TICK_PlayerInput;
   receive_deltas: TickDeltas;
@@ -20,7 +19,7 @@ SERVER_InsertPlayerInput :: (pi: *SERVER_PlayerInputs, net_msg: *NET_SendInputs,
   if net_msg_tick_id <= pi.latest_client_tick_id
     return; // no new inputs
 
-  pre_insert_playback_range := Range_CountSat(pi.playback_range);
+  pre_insert_input_queue_count := pi.input_queue.count;
 
   // @threading - mutex?
   inputs := net_msg.inputs;
@@ -41,33 +40,28 @@ SERVER_InsertPlayerInput :: (pi: *SERVER_PlayerInputs, net_msg: *NET_SendInputs,
     }
 
     // store input
-    pi_input := Q_Push(pi.qbuf, *pi.playback_range);
-    pi_input.* = inputs[input_index];
+    QueuePush(*pi.input_queue, inputs[input_index]);
   }
 
   pi.latest_client_tick_id = net_msg_tick_id;
 
   if TickDeltas_AddTick(*pi.receive_deltas, net_msg_tick_id)
   {
-    TickDeltas_UpdateCatchup(*pi.receive_deltas, pre_insert_playback_range.(u16));
+    TickDeltas_UpdateCatchup(*pi.receive_deltas, xx pre_insert_input_queue_count);
     if pi.receive_deltas.tick_catchup
     {
       Nlog(LOG_NetCatchup,
           "Client (?) current input delay: % Setting input playback catchup to %",
-          pre_insert_playback_range, pi.receive_deltas.tick_catchup);
+          pre_insert_input_queue_count, pi.receive_deltas.tick_catchup);
     }
   }
 }
 
 SERVER_PopPlayerInput :: (pi: *SERVER_PlayerInputs) -> TICK_PlayerInput
 {
-  result: TICK_PlayerInput;
-  pop := Q_Pop(pi.qbuf, *pi.playback_range);
-  if pop
-    result = pop.*;
-
-  pi.last_input = result;
-  return result;
+  popped := QueuePop(*pi.input_queue);
+  pi.last_input = popped;
+  return popped;
 }
 
 SERVER_GetPlayerInput :: (player_index: u32) -> TICK_PlayerInput
@@ -77,9 +71,9 @@ SERVER_GetPlayerInput :: (player_index: u32) -> TICK_PlayerInput
     return result;
 
   pi := *G.server.player_inputs[player_index];
-  playback_count := Range_CountSat(pi.playback_range);
+  starting_input_count := pi.input_queue.count;
 
-  if playback_count > 0
+  if starting_input_count > 0
     result = SERVER_PopPlayerInput(pi);
   else
   {
@@ -92,7 +86,7 @@ SERVER_GetPlayerInput :: (player_index: u32) -> TICK_PlayerInput
     result.is_pathing = false;
   }
 
-  if playback_count > 1 &&  pi.receive_deltas.tick_catchup > 0
+  if starting_input_count > 1 && pi.receive_deltas.tick_catchup > 0
   {
     pi.receive_deltas.tick_catchup -= 1;
 
