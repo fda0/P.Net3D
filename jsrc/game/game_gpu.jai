@@ -6,6 +6,7 @@ GPU_CLEAR_COLOR_R :: 0.78;
 GPU_CLEAR_COLOR_G :: 0.78;
 GPU_CLEAR_COLOR_B :: 0.96;
 GPU_CLEAR_COLOR_A :: 1.0;
+GPU_MOUSE_PICKING_ONE_PIXEL :: true;
 
 GPU_FrameReadback :: struct
 {
@@ -529,6 +530,7 @@ GPU_Iterate :: ()
   depth_target.texture = G.gpu.tex_depth;
 
   // Mouse picking pass
+  if G.ui.dev.mouse_picking
   {
     color_target := SDL_GPUColorTargetInfo.{
       load_op = .SDL_GPU_LOADOP_CLEAR,
@@ -655,7 +657,7 @@ GPU_Iterate :: ()
   }
 
   // Submit command buffer
-  if !QueueIsFull(G.gpu.readback_queue)
+  if !QueueIsFull(G.gpu.readback_queue) && G.ui.dev.mouse_picking
   {
     readback := QueuePush(*G.gpu.readback_queue);
 
@@ -665,19 +667,31 @@ GPU_Iterate :: ()
     readback.buffer_w = window_width;
     readback.buffer_h = window_height;
 
+    if GPU_MOUSE_PICKING_ONE_PIXEL
+    {
+      readback.buffer_w = 1;
+      readback.buffer_h = 1;
+    }
+
     download_info := SDL_GPUTransferBufferCreateInfo.{
       usage = .SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD,
-      size = window_width * window_height * 4,
+      size = readback.buffer_w * readback.buffer_h * 4,
     };
     readback.download_transfer_buffer = SDL_CreateGPUTransferBuffer(G.gpu.device, *download_info);
 
     copy_pass := SDL_BeginGPUCopyPass(cmd);
     src := SDL_GPUTextureRegion.{
       texture = G.gpu.tex_mouse_picking,
-      w = window_width,
-      h = window_height,
+      w = readback.buffer_w,
+      h = readback.buffer_w,
       d = 1,
     };
+    if GPU_MOUSE_PICKING_ONE_PIXEL
+    {
+      src.x = xx Round(G.mouse.x);
+      src.y = xx Round(G.mouse.y);
+    }
+
     dst := SDL_GPUTextureTransferInfo.{
       transfer_buffer = readback.download_transfer_buffer,
     };
@@ -689,7 +703,7 @@ GPU_Iterate :: ()
   }
   else
   {
-    log("GPU readback queue is full. Skipping frame readback.", flags=.VERBOSE_ONLY);
+    if G.ui.dev.mouse_picking log("GPU readback queue is full. Skipping frame readback.", flags=.VERBOSE_ONLY);
     SDL_SubmitGPUCommandBuffer(cmd);
   }
 }
@@ -710,15 +724,25 @@ GPU_ReadbackMousePickingTexture :: ()
       downloaded_data: *u32 = SDL_MapGPUTransferBuffer(device, peeked.download_transfer_buffer, false);
 
       hover_object: OBJ_Key;
-      mouse_x := Round(G.mouse.x).(s64);
-      mouse_y := Round(G.mouse.y).(s64);
-      if mouse_x >= 0 && mouse_x < peeked.buffer_w &&
-         mouse_y >= 0 && mouse_y < peeked.buffer_h
+
+      if GPU_MOUSE_PICKING_ONE_PIXEL
       {
-        offset := mouse_x + mouse_y * peeked.buffer_w;
-        downloaded_color := downloaded_data[offset];
+        downloaded_color := downloaded_data[0];
         hover_object = OBJ_ColorToKey(xx downloaded_color);
       }
+      else
+      {
+        mouse_x := Round(G.mouse.x).(s64);
+        mouse_y := Round(G.mouse.y).(s64);
+        if mouse_x >= 0 && mouse_x < peeked.buffer_w &&
+        mouse_y >= 0 && mouse_y < peeked.buffer_h
+        {
+          offset := mouse_x + mouse_y * peeked.buffer_w;
+          downloaded_color := downloaded_data[offset];
+          hover_object = OBJ_ColorToKey(xx downloaded_color);
+        }
+      }
+
       G.hover_object = hover_object;
 
       SDL_UnmapGPUTransferBuffer(device, peeked.download_transfer_buffer);

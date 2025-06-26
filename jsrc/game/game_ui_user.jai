@@ -12,6 +12,7 @@ UI_State :: struct
     noclip: bool;
     sun_camera: bool;
     show_colliders: bool;
+    mouse_picking := true;
   };
 };
 
@@ -127,6 +128,7 @@ UI_BuildDeveloperWindow :: ()
       UI_Checkbox("Noclip camera", *noclip);
       UI_Checkbox("Sun camera", *sun_camera);
       UI_Checkbox("Show colliders", *show_colliders);
+      UI_Checkbox("Mouse picking", *mouse_picking);
       UI_Checkbox("Render normals", null);
 
       case .assets;
