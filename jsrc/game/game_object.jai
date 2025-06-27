@@ -45,7 +45,7 @@ OBJ_Storage :: enum_flags u32
 OBJ_Key :: struct
 {
   index: u16;
-  serial_number: u8;
+  serial_number: u16;
 };
 
 OBJ_Sync :: struct
@@ -213,7 +213,8 @@ OBJ_KeyToColor :: (key: OBJ_Key) -> Color32
 {
   byte_array := (*key).([4] u8);
   #assert(size_of(OBJ_Key) == size_of(type_of(byte_array)));
-  return Color32_RGBi(byte_array[0], byte_array[1], byte_array[2]);
+  #assert(size_of(OBJ_Key) == size_of(Color32));
+  return byte_array.data.(*Color32).*;
 }
 
 OBJ_ColorToKey :: (color: Color32, from_bgra := true) -> OBJ_Key
@@ -223,13 +224,11 @@ OBJ_ColorToKey :: (color: Color32, from_bgra := true) -> OBJ_Key
   b := ((color >> 16) & 0xff).(u8);
   a := ((color >> 24) & 0xff).(u8);
   byte_array: [4] u8;
-  if from_bgra byte_array = .[b,g,r,0];
-  else         byte_array = .[r,g,b,0];
+  if from_bgra byte_array = .[b,g,r,a];
+  else         byte_array = .[r,g,b,a];
 
-  key: OBJ_Key;
   #assert(size_of(OBJ_Key) == size_of(type_of(byte_array)));
-  memcpy(*key, byte_array.data, byte_array.count);
-  return key;
+  return byte_array.data.(*OBJ_Key).*;
 }
 
 OBJ_GetNil :: () -> *Object

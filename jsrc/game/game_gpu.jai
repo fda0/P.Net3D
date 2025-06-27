@@ -733,11 +733,11 @@ GPU_ReadbackMousePickingTexture :: ()
     {
       QueuePop(*readback_queue);
       SDL_ReleaseGPUFence(device, peeked.fence);
+      downloaded_color: u32;
 
       if !peeked.out_of_screen && !(G.dev.mouse_picking & .NO_READBACK)
       {
         downloaded_data: *u32 = SDL_MapGPUTransferBuffer(device, peeked.download_transfer_buffer, false);
-        downloaded_color: u32;
 
         if peeked.dim.x == 1 && peeked.dim.y == 1
         {
@@ -754,13 +754,10 @@ GPU_ReadbackMousePickingTexture :: ()
           }
         }
 
-        if downloaded_color
-        {
-          G.hover_object = OBJ_ColorToKey(xx downloaded_color);
-        }
         SDL_UnmapGPUTransferBuffer(device, peeked.download_transfer_buffer);
       }
 
+      G.hover_object = OBJ_ColorToKey(xx downloaded_color);
       SDL_ReleaseGPUTransferBuffer(device, peeked.download_transfer_buffer);
     }
   }
