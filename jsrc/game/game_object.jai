@@ -7,8 +7,6 @@ OBJ_NIL :: Object.{};
 
 OBJ_State :: struct
 {
-  serial_counter: u16 = 1; // incremented and assigned to each new Object
-
   offline_objects: [OBJ_MAX_OFFLINE_OBJECTS] Object;
   network_objects: [OBJ_MAX_NETWORK_OBJECTS] Object;
   #place offline_objects;
@@ -46,8 +44,8 @@ OBJ_Storage :: enum_flags u32
 
 OBJ_Key :: struct
 {
-  serial_number: u16;
   index: u16;
+  serial_number: u8;
 };
 
 OBJ_Sync :: struct
@@ -213,14 +211,25 @@ lerp :: (prev: OBJ_Sync, next: OBJ_Sync, t: float) -> OBJ_Sync
 
 OBJ_KeyToColor :: (key: OBJ_Key) -> Color32
 {
-  #assert(size_of(OBJ_Key) == size_of(Color32));
-  return (*key).(*Color32).*;
+  byte_array := (*key).([4] u8);
+  #assert(size_of(OBJ_Key) == size_of(type_of(byte_array)));
+  return Color32_RGBi(byte_array[0], byte_array[1], byte_array[2]);
 }
 
-OBJ_ColorToKey :: (color: Color32) -> OBJ_Key
+OBJ_ColorToKey :: (color: Color32, from_bgra := true) -> OBJ_Key
 {
-  #assert(size_of(OBJ_Key) == size_of(Color32));
-  return (*color).(*OBJ_Key).*;
+  r := ((color      ) & 0xff).(u8);
+  g := ((color >>  8) & 0xff).(u8);
+  b := ((color >> 16) & 0xff).(u8);
+  a := ((color >> 24) & 0xff).(u8);
+  byte_array: [4] u8;
+  if from_bgra byte_array = .[b,g,r,0];
+  else         byte_array = .[r,g,b,0];
+
+  key: OBJ_Key;
+  #assert(size_of(OBJ_Key) == size_of(type_of(byte_array)));
+  memcpy(*key, byte_array.data, byte_array.count);
+  return key;
 }
 
 OBJ_GetNil :: () -> *Object
@@ -335,10 +344,10 @@ OBJ_Create :: (storage: OBJ_Storage, flags: OBJ_Flags) -> *Object
     return OBJ_GetNil();
 
   // init object
-  obj.* = .{};
+  prev_serial_number := obj.s.key.serial_number;
+  Initialize(obj);
 
-  obj.s.key.serial_number = G.obj.serial_counter;
-  G.obj.serial_counter = max(G.obj.serial_counter + 1, 1);
+  obj.s.key.serial_number = max(prev_serial_number + 1, 1);
   obj.s.key.index = xx ((obj.(u64) - G.obj.all_objects.data.(u64)) / size_of(Object));
 
   obj.s.flags = flags;

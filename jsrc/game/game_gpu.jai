@@ -527,8 +527,6 @@ GPU_Iterate :: ()
     G.gpu.world_uniform.camera_position = G.sun_camera_p;
   }
 
-  // Set depth texture (it will be used twice (mouse_picking & main world render) but that's fine due to cycling I think).
-
   // Mouse picking pass
   if G.dev.mouse_picking & .ENABLED
   {
@@ -739,12 +737,11 @@ GPU_ReadbackMousePickingTexture :: ()
       if !peeked.out_of_screen && !(G.dev.mouse_picking & .NO_READBACK)
       {
         downloaded_data: *u32 = SDL_MapGPUTransferBuffer(device, peeked.download_transfer_buffer, false);
-        hover_object: OBJ_Key;
+        downloaded_color: u32;
 
         if peeked.dim.x == 1 && peeked.dim.y == 1
         {
-          downloaded_color := downloaded_data[0];
-          hover_object = OBJ_ColorToKey(xx downloaded_color);
+          downloaded_color = downloaded_data[0];
         }
         else
         {
@@ -753,12 +750,14 @@ GPU_ReadbackMousePickingTexture :: ()
              mouse.y >= 0 && mouse.y < xx peeked.dim.y
           {
             offset := mouse.x + mouse.y * xx peeked.dim.x;
-            downloaded_color := downloaded_data[offset];
-            hover_object = OBJ_ColorToKey(xx downloaded_color);
+            downloaded_color = downloaded_data[offset];
           }
         }
 
-        G.hover_object = hover_object;
+        if downloaded_color
+        {
+          G.hover_object = OBJ_ColorToKey(xx downloaded_color);
+        }
         SDL_UnmapGPUTransferBuffer(device, peeked.download_transfer_buffer);
       }
 
@@ -862,7 +861,7 @@ GPU_CreateMousePickingTexture :: (width: u32, height: u32) -> *SDL_GPUTexture
 {
   info := SDL_GPUTextureCreateInfo.{
     type = .SDL_GPU_TEXTURETYPE_2D,
-    format = .R8G8B8A8_UNORM,
+    format = .B8G8R8A8_UNORM, // @todo Pick this from swapchain texture format? But be careful when reading from it?
     width = width,
     height = height,
     layer_count_or_depth = 1,
