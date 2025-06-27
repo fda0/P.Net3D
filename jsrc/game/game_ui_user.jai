@@ -1,20 +1,27 @@
+DEV_State :: struct
+{
+  show := true;
+  win_p: V2;
+
+  category: enum {stats; switches; assets; network;};
+
+  // switches
+  show_stats: bool;
+  noclip: bool;
+  sun_camera: bool;
+  show_colliders: bool;
+  mouse_picking: enum_flags
+  {
+    ENABLED;
+    ONE_PIXEL;
+    NO_READBACK;
+  };
+}
+
 UI_State :: struct
 {
-  dev: struct
-  {
-    show := true;
-    win_p: V2;
-
-    category: enum {stats; switches; assets; network;};
-
-    // switches
-    show_stats: bool;
-    noclip: bool;
-    sun_camera: bool;
-    show_colliders: bool;
-    mouse_picking := true;
-  };
-};
+  payload: u64;
+}
 
 UI_RED1      :: #run Color32_RGBi(0xcc, 0x24, 0x1d);
 UI_RED2      :: #run Color32_RGBi(0xfb, 0x49, 0x34);
@@ -48,7 +55,7 @@ UI_MONO_TEXT    :: #run BoxSpec.{text = .{font = xx FONT_Family.Inconsolata, fon
 
 UI_DeveloperKeyShortcuts :: ()
 {
-  using G.ui.dev;
+  using G.dev;
   if (KEY_Pressed(.GRAVE)) then show = !show;
   if (KEY_Pressed(.RETURN)) then noclip = !noclip;
   if (KEY_Pressed(.BACKSPACE)) then sun_camera = !sun_camera;
@@ -56,7 +63,7 @@ UI_DeveloperKeyShortcuts :: ()
 
 UI_BuildDeveloperWindow :: ()
 {
-  using G.ui.dev;
+  using G.dev;
   if !show return;
 
   Layer(.{text.color = UI_FG});
@@ -128,7 +135,9 @@ UI_BuildDeveloperWindow :: ()
       UI_Checkbox("Noclip camera", *noclip);
       UI_Checkbox("Sun camera", *sun_camera);
       UI_Checkbox("Show colliders", *show_colliders);
-      UI_Checkbox("Mouse picking", *mouse_picking);
+      UI_Checkbox("Mouse picking enabled", *mouse_picking, .ENABLED);
+      UI_Checkbox("Mouse picking one pixel mode", *mouse_picking, .ONE_PIXEL);
+      UI_Checkbox("Mouse picking disable readback", *mouse_picking, .NO_READBACK);
       UI_Checkbox("Render normals", null);
 
       case .assets;
@@ -144,6 +153,44 @@ UI_BuildDeveloperWindow :: ()
 }
 
 // UI element library
+UI_Checkbox :: (label: string, checkbox_value: *$T, set_flags: T)
+#modify { return IsEnumFlags(T); }
+{
+  Layer(.{autokey_seed = Hash64Any(label, checkbox_value.(u64))});
+
+  button := Signal(CreateBox(.{layout = .{sizing = .{Grow(), Fit()},
+                                          padding = UI_BUTTON_PAD,
+                                          child_align.y = .CENTER,
+                                          child_gap = UI_WINDOW_GAP}}));
+  Parent(button);
+
+  if button.flags & .HOVER then button.bg_color = UI_BUTTON_HOVER_BG;
+
+  square_text := "";
+  if checkbox_value
+  {
+    is_active := (checkbox_value.* & set_flags) == set_flags;
+    if button.flags & .CLICK
+    {
+      if is_active checkbox_value.* &= ~set_flags;
+      else         checkbox_value.* |= set_flags;
+    }
+    if is_active square_text = "X";
+  }
+  else square_text = "/";
+
+  {
+    square_length := Rem(1.5);
+    Parent(CreateBox(.{layout = .{sizing = Size2(square_length),
+                                  child_align = .{x = .CENTER, y = .CENTER}},
+                       bg_color = UI_BUTTON_BG,
+                       border = .{color = UI_FG, widths = UI_BORDER_WIDTH},
+                       corner_radius = UI_RADIUS},));
+    CreateText(square_text, .{text.font_size = square_length});
+  }
+  CreateText(label);
+}
+
 UI_Checkbox :: (label: string, checkbox_value: *bool)
 {
   Layer(.{autokey_seed = Hash64Any(label, checkbox_value.(u64))});

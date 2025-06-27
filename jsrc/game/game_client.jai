@@ -181,7 +181,7 @@ CLIENT_PollInput :: () -> *TICK_PlayerInput
   // @todo input polling from SDL/OS should be done here directly?
   // Will make sense to revisit it when implementing multithreading.
   dir: V2;
-  if !G.ui.dev.noclip
+  if !G.dev.noclip
   {
     if KEY_Held(.W) dir.x += 1;
     if KEY_Held(.S) dir.x -= 1;

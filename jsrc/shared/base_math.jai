@@ -25,8 +25,15 @@ Mat4 :: struct // @todo change to row-major matrices in the future?
 
 IsInteger :: (T: Type) -> bool
 {
-  ti := cast(*Type_Info) T;
+  ti := T.(*Type_Info);
   return ti.type == .INTEGER;
+}
+IsEnumFlags :: (T: Type) -> bool
+{
+  ti := T.(*Type_Info);
+  if ti.type != .ENUM return false;
+  te := T.(*Type_Info_Enum);
+  return !!(te.enum_type_flags & .FLAGS);
 }
 VectorTypes :: Type.[V2, V3, V4];
 

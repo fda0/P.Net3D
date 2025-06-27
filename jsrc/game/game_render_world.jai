@@ -94,7 +94,7 @@ WORLD_DrawObjects :: ()
   {
     draw_model := OBJ_HasAnyFlag(obj, .DRAW_MODEL);
     draw_colliders := OBJ_HasAnyFlag(obj, .DRAW_COLLIDERS);
-    debug_colliders := G.ui.dev.show_colliders;
+    debug_colliders := G.dev.show_colliders;
 
     if draw_model
     {

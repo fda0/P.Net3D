@@ -28,6 +28,7 @@ GAME_State :: struct
   client: CLIENT_State;
   server: SERVER_State;
   ui: UI_State;
+  dev: DEV_State;
 
   // SDL, window stuff
   window: *SDL_Window;
@@ -132,7 +133,7 @@ GAME_Iterate :: ()
   {
     UI_DeveloperKeyShortcuts();
 
-    if G.ui.dev.noclip
+    if G.dev.noclip
     {
       if KEY_Held(.MouseLeft)
       {
@@ -241,7 +242,7 @@ GAME_Iterate :: ()
     marker := OBJ_Get(G.obj.pathing_marker, .OFFLINE);
     if !OBJ_IsNil(marker)
     {
-      if !G.ui.dev.noclip && KEY_Held(.W, .S, .A, .D)
+      if !G.dev.noclip && KEY_Held(.W, .S, .A, .D)
         marker.s.p.z = -2.0;
 
       if KEY_Held(.MouseRight) && G.world_mouse_valid
