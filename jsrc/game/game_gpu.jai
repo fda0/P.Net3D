@@ -11,7 +11,8 @@ GPU_FrameReadback :: struct
 {
   fence: *SDL_GPUFence;
   download_transfer_buffer: *SDL_GPUTransferBuffer;
-  buffer_w, buffer_h: u32;
+  dim: Vec2(u32);
+  out_of_screen: bool;
 }
 
 GPU_State :: struct
@@ -660,35 +661,40 @@ GPU_Iterate :: ()
   {
     if !QueueIsFull(G.gpu.readback_queue)
     {
-      window_width := cast(u32) G.window_dim.x;
-      window_height := cast(u32) G.window_dim.y;
+      window_dim := Vec2(u32).{
+        G.window_dim.x.(u32),
+        G.window_dim.y.(u32),
+      };
 
       readback := QueuePush(*G.gpu.readback_queue);
-      readback.buffer_w = window_width;
-      readback.buffer_h = window_height;
+      readback.dim = window_dim;
       if G.dev.mouse_picking & .ONE_PIXEL
-      {
-        readback.buffer_w = 1;
-        readback.buffer_h = 1;
-      }
+        readback.dim = .{1,1};
 
       download_info := SDL_GPUTransferBufferCreateInfo.{
         usage = .SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD,
-        size = readback.buffer_w * readback.buffer_h * 4,
+        size = readback.dim.x * readback.dim.y * 4,
       };
       readback.download_transfer_buffer = SDL_CreateGPUTransferBuffer(G.gpu.device, *download_info);
 
       copy_pass := SDL_BeginGPUCopyPass(cmd);
       src := SDL_GPUTextureRegion.{
         texture = G.gpu.tex_mouse_picking,
-        w = readback.buffer_w,
-        h = readback.buffer_w,
+        w = readback.dim.x,
+        h = readback.dim.y,
         d = 1,
       };
       if G.dev.mouse_picking & .ONE_PIXEL
       {
-        src.x = xx Round(G.mouse.x);
-        src.y = xx Round(G.mouse.y);
+        mouse := Vec2(s32).{G.mouse.x.(s32), G.mouse.y.(s32)};
+        if mouse.x >= 0 && mouse.x < xx window_dim.x &&
+           mouse.y >= 0 && mouse.y < xx window_dim.y
+        {
+          src.x = xx mouse.x;
+          src.y = xx mouse.y;
+        }
+        else
+          readback.out_of_screen = true;
       }
 
       dst := SDL_GPUTextureTransferInfo.{
@@ -726,24 +732,23 @@ GPU_ReadbackMousePickingTexture :: ()
       QueuePop(*readback_queue);
       SDL_ReleaseGPUFence(device, peeked.fence);
 
-      // if !(G.dev.mouse_picking & .NO_READBACK)
+      if !peeked.out_of_screen && !(G.dev.mouse_picking & .NO_READBACK)
       {
         downloaded_data: *u32 = SDL_MapGPUTransferBuffer(device, peeked.download_transfer_buffer, false);
         hover_object: OBJ_Key;
 
-        if peeked.buffer_w == 1 && peeked.buffer_h == 1
+        if peeked.dim.x == 1 && peeked.dim.y == 1
         {
           downloaded_color := downloaded_data[0];
           hover_object = OBJ_ColorToKey(xx downloaded_color);
         }
         else
         {
-          mouse_x := Round(G.mouse.x).(s64);
-          mouse_y := Round(G.mouse.y).(s64);
-          if mouse_x >= 0 && mouse_x < peeked.buffer_w &&
-             mouse_y >= 0 && mouse_y < peeked.buffer_h
+          mouse := Vec2(s32).{G.mouse.x.(s32), G.mouse.y.(s32)};
+          if mouse.x >= 0 && mouse.x < xx peeked.dim.x &&
+             mouse.y >= 0 && mouse.y < xx peeked.dim.y
           {
-            offset := mouse_x + mouse_y * peeked.buffer_w;
+            offset := mouse.x + mouse.y * xx peeked.dim.x;
             downloaded_color := downloaded_data[offset];
             hover_object = OBJ_ColorToKey(xx downloaded_color);
           }

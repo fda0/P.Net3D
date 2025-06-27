@@ -76,7 +76,7 @@ QueueIsEmpty :: (using queue: Queue) -> bool
   return count <= 0;
 }
 
-QueuePush :: (using queue: *Queue) -> *queue.T
+QueuePush :: (using queue: *Queue, $initialize := true) -> *queue.T
 {
   push_at_index := (start_offset + count) % MAX_CAPACITY;
   count += 1;
@@ -86,7 +86,10 @@ QueuePush :: (using queue: *Queue) -> *queue.T
     start_offset = (start_offset + 1) % MAX_CAPACITY;
     count = MAX_CAPACITY;
   }
-  return *buffer[push_at_index];
+
+  result := *buffer[push_at_index];
+  #if initialize Initialize(result);
+  return result;
 }
 
 QueuePush :: (queue: *Queue, value: queue.T)
