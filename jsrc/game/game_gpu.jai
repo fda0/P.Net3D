@@ -735,7 +735,7 @@ GPU_ReadbackMousePickingTexture :: ()
       SDL_ReleaseGPUFence(device, peeked.fence);
       downloaded_color: u32;
 
-      if !peeked.out_of_screen && !(G.dev.mouse_picking & .NO_READBACK)
+      if !peeked.out_of_screen
       {
         downloaded_data: *u32 = SDL_MapGPUTransferBuffer(device, peeked.download_transfer_buffer, false);
 

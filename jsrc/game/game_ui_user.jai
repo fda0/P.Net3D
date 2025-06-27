@@ -14,7 +14,6 @@ DEV_State :: struct
   {
     ENABLED;
     ONE_PIXEL;
-    NO_READBACK;
   } = .ENABLED;
 }
 
@@ -135,9 +134,8 @@ UI_BuildDeveloperWindow :: ()
       UI_Checkbox("Noclip camera", *noclip);
       UI_Checkbox("Sun camera", *sun_camera);
       UI_Checkbox("Show colliders", *show_colliders);
-      UI_Checkbox("Mouse picking enabled", *mouse_picking, .ENABLED);
-      UI_Checkbox("Mouse picking one pixel mode", *mouse_picking, .ONE_PIXEL);
-      UI_Checkbox("Mouse picking disable readback", *mouse_picking, .NO_READBACK);
+      UI_Checkbox("Enable mouse picking", *mouse_picking, .ENABLED);
+      UI_Checkbox("Mouse picking - one pixel mode", *mouse_picking, .ONE_PIXEL);
       UI_Checkbox("Render normals", null);
 
       case .assets;
