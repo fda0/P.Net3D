@@ -22,9 +22,10 @@ GPU_State :: struct
 
   readback_queue: Queue(8, GPU_FrameReadback);
 
-  tex_depth: *SDL_GPUTexture;
   tex_msaa: *SDL_GPUTexture;
   tex_resolve: *SDL_GPUTexture;
+  tex_world_depth: *SDL_GPUTexture;
+  tex_mouse_picking_depth: *SDL_GPUTexture;
   tex_mouse_picking: *SDL_GPUTexture;
 
   shadow_tex: *SDL_GPUTexture;
@@ -121,8 +122,8 @@ GPU_Init :: ()
 
   // Shadow map
   {
-    G.gpu.shadow_tex = GPU_CreateDepthTexture(GPU_SHADOW_MAP_DIM, GPU_SHADOW_MAP_DIM, true);
-    G.gpu.dummy_shadow_tex = GPU_CreateDepthTexture(16, 16, true);
+    G.gpu.shadow_tex = GPU_CreateDepthTexture(GPU_SHADOW_MAP_DIM, GPU_SHADOW_MAP_DIM, true, true);
+    G.gpu.dummy_shadow_tex = GPU_CreateDepthTexture(16, 16, true, true);
 
     sampler_info := SDL_GPUSamplerCreateInfo.{
       min_filter = .SDL_GPU_FILTER_LINEAR,
@@ -527,11 +528,12 @@ GPU_Iterate :: ()
   }
 
   // Set depth texture (it will be used twice (mouse_picking & main world render) but that's fine due to cycling I think).
-  depth_target.texture = G.gpu.tex_depth;
 
   // Mouse picking pass
   if G.dev.mouse_picking & .ENABLED
   {
+    depth_target.texture = G.gpu.tex_mouse_picking_depth;
+
     color_target := SDL_GPUColorTargetInfo.{
       load_op = .SDL_GPU_LOADOP_CLEAR,
       store_op = .SDL_GPU_STOREOP_STORE,
@@ -546,6 +548,8 @@ GPU_Iterate :: ()
 
   // World render pass
   {
+    depth_target.texture = G.gpu.tex_world_depth;
+
     color_target := SDL_GPUColorTargetInfo.{
       clear_color = .{
         r = GPU_CLEAR_COLOR_R,
@@ -765,16 +769,18 @@ GPU_ReadbackMousePickingTexture :: ()
 
 GPU_ResizeFramebuffer :: ()
 {
-  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_depth);
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_world_depth);
+  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_mouse_picking_depth);
   SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_msaa);
   SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_resolve);
   SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_mouse_picking);
 
   window_width := cast(u32) G.window_dim.x;
   window_height := cast(u32) G.window_dim.y;
-  G.gpu.tex_depth = GPU_CreateDepthTexture(window_width, window_height, false);
   G.gpu.tex_msaa = GPU_CreateMSAATexture(window_width, window_height);
   G.gpu.tex_resolve = GPU_CreateResolveTexture(window_width, window_height);
+  G.gpu.tex_world_depth = GPU_CreateDepthTexture(window_width, window_height, false, false);
+  G.gpu.tex_mouse_picking_depth = GPU_CreateDepthTexture(window_width, window_height, false, true);
   G.gpu.tex_mouse_picking = GPU_CreateMousePickingTexture(window_width, window_height);
 }
 
@@ -788,7 +794,7 @@ GPU_CreateBuffer :: (usage: SDL_GPUBufferUsageFlags, size: u32, name: string) ->
   return result;
 }
 
-GPU_CreateDepthTexture :: (width: u32, height: u32, used_in_sampler: bool) -> *SDL_GPUTexture
+GPU_CreateDepthTexture :: (width: u32, height: u32, used_in_sampler: bool, sample_count_1: bool) -> *SDL_GPUTexture
 {
   info := SDL_GPUTextureCreateInfo.{
     type = .SDL_GPU_TEXTURETYPE_2D,
@@ -802,11 +808,8 @@ GPU_CreateDepthTexture :: (width: u32, height: u32, used_in_sampler: bool) -> *S
     props = G.gpu.clear_depth_props,
   };
 
-  if (used_in_sampler)
-  {
-    info.sample_count = .SDL_GPU_SAMPLECOUNT_1;
-    info.usage |= SDL_GPU_TEXTUREUSAGE_SAMPLER;
-  }
+  if used_in_sampler then info.usage |= SDL_GPU_TEXTUREUSAGE_SAMPLER;
+  if sample_count_1 then info.sample_count = .SDL_GPU_SAMPLECOUNT_1;
 
   result := SDL_CreateGPUTexture(G.gpu.device, *info);
   assert(!!result); // @todo report err
@@ -943,7 +946,7 @@ GPU_Deinit :: ()
   }
   SDL_ReleaseGPUGraphicsPipeline(G.gpu.device, G.gpu.ui_pipeline);
 
-  SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_depth);
+  // SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_depth);
   SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_msaa);
   SDL_ReleaseGPUTexture(G.gpu.device, G.gpu.tex_resolve);
 

@@ -15,7 +15,7 @@ DEV_State :: struct
     ENABLED;
     ONE_PIXEL;
     NO_READBACK;
-  };
+  } = .ENABLED;
 }
 
 UI_State :: struct
