@@ -35,7 +35,14 @@ IsEnumFlags :: (T: Type) -> bool
   te := T.(*Type_Info_Enum);
   return !!(te.enum_type_flags & .FLAGS);
 }
-VectorTypes :: Type.[V2, V3, V4];
+VectorTypes :: Type.[V2, V3, V4, Vec2(s32)];
+IsVector :: (T: Type) -> bool
+{
+  for VectorTypes
+    if it == T return true;
+  return false;
+}
+
 
 // AXIS MATH
 Axis3 :: enum { X; Y; Z; };
@@ -69,6 +76,21 @@ Range_MaxDistance :: (a: Range($T), b: Range(T)) -> T
   d0 := b.min - a.max;
   d1 := a.min - b.max;
   return max(d0, d1);
+}
+
+
+OverlapsRange :: (r: Range($T), value: T) -> bool
+#modify { return IsVector(T); }
+{
+  result := true;
+  for value.component
+    result &&= it >= r.min.component[it_index] && it < r.max.component[it_index];
+  return result;
+}
+OverlapsRange :: (r: Range($T), value: T) -> bool
+#modify { return !IsVector(T); }
+{
+  return value >= r.min && value < r.max;
 }
 
 MakeRange :: (max: $T) -> Range(T)
@@ -474,6 +496,7 @@ transpose :: (m: Mat4) -> Mat4
 Vec2 :: struct($T: Type)
 {
   x, y: T;
+  #place x; component: [2] T;
 };
 
 // vec x vec

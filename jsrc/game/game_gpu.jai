@@ -11,7 +11,7 @@ GPU_FrameReadback :: struct
 {
   fence: *SDL_GPUFence;
   download_transfer_buffer: *SDL_GPUTransferBuffer;
-  dim: Vec2(u32);
+  dim: Vec2(s32);
   out_of_screen: bool;
 }
 
@@ -663,37 +663,30 @@ GPU_Iterate :: ()
   {
     if !QueueIsFull(G.gpu.readback_queue)
     {
-      window_dim := Vec2(u32).{
-        G.window_dim.x.(u32),
-        G.window_dim.y.(u32),
-      };
-
       readback := QueuePush(*G.gpu.readback_queue);
-      readback.dim = window_dim;
+      readback.dim = Vec2(s32).{xx G.window_dim.x, xx G.window_dim.y};
       if G.dev.mouse_picking & .ONE_PIXEL
         readback.dim = .{1,1};
 
       download_info := SDL_GPUTransferBufferCreateInfo.{
         usage = .SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD,
-        size = readback.dim.x * readback.dim.y * 4,
+        size = xx (readback.dim.x * readback.dim.y * 4),
       };
       readback.download_transfer_buffer = SDL_CreateGPUTransferBuffer(G.gpu.device, *download_info);
 
       copy_pass := SDL_BeginGPUCopyPass(cmd);
       src := SDL_GPUTextureRegion.{
         texture = G.gpu.tex_mouse_picking,
-        w = readback.dim.x,
-        h = readback.dim.y,
+        w = xx readback.dim.x,
+        h = xx readback.dim.y,
         d = 1,
       };
       if G.dev.mouse_picking & .ONE_PIXEL
       {
-        mouse := Vec2(s32).{G.mouse.x.(s32), G.mouse.y.(s32)};
-        if mouse.x >= 0 && mouse.x < xx window_dim.x &&
-           mouse.y >= 0 && mouse.y < xx window_dim.y
+        if OverlapsRange(MakeRange(G.window_dim), G.mouse)
         {
-          src.x = xx mouse.x;
-          src.y = xx mouse.y;
+          src.x = xx G.mouse.x;
+          src.y = xx G.mouse.y;
         }
         else
           readback.out_of_screen = true;
@@ -745,11 +738,10 @@ GPU_ReadbackMousePickingTexture :: ()
         }
         else
         {
-          mouse := Vec2(s32).{G.mouse.x.(s32), G.mouse.y.(s32)};
-          if mouse.x >= 0 && mouse.x < xx peeked.dim.x &&
-             mouse.y >= 0 && mouse.y < xx peeked.dim.y
+          mouse := Vec2(s32).{xx G.mouse.x, xx G.mouse.y};
+          if OverlapsRange(MakeRange(peeked.dim), mouse)
           {
-            offset := mouse.x + mouse.y * xx peeked.dim.x;
+            offset := mouse.x + mouse.y * peeked.dim.x;
             downloaded_color = downloaded_data[offset];
           }
         }

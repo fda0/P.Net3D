@@ -59,7 +59,7 @@ GAME_State :: struct
   sun_camera_transform: Mat4;
 
   // camera
-  camera_p: V3 = .{-4, 0, 1};
+  camera_p: V3 = .{-10, 0, 1};
   camera_angles: V3;
   camera_fov_y: float = 0.111;
   camera_transform: Mat4;
@@ -157,13 +157,26 @@ GAME_Iterate :: ()
     }
     else
     {
-      player := OBJ_Get(G.client.player_key, .NETWORK);
-      if (!OBJ_IsNil(player))
+      G.camera_p.z = 12.5;
+      G.camera_angles = V3.{0, -0.138, 0};
+
+      // Mouse window edge camera scroll
+      if !G.dev.show && OverlapsRange(MakeRange(G.window_dim), G.mouse)
       {
-        G.camera_p = player.s.p;
-        G.camera_p.z += 12.5;
-        G.camera_p.x -= 9.8;
-        G.camera_angles = V3.{0, -0.138, 0};
+        window_margin := min(G.window_dim.x, G.window_dim.y) * 0.1;
+        dir: V2;
+        if G.mouse.x < window_margin                  then dir.y += 1;
+        if G.mouse.y < window_margin                  then dir.x += 1;
+        if G.mouse.x > G.window_dim.x - window_margin then dir.y -= 1;
+        if G.mouse.y > G.window_dim.y - window_margin then dir.x -= 1;
+        G.camera_p.xy += normalize(dir) * G.dt * 4.0;
+      }
+
+      player := OBJ_Get(G.client.player_key, .NETWORK);
+      if KEY_Held(.SPACE)
+      {
+        G.camera_p.xy = player.s.p.xy;
+        G.camera_p.x -= 8.5;
       }
     }
 

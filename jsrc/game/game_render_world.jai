@@ -110,7 +110,7 @@ WORLD_DrawObjects :: ()
       }
 
       hover_color := Color32_RGBf(1,1,1);
-      if obj.s.key == G.hover_object then hover_color = Color32_RGBf(1, Sin01(G.at*2.5), Cos01(G.at*2.5));
+      if obj.s.key == G.hover_object then hover_color = Color32_RGBf(1, 0.5*Sin01(G.at*2.5), 0.5*Cos01(G.at*2.5));
       WORLD_DrawModel(obj.s.model, transform, obj.l.animation_index, obj.l.animation_t, hover_color, OBJ_KeyToColor(obj.s.key));
     }
 
