@@ -62,8 +62,8 @@ OBJ_Sync :: struct
   moved_dp: V3; // move that Object did after collision simulation
 
   // game stats
-  hp: float;
   max_hp: float;
+  hp: float;
 
   // visuals
   color: Color32; // unused?
@@ -389,6 +389,9 @@ OBJ_CreateHero :: (storage: OBJ_Storage, model: MODEL_Key) -> *Object
     obj.s.model = model;
     obj.s.color = Color32_Grayf(1);
     obj.s.rotation = RotationAroundAxis(AxisV3(.Z), -0.5);
+
+    obj.s.max_hp = 100;
+    obj.s.hp = 80;
   }
   return obj;
 }
