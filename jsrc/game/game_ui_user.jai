@@ -72,7 +72,7 @@ UI_BuildDeveloperWindow :: ()
 
   // Floating developer window
   Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
-                                sizing = .{width = Fit(SizeMin(Rem(35))), height = Size(Rem(30))}},
+                                sizing = .{width = Fit(SizeMin(Rem(30))), height = Size(Rem(30))}},
                      bg_color = UI_BG,
                      floating = .{attach_to = .ROOT, offset = Px(clamped_win_p)},
                      border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},

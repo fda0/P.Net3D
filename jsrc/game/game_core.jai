@@ -185,7 +185,8 @@ GAME_Iterate :: ()
       }
 
       player := OBJ_Get(G.client.player_key, .NETWORK);
-      if KEY_Held(.SPACE)
+      if KEY_Held(.SPACE) ||
+         G.frame_number < 10 // temp hack to center camera on player on startup
       {
         G.camera_p.xy = player.s.p.xy;
         G.camera_p.x -= 8.5;

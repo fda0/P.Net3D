@@ -125,7 +125,7 @@ TICK_AdvanceSimulation :: ()
             if dot(normal, obstacle_dir) < 0
             continue;
 
-            d := Range_MaxDistance(projection_obj.ranges[it], projection_obstacle.ranges[it]);
+            d := DistanceBetweenRanges(projection_obj.ranges[it], projection_obstacle.ranges[it]);
             if d > 0.0
             {
               // @info(mg) We can exit early from checking this

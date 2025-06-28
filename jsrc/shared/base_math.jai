@@ -63,21 +63,46 @@ Range :: struct ($T: Type)
   max: T; // exclusive (open) range.
   // Values are valid for `min <= x < max`.
 };
+Rectangle :: Range(V2);
 
-Range_CountSat :: (rng: Range($T)) -> T
+MakeRange :: (max: $T) -> Range(T)
 {
-  if rng.max < rng.min
-    return 0;
-  return rng.max - rng.min;
+  return Range(T).{max = max};
 }
 
-Range_MaxDistance :: (a: Range($T), b: Range(T)) -> T
+MakeRange :: (min: $T, max: T) -> Range(T)
+{
+  return Range(T).{min, max};
+}
+
+MakeRangeMinDim :: (min: $T, dim: T) -> Range(T)
+{
+  return Range(T).{min, min + dim};
+}
+
+MakeRangeCenterHalfDim :: (center: $T, half_dim: T) -> Range(T)
+{
+  return Range(T).{center - half_dim, center + half_dim};
+}
+
+MakeRangeCenterDim :: (center: $T, dim: T) -> Range(T)
+{
+  half_dim := dim / 2;
+  return Range(T).{center - half_dim, center + half_dim};
+}
+
+RangeLength :: (r: Range) -> r.T
+{
+  if r.max < r.min return 0;
+  return r.max - r.min;
+}
+
+DistanceBetweenRanges :: (a: Range($T), b: Range(T)) -> T
 {
   d0 := b.min - a.max;
   d1 := a.min - b.max;
   return max(d0, d1);
 }
-
 
 OverlapsRange :: (r: Range($T), value: T) -> bool
 #modify { return IsVector(T); }
@@ -91,16 +116,6 @@ OverlapsRange :: (r: Range($T), value: T) -> bool
 #modify { return !IsVector(T); }
 {
   return value >= r.min && value < r.max;
-}
-
-MakeRange :: (max: $T) -> Range(T)
-{
-  return Range(T).{max = max};
-}
-Open :: MakeRange; // @todo delete
-MakeRange :: (min: $T, max: T) -> Range(T)
-{
-  return Range(T).{min, max};
 }
 
 for_expansion :: (range: Range($T), body: Code, flags: For_Flags) #expand

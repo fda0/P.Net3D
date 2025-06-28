@@ -18,20 +18,6 @@ OBJ_State :: struct
   pathing_marker_set: bool;
 };
 
-OBJ_Flags :: enum_flags u32
-{
-  MOVE;
-  COLLIDE;
-
-  ANIMATE_ROTATION;
-  ANIMATE_POSITION;
-  ANIMATE_TRACKS;
-
-  DRAW_MODEL;
-  DRAW_COLLIDERS;
-  // MOUSE_PICKING;
-};
-
 OBJ_Storage :: enum_flags u32
 {
   // This enum is useful for filtering obj storage when doing queries.
@@ -48,6 +34,23 @@ OBJ_Key :: struct
   serial_number: u16;
 };
 
+OBJ_Flags :: enum_flags u32
+{
+  MOVE;
+  COLLIDE;
+
+  ANIMATE_ROTATION;
+  ANIMATE_POSITION;
+  ANIMATE_TRACKS;
+
+  DRAW_MODEL;
+  DRAW_COLLIDERS;
+  // MOUSE_PICKING;
+
+  HAS_HP;
+  TARGETABLE;
+};
+
 OBJ_Sync :: struct
 {
   // Object data that's synced with the server
@@ -57,6 +60,10 @@ OBJ_Sync :: struct
   p: V3; // XY center, Z at bottom
   desired_dp: V3; // move that Object wanted to make
   moved_dp: V3; // move that Object did after collision simulation
+
+  // game stats
+  hp: float;
+  max_hp: float;
 
   // visuals
   color: Color32; // unused?
@@ -192,10 +199,7 @@ OBJ_Init :: ()
     }
   }
 
-  {
-    experiment := OBJ_Create(.OFFLINE, .DRAW_MODEL | .ANIMATE_TRACKS);
-    experiment.s.model = MODEL_CreateKey("Dude");
-  }
+  OBJ_CreateHero(.NETWORK, MODEL_CreateKey("Dude"));
 }
 
 lerp :: (prev: OBJ_Sync, next: OBJ_Sync, t: float) -> OBJ_Sync
@@ -370,11 +374,12 @@ OBJ_CreateWall :: (p: V2, dim: V2, height: float) -> *Object
   return obj;
 }
 
-OBJ_CreatePlayer :: (model: MODEL_Key) -> *Object
+OBJ_CreateHero :: (storage: OBJ_Storage, model: MODEL_Key) -> *Object
 {
-  obj := OBJ_Create(.NETWORK,
+  obj := OBJ_Create(storage,
     .MOVE | .COLLIDE | .DRAW_MODEL |
-    .ANIMATE_ROTATION | .ANIMATE_TRACKS);
+    .ANIMATE_ROTATION | .ANIMATE_TRACKS |
+    .HAS_HP | .TARGETABLE);
 
   if !OBJ_IsNil(obj)
   {

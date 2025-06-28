@@ -263,7 +263,7 @@ NET_IterateSend :: ()
           ];
 
           model := model_keys[user_index % model_keys.count];
-          player := OBJ_CreatePlayer(model);
+          player := OBJ_CreateHero(.NETWORK, model);
           if !OBJ_IsNil(player)
           {
             player.s.p.y = -1.5 + user_index * 0.7;
