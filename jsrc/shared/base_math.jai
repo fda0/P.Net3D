@@ -63,32 +63,26 @@ Range :: struct ($T: Type)
   max: T; // exclusive (open) range.
   // Values are valid for `min <= x < max`.
 };
-Rectangle :: Range(V2);
 
-MakeRange :: (max: $T) -> Range(T)
-{
-  return Range(T).{max = max};
-}
+MakeRange              :: (max: $T)                 -> Range(T) { return Range(T).{max = max}; }
+MakeRange              :: (min: $T, max: T)         -> Range(T) { return Range(T).{min, max}; }
+MakeRangeMinDim        :: (min: $T, dim: T)         -> Range(T) { return Range(T).{min, min + dim}; }
+MakeRangeCenterHalfDim :: (center: $T, half_dim: T) -> Range(T) { return Range(T).{center - half_dim, center + half_dim}; }
+MakeRangeCenterDim     :: (center: $T, dim: T)      -> Range(T) { return Range(T).{center - dim/2, center + dim/2}; }
 
-MakeRange :: (min: $T, max: T) -> Range(T)
-{
-  return Range(T).{min, max};
-}
+Rect                  :: Range(V2);
+MakeRect              :: #procedure_of_call MakeRange(V2.{});
+MakeRect              :: #procedure_of_call MakeRange(V2.{}, V2.{});
+MakeRectMinDim        :: #procedure_of_call MakeRangeMinDim(V2.{}, V2.{});
+MakeRectCenterHalfDim :: #procedure_of_call MakeRangeCenterHalfDim(V2.{}, V2.{});
+MakeRectCenterDim     :: #procedure_of_call MakeRangeCenterDim(V2.{}, V2.{});
+MakeRect       :: (max_x: float, max_y: float)                     -> Rect { return .{max = .{max_x, max_y}}; }
+MakeRect       :: (x: float, y: float, max_x: float, max_y: float) -> Rect { return .{.{x, y}, .{max_x, max_y}}; }
+MakeRectMinDim :: (x: float, y: float, dim_x: float, dim_y: float) -> Rect { return .{.{x, y}, .{x, y} + .{dim_x, dim_y}}; }
 
-MakeRangeMinDim :: (min: $T, dim: T) -> Range(T)
+operator == :: (a: Range($T), b: Range(T)) -> bool
 {
-  return Range(T).{min, min + dim};
-}
-
-MakeRangeCenterHalfDim :: (center: $T, half_dim: T) -> Range(T)
-{
-  return Range(T).{center - half_dim, center + half_dim};
-}
-
-MakeRangeCenterDim :: (center: $T, dim: T) -> Range(T)
-{
-  half_dim := dim / 2;
-  return Range(T).{center - half_dim, center + half_dim};
+  return a.min == b.min && a.max == b.max;
 }
 
 RangeLength :: (r: Range) -> r.T
@@ -105,6 +99,11 @@ DistanceBetweenRanges :: (a: Range($T), b: Range(T)) -> T
 }
 
 OverlapsRange :: (r: Range($T), value: T) -> bool
+#modify { return !IsVector(T); }
+{
+  return value >= r.min && value < r.max;
+}
+OverlapsRange :: (r: Range($T), value: T) -> bool
 #modify { return IsVector(T); }
 {
   result := true;
@@ -112,10 +111,22 @@ OverlapsRange :: (r: Range($T), value: T) -> bool
     result &&= it >= r.min.component[it_index] && it < r.max.component[it_index];
   return result;
 }
-OverlapsRange :: (r: Range($T), value: T) -> bool
+
+RangeIntersection :: (a: Range($T), b: Range(T)) -> Range(T)
 #modify { return !IsVector(T); }
 {
-  return value >= r.min && value < r.max;
+  result: Range(T);
+  result.min = max(a.min, b.min);
+  result.max = min(a.max, b.max);
+  return result;
+}
+RangeIntersection :: (a: Range($T), b: Range(T)) -> Range(T)
+#modify { return IsVector(T); }
+{
+  result: Range(T);
+  for * result.min.component it.* = max(a.min.component[it_index], b.min.component[it_index]);
+  for * result.max.component it.* = min(a.max.component[it_index], b.max.component[it_index]);
+  return result;
 }
 
 for_expansion :: (range: Range($T), body: Code, flags: For_Flags) #expand

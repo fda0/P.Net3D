@@ -34,8 +34,7 @@ UI_FinishFrame :: ()
     c32 := Color32_RGBAf(c4);
 
     shape := UI_Shape.{
-      p_min = cmd.p,
-      p_max = cmd.p + cmd.dim,
+      rect = MakeRangeMinDim(cmd.p, cmd.dim),
       color = c32,
       corner_radius = cmd.corner_radius,
       tex_layer = -1.0,

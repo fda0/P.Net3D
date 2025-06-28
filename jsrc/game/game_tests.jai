@@ -3,6 +3,7 @@
 TEST_run :: ()
 {
   TEST_util();
+  TEST_math();
 }
 
 TEST_util :: ()
@@ -33,4 +34,15 @@ TEST_util :: ()
 
   peeked_pointer := QueuePeekPointer(*q);
   assert(peeked_pointer.* == 33);
+}
+
+TEST_math :: ()
+{
+  // rectangles
+  {
+    a := MakeRect(-10, -20, 30, 40);
+    b := MakeRect(-15, -8, -2, 400);
+    r := RangeIntersection(a, b);
+    assert(r == MakeRect(-10, -8, -2, 40));
+  }
 }

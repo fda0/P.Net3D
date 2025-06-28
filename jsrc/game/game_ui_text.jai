@@ -41,10 +41,8 @@ UI_ProcessTextLine :: (text: string, font: FONT_Family, pixel_height: u16, using
         p.y = Round(p.y);
 
         shape := UI_Shape.{
-          p_min = p,
-          p_max = p + tex_dim,
-          tex_min = tex_p,
-          tex_max = tex_p + tex_dim,
+          rect = MakeRangeMinDim(p, tex_dim),
+          tex_rect = MakeRangeMinDim(tex_p, tex_dim),
           tex_layer = xx glyph.layer,
           color = draw_color,
         };

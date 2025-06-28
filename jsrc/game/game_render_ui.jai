@@ -6,10 +6,8 @@ UI_Uniform :: struct
 
 UI_Shape :: struct
 {
-  p_min: V2;
-  p_max: V2;
-  tex_min: V2;
-  tex_max: V2;
+  rect: Rect;
+  tex_rect: Rect;
   tex_layer: float = -1.0;
   corner_radius: float;
   edge_softness: float;
@@ -17,11 +15,7 @@ UI_Shape :: struct
   color: Color32; // @todo array of 4 colors for gradients
 };
 
-UI_Clip :: struct
-{
-  p_min: V2;
-  p_max: V2;
-};
+UI_Clip :: Rect;
 
 UI_ActiveClipIndex :: () -> u32
 {
@@ -41,13 +35,7 @@ UI_PushClip :: (clip_: UI_Clip)
   if clip_stack_index + 1 >= clip_stack.count return; // @todo increase clip_stack so PopClip does correct thing; fallback to no clip
   if clips_count >= clips.count return;
 
-  clip := clip_;
-  current := UI_ActiveClip();
-  // intersection of clip & current
-  if (current.p_min.x > clip.p_min.x) clip.p_min.x = current.p_min.x;
-  if (current.p_min.y > clip.p_min.y) clip.p_min.y = current.p_min.y;
-  if (current.p_max.x < clip.p_max.x) clip.p_max.x = current.p_max.x;
-  if (current.p_max.y < clip.p_max.y) clip.p_max.y = current.p_max.y;
+  clip := RangeIntersection(clip_, UI_ActiveClip());
 
   clip_index := clips_count;
   clips_count += 1;
