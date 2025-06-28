@@ -163,13 +163,25 @@ GAME_Iterate :: ()
       // Mouse window edge camera scroll
       if !G.dev.show && OverlapsRange(MakeRange(G.window_dim), G.mouse)
       {
-        window_margin := min(G.window_dim.x, G.window_dim.y) * 0.1;
+        window_margin := min(G.window_dim.x, G.window_dim.y) * 0.075;
+        ratio := 1.0 / window_margin;
+
         dir: V2;
-        if G.mouse.x < window_margin                  then dir.y += 1;
-        if G.mouse.y < window_margin                  then dir.x += 1;
-        if G.mouse.x > G.window_dim.x - window_margin then dir.y -= 1;
-        if G.mouse.y > G.window_dim.y - window_margin then dir.x -= 1;
-        G.camera_p.xy += normalize(dir) * G.dt * 4.0;
+        dir.y += max(window_margin - G.mouse.x, 0) * ratio;
+        dir.x += max(window_margin - G.mouse.y, 0) * ratio;
+        dir.y -= max(G.mouse.x - (G.window_dim.x - window_margin), 0) * ratio;
+        dir.x -= max(G.mouse.y - (G.window_dim.y - window_margin), 0) * ratio;
+
+        easing :: (x: float) -> float {
+          // return 1.0 - pow(1 - x, 4); // easeOutQuart
+          return x*x*x;
+        }
+        dir.x = Smoothstep(abs(dir.x), max=0.9) * Sign(dir.x);
+        dir.y = Smoothstep(abs(dir.y), max=0.9) * Sign(dir.y);
+
+        dir_len := length(dir);
+        if dir_len > 1.0 then dir /= dir_len;
+        G.camera_p.xy += dir * G.dt * 6.0;
       }
 
       player := OBJ_Get(G.client.player_key, .NETWORK);

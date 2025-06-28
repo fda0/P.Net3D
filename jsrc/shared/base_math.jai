@@ -136,6 +136,14 @@ Round :: (x: float) -> float {
     return cast(float)cast(int)(x + 0.5 * ifx x < 0 then -1 else 1);
 }
 
+Smoothstep :: (t: float, min: float = 0, max: float = 1) -> float
+{
+  t = clamp((t - min) / (max - min), 0.0, 1.0);
+  return t * t * (3.0 - 2.0 * t);
+}
+
+Sign :: (x: float) -> float { return ifx x < 0.0 then -1.0 else 1.0; }
+
 CeilPow2 :: (v: u32) -> u32
 {
   if (!v) return 0;
