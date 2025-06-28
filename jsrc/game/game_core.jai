@@ -135,7 +135,7 @@ GAME_Iterate :: ()
 
     if G.dev.noclip
     {
-      if KEY_Held(.MouseLeft)
+      if KEY_Held(.MOUSE_LEFT)
       {
         rot_speed := 0.0004;
         G.camera_angles.z += rot_speed * G.mouse_delta.x;
@@ -271,7 +271,7 @@ GAME_Iterate :: ()
       if !G.dev.noclip && KEY_Held(.W, .S, .A, .D)
         marker.s.p.z = -2.0;
 
-      if KEY_Held(.MouseRight) && G.world_mouse_valid
+      if KEY_Held(.MOUSE_RIGHT) && G.world_mouse_valid
       {
         marker.s.flags |= .DRAW_MODEL;
         marker.s.model = MODEL_CreateKey("Flag");
@@ -279,7 +279,7 @@ GAME_Iterate :: ()
 
         marker.l.animated_p.x = marker.s.p.x;
         marker.l.animated_p.y = marker.s.p.y;
-        if KEY_Pressed(.MouseRight)
+        if KEY_Pressed(.MOUSE_RIGHT)
           marker.l.animated_p.z = 0.5;
 
         G.obj.pathing_marker_set = true;

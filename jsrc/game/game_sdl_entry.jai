@@ -115,8 +115,8 @@ PLATFORM_Iterate :: ()
       SDL_SetWindowMouseGrab(G.window, !G.dev.show);
 
       mouse_keys := SDL_GetMouseState(*G.mouse.x, *G.mouse.y);
-      KEY_Update(.MouseLeft, !!(mouse_keys & SDL_BUTTON_LMASK));
-      KEY_Update(.MouseRight, !!(mouse_keys & SDL_BUTTON_RMASK));
+      KEY_Update(.MOUSE_LEFT, !!(mouse_keys & SDL_BUTTON_LMASK));
+      KEY_Update(.MOUSE_RIGHT, !!(mouse_keys & SDL_BUTTON_RMASK));
 
       num_keys: s32;
       key_states := SDL_GetKeyboardState(*num_keys);

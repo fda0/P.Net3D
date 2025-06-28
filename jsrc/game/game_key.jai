@@ -2,8 +2,8 @@ KEY_Code :: enum u32
 {
   using,except(COUNT) SDL_Scancode;
   START :: SDL_SCANCODE_COUNT + 1;
-  MouseLeft;
-  MouseRight;
+  MOUSE_LEFT;
+  MOUSE_RIGHT;
   COUNT;
 
   // @todo write metaprogram that imports SDL_Scancodes but removes SDL_SCANCODE_...

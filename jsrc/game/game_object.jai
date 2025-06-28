@@ -86,6 +86,7 @@ OBJ_Local :: struct
   animated_rot: Quat; // animates towards rotation
   animated_p: V3; // animates towards (V3){p.x, p.y, p.z}
 
+  overwrite_animation_index: s32 = -1; // debug tool
   animation_index: s32;
   animation_t: float;
 };

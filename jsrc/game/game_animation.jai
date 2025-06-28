@@ -42,6 +42,12 @@ ANIM_AnimateObjects :: ()
 
         obj.l.animation_index = ASSET_AnimNameToIndex(model.skeleton, "Walk_Loop");
         dist := length(obj.s.moved_dp);
+
+        if obj.l.overwrite_animation_index >= 0 && obj.l.overwrite_animation_index < model.skeleton.animations.count
+        {
+          obj.l.animation_index = obj.l.overwrite_animation_index;
+        }
+
         obj.l.animation_t += dist * WALK_T_SPEED * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
         obj.l.animation_t = ANIM_WrapAnimationTime(model.skeleton, obj.l.animation_index, obj.l.animation_t);
       }

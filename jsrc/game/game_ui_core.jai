@@ -14,9 +14,9 @@ UI_StartFrame :: ()
   };
 
   using ButtonType;
-  spec.are_buttons_down[MOUSE_LEFT]   = KEY_Held(.MouseLeft);
+  spec.are_buttons_down[MOUSE_LEFT]   = KEY_Held(.MOUSE_LEFT);
   spec.are_buttons_down[MOUSE_MIDDLE] = false;
-  spec.are_buttons_down[MOUSE_RIGHT]  = KEY_Held(.MouseRight);
+  spec.are_buttons_down[MOUSE_RIGHT]  = KEY_Held(.MOUSE_RIGHT);
 
   LayoutBegin(spec);
 }

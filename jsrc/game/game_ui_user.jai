@@ -3,7 +3,9 @@ DEV_State :: struct
   show := true;
   win_p: V2;
 
-  category: enum {stats; switches; assets; network;};
+  category: enum {stats; switches; assets; network; objects; };
+
+  selected_object: OBJ_Key;
 
   // switches
   show_stats: bool;
@@ -108,7 +110,7 @@ UI_BuildDeveloperWindow :: ()
                                     widths = UI_BORDER_WIDTH}}));
       for category_names
       {
-        UI_Button(it, *category, category_values[it_index]);
+        UI_ButtonRadio(it, *category, category_values[it_index]);
       }
     }
 
@@ -147,6 +149,32 @@ UI_BuildDeveloperWindow :: ()
       case .network;
       Layers(UI_MONO_TEXT);
       CreateText("network stuff here");
+
+      case .objects;
+      Layers(UI_MONO_TEXT);
+      if KEY_Pressed(.T) selected_object = G.hover_object; // @todo improve
+      CreateText(tprint("Seletected: %", selected_object));
+      if UI_Button("reset selection") selected_object = .{};
+
+      obj := OBJ_GetAny(selected_object);
+      if OBJ_IsNil(obj) CreateText("obj is nil");
+
+      CreateText(tprint("ModelKey: %", obj.s.model));
+
+      anim_count := -1;
+      model := ASSET_GetModel(obj.s.model);
+      if model.skeleton then anim_count = model.skeleton.animations.count;
+
+      CreateText(tprint("local overwrite animation index: %/%", obj.l.overwrite_animation_index, anim_count));
+      if !OBJ_IsNil(obj)
+      {
+        Parent(CreateBox(.{layout.sizing = .{Grow(), Fit()},
+                           layout.child_gap = Em(1)}));
+        if UI_Button("+1")    obj.l.overwrite_animation_index += 1;
+        if UI_Button("-1")    obj.l.overwrite_animation_index -= 1;
+        if UI_Button("reset") obj.l.overwrite_animation_index = -1;
+      }
+
     }
   }
 }
@@ -222,7 +250,7 @@ UI_Checkbox :: (label: string, checkbox_value: *bool)
   CreateText(label);
 }
 
-UI_Button :: (label: string, button_value: *$T, set_value: T)
+UI_ButtonRadio :: (label: string, button_value: *$T, set_value: T)
 {
   Layer(.{autokey_seed = Hash64Any(label, button_value.(u64), set_value)});
 
@@ -248,6 +276,24 @@ UI_Button :: (label: string, button_value: *$T, set_value: T)
     }
   }
   else label_box.text.color = UI_RED2;
+}
+
+UI_Button :: (label: string) -> clicked: bool
+{
+  Layer(.{autokey_seed = Hash64Any(label)});
+
+  button := Signal(CreateBox(.{layout = .{sizing = .{Grow(Fit()), Fit()},
+                                          padding = UI_BUTTON_PAD,
+                                          child_align.x = .RIGHT,
+                                          child_align.y = .CENTER,
+                                          child_gap = UI_WINDOW_GAP}}));
+  Parent(button);
+
+  button.bg_color = UI_BUTTON_BG;
+  if button.flags & .HOVER then button.bg_color = UI_BUTTON_HOVER_BG;
+
+  label_box := CreateText(label);
+  return !!(button.flags & .CLICK);
 }
 
 Layout :: #import,file "brick_ui_layout.jai"(Color=Color32);

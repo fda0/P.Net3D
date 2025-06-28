@@ -110,9 +110,12 @@ WORLD_DrawObjects :: ()
         transform = transform * rot_mat; // rotate first, translate second
       }
 
-      hover_color := Color32_RGBf(1,1,1);
-      if obj.s.key == G.hover_object then hover_color = Color32_RGBf(1, 0.5*Sin01(G.at*2.5), 0.5*Cos01(G.at*2.5));
-      WORLD_DrawModel(obj.s.model, transform, obj.l.animation_index, obj.l.animation_t, hover_color, OBJ_KeyToColor(obj.s.key));
+      hover_color := ColorV4.{1,1,1,1};
+      if obj.s.key == G.hover_object         then hover_color.x   *= 0.25*Cos01(G.at*1.5);
+      if obj.s.key == G.dev.selected_object  then hover_color.xyz *= 0.5 + 0.5*Sin01(G.at*3.0);
+
+      WORLD_DrawModel(obj.s.model, transform, obj.l.animation_index, obj.l.animation_t,
+                      Color32_RGBAf(hover_color), OBJ_KeyToColor(obj.s.key));
     }
 
     if draw_hp
