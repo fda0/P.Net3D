@@ -117,7 +117,11 @@ WORLD_DrawObjects :: ()
 
     if draw_hp
     {
-      // UI_DrawRect(.{});
+      shape := UI_Shape.{
+        rect = MakeRectCenterDim(.{}, .{40, 40}),
+        color = Color32_RGBf(1, Sin01(G.at), 0)
+      };
+      UI_Draw3D(obj.s.p + V3.{0,0,2}, shape);
     }
 
     if draw_colliders || debug_colliders

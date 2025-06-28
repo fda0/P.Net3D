@@ -287,6 +287,7 @@ GAME_Iterate :: ()
     }
 
     WORLD_DrawObjects();
+    UI_Translate3DShapes();
 
     UI_StartFrame();
     UI_BuildDeveloperWindow();

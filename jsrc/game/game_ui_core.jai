@@ -51,6 +51,6 @@ UI_FinishFrame :: ()
     }
 
     if !skip_shape
-      UI_DrawRaw(shape);
+      UI_Draw2D(shape);
   }
 }

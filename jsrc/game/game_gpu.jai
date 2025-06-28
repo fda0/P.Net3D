@@ -59,6 +59,9 @@ GPU_State :: struct
     shapes: [1024 * 2] UI_Shape;
     shapes_count: u32;
 
+    shapes3d: [1024 * 2] UI_ShapeIn3D;
+    shapes3d_count: u32;
+
     clips: [1024] UI_Clip; // buffer that's uploaded to GPU
     clips_count: u32;
     clip_stack: [256] u32; // contains indices into clips; tracks state when UI is constructed @todo remove in the future

@@ -46,7 +46,7 @@ UI_ProcessTextLine :: (text: string, font: FONT_Family, pixel_height: u16, using
           tex_layer = xx glyph.layer,
           color = draw_color,
         };
-        UI_DrawRaw(shape);
+        UI_Draw2D(shape);
       }
 
       text_pos.x += glyph.advance;
