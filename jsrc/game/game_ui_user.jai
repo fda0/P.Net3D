@@ -161,18 +161,25 @@ UI_BuildDeveloperWindow :: ()
 
       CreateText(tprint("ModelKey: %", obj.s.model));
 
-      anim_count := -1;
       model := ASSET_GetModel(obj.s.model);
-      if model.skeleton then anim_count = model.skeleton.animations.count;
-
-      CreateText(tprint("local overwrite animation index: %/%", obj.l.overwrite_animation_index, anim_count));
-      if !OBJ_IsNil(obj)
+      if !OBJ_IsNil(obj) && model.skeleton
       {
+        anim: ASSET_Animation;
+        if obj.l.overwrite_animation_index > 0 && obj.l.overwrite_animation_index < model.skeleton.animations.count
+        {
+          anim = model.skeleton.animations[obj.l.overwrite_animation_index];
+        }
+        CreateText(tprint("overwrite animation: %/%", obj.l.overwrite_animation_index, model.skeleton.animations.count));
+        CreateText(tprint("name: %, t: {%, %}", anim.name, anim.t_min, anim.t_max));
+
+
         Parent(CreateBox(.{layout.sizing = .{Grow(), Fit()},
                            layout.child_gap = Em(1)}));
-        if UI_Button("+1")    obj.l.overwrite_animation_index += 1;
-        if UI_Button("-1")    obj.l.overwrite_animation_index -= 1;
-        if UI_Button("reset") obj.l.overwrite_animation_index = -1;
+        if UI_Button("reset")  obj.l.overwrite_animation_index = -1;
+        if UI_Button("-10")    obj.l.overwrite_animation_index -= 10;
+        if UI_Button("-1")     obj.l.overwrite_animation_index -= 1;
+        if UI_Button("+1")     obj.l.overwrite_animation_index += 1;
+        if UI_Button("+10")    obj.l.overwrite_animation_index += 10;
       }
 
     }
