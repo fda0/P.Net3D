@@ -171,15 +171,16 @@ UI_BuildDeveloperWindow :: ()
         }
         CreateText(tprint("overwrite animation: %/%", obj.l.overwrite_animation_index, model.skeleton.animations.count));
         CreateText(tprint("name: %, t: {%, %}", anim.name, anim.t_min, anim.t_max));
+        UI_Checkbox("time mode", *obj.l.overwrite_animation_time_mode);
 
-
-        Parent(CreateBox(.{layout.sizing = .{Grow(), Fit()},
-                           layout.child_gap = Em(1)}));
-        if UI_Button("reset")  obj.l.overwrite_animation_index = -1;
-        if UI_Button("-10")    obj.l.overwrite_animation_index -= 10;
-        if UI_Button("-1")     obj.l.overwrite_animation_index -= 1;
-        if UI_Button("+1")     obj.l.overwrite_animation_index += 1;
-        if UI_Button("+10")    obj.l.overwrite_animation_index += 10;
+        {
+          Parent(CreateBox(.{layout.sizing = .{Grow(), Fit()}, layout.child_gap = Em(1)}));
+          if UI_Button("reset")  obj.l.overwrite_animation_index = -1;
+          if UI_Button("-10")    obj.l.overwrite_animation_index -= 10;
+          if UI_Button("-1")     obj.l.overwrite_animation_index -= 1;
+          if UI_Button("+1")     obj.l.overwrite_animation_index += 1;
+          if UI_Button("+10")    obj.l.overwrite_animation_index += 10;
+        }
       }
 
     }

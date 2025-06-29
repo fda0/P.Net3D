@@ -41,14 +41,24 @@ ANIM_AnimateObjects :: ()
         WALK_T_SPEED :: 0.016;
 
         obj.l.animation_index = ASSET_AnimNameToIndex(model.skeleton, "Walk_Loop");
-        dist := length(obj.s.moved_dp);
+        in_distance_mode := true;
 
         if obj.l.overwrite_animation_index >= 0 && obj.l.overwrite_animation_index < model.skeleton.animations.count
         {
           obj.l.animation_index = obj.l.overwrite_animation_index;
+          in_distance_mode = !obj.l.overwrite_animation_time_mode;
         }
 
-        obj.l.animation_t += dist * WALK_T_SPEED * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
+        if in_distance_mode
+        {
+          dist := length(obj.s.moved_dp);
+          obj.l.animation_t += dist * WALK_T_SPEED * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
+        }
+        else
+        {
+          obj.l.animation_t += G.dt;
+        }
+
         obj.l.animation_t = ANIM_WrapAnimationTime(model.skeleton, obj.l.animation_index, obj.l.animation_t);
       }
     }

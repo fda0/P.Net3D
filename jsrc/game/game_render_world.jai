@@ -120,18 +120,19 @@ WORLD_DrawObjects :: ()
 
     if draw_hp
     {
+      bar_height := 10.0;
       start_x := -obj.s.max_hp / 2;
 
       max_hp_bar := UI_Shape.{
-        rect = MakeRectMinDim(.{start_x, 0}, .{obj.s.max_hp, 10}),
+        rect = MakeRectMinDim(.{start_x, -bar_height*2}, .{obj.s.max_hp, bar_height}),
         color = Color32_RGBf(0, 0, 0)
       };
       active_hp_bar := UI_Shape.{
-        rect = MakeRectMinDim(.{start_x, 0}, .{obj.s.hp, 10}),
+        rect = MakeRectMinDim(.{start_x, -bar_height*2}, .{obj.s.hp, bar_height}),
         color = Color32_RGBf(0.1, 1, 0)
       };
-      UI_Draw3D(obj.s.p + .{0,0,2.1}, max_hp_bar);
-      UI_Draw3D(obj.s.p + .{0,0,2.1}, active_hp_bar);
+      UI_Draw3D(obj.s.p + .{0,0,1.75}, max_hp_bar);
+      UI_Draw3D(obj.s.p + .{0,0,1.75}, active_hp_bar);
     }
 
     if draw_colliders || debug_colliders
