@@ -73,10 +73,6 @@ OBJ_Sync :: struct
   height: float; // used by DrawCollision
   texture_texels_per_m: float; // used by DrawCollision
 
-  // input actions
-  is_pathing: bool;
-  pathing_dest_p: V2;
-
   collider: OBJ_Collider;
 };
 

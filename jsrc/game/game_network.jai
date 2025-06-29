@@ -1,7 +1,7 @@
 NET_DEFAULT_SEVER_PORT :: 21037;
 NET_MAGIC_VALUE :: 0xfda0;
 NET_CLIENT_MAX_SNAPSHOTS :: TICK_RATE;
-NET_MAX_INPUT_TICKS :: TICK_RATE/8;
+NET_MAX_ACTION_COUNT :: TICK_RATE/8;
 NET_MAX_PLAYERS :: 10;
 NET_MAX_PACKET_SIZE :: 1200;
 NET_MAX_PAYLOAD_SIZE :: NET_MAX_PACKET_SIZE - size_of(NET_PacketHeader);
@@ -62,7 +62,7 @@ NET_SendKind :: enum u32
   ObjUpdate;
   ObjEmpty;
   NetworkTest;
-  Inputs;
+  Actions;
   AssignPlayerKey;
   WindowLayout;
 };
@@ -73,10 +73,9 @@ NET_SendHeader :: struct
   kind: NET_SendKind;
 };
 
-NET_SendInputs :: struct
+NET_SendActions :: struct
 {
-  inputs: [NET_MAX_INPUT_TICKS] TICK_PlayerInput;
-  input_count: u16;
+  actions: [NET_MAX_ACTION_COUNT] Action;
 };
 
 NET_SendPing :: struct
@@ -370,7 +369,7 @@ NET_IterateSend :: ()
     }
   }
 
-  if (is_client)
+  if is_client
   {
     {
       head: NET_SendHeader;
@@ -384,31 +383,18 @@ NET_IterateSend :: ()
     }
 
     {
-      CLIENT_PollInput();
-
       head: NET_SendHeader;
       head.tick_id = G.tick_number;
-      head.kind = .Inputs;
+      head.kind = .Actions;
       NET_PayloadAppendType(head);
 
-      inputs: NET_SendInputs;
-      input_counter: u16;
-
-      for G.client.input_queue
+      payload: NET_SendActions;
+      for * payload.actions
       {
-        if input_counter >= inputs.inputs.count
-        {
-          assert(false);
-          break;
-        }
-
-        inputs.inputs[input_counter] = it;
-        input_counter += 1;
+        it.* = QueuePeek(G.client.action_queue, it_index);
       }
 
-      inputs.input_count = input_counter;
-
-      NET_PayloadAppendType(inputs);
+      NET_PayloadAppendType(payload);
       NET_PacketSendAndResetPayloadToServer();
     }
   }
@@ -680,11 +666,11 @@ NET_ProcessReceivedPayload :: (player_id: u16, full_message: string)
       snap := *G.client.snaps_of_objs[update.net_index];
       CLIENT_InsertSnapshot(snap, head.tick_id, update.sync);
     }
-    else if head.kind == .Inputs
+    else if head.kind == .Actions
     {
-      in_net := NET_Consume(NET_SendInputs, *msg);
-      pi := *G.server.player_inputs[player_id];
-      SERVER_InsertPlayerInput(pi, *in_net, head.tick_id);
+      in_net := NET_Consume(NET_SendActions, *msg);
+      player := *G.server.player_actions[player_id];
+      SERVER_InsertPlayerAction(player, *in_net, head.tick_id);
     }
     else if head.kind == .AssignPlayerKey
     {

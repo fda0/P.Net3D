@@ -2,15 +2,6 @@ TICK_RATE :: 100;
 TICK_TIMESTAMP_STEP :: 1000 / TICK_RATE;
 TICK_FLOAT_STEP :: 1.0 / TICK_RATE;
 
-TICK_PlayerInput :: struct
-{
-  move_dir: V2;
-  // action buttons etc will be added here
-  is_pathing: bool;
-  pathing_world_p: V2;
-  // atack_target: OBJ_Key;
-};
-
 TICK_Iterate :: ()
 {
   #assert((1000 % TICK_TIMESTAMP_STEP) == 0);
@@ -37,47 +28,26 @@ TICK_Iterate :: ()
   }
 }
 
-TICK_NormalizeInput:: (input: TICK_PlayerInput) -> TICK_PlayerInput
-{
-  res := input;
-  for * res.move_dir.component
-  if isnan(it.*)  it.* = 0.0;
-
-  res.move_dir = normalize(res.move_dir);
-  return res;
-}
-
 TICK_AdvanceSimulation :: ()
 {
-  // apply player input
+  // apply player action
   for player_key, player_index: G.server.player_keys
   {
     player := OBJ_Get(player_key, .NETWORK);
     if OBJ_IsNil(player) continue;
 
-    input := SERVER_GetPlayerInput(xx player_index);
-    if input.is_pathing
+    player_move_dir: V2;
+    action := SERVER_GetPlayerAction(xx player_index);
+    if action.type == .PATHING ||
+       action.type == .PATHING_DIRECTION
     {
-      player.s.is_pathing = true;
-      player.s.pathing_dest_p = input.pathing_world_p;
-    }
-
-    if input.move_dir.x || input.move_dir.y
-      player.s.is_pathing = false;
-
-    player_dir := input.move_dir;
-    if player.s.is_pathing
-    {
-      player_to_dest := player.s.pathing_dest_p - player.s.p.xy;
-      len_sq := length_squared(player_to_dest);
-      if len_sq > square(0.05)
-      player_dir = player_to_dest * invsqrt(len_sq);
-      else
-      player.s.is_pathing = false;
+      player_to_destination := action.world_p.xy - player.s.p.xy;
+      len_sq := length_squared(player_to_destination);
+      if len_sq > square(0.05) then player_move_dir = player_to_destination * invsqrt(len_sq);
     }
 
     player_speed := 1.4 * TICK_FLOAT_STEP;
-    player.s.desired_dp = V3.{xy = player_dir * player_speed, z = 0};
+    player.s.desired_dp = V3.{xy = player_move_dir * player_speed, z = 0};
   }
 
   for * obj: G.obj.all_objects

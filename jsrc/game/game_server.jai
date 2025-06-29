@@ -1,8 +1,8 @@
-SERVER_PlayerInputs :: struct
+SERVER_PlayerActions :: struct
 {
-  input_queue: Queue(NET_MAX_INPUT_TICKS, TICK_PlayerInput);
+  action_queue: Queue(NET_MAX_ACTION_COUNT, Action);
   latest_client_tick_id: u64;
-  last_input: TICK_PlayerInput;
+  last_action: Action;
   receive_deltas: TickDeltas;
 };
 
@@ -10,95 +10,81 @@ SERVER_State :: struct
 {
   users: [NET_MAX_PLAYERS] NET_User;
   player_keys: [NET_MAX_PLAYERS] OBJ_Key;
-  player_inputs: [NET_MAX_PLAYERS] SERVER_PlayerInputs;
+  player_actions: [NET_MAX_PLAYERS] SERVER_PlayerActions;
 };
 
-SERVER_InsertPlayerInput :: (pi: *SERVER_PlayerInputs, net_msg: *NET_SendInputs, net_msg_tick_id: u64)
+SERVER_InsertPlayerAction :: (player: *SERVER_PlayerActions, net_msg: *NET_SendActions, net_msg_tick_id: u64)
 {
   // @refactor this is dumb and complicated!
-  if net_msg_tick_id <= pi.latest_client_tick_id
-    return; // no new inputs
+  if net_msg_tick_id <= player.latest_client_tick_id
+    return; // no new actions
 
-  pre_insert_input_queue_count := pi.input_queue.count;
+  pre_insert_action_queue_count := player.action_queue.count;
 
-  // @threading - mutex?
-  inputs := net_msg.inputs;
-  input_count := min(net_msg.input_count, net_msg.inputs.count);
-  skip_inputs: u64;
-  if input_count > net_msg_tick_id + 1
-    skip_inputs = input_count - (net_msg_tick_id + 1);
+  assert(net_msg_tick_id >= net_msg.actions.count);
+  first_action_tick_id := net_msg_tick_id - net_msg.actions.count;
 
-  first_input_tick_id := net_msg_tick_id + 1 - input_count;
-
-  for input_index: MakeRange(skip_inputs, input_count)
+  for action_index: MakeRange(net_msg.actions.count)
   {
-    input_tick := first_input_tick_id + input_index;
-    if input_tick <= pi.latest_client_tick_id
+    action_tick := first_action_tick_id + xx action_index;
+    if action_tick <= player.latest_client_tick_id
     {
-      // reject old inputs
+      // reject old actions
       continue;
     }
 
-    // store input
-    QueuePush(*pi.input_queue, inputs[input_index]);
+    // store action
+    QueuePush(*player.action_queue, net_msg.actions[action_index]);
   }
 
-  pi.latest_client_tick_id = net_msg_tick_id;
+  player.latest_client_tick_id = net_msg_tick_id;
 
-  if TickDeltas_AddTick(*pi.receive_deltas, net_msg_tick_id)
+  if TickDeltas_AddTick(*player.receive_deltas, net_msg_tick_id)
   {
-    TickDeltas_UpdateCatchup(*pi.receive_deltas, xx pre_insert_input_queue_count);
-    if pi.receive_deltas.tick_catchup
+    TickDeltas_UpdateCatchup(*player.receive_deltas, xx pre_insert_action_queue_count);
+    if player.receive_deltas.tick_catchup
     {
       Nlog(LOG_NetCatchup,
-          "Client (?) current input delay: % Setting input playback catchup to %",
-          pre_insert_input_queue_count, pi.receive_deltas.tick_catchup);
+          "Client (?) current action delay: % Setting action playback catchup to %",
+          pre_insert_action_queue_count, player.receive_deltas.tick_catchup);
     }
   }
 }
 
-SERVER_PopPlayerInput :: (pi: *SERVER_PlayerInputs) -> TICK_PlayerInput
+SERVER_PopPlayerAction :: (player: *SERVER_PlayerActions) -> Action
 {
-  popped := QueuePop(*pi.input_queue);
-  pi.last_input = popped;
+  popped := QueuePop(*player.action_queue);
+  player.last_action = popped;
   return popped;
 }
 
-SERVER_GetPlayerInput :: (player_index: u32) -> TICK_PlayerInput
+SERVER_GetPlayerAction :: (player_index: u32) -> Action
 {
-  result: TICK_PlayerInput;
-  if player_index >= G.server.player_inputs.count
+  result: Action;
+  if player_index >= G.server.player_actions.count
     return result;
 
-  pi := *G.server.player_inputs[player_index];
-  starting_input_count := pi.input_queue.count;
+  player := *G.server.player_actions[player_index];
+  starting_action_count := player.action_queue.count;
 
-  if starting_input_count > 0
-    result = SERVER_PopPlayerInput(pi);
+  if starting_action_count > 0
+    result = SERVER_PopPlayerAction(player);
   else
   {
     Nlog(LOG_NetTick,
-        "Ran out of input playback (player %) -> extrapolating; playback catchup %",
-        player_index, pi.receive_deltas.tick_catchup);
+        "Ran out of action playback (player %) -> extrapolating; playback catchup %",
+        player_index, player.receive_deltas.tick_catchup);
 
-    // extrapolation using last input!
-    result = pi.last_input;
-    result.is_pathing = false;
+    // extrapolation using last action!
+    result = player.last_action;
   }
 
-  if starting_input_count > 1 && pi.receive_deltas.tick_catchup > 0
+  if starting_action_count > 1 && player.receive_deltas.tick_catchup > 0
   {
-    pi.receive_deltas.tick_catchup -= 1;
-
-    next := SERVER_PopPlayerInput(pi);
-    result.move_dir = result.move_dir + next.move_dir;
-    if (next.is_pathing)
-    {
-      result.is_pathing = next.is_pathing;
-      result.pathing_world_p = next.pathing_world_p;
-    }
+    player.receive_deltas.tick_catchup -= 1;
+    next := SERVER_PopPlayerAction(player); // @todo previously 2 actions were merged; do that in the future?
+    result = next;
   }
 
-  result = TICK_NormalizeInput(result);
   return result;
 }

@@ -7,7 +7,7 @@ CLIENT_State :: struct
   playable_tick_deltas: TickDeltas; // used to control playback catch-up
 
   // circular buffer with tick inputs
-  input_queue: Queue(NET_MAX_INPUT_TICKS, TICK_PlayerInput);
+  action_queue: Queue(NET_MAX_ACTION_COUNT, Action);
 
   //
   player_key: OBJ_Key;
@@ -174,31 +174,4 @@ CLIENT_InsertSnapshot :: (snaps: *CLIENT_ObjSnapshots, insert_at_tick_id: u64, n
 
   assert(snaps.oldest_server_tick >= minimum_server_tick);
   return false; // no error
-}
-
-CLIENT_PollInput :: () -> *TICK_PlayerInput
-{
-  // @todo input polling from SDL/OS should be done here directly?
-  // Will make sense to revisit it when implementing multithreading.
-  dir: V2;
-  if !G.dev.noclip
-  {
-    if KEY_Held(.W) dir.x += 1;
-    if KEY_Held(.S) dir.x -= 1;
-    if KEY_Held(.A) dir.y += 1;
-    if KEY_Held(.D) dir.y -= 1;
-  }
-
-  input: *TICK_PlayerInput = QueuePush(*G.client.input_queue);
-  Initialize(input);
-
-  input.move_dir = normalize(dir);
-  if G.obj.pathing_marker_set
-  {
-    G.obj.pathing_marker_set = false;
-    input.is_pathing = true;
-    input.pathing_world_p = OBJ_Get(G.obj.pathing_marker, .OFFLINE).s.p.xy;
-  }
-
-  return input;
 }

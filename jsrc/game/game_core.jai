@@ -49,9 +49,12 @@ GAME_State :: struct
   mouse_delta: V2;
   mouse_scroll: V2;
   world_mouse_valid: bool;
-  world_mouse: V2;
+  world_mouse: V3;
   keys: [KEY_Code.COUNT] Key;
   hover_object: OBJ_Key;
+
+  // gameplay actions
+  action: Action;
 
   // sun
   sun_dir: V3; // normalized
@@ -259,33 +262,63 @@ GAME_Iterate :: ()
         t := t_numerator / t_denominator;
         world_off := aim_dir * t;
         world_mouse := G.camera_p + world_off;
-        G.world_mouse = world_mouse.xy;
+        G.world_mouse = V3.{xy = world_mouse.xy, z = 0}; // @todo pass real Z?
       }
     }
 
     ANIM_AnimateObjects();
 
+    // Process gameplay actions
+    {
+      move_buttons := KEY_Code.[.MOUSE_RIGHT, .Z, .X];
+      if G.world_mouse_valid && (KEY_Pressed(..move_buttons) || KEY_Held(..move_buttons, held_for=250))
+      {
+        Initialize(*G.action);
+        G.action.type = .PATHING;
+        G.action.world_p = G.world_mouse;
+        if KEY_Pressed(..move_buttons) G.action.pressed_timestamp = GetTime();
+      }
+
+      if !G.dev.noclip && KEY_Held(.W, .S, .A, .D)
+      {
+        dir: V3;
+        if KEY_Held(.W) dir.x += 1;
+        if KEY_Held(.S) dir.x -= 1;
+        if KEY_Held(.A) dir.y += 1;
+        if KEY_Held(.D) dir.y -= 1;
+
+        Initialize(*G.action);
+        G.action.type = .PATHING_DIRECTION;
+        G.action.world_p = OBJ_Get(G.client.player_key, .NETWORK).s.p + dir;
+      }
+    }
+
+    // Append action to client action queue
+    {
+      QueuePush(*G.client.action_queue, G.action);
+    }
+
     marker := OBJ_Get(G.obj.pathing_marker, .OFFLINE);
     if !OBJ_IsNil(marker)
     {
-      if !G.dev.noclip && KEY_Held(.W, .S, .A, .D)
-        marker.s.p.z = -2.0;
-
-      move_buttons := KEY_Code.[
-        .MOUSE_RIGHT, .Z, .X,
-      ];
-      if G.world_mouse_valid && (KEY_Pressed(..move_buttons) || KEY_Held(..move_buttons, held_for=250))
+      if G.action.type == .PATHING
       {
         marker.s.flags |= .DRAW_MODEL;
         marker.s.model = MODEL_CreateKey("Flag");
-        marker.s.p = V3.{xy=G.world_mouse};
+        marker.s.p = G.action.world_p;
 
         marker.l.animated_p.x = marker.s.p.x;
         marker.l.animated_p.y = marker.s.p.y;
-        if KEY_Pressed(..move_buttons)
+
+        if ElapsedTime(G.action.pressed_timestamp) == 0
           marker.l.animated_p.z = 0.5;
 
         G.obj.pathing_marker_set = true;
+      }
+      else
+      {
+        marker.s.p.z = -2.0;
+        G.obj.pathing_marker_set = false;
       }
     }
 
@@ -405,6 +438,7 @@ String :: #import "String";
 #load "game_ui_user.jai";
 #load "game_time.jai";
 #load "game_key.jai";
+#load "game_action.jai";
 #load "game_animation.jai";
 #load "game_asset.jai";
 #load "game_asset_loading.jai";
