@@ -8,6 +8,7 @@ TICK_PlayerInput :: struct
   // action buttons etc will be added here
   is_pathing: bool;
   pathing_world_p: V2;
+  // atack_target: OBJ_Key;
 };
 
 TICK_Iterate :: ()

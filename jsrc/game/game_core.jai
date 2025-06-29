@@ -274,7 +274,7 @@ GAME_Iterate :: ()
       move_buttons := KEY_Code.[
         .MOUSE_RIGHT, .Z, .X,
       ];
-      if G.world_mouse_valid && (KEY_Pressed(..move_buttons) || KEY_Held(..move_buttons, held_for=300))
+      if G.world_mouse_valid && (KEY_Pressed(..move_buttons) || KEY_Held(..move_buttons, held_for=250))
       {
         marker.s.flags |= .DRAW_MODEL;
         marker.s.model = MODEL_CreateKey("Flag");
