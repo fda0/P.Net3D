@@ -38,12 +38,25 @@ TICK_AdvanceSimulation :: ()
 
     player_move_dir: V2;
     action := SERVER_GetPlayerAction(xx player_index);
+
     if action.type == .PATHING ||
        action.type == .PATHING_DIRECTION
     {
       player_to_destination := action.world_p.xy - player.s.p.xy;
-      len_sq := length_squared(player_to_destination);
-      if len_sq > square(0.05) then player_move_dir = player_to_destination * invsqrt(len_sq);
+      distance := length(player_to_destination);
+      if distance > 0.05 then player_move_dir = player_to_destination * (1.0 / distance);
+    }
+
+    if action.type == .ATTACK
+    {
+      attack_object := OBJ_Get(action.target_object, .NETWORK);
+      if !OBJ_IsNil(attack_object)
+      {
+        player_to_destination := attack_object.s.p.xy - player.s.p.xy;
+        distance := length(player_to_destination);
+        // @todo if distance < 200 [attack range] then attack
+        if distance > 0.05 then player_move_dir = player_to_destination * (1.0 / distance);
+      }
     }
 
     player_speed := 1.4 * TICK_FLOAT_STEP;

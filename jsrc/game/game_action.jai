@@ -10,5 +10,5 @@ Action :: struct
 
   pressed_timestamp: TimestampMS;
   world_p: V3; // used by PATHING*
-  obj_key: OBJ_Key; // used by ATTACK
+  target_object: OBJ_Key; // used by ATTACK
 }

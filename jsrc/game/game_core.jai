@@ -273,10 +273,19 @@ GAME_Iterate :: ()
       move_buttons := KEY_Code.[.MOUSE_RIGHT, .Z, .X];
       if G.world_mouse_valid && (KEY_Pressed(..move_buttons) || KEY_Held(..move_buttons, held_for=250))
       {
-        Initialize(*G.action);
-        G.action.type = .PATHING;
-        G.action.world_p = G.world_mouse;
-        if KEY_Pressed(..move_buttons) G.action.pressed_timestamp = GetTime();
+        if G.hover_object != .{}
+        {
+          Initialize(*G.action);
+          G.action.type = .ATTACK;
+          G.action.target_object = G.hover_object;
+        }
+        else
+        {
+          Initialize(*G.action);
+          G.action.type = .PATHING;
+          G.action.world_p = G.world_mouse;
+          if KEY_Pressed(..move_buttons) G.action.pressed_timestamp = GetTime();
+        }
       }
 
       if !G.dev.noclip && KEY_Held(.W, .S, .A, .D)
