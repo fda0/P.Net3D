@@ -24,6 +24,7 @@ KEY_Flags :: enum_flags u8
 Key :: struct
 {
   f: KEY_Flags;
+  held_start: Apollo_Time;
 };
 
 KEY_Update :: (key_code: KEY_Code, is_down: bool)

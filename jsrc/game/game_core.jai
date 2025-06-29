@@ -5,9 +5,9 @@ GAME_State :: struct
   // core game state
   in_shutdown: bool;
   frame_number: s64;
-  timestamp: u64;
+  frame_timestamp: TimestampMS;
   tick_number: u64 = NET_CLIENT_MAX_SNAPSHOTS;
-  tick_timestamp_accumulator: u64;
+  tick_timestamp_accumulator: TimestampMS;
   dt: float; // frame delta time
   at: float; // animation time
 
@@ -67,7 +67,7 @@ GAME_State :: struct
 
 GAME_Init :: ()
 {
-  G.timestamp = SDL_GetTicks();
+  G.frame_timestamp = GetTime(.NOW);
 
   if !G.headless
   {
@@ -88,11 +88,11 @@ GAME_Iterate :: ()
 {
   // pre frame logic
   {
-    new_timestamp := SDL_GetTicks();
-    delta_timestamp := min(new_timestamp - G.timestamp, 100); // clamp dt to 100ms (10fps)
+    new_timestamp := GetTime(.NOW);
+    delta_timestamp := min(new_timestamp - G.frame_timestamp, 100); // clamp dt to 100ms (10fps)
 
     G.frame_number += 1;
-    G.timestamp = new_timestamp;
+    G.frame_timestamp = new_timestamp;
     G.tick_timestamp_accumulator += delta_timestamp;
     G.dt = delta_timestamp * 0.001;
     G.at = WrapFloat(0, 1000, G.at + G.dt);
@@ -400,6 +400,7 @@ String :: #import "String";
 #load "game_ui_text.jai";
 #load "game_ui_core.jai";
 #load "game_ui_user.jai";
+#load "game_time.jai";
 #load "game_key.jai";
 #load "game_animation.jai";
 #load "game_asset.jai";

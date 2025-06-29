@@ -15,8 +15,8 @@ NET_State :: struct
   is_server: bool;
   socket: *SDLNet_DatagramSocket;
 
-  hacky_last_receive_timestamp: u64;
-  hacky_last_send_timestamp: u64;
+  hacky_last_receive_timestamp: TimestampMS;
+  hacky_last_send_timestamp: TimestampMS;
 
   server_user: NET_User;
 
@@ -52,7 +52,7 @@ NET_User :: struct
 {
   address: *SDLNet_Address;
   port: u16;
-  last_msg_timestamp: u64;
+  last_msg_timestamp: TimestampMS;
 };
 
 NET_SendKind :: enum u32
@@ -168,8 +168,8 @@ NET_IterateReceive :: ()
 
   {
     // hacky temporary network activity rate-limitting
-    if (G.timestamp < G.net.hacky_last_receive_timestamp + 8) return;
-    G.net.hacky_last_receive_timestamp = G.timestamp;
+    if ElapsedTime(G.net.hacky_last_receive_timestamp, .FRAME) < 8 then return;
+    G.net.hacky_last_receive_timestamp = GetTime(.FRAME);
   }
 
   while true
@@ -209,7 +209,7 @@ NET_IterateReceive :: ()
 
         if user
         {
-          user.last_msg_timestamp = G.timestamp;
+          user.last_msg_timestamp = GetTime(.FRAME);
           user_id: u64 = (user.(u64) - G.server.users.data.(u64)) / size_of(NET_User);
           player_id = user_id.(u16);
         }
@@ -231,9 +231,8 @@ NET_IterateSend :: ()
 
   {
     // hacky temporary network activity rate-limitting
-    if (G.timestamp < G.net.hacky_last_send_timestamp + 16)
-      return;
-    G.net.hacky_last_send_timestamp = G.timestamp;
+    if ElapsedTime(G.net.hacky_last_send_timestamp, .FRAME) < 16 then return;
+    G.net.hacky_last_send_timestamp = GetTime(.FRAME);
   }
 
   if (is_server)
@@ -463,7 +462,7 @@ NET_GetPacketString :: () -> string
 
 NET_UserIsInactive :: (user: NET_User) -> bool
 {
-  return user.last_msg_timestamp + NET_INACTIVE_MS < G.timestamp;
+  return ElapsedTime(user.last_msg_timestamp, .FRAME) > NET_INACTIVE_MS;
 }
 
 NET_SendString :: (destination: NET_User, msg: string)
@@ -524,7 +523,7 @@ NET_IterateTimeoutUsers :: ()
     for *G.server.users
     {
       if !it.address continue;
-      if it.last_msg_timestamp + NET_TIMEOUT_DISCONNECT_MS < G.timestamp
+      if ElapsedTime(it.last_msg_timestamp, .FRAME) > NET_TIMEOUT_DISCONNECT_MS
       {
         Nlog(LOG_NetInfo, "Timeout. Removing user #%", it_index);
 
