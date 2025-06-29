@@ -163,7 +163,7 @@ GAME_Iterate :: ()
       // Mouse window edge camera scroll
       if !G.dev.show && OverlapsRange(MakeRange(G.window_dim), G.mouse)
       {
-        window_margin := min(G.window_dim.x, G.window_dim.y) * 0.075;
+        window_margin := min(G.window_dim.x, G.window_dim.y) * 0.025;
         ratio := 1.0 / window_margin;
 
         dir: V2;
@@ -181,7 +181,7 @@ GAME_Iterate :: ()
 
         dir_len := length(dir);
         if dir_len > 1.0 then dir /= dir_len;
-        G.camera_p.xy += dir * G.dt * 6.0;
+        G.camera_p.xy += dir * G.dt * 16.0;
       }
 
       player := OBJ_Get(G.client.player_key, .NETWORK);
@@ -271,7 +271,10 @@ GAME_Iterate :: ()
       if !G.dev.noclip && KEY_Held(.W, .S, .A, .D)
         marker.s.p.z = -2.0;
 
-      if KEY_Held(.MOUSE_RIGHT) && G.world_mouse_valid
+      move_buttons := KEY_Code.[
+        .MOUSE_RIGHT, .Z, .X,
+      ];
+      if G.world_mouse_valid && (KEY_Pressed(..move_buttons) || KEY_Held(..move_buttons, held_for=300))
       {
         marker.s.flags |= .DRAW_MODEL;
         marker.s.model = MODEL_CreateKey("Flag");
@@ -279,7 +282,7 @@ GAME_Iterate :: ()
 
         marker.l.animated_p.x = marker.s.p.x;
         marker.l.animated_p.y = marker.s.p.y;
-        if KEY_Pressed(.MOUSE_RIGHT)
+        if KEY_Pressed(..move_buttons)
           marker.l.animated_p.z = 0.5;
 
         G.obj.pathing_marker_set = true;

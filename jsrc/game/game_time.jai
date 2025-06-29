@@ -6,7 +6,7 @@ TimestampPredefine :: enum
   NOW;
 }
 
-GetTime :: (predefine: TimestampPredefine) -> TimestampMS
+GetTime :: (predefine := TimestampPredefine.FRAME) -> TimestampMS
 {
   if #complete predefine == {
     case .FRAME; return G.frame_timestamp;
@@ -16,20 +16,22 @@ GetTime :: (predefine: TimestampPredefine) -> TimestampMS
 
 ElapsedTime :: (from: TimestampMS, to: TimestampMS) -> TimestampMS
 {
+  if from > to return 0;
   return to - from;
 }
 
 ElapsedTimeS :: (from: TimestampMS, to: TimestampMS) -> float
 {
+  if from > to return 0;
   return (to - from).(float) * 0.001;
 }
 
-ElapsedTime :: (from: TimestampMS, to_predefine: TimestampPredefine) -> TimestampMS
+ElapsedTime :: (from: TimestampMS, to_predefine := TimestampPredefine.FRAME) -> TimestampMS
 {
-  return GetTime(to_predefine) - from;
+  return ElapsedTime(from, GetTime(to_predefine));
 }
 
-ElapsedTimeS :: (from: TimestampMS, to_predefine: TimestampPredefine) -> float
+ElapsedTimeS :: (from: TimestampMS, to_predefine := TimestampPredefine.FRAME) -> float
 {
-  return (GetTime(to_predefine) - from).(float) * 0.001;
+  return ElapsedTimeS(from, GetTime(to_predefine));
 }
