@@ -65,6 +65,11 @@ OBJ_Sync :: struct
   max_hp: float;
   hp: float;
 
+  // game state
+  is_attacking: bool;
+  attack_t: float;
+  hide_attack_animation_tail: bool;
+
   // visuals
   color: Color32; // unused?
   rotation: Quat;
@@ -83,7 +88,7 @@ OBJ_Local :: struct
   animated_p: V3; // animates towards (V3){p.x, p.y, p.z}
 
   overwrite_animation_index: s32 = -1; // debug tool
-  overwrite_animation_time_mode := false;
+  overwrite_animation_mode: ANIM_AdvanceMode;
 
   animation_index: s32;
   animation_t: float;

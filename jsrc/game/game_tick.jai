@@ -28,6 +28,9 @@ TICK_Iterate :: ()
   }
 }
 
+ATTACK_LANDED_T :: 0.25;
+ATTACK_COOLDOWN_T :: 1.0;
+
 TICK_AdvanceSimulation :: ()
 {
   // apply player action
@@ -47,6 +50,14 @@ TICK_AdvanceSimulation :: ()
       if distance > 0.05 then player_move_dir = player_to_destination * (1.0 / distance);
     }
 
+    not_attacking := action.type != .ATTACK;
+    player.s.attack_t += TICK_FLOAT_STEP;
+
+    if player.s.attack_t >= 0.0
+    {
+      player.s.hide_attack_animation_tail = false;
+    }
+
     if action.type == .ATTACK
     {
       attack_object := OBJ_Get(action.target_object, .NETWORK);
@@ -54,9 +65,31 @@ TICK_AdvanceSimulation :: ()
       {
         player_to_destination := attack_object.s.p.xy - player.s.p.xy;
         distance := length(player_to_destination);
-        // @todo if distance < 200 [attack range] then attack
-        if distance > 0.05 then player_move_dir = player_to_destination * (1.0 / distance);
+
+        if distance < 1
+        {
+          player.s.is_attacking = true;
+
+          attack_damage := 10.0;
+          while player.s.attack_t >= ATTACK_LANDED_T
+          {
+            player.s.attack_t -= ATTACK_COOLDOWN_T;
+            attack_object.s.hp -= attack_damage;
+          }
+        }
+        else if distance > 0.05
+        {
+          player_move_dir = player_to_destination * (1.0 / distance);
+          not_attacking = true;
+        }
       }
+    }
+
+    if not_attacking
+    {
+      player.s.is_attacking = false;
+      player.s.hide_attack_animation_tail = true;
+      player.s.attack_t = min(player.s.attack_t, 0.0);
     }
 
     player_speed := 1.4 * TICK_FLOAT_STEP;

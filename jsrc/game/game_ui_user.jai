@@ -74,7 +74,7 @@ UI_BuildDeveloperWindow :: ()
 
   // Floating developer window
   Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
-                                sizing = .{width = Fit(SizeMin(Rem(30))), height = Size(Rem(30))}},
+                                sizing = .{width = Fit(SizeMin(Rem(35))), height = Size(Rem(30))}},
                      bg_color = UI_BG,
                      floating = .{attach_to = .ROOT, offset = Px(clamped_win_p)},
                      border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},
@@ -165,16 +165,39 @@ UI_BuildDeveloperWindow :: ()
       if !OBJ_IsNil(obj) && model.skeleton
       {
         anim: ASSET_Animation;
-        if obj.l.overwrite_animation_index > 0 && obj.l.overwrite_animation_index < model.skeleton.animations.count
+        if IndexInBounds(model.skeleton.animations, obj.l.overwrite_animation_index)
         {
           anim = model.skeleton.animations[obj.l.overwrite_animation_index];
         }
         CreateText(tprint("overwrite animation: %/%", obj.l.overwrite_animation_index, model.skeleton.animations.count));
-        CreateText(tprint("name: %, t: {%, %}", anim.name, anim.t_min, anim.t_max));
-        UI_Checkbox("time mode", *obj.l.overwrite_animation_time_mode);
+        CreateText(tprint("name: %, t range: {%, %}", anim.name, anim.t_min, anim.t_max));
+        CreateText(tprint("t: %", obj.l.animation_t));
+
+        horizontal_group := BoxSpec.{layout.sizing = .{Grow(), Fit()}, layout.child_gap = Em(1)};
 
         {
-          Parent(CreateBox(.{layout.sizing = .{Grow(), Fit()}, layout.child_gap = Em(1)}));
+          Parent(CreateBox(horizontal_group));
+          UI_ButtonRadio("Time", *obj.l.overwrite_animation_mode, .TIME);
+          UI_ButtonRadio("Distance", *obj.l.overwrite_animation_mode, .DISTANCE);
+          UI_ButtonRadio("Manual", *obj.l.overwrite_animation_mode, .MANUAL);
+        }
+
+        if obj.l.overwrite_animation_mode == .MANUAL
+        {
+          Parent(CreateBox(horizontal_group));
+          CreateText("Anim t");
+          if UI_Button("reset")  obj.l.animation_t = 0.0;
+          if UI_Button("-.5")    obj.l.animation_t -= 0.5;
+          if UI_Button("-.05")   obj.l.animation_t -= 0.05;
+          if UI_Button("-.01")   obj.l.animation_t -= 0.01;
+          if UI_Button("+.01")   obj.l.animation_t += 0.01;
+          if UI_Button("+.05")   obj.l.animation_t += 0.05;
+          if UI_Button("+.5")    obj.l.animation_t += 0.5;
+        }
+
+        {
+          Parent(CreateBox(horizontal_group));
+          CreateText("Anim index");
           if UI_Button("reset")  obj.l.overwrite_animation_index = -1;
           if UI_Button("-10")    obj.l.overwrite_animation_index -= 10;
           if UI_Button("-1")     obj.l.overwrite_animation_index -= 1;

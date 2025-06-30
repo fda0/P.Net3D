@@ -53,6 +53,11 @@ ArraySuffix :: (array: [] $T, count: s64) -> [] T
   return res;
 }
 
+IndexInBounds :: (array: [] $T, index: s64) -> bool
+{
+  return index >= 0 && index < array.count;
+}
+
 // Dynamic array helpers
 array_add_many :: (array: *[..] $T, alloc_count: s64, $initialize:=true) -> allocated_slice: [] T
 {

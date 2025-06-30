@@ -1,3 +1,10 @@
+ANIM_AdvanceMode :: enum
+{
+  TIME;
+  DISTANCE;
+  MANUAL;
+}
+
 ANIM_AnimateObjects :: ()
 {
   for *obj: G.obj.all_objects
@@ -40,21 +47,34 @@ ANIM_AnimateObjects :: ()
       {
         WALK_T_SPEED :: 0.016;
 
-        obj.l.animation_index = ASSET_AnimNameToIndex(model.skeleton, "Walk_Loop");
-        in_distance_mode := true;
+        anim_walk := ASSET_AnimNameToIndex(model.skeleton, "Walk_Loop");
+        anim_punch := ASSET_AnimNameToIndex(model.skeleton, "Punch_Cross");
 
-        if obj.l.overwrite_animation_index >= 0 && obj.l.overwrite_animation_index < model.skeleton.animations.count
+        anim_mode: ANIM_AdvanceMode = .DISTANCE;
+        obj.l.animation_index = anim_walk;
+
+        if obj.s.is_attacking && !obj.s.hide_attack_animation_tail
         {
-          obj.l.animation_index = obj.l.overwrite_animation_index;
-          in_distance_mode = !obj.l.overwrite_animation_time_mode;
+          attack_normalized_t := WrapFloat(0.0, ATTACK_COOLDOWN_T, obj.s.attack_t);
+          attack_normalized_t /= ATTACK_COOLDOWN_T;
+
+          anim_mode = .MANUAL;
+          obj.l.animation_index = anim_punch;
+          obj.l.animation_t = lerp(0.0, 1.0, attack_normalized_t);
         }
 
-        if in_distance_mode
+        if IndexInBounds(model.skeleton.animations, obj.l.overwrite_animation_index)
+        {
+          obj.l.animation_index = obj.l.overwrite_animation_index;
+          anim_mode = obj.l.overwrite_animation_mode;
+        }
+
+        if anim_mode == .DISTANCE
         {
           dist := length(obj.s.moved_dp);
           obj.l.animation_t += dist * WALK_T_SPEED * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
         }
-        else
+        else if anim_mode == .TIME
         {
           obj.l.animation_t += G.dt;
         }

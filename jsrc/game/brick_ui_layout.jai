@@ -1,6 +1,7 @@
 /* @todo
 - implementing floating,
 - implement mouse-box interactions like dragging, detect direct hover,
+- too much space is removed from GROW/FIT if there isn't enough space (example: UI_Button)
 */
 
 #module_parameters(

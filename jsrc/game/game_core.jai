@@ -274,7 +274,7 @@ GAME_Iterate :: ()
       move_pressed := KEY_Pressed(..move_buttons);
       move_held := KEY_Held(..move_buttons, held_for=250);
 
-      if G.world_mouse_valid && (move_pressed || move_held)
+      if G.world_mouse_valid
       {
         if move_pressed && G.hover_object != .{}
         {
@@ -282,7 +282,9 @@ GAME_Iterate :: ()
           G.action.type = .ATTACK;
           G.action.target_object = G.hover_object;
         }
-        else
+
+        if move_pressed && G.hover_object == .{} ||
+           move_held && G.action.type == .PATHING
         {
           Initialize(*G.action);
           G.action.type = .PATHING;
@@ -438,6 +440,7 @@ String :: #import "String";
 
 #load "../shared/base_utils.jai";
 #load "../shared/base_string.jai";
+#load "../shared/base_array.jai";
 #load "../shared/base_memory.jai";
 #load "../shared/base_hash.jai";
 #load "../shared/base_math.jai";
