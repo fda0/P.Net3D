@@ -195,7 +195,8 @@ TICK_AdvanceSimulation :: ()
   {
     if OBJ_HasAllFlags(obj, .ANIMATE_ROTATION)
     {
-      if HasLength(obj.s.moved_dp)
+      lensq := length_squared(obj.s.moved_dp);
+      if lensq > square(0.05 * TICK_FLOAT_STEP)
       {
         dir := normalize(obj.s.moved_dp.xy);
         rot := -Atan2(dir) + 0.25;

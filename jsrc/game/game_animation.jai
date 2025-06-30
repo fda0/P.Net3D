@@ -1,11 +1,11 @@
-ANIM_AdvanceMode :: enum
+ANIMATION_AdvanceMode :: enum
 {
   TIME;
   DISTANCE;
   MANUAL;
 }
 
-ANIM_AnimateObjects :: ()
+ANIMATION_AnimateObjects :: ()
 {
   for *obj: G.obj.all_objects
   {
@@ -50,7 +50,7 @@ ANIM_AnimateObjects :: ()
         anim_walk := ASSET_AnimNameToIndex(model.skeleton, "Walk_Loop");
         anim_punch := ASSET_AnimNameToIndex(model.skeleton, "Punch_Cross");
 
-        anim_mode: ANIM_AdvanceMode = .DISTANCE;
+        anim_mode: ANIMATION_AdvanceMode = .DISTANCE;
         obj.l.animation_index = anim_walk;
 
         if obj.s.is_attacking && !obj.s.hide_attack_animation_tail
@@ -79,13 +79,13 @@ ANIM_AnimateObjects :: ()
           obj.l.animation_t += G.dt;
         }
 
-        obj.l.animation_t = ANIM_WrapAnimationTime(model.skeleton, obj.l.animation_index, obj.l.animation_t);
+        obj.l.animation_t = ANIMATION_WrapAnimationTime(model.skeleton, obj.l.animation_index, obj.l.animation_t);
       }
     }
   }
 }
 
-ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> [] Mat4
+ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> [] Mat4
 {
   poses_result := NewArray(skeleton.joints_count, Mat4,, temp);
 
@@ -168,7 +168,7 @@ ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: floa
     }
   }
 
-  ANIM_WaterfallTransformsToChildren(skeleton, poses_result, 0, skeleton.root_transform);
+  ANIMATION_WaterfallTransformsToChildren(skeleton, poses_result, 0, skeleton.root_transform);
 
   for *poses_result
     it.* = it.* * skeleton.inverse_matrices[it_index];
@@ -176,7 +176,7 @@ ANIM_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: floa
   return poses_result;
 }
 
-ANIM_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> float
+ANIMATION_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> float
 {
   if anim_index < skeleton.animations.count
   {
@@ -190,7 +190,7 @@ ANIM_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: floa
   return time;
 }
 
-ANIM_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] Mat4, joint_index: u32, parent_transform: Mat4)
+ANIMATION_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] Mat4, joint_index: u32, parent_transform: Mat4)
 {
   if (joint_index >= skeleton.joints_count)
   {
@@ -210,6 +210,6 @@ ANIM_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] Mat4, 
     }
 
     child_joint_index := skeleton.child_index_buffer[it];
-    ANIM_WaterfallTransformsToChildren(skeleton, mats, child_joint_index, mats[joint_index]);
+    ANIMATION_WaterfallTransformsToChildren(skeleton, mats, child_joint_index, mats[joint_index]);
   }
 }

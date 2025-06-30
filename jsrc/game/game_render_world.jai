@@ -72,7 +72,7 @@ WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, animation_index: s32,
   {
     instance.pose_offset = GPU_BATCH_GetPosesBatch().element_count;
 
-    transforms := ANIM_GetPoseTransforms(model.skeleton, animation_index, animation_t);
+    transforms := ANIMATION_GetPoseTransforms(model.skeleton, animation_index, animation_t);
     transfer_size := transforms.count * size_of(type_of(transforms[0]));
     GPU_BATCH_TransferUploadBytes(GPU_BATCH_GetPosesBatch(), transforms.data, xx transfer_size, xx transforms.count);
   }

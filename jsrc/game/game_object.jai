@@ -88,7 +88,7 @@ OBJ_Local :: struct
   animated_p: V3; // animates towards (V3){p.x, p.y, p.z}
 
   overwrite_animation_index: s32 = -1; // debug tool
-  overwrite_animation_mode: ANIM_AdvanceMode;
+  overwrite_animation_mode: ANIMATION_AdvanceMode;
 
   animation_index: s32;
   animation_t: float;

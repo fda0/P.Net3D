@@ -266,7 +266,7 @@ GAME_Iterate :: ()
       }
     }
 
-    ANIM_AnimateObjects();
+    ANIMATION_AnimateObjects();
 
     // Process gameplay actions
     {
