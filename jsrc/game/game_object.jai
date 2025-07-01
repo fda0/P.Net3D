@@ -90,8 +90,7 @@ OBJ_Local :: struct
   overwrite_animation_index: s32 = -1; // debug tool
   overwrite_animation_mode: ANIMATION_AdvanceMode;
 
-  animation_index: s32;
-  animation_t: float;
+  animations: [4] ANIMATION_PoseParams;
 };
 
 Object :: struct

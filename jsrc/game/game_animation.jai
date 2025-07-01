@@ -5,6 +5,36 @@ ANIMATION_AdvanceMode :: enum
   MANUAL;
 }
 
+// ANIMATION_Record :: struct
+// {
+//   animation_index: s32;
+//   joint_weights: [] float;
+// }
+
+// ANIMATION_RecordType :: enum u8
+// {
+//   IDLE;
+//   WALK;
+//   RUN;
+//   PUNCH;
+//   HIT;
+//   DIE;
+// }
+
+// ANIMATION_Request :: struct
+// {
+//   start: TimestampMS;
+//   record: ANIMATION_RecordType;
+//   mode: enum { DISABLED; ONCE; LOOP; };
+// }
+
+ANIMATION_PoseParams :: struct
+{
+  index: s32 = -1;
+  t: float;
+  weight: float;
+}
+
 ANIMATION_AnimateObjects :: ()
 {
   for *obj: G.obj.all_objects
@@ -47,60 +77,95 @@ ANIMATION_AnimateObjects :: ()
       {
         WALK_T_SPEED :: 0.016;
 
-        anim_walk := ASSET_AnimNameToIndex(model.skeleton, "Walk_Loop");
-        anim_punch := ASSET_AnimNameToIndex(model.skeleton, "Punch_Cross");
+        anim_walk  := ASSET_AnimationNameToIndex(model.skeleton, "Walk_Loop");
+        anim_punch := ASSET_AnimationNameToIndex(model.skeleton, "Punch_Cross");
+        anim_jog   := ASSET_AnimationNameToIndex(model.skeleton, "Jog_Fwd_Loop");
 
         anim_mode: ANIMATION_AdvanceMode = .DISTANCE;
-        obj.l.animation_index = anim_walk;
 
-        if obj.s.is_attacking && !obj.s.hide_attack_animation_tail
+        for *obj.l.animations
         {
-          attack_normalized_t := WrapFloat(0.0, ATTACK_COOLDOWN_T, obj.s.attack_t);
-          attack_normalized_t /= ATTACK_COOLDOWN_T;
+          if it_index == 0
+          {
+            it.index = anim_walk;
 
-          anim_mode = .MANUAL;
-          obj.l.animation_index = anim_punch;
-          obj.l.animation_t = lerp(0.0, 1.0, attack_normalized_t);
+            if obj.s.is_attacking && !obj.s.hide_attack_animation_tail
+            {
+              attack_normalized_t := WrapFloat(0.0, ATTACK_COOLDOWN_T, obj.s.attack_t);
+              attack_normalized_t /= ATTACK_COOLDOWN_T;
+
+              anim_mode = .MANUAL;
+              it.index = anim_punch;
+              it.t = lerp(0.0, 1.0, attack_normalized_t);
+            }
+
+            if IndexInBounds(model.skeleton.animations, obj.l.overwrite_animation_index)
+            {
+              it.index = obj.l.overwrite_animation_index;
+              anim_mode = obj.l.overwrite_animation_mode;
+            }
+          }
+          else if it_index == 1
+          {
+            it.index = anim_jog;
+            it.weight = 0.5;
+          }
+          else continue;
+
+          // Advance T
+          if anim_mode == .DISTANCE
+          {
+            dist := length(obj.s.moved_dp);
+            it.t += dist * WALK_T_SPEED * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
+          }
+          else if anim_mode == .TIME
+          {
+            it.t += G.dt;
+          }
+
+          // Wrap T
+          it.t = ANIMATION_WrapAnimationTime(model.skeleton, it.index, it.t);
         }
 
-        if IndexInBounds(model.skeleton.animations, obj.l.overwrite_animation_index)
-        {
-          obj.l.animation_index = obj.l.overwrite_animation_index;
-          anim_mode = obj.l.overwrite_animation_mode;
-        }
 
-        if anim_mode == .DISTANCE
-        {
-          dist := length(obj.s.moved_dp);
-          obj.l.animation_t += dist * WALK_T_SPEED * TICK_RATE; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
-        }
-        else if anim_mode == .TIME
-        {
-          obj.l.animation_t += G.dt;
-        }
-
-        obj.l.animation_t = ANIMATION_WrapAnimationTime(model.skeleton, obj.l.animation_index, obj.l.animation_t);
       }
     }
   }
 }
 
-ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> [] Mat4
+ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_PoseParams) -> [] Mat4
 {
-  poses_result := NewArray(skeleton.joints_count, Mat4,, temp);
+  accumulated_scales       := array_copy(skeleton.bind_scales,,       temp);
+  accumulated_rotations    := array_copy(skeleton.bind_rotations,,    temp);
+  accumulated_translations := array_copy(skeleton.bind_translations,, temp);
 
   // mix default rest pose + animation channels using temporary memory
+  for param, param_index: params
   {
+    if !IndexInBounds(skeleton.animations, param.index) continue;
+
     auto_release_temp();
-    translations := array_copy(skeleton.bind_translations,, temp);
-    rotations    := array_copy(skeleton.bind_rotations,,    temp);
-    scales       := array_copy(skeleton.bind_scales,,       temp);
+    scales: [] V3;
+    rotations: [] Quat;
+    translations: [] V3;
+
+    if param_index == 0
+    {
+      scales = accumulated_scales;
+      rotations = accumulated_rotations;
+      translations = accumulated_translations;
+    }
+    else
+    {
+      scales       = array_copy(skeleton.bind_scales,,       temp);
+      rotations    = array_copy(skeleton.bind_rotations,,    temp);
+      translations = array_copy(skeleton.bind_translations,, temp);
+    }
 
     // Overwrite translations, rotations, scales with values from animation
-    if anim_index < skeleton.animations.count
     {
-      anim := *skeleton.animations[anim_index];
-      time = clamp(time, anim.t_min, anim.t_max);
+      anim := *skeleton.animations[param.index];
+      time := clamp(param.t, anim.t_min, anim.t_max);
 
       for channel: anim.channels
       {
@@ -159,21 +224,29 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, anim_index: s32, time:
       }
     }
 
-    for *poses_result
+    if param_index > 0
     {
-      scale := ScaleMatrix(scales[it_index]); // @optimization skip scale matrices if they are always 1,1,1 ?
-      rot := RotationMatrix(rotations[it_index]);
-      trans := TranslationMatrix(translations[it_index]);
-      it.* = trans * (rot * scale);
+      for *accumulated_scales       it.* = lerp(it.*, scales[it_index], param.weight);
+      for *accumulated_rotations    it.* = Slerp(it.*, rotations[it_index], param.weight);
+      for *accumulated_translations it.* = lerp(it.*, translations[it_index], param.weight);
     }
   }
 
-  ANIMATION_WaterfallTransformsToChildren(skeleton, poses_result, 0, skeleton.root_transform);
+  result_matrices := NewArray(skeleton.joints_count, Mat4,, temp);
+  for *result_matrices
+  {
+    scale := ScaleMatrix(accumulated_scales[it_index]);
+    rot := RotationMatrix(accumulated_rotations[it_index]);
+    trans := TranslationMatrix(accumulated_translations[it_index]);
+    it.* = trans * (rot * scale);
+  }
 
-  for *poses_result
+  ANIMATION_WaterfallTransformsToChildren(skeleton, result_matrices, 0, skeleton.root_transform);
+
+  for *result_matrices
     it.* = it.* * skeleton.inverse_matrices[it_index];
 
-  return poses_result;
+  return result_matrices;
 }
 
 ANIMATION_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> float
