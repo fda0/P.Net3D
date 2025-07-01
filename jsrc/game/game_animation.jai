@@ -5,21 +5,21 @@ ANIMATION_AdvanceMode :: enum
   MANUAL;
 }
 
-// ANIMATION_Record :: struct
-// {
-//   animation_index: s32;
-//   joint_weights: [] float;
-// }
+ANIMATION_Record :: struct
+{
+  animation_index: s32;
+  joint_weights: [] float; // Animations like punching shouldn't really apply to legs etc
+}
 
-// ANIMATION_RecordType :: enum u8
-// {
-//   IDLE;
-//   WALK;
-//   RUN;
-//   PUNCH;
-//   HIT;
-//   DIE;
-// }
+ANIMATION_RecordType :: enum u8
+{
+  IDLE;
+  WALK;
+  RUN;
+  PUNCH;
+  HIT;
+  DIE;
+}
 
 // ANIMATION_Request :: struct
 // {
@@ -33,6 +33,30 @@ ANIMATION_PoseParams :: struct
   index: s32 = -1;
   t: float;
   weight: float;
+}
+
+ANIMATION_State :: struct
+{
+  arena: Arena;
+  records: [#run EnumCount(ANIMATION_RecordType)] ANIMATION_Record;
+}
+
+ANIMATION_Init :: ()
+{
+  using G.anim;
+
+  skeleton := ASSET_GetModel(MODEL_CreateKey("Dude")).skeleton;
+  if skeleton
+  {
+    for enum_values_as_enum(ANIMATION_RecordType)
+    {
+      records[it].joint_weights = NewArray(skeleton.joints_count, float,, arena);
+
+      // if #complete it == {
+      //   case .IDLE;
+      // }
+    }
+  }
 }
 
 ANIMATION_AnimateObjects :: ()
@@ -143,6 +167,7 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_P
   for param, param_index: params
   {
     if !IndexInBounds(skeleton.animations, param.index) continue;
+    if param_index > 0 && param.weight <= 0 continue;
 
     auto_release_temp();
     scales: [] V3;

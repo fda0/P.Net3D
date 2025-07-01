@@ -17,6 +17,9 @@ DEV_State :: struct
     ENABLED;
     ONE_PIXEL;
   } = .ENABLED;
+
+  // objects
+  show_joint_hierarchy := true;
 }
 
 UI_State :: struct
@@ -74,7 +77,7 @@ UI_BuildDeveloperWindow :: ()
 
   // Floating developer window
   Parent(CreateBox(.{layout = .{direction = .TOP_TO_BOTTOM,
-                                sizing = .{width = Fit(SizeMin(Rem(35))), height = Size(Rem(30))}},
+                                sizing = .{width = Fit(SizeMin(Rem(35))), height = Size(Rem(60))}},
                      bg_color = UI_BG,
                      floating = .{attach_to = .ROOT, offset = Px(clamped_win_p)},
                      border = .{color = UI_SHADOW, widths = UI_BORDER_WIDTH},
@@ -203,6 +206,30 @@ UI_BuildDeveloperWindow :: ()
           if UI_Button("-1")     obj.l.overwrite_animation_index -= 1;
           if UI_Button("+1")     obj.l.overwrite_animation_index += 1;
           if UI_Button("+10")    obj.l.overwrite_animation_index += 10;
+        }
+
+        UI_Checkbox("Show joint hierarchy", *show_joint_hierarchy);
+        if show_joint_hierarchy
+        {
+          CreateText("Joint hierarchy");
+          Layer(.{text.font_size = Rem(0.45)});
+
+          RecursivePrint :: (skeleton: ASSET_Skeleton, index: u32, indent := 0.0, highlight := false)
+          {
+            sig := Signal(CreateText(skeleton.joint_names[index], .{layout.padding.left = Px(indent)}));
+            if sig.flags & .HOVER then highlight = true;
+            if highlight
+            {
+              sig.box.spec.text.color = Color32_RGBf(1,1,0);
+            }
+
+            for skeleton.child_index_ranges[index]
+            {
+              child_index := skeleton.child_index_buffer[it];
+              RecursivePrint(skeleton, child_index, indent + 10.0, highlight);
+            }
+          }
+          RecursivePrint(model.skeleton, 0);
         }
       }
 

@@ -24,6 +24,7 @@ GAME_State :: struct
   hr: HOT_RELOAD_State;
   font: FONT_State;
   obj: OBJ_State;
+  anim: ANIMATION_State;
   net: NET_State;
   client: CLIENT_State;
   server: SERVER_State;

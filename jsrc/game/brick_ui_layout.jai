@@ -392,7 +392,7 @@ Merge :: (c: *BorderWidths, p: BorderWidths) {
   Merge(*c.between_children, p.between_children);
 }
 Merge :: (c: *BoxSpec, p: BoxSpec) {
-  Merge(*c.autokey_seed,         p.autokey_seed);
+  Merge(*c.autokey_seed,         p.autokey_seed); // @todo hash 2 seeds together
 
   Merge(*c.layout.sizing,        p.layout.sizing);
   Merge(*c.layout.padding,       p.layout.padding);
@@ -593,6 +593,7 @@ CreateText :: (text: string, specs: ..BoxSpec, loc := #caller_location) -> *Box
   merged = Merge(merged, ..ActiveLayers(), reverse_order=true);
 
   merged.text.str = text;
+  merged.autokey_seed = HashStringFunc(text, merged.autokey_seed);
 
   {
     using layout_state;
