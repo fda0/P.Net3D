@@ -30,7 +30,7 @@ ANIMATION_RecordType :: enum u8
 
 ANIMATION_PoseParams :: struct
 {
-  index: s32 = -1;
+  type: ANIMATION_RecordType;
   t: float;
   weight: float;
 }
@@ -39,6 +39,11 @@ ANIMATION_State :: struct
 {
   arena: Arena;
   records: [#run EnumCount(ANIMATION_RecordType)] ANIMATION_Record;
+}
+
+ANIMATION_TypeToRecord :: (type: ANIMATION_RecordType) -> ANIMATION_Record
+{
+  return G.anim.records[type];
 }
 
 ANIMATION_Init :: ()
@@ -50,11 +55,25 @@ ANIMATION_Init :: ()
   {
     for enum_values_as_enum(ANIMATION_RecordType)
     {
-      records[it].joint_weights = NewArray(skeleton.joints_count, float,, arena);
+      using records[it];
+      joint_weights = NewArray(skeleton.joints_count, float,, arena);
+      for *joint_weights it.* = 1.0;
 
-      // if #complete it == {
-      //   case .IDLE;
-      // }
+      if it == {
+        case .WALK;
+        animation_index = AnimationNameToIndex(skeleton, "Walk_Loop");
+
+        case .PUNCH;
+        animation_index = AnimationNameToIndex(skeleton, "Punch_Cross");
+        joint_weights[JointNameToIndex(skeleton, "DEF-thigh.L")] = 0;
+        joint_weights[JointNameToIndex(skeleton, "DEF-thigh.R")] = 0;
+
+        case .RUN;
+        animation_index = AnimationNameToIndex(skeleton, "Jog_Fwd_Loop");
+        joint_weights[JointNameToIndex(skeleton, "DEF-thigh.R")] = 0;
+      }
+
+      ANIMATION_WaterfallToChildren(skeleton, 0, joint_weights, 1.0);
     }
   }
 }
@@ -101,17 +120,14 @@ ANIMATION_AnimateObjects :: ()
       {
         WALK_T_SPEED :: 0.016;
 
-        anim_walk  := ASSET_AnimationNameToIndex(model.skeleton, "Walk_Loop");
-        anim_punch := ASSET_AnimationNameToIndex(model.skeleton, "Punch_Cross");
-        anim_jog   := ASSET_AnimationNameToIndex(model.skeleton, "Jog_Fwd_Loop");
-
         anim_mode: ANIMATION_AdvanceMode = .DISTANCE;
 
         for *obj.l.animations
         {
           if it_index == 0
           {
-            it.index = anim_walk;
+            it.weight = 1.0;
+            it.type = .WALK;
 
             if obj.s.is_attacking && !obj.s.hide_attack_animation_tail
             {
@@ -119,20 +135,20 @@ ANIMATION_AnimateObjects :: ()
               attack_normalized_t /= ATTACK_COOLDOWN_T;
 
               anim_mode = .MANUAL;
-              it.index = anim_punch;
+              it.type = .PUNCH;
               it.t = lerp(0.0, 1.0, attack_normalized_t);
             }
 
-            if IndexInBounds(model.skeleton.animations, obj.l.overwrite_animation_index)
-            {
-              it.index = obj.l.overwrite_animation_index;
-              anim_mode = obj.l.overwrite_animation_mode;
-            }
+            // if IndexInBounds(model.skeleton.animations, obj.l.overwrite_animation_index)
+            // {
+            //   it.index = obj.l.overwrite_animation_index;
+            //   anim_mode = obj.l.overwrite_animation_mode;
+            // }
           }
           else if it_index == 1
           {
-            it.index = anim_jog;
-            it.weight = 0.5;
+            it.type = .RUN;
+            it.weight = 1.0;
           }
           else continue;
 
@@ -148,7 +164,7 @@ ANIMATION_AnimateObjects :: ()
           }
 
           // Wrap T
-          it.t = ANIMATION_WrapAnimationTime(model.skeleton, it.index, it.t);
+          it.t = ANIMATION_WrapAnimationTime(model.skeleton, it.type, it.t);
         }
 
 
@@ -166,8 +182,7 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_P
   // mix default rest pose + animation channels using temporary memory
   for param, param_index: params
   {
-    if !IndexInBounds(skeleton.animations, param.index) continue;
-    if param_index > 0 && param.weight <= 0 continue;
+    if param.weight <= 0 continue;
 
     auto_release_temp();
     scales: [] V3;
@@ -187,9 +202,11 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_P
       translations = array_copy(skeleton.bind_translations,, temp);
     }
 
+    record := ANIMATION_TypeToRecord(param.type);
+
     // Overwrite translations, rotations, scales with values from animation
     {
-      anim := *skeleton.animations[param.index];
+      anim := *skeleton.animations[record.animation_index];
       time := clamp(param.t, anim.t_min, anim.t_max);
 
       for channel: anim.channels
@@ -199,6 +216,8 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_P
           assert(false);
           continue;
         }
+
+        if record.joint_weights[channel.joint_index] <= 0.0 then continue;
 
         t := 1.0;
         sample_start: u32;
@@ -251,9 +270,13 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_P
 
     if param_index > 0
     {
-      for *accumulated_scales       it.* = lerp(it.*, scales[it_index], param.weight);
-      for *accumulated_rotations    it.* = Slerp(it.*, rotations[it_index], param.weight);
-      for *accumulated_translations it.* = lerp(it.*, translations[it_index], param.weight);
+      for joint_weight: record.joint_weights
+      {
+        weight := param.weight * joint_weight;
+        accumulated_scales[it_index]       = lerp(accumulated_scales[it_index],       scales[it_index],       weight);
+        accumulated_rotations[it_index]    = Slerp(accumulated_rotations[it_index],   rotations[it_index],    weight);
+        accumulated_translations[it_index] = lerp(accumulated_translations[it_index], translations[it_index], weight);
+      }
     }
   }
 
@@ -266,7 +289,7 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_P
     it.* = trans * (rot * scale);
   }
 
-  ANIMATION_WaterfallTransformsToChildren(skeleton, result_matrices, 0, skeleton.root_transform);
+  ANIMATION_WaterfallToChildren(skeleton, 0, result_matrices, skeleton.root_transform);
 
   for *result_matrices
     it.* = it.* * skeleton.inverse_matrices[it_index];
@@ -287,16 +310,23 @@ ANIMATION_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time:
   }
   return time;
 }
-
-ANIMATION_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] Mat4, joint_index: u32, parent_transform: Mat4)
+ANIMATION_WrapAnimationTime :: (skeleton: ASSET_Skeleton, type: ANIMATION_RecordType, time: float) -> float
 {
+  return ANIMATION_WrapAnimationTime(skeleton, G.anim.records[type].animation_index, time);
+}
+
+ANIMATION_WaterfallToChildren :: (skeleton: ASSET_Skeleton, joint_index: u32, values: [] $T, parent_value: T)
+{
+  // This function traverses skeleton joint hierarchy from root joint to children.
+  // It propagates values using multiplication along the way.
+
   if (joint_index >= skeleton.joints_count)
   {
     assert(false);
     return;
   }
 
-  mats[joint_index] = parent_transform * mats[joint_index];
+  values[joint_index] = parent_value * values[joint_index];
 
   child_range := skeleton.child_index_ranges[joint_index];
   for child_range
@@ -308,6 +338,6 @@ ANIMATION_WaterfallTransformsToChildren :: (skeleton: ASSET_Skeleton, mats: [] M
     }
 
     child_joint_index := skeleton.child_index_buffer[it];
-    ANIMATION_WaterfallTransformsToChildren(skeleton, mats, child_joint_index, mats[joint_index]);
+    ANIMATION_WaterfallToChildren(skeleton, child_joint_index, values, values[joint_index]);
   }
 }
