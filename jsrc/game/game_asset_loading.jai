@@ -418,7 +418,7 @@ ASSET_InitSkeletons :: ()
       anim.t_max = pie_anim.t_max;
 
       pie_channels := PIE_LOAD_ListToArray(pie_anim.channels);
-      anim.channels = NewArray(pie_channels.count, ASSET_AnimationChannel);
+      anim.channels = NewArray(pie_channels.count, ANIMATION_Channel);
 
       for *chan: anim.channels
       {

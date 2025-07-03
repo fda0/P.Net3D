@@ -1,7 +1,42 @@
+ASSET_Skeleton :: struct
+{
+  root_transform: Mat4;
+  animations: [] ASSET_Animation;
+
+  joints_count: u32; // all arrays below have count equal to joints_count
+  joint_names: [] string;
+  inverse_matrices: [] Mat4; // inverse bind matrices
+  child_index_buffer: [] u32;
+  child_index_ranges: [] Range(u32);
+
+  bind_translations: [] V3;
+  bind_rotations: [] Quat;
+  bind_scales: [] V3;
+};
+
+ASSET_Animation :: struct
+{
+  name: string;
+  t_min, t_max: float;
+  channels: [] ANIMATION_Channel;
+};
+
+ANIMATION_Channel :: struct
+{
+  type: PIE_AnimationChannelType;
+  joint_index: u32;
+  inputs: [] float;
+  outputs: [] float; // .count = inputs.count * (ifx type == .Rotation then 4 else 3);
+};
+
+//
+//
+//
 ANIMATION_AdvanceMode :: enum
 {
   TIME;
   DISTANCE;
+  MANUAL01;
   MANUAL;
 }
 
@@ -11,12 +46,13 @@ ANIMATION_Record :: struct
   joint_weights: [] float; // Animations like punching shouldn't really apply to legs etc
 }
 
-ANIMATION_RecordType :: enum u8
+ANIMATION_Type :: enum u8
 {
   IDLE;
   WALK;
   RUN;
   PUNCH;
+  PUNCH_HANDS;
   HIT;
   DIE;
 }
@@ -24,13 +60,13 @@ ANIMATION_RecordType :: enum u8
 // ANIMATION_Request :: struct
 // {
 //   start: TimestampMS;
-//   record: ANIMATION_RecordType;
+//   record: ANIMATION_Type;
 //   mode: enum { DISABLED; ONCE; LOOP; };
 // }
 
 ANIMATION_Track :: struct
 {
-  type: ANIMATION_RecordType;
+  type: ANIMATION_Type;
   t: float;
   weight: float;
 }
@@ -38,13 +74,19 @@ ANIMATION_Track :: struct
 ANIMATION_State :: struct
 {
   arena: Arena;
-  records: [#run EnumCount(ANIMATION_RecordType)] ANIMATION_Record;
+  records: [#run EnumCount(ANIMATION_Type)] ANIMATION_Record; // @todo should be attached to skeleton, yes or yes?
 }
 
-ANIMATION_TypeToRecord :: (type: ANIMATION_RecordType) -> ANIMATION_Record
+ANIMATION_RecordFromType :: (type: ANIMATION_Type) -> *ANIMATION_Record
 {
-  return G.anim.records[type];
+  return *G.anim.records[type];
 }
+
+ANIMATION_FromType :: (skeleton: ASSET_Skeleton, type: ANIMATION_Type) -> *ASSET_Animation
+{
+  return *skeleton.animations[ANIMATION_RecordFromType(type).animation_index];
+}
+
 
 ANIMATION_Init :: ()
 {
@@ -53,7 +95,7 @@ ANIMATION_Init :: ()
   skeleton := ASSET_GetModel(MODEL_CreateKey("Dude")).skeleton;
   if skeleton
   {
-    for enum_values_as_enum(ANIMATION_RecordType)
+    for enum_values_as_enum(ANIMATION_Type)
     {
       using records[it];
       joint_weights = NewArray(skeleton.joints_count, float,, arena);
@@ -64,8 +106,10 @@ ANIMATION_Init :: ()
         ANIMATION_WaterfallToChildren(.ASSIGN, skeleton, JointNameToIndex(skeleton, joint_name), joint_weights, value);
       }
 
-      root_waterfall := true;
       if it == {
+        case .IDLE;
+        animation_index = AnimationNameToIndex(skeleton, "Idle_Loop");
+
         case .WALK;
         animation_index = AnimationNameToIndex(skeleton, "Walk_Loop");
 
@@ -73,20 +117,12 @@ ANIMATION_Init :: ()
         animation_index = AnimationNameToIndex(skeleton, "Jog_Fwd_Loop");
         // joint_weights[JointNameToIndex(skeleton, "DEF-spine.001")] = 0.5;
 
-        case .PUNCH;
+        case .PUNCH_HANDS;
+        MaskJoints("root", 0.0);
+        MaskJoints("DEF-spine.003", 1.0);
+        #through; case .PUNCH;
         animation_index = AnimationNameToIndex(skeleton, "Punch_Cross");
-
-        // MaskJoints("root", 0.0);
-        // MaskJoints("DEF-spine.003", 1.0);
-        // MaskJoints("DEF-neck", 0.0);
-        root_waterfall = false;
-
-        // joint_weights[JointNameToIndex(skeleton, "DEF-thigh.L")] = 0;
-        // joint_weights[JointNameToIndex(skeleton, "DEF-thigh.R")] = 0;
       }
-
-      if root_waterfall
-        ANIMATION_WaterfallToChildren(.MULTIPLY, skeleton, 0, joint_weights, 1.0);
     }
   }
 }
@@ -131,43 +167,68 @@ ANIMATION_AnimateObjects :: ()
       model := ASSET_GetModel(obj.s.model);
       if model.is_skinned
       {
-        WALK_T_SPEED :: 0.016;
+        {
+          moved_distance := length(obj.s.moved_dp);
+          WALK_T_SPEED :: 0.016;
+          distance01_delta := moved_distance * WALK_T_SPEED * TICK_RATE;
+          obj.l.animation_distance01 = WrapFloat(0.0, 1.0, obj.l.animation_distance01 + distance01_delta);
 
+          obj.l.animation_moving_hot_t += (ifx moved_distance > 0 then G.dt else -G.dt) * 10;
+          obj.l.animation_moving_hot_t = clamp(obj.l.animation_moving_hot_t, 0.0, 1.0);
+
+          if obj.l.animation_moving_hot_t == 0
+            obj.l.animation_distance01 = 0;
+        }
+
+        is_punching := obj.s.is_attacking && !obj.s.hide_attack_animation_tail;
+        obj.l.animation_punching_hot_t += (ifx is_punching then G.dt else -G.dt) * 5;
+        obj.l.animation_punching_hot_t = clamp(obj.l.animation_punching_hot_t, 0.0, 1.0);
+        attack_normalized_t := WrapFloat(0.0, ATTACK_COOLDOWN_T, obj.s.attack_t);
+        attack_normalized_t /= ATTACK_COOLDOWN_T;
 
         for *obj.l.animation_tracks
         {
-          anim_mode: ANIMATION_AdvanceMode = .DISTANCE;
-          run_correction := 1.0;
+          anim_mode: ANIMATION_AdvanceMode;
+          time: float;
 
           if it_index == 0
           {
+            anim_mode = .TIME;
             it.weight = 1.0;
-            it.type = .WALK;
-            // if IndexInBounds(model.skeleton.animations, obj.l.overwrite_animation_index)
-            // {
-            //   it.index = obj.l.overwrite_animation_index;
-            //   anim_mode = obj.l.overwrite_animation_mode;
-            // }
+            it.type = .IDLE;
           }
           else if it_index == 1
           {
-            run_correction = 0.933333 / 1.33333;
-            it.weight = Sin01(G.at*0.3);
-            it.type = .RUN;
+            anim_mode = .DISTANCE;
+            it.weight = obj.l.animation_moving_hot_t;
+            it.type = .WALK;
           }
           else if it_index == 2
           {
+            anim_mode = .DISTANCE;
             it.weight = 0.0;
-
-            if obj.s.is_attacking && !obj.s.hide_attack_animation_tail
+            it.type = .RUN;
+          }
+          else if it_index == 3
+          {
+            it.weight = 0.0;
+            if is_punching
             {
-              attack_normalized_t := WrapFloat(0.0, ATTACK_COOLDOWN_T, obj.s.attack_t);
-              attack_normalized_t /= ATTACK_COOLDOWN_T;
-
-              anim_mode = .MANUAL;
-              it.type = .PUNCH;
-              it.t = lerp(0.0, 1.0, attack_normalized_t);
+              anim_mode = .MANUAL01;
+              it.type = .PUNCH_HANDS;
+              it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
               it.weight = 1.0;
+            }
+          }
+          else if it_index == 4
+          {
+            it.weight = 0.0;
+            if is_punching
+            {
+              anim_mode = .MANUAL01;
+              it.type = .PUNCH;
+              it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
+              it.weight = obj.l.animation_punching_hot_t;
             }
           }
           else
@@ -179,16 +240,23 @@ ANIMATION_AnimateObjects :: ()
           // Advance T
           if anim_mode == .DISTANCE
           {
-            dist := length(obj.s.moved_dp);
-            it.t += dist * WALK_T_SPEED * TICK_RATE * run_correction; // @todo make this TICK_RATE independent & smooth across small and big TICK_RATEs
+            anim := ANIMATION_FromType(model.skeleton, it.type);
+            dist_t := (anim.t_max - anim.t_min) * obj.l.animation_distance01 + anim.t_min;
+            it.t = ANIMATION_WrapTime(model.skeleton, it.type, dist_t);
           }
           else if anim_mode == .TIME
           {
             it.t += G.dt;
           }
+          else if anim_mode == .MANUAL01
+          {
+            anim := ANIMATION_FromType(model.skeleton, it.type);
+            it.t = (anim.t_max - anim.t_min) * it.t + anim.t_min;
+            it.t = ANIMATION_WrapTime(model.skeleton, it.type, it.t);
+          }
 
           // Wrap T
-          it.t = ANIMATION_WrapAnimationTime(model.skeleton, it.type, it.t);
+          it.t = ANIMATION_WrapTime(model.skeleton, it.type, it.t);
         }
 
 
@@ -226,7 +294,7 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_T
       translations = array_copy(skeleton.bind_translations,, temp);
     }
 
-    record := ANIMATION_TypeToRecord(param.type);
+    record := ANIMATION_RecordFromType(param.type);
 
     // Overwrite translations, rotations, scales with values from animation
     {
@@ -297,6 +365,8 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_T
       for joint_weight: record.joint_weights
       {
         weight := param.weight * joint_weight;
+        if weight <= 0 then continue;
+
         accumulated_scales[it_index]       = lerp(accumulated_scales[it_index],       scales[it_index],       weight);
         accumulated_rotations[it_index]    = Slerp(accumulated_rotations[it_index],   rotations[it_index],    weight);
         accumulated_translations[it_index] = lerp(accumulated_translations[it_index], translations[it_index], weight);
@@ -321,7 +391,7 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_T
   return result_matrices;
 }
 
-ANIMATION_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> float
+ANIMATION_WrapTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> float
 {
   if anim_index < skeleton.animations.count
   {
@@ -334,9 +404,9 @@ ANIMATION_WrapAnimationTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time:
   }
   return time;
 }
-ANIMATION_WrapAnimationTime :: (skeleton: ASSET_Skeleton, type: ANIMATION_RecordType, time: float) -> float
+ANIMATION_WrapTime :: (skeleton: ASSET_Skeleton, type: ANIMATION_Type, time: float) -> float
 {
-  return ANIMATION_WrapAnimationTime(skeleton, G.anim.records[type].animation_index, time);
+  return ANIMATION_WrapTime(skeleton, G.anim.records[type].animation_index, time);
 }
 
 ANIMATION_WaterfallToChildren :: ($mode: enum {MULTIPLY; ASSIGN;},
@@ -352,7 +422,7 @@ ANIMATION_WaterfallToChildren :: ($mode: enum {MULTIPLY; ASSIGN;},
 
   #if #complete mode == {
     case .MULTIPLY; values[joint_index] = parent_value * values[joint_index];
-    case .ASSIGN; values[joint_index] = 1.0;
+    case .ASSIGN; values[joint_index] = parent_value;
   }
 
   child_range := skeleton.child_index_ranges[joint_index];

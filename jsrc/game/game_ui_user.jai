@@ -182,10 +182,12 @@ UI_BuildDeveloperWindow :: ()
           Parent(CreateBox(horizontal_group));
           UI_ButtonRadio("Time", *obj.l.overwrite_animation_mode, .TIME);
           UI_ButtonRadio("Distance", *obj.l.overwrite_animation_mode, .DISTANCE);
+          UI_ButtonRadio("Manual01", *obj.l.overwrite_animation_mode, .MANUAL01);
           UI_ButtonRadio("Manual", *obj.l.overwrite_animation_mode, .MANUAL);
         }
 
-        if obj.l.overwrite_animation_mode == .MANUAL
+        if obj.l.overwrite_animation_mode == .MANUAL01 ||
+           obj.l.overwrite_animation_mode == .MANUAL
         {
           Parent(CreateBox(horizontal_group));
           CreateText("Anim t");

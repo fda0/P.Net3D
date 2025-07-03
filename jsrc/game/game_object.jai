@@ -90,7 +90,10 @@ OBJ_Local :: struct
   overwrite_animation_index: s32 = -1; // debug tool
   overwrite_animation_mode: ANIMATION_AdvanceMode;
 
-  animation_tracks: [4] ANIMATION_Track;
+  animation_distance01: float; // in range [0; 1]
+  animation_moving_hot_t: float; // 1 = moving; 0 = idling
+  animation_punching_hot_t: float;
+  animation_tracks: [8] ANIMATION_Track;
 };
 
 Object :: struct

@@ -30,6 +30,7 @@ TICK_Iterate :: ()
 
 ATTACK_LANDED_T :: 0.25;
 ATTACK_COOLDOWN_T :: 1.0;
+MINIMUM_VALID_DISTANCE :: 0.05;
 
 TICK_AdvanceSimulation :: ()
 {
@@ -47,7 +48,7 @@ TICK_AdvanceSimulation :: ()
     {
       player_to_destination := action.world_p.xy - player.s.p.xy;
       distance := length(player_to_destination);
-      if distance > 0.05 then player_move_dir = player_to_destination * (1.0 / distance);
+      if distance >= MINIMUM_VALID_DISTANCE then player_move_dir = player_to_destination * (1.0 / distance);
     }
 
     not_attacking := action.type != .ATTACK;
@@ -77,7 +78,7 @@ TICK_AdvanceSimulation :: ()
             attack_object.s.hp -= attack_damage;
           }
         }
-        else if distance > 0.05
+        else if distance >= MINIMUM_VALID_DISTANCE
         {
           player_move_dir = player_to_destination * (1.0 / distance);
           not_attacking = true;
