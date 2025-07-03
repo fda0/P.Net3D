@@ -17,7 +17,7 @@ ASSET_State :: struct
   models: [] ASSET_Model;
   model_vertices: *SDL_GPUBuffer;
   model_indices: *SDL_GPUBuffer;
-  skeletons: [] ASSET_Skeleton;
+  skeletons: [] Skeleton;
 
   // Shaders
   shaders: [] string;
@@ -126,7 +126,7 @@ ASSET_Model :: struct
 {
   key: MODEL_Key;
   is_skinned: bool;
-  skeleton: *ASSET_Skeleton; // can be null
+  skeleton: *Skeleton; // can be null
   meshes: [] ASSET_Mesh;
 };
 
@@ -195,7 +195,7 @@ ASSET_GetModel :: (key: MODEL_Key) -> *ASSET_Model
   return asset;
 }
 
-AnimationNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index: s32, found: bool
+AnimationNameToIndex :: (skeleton: Skeleton, name: string) -> index: s32, found: bool
 {
   for skeleton.animations
   {
@@ -206,7 +206,7 @@ AnimationNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index: s32, 
   return 0, false;
 }
 
-JointNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index: u32, found: bool
+JointNameToIndex :: (skeleton: Skeleton, name: string) -> index: u32, found: bool
 {
   for skeleton.joint_names
   {

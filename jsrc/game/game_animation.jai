@@ -1,7 +1,7 @@
-ASSET_Skeleton :: struct
+Skeleton :: struct
 {
   root_transform: Mat4;
-  animations: [] ASSET_Animation;
+  animations: [] Animation;
 
   joints_count: u32; // all arrays below have count equal to joints_count
   joint_names: [] string;
@@ -14,7 +14,7 @@ ASSET_Skeleton :: struct
   bind_scales: [] V3;
 };
 
-ASSET_Animation :: struct
+Animation :: struct
 {
   name: string;
   t_min, t_max: float;
@@ -82,7 +82,7 @@ ANIMATION_RecordFromType :: (type: ANIMATION_Type) -> *ANIMATION_Record
   return *G.anim.records[type];
 }
 
-ANIMATION_FromType :: (skeleton: ASSET_Skeleton, type: ANIMATION_Type) -> *ASSET_Animation
+ANIMATION_FromType :: (skeleton: Skeleton, type: ANIMATION_Type) -> *Animation
 {
   return *skeleton.animations[ANIMATION_RecordFromType(type).animation_index];
 }
@@ -265,7 +265,7 @@ ANIMATION_AnimateObjects :: ()
   }
 }
 
-ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_Track) -> [] Mat4
+ANIMATION_GetPoseTransforms :: (skeleton: Skeleton, params: [] ANIMATION_Track) -> [] Mat4
 {
   accumulated_scales       := array_copy(skeleton.bind_scales,,       temp);
   accumulated_rotations    := array_copy(skeleton.bind_rotations,,    temp);
@@ -391,7 +391,7 @@ ANIMATION_GetPoseTransforms :: (skeleton: ASSET_Skeleton, params: [] ANIMATION_T
   return result_matrices;
 }
 
-ANIMATION_WrapTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -> float
+ANIMATION_WrapTime :: (skeleton: Skeleton, anim_index: s32, time: float) -> float
 {
   if anim_index < skeleton.animations.count
   {
@@ -404,13 +404,13 @@ ANIMATION_WrapTime :: (skeleton: ASSET_Skeleton, anim_index: s32, time: float) -
   }
   return time;
 }
-ANIMATION_WrapTime :: (skeleton: ASSET_Skeleton, type: ANIMATION_Type, time: float) -> float
+ANIMATION_WrapTime :: (skeleton: Skeleton, type: ANIMATION_Type, time: float) -> float
 {
   return ANIMATION_WrapTime(skeleton, G.anim.records[type].animation_index, time);
 }
 
 ANIMATION_WaterfallToChildren :: ($mode: enum {MULTIPLY; ASSIGN;},
-  skeleton: ASSET_Skeleton, joint_index: u32, values: [] $T, parent_value: T)
+  skeleton: Skeleton, joint_index: u32, values: [] $T, parent_value: T)
 {
   // This function traverses skeleton joint hierarchy from root joint to children.
 

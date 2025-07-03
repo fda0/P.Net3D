@@ -167,7 +167,7 @@ UI_BuildDeveloperWindow :: ()
       model := ASSET_GetModel(obj.s.model);
       if !OBJ_IsNil(obj) && model.skeleton
       {
-        anim: ASSET_Animation;
+        anim: Animation;
         if IndexInBounds(model.skeleton.animations, obj.l.overwrite_animation_index)
         {
           anim = model.skeleton.animations[obj.l.overwrite_animation_index];
@@ -216,7 +216,7 @@ UI_BuildDeveloperWindow :: ()
           CreateText("Joint hierarchy");
           Layer(.{text.font_size = Rem(0.45)});
 
-          RecursivePrint :: (skeleton: ASSET_Skeleton, index: u32, indent := 0.0, highlight := false)
+          RecursivePrint :: (skeleton: Skeleton, index: u32, indent := 0.0, highlight := false)
           {
             sig := Signal(CreateText(skeleton.joint_names[index], .{layout.padding.left = Px(indent)}));
             if sig.flags & .HOVER then highlight = true;

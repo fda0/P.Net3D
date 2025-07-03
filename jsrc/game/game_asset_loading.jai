@@ -377,7 +377,7 @@ ASSET_InitSkeletons :: ()
   using,only(pie) G.ast;
 
   pie_skeletons := PIE_LOAD_ListToArray(pie.links.skeletons);
-  G.ast.skeletons = NewArray(pie_skeletons.count, ASSET_Skeleton);
+  G.ast.skeletons = NewArray(pie_skeletons.count, Skeleton);
 
   for *skel: G.ast.skeletons
   {
@@ -407,7 +407,7 @@ ASSET_InitSkeletons :: ()
 
     // Animations
     pie_anims := PIE_LOAD_ListToArray(pie_skel.anims);
-    skel.animations = NewArray(pie_anims.count, ASSET_Animation);
+    skel.animations = NewArray(pie_anims.count, Animation);
 
     for *anim: skel.animations
     {
