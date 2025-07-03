@@ -179,8 +179,8 @@ GPU_InitPipelines :: ()
 
   // WORLD pipeline
   {
-    binary_vs := ASSET_GetShader(.WORLD_VS);
-    binary_ps := ASSET_GetShader(.WORLD_PS);
+    binary_vs := GetShader(.WORLD_VS);
+    binary_ps := GetShader(.WORLD_PS);
 
     vertex_shader: *SDL_GPUShader;
     {
@@ -297,8 +297,8 @@ GPU_InitPipelines :: ()
 
   // UI pipeline
   {
-    binary_vs := ASSET_GetShader(.UI_VS);
-    binary_ps := ASSET_GetShader(.UI_PS);
+    binary_vs := GetShader(.UI_VS);
+    binary_ps := GetShader(.UI_PS);
 
     vertex_shader: *SDL_GPUShader;
     {
@@ -403,11 +403,11 @@ GPU_Iterate :: ()
         // Bind vertex buffer
         SDL_BindGPUVertexBuffers(pass, 0, *(SDL_GPUBufferBinding.{buffer = gpu_verts.buffer.handle}), 1);
 
-        material := ASSET_GetMaterial(gpu_verts.target.material_key);
+        material := GetMaterial(gpu_verts.target.material_key);
 
         // Uniforms
         WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material, simplified_pipeline);
-        if MATERIAL_MatchKey(material.key, MATERIAL_CreateKey("tex.Clay002"))
+        if MatchKey(material.key, MaterialKey("tex.Clay002"))
         {
           G.gpu.world_uniform.flags |= .DrawBorderAtUVEdge;
         }
@@ -441,7 +441,7 @@ GPU_Iterate :: ()
       if gpu_instances.target.type != .ModelInstances  continue;
       if !gpu_instances.element_count  continue;
 
-      model := ASSET_GetModel(gpu_instances.target.model_key);
+      model := GetModel(gpu_instances.target.model_key);
 
       // bind instance storage buffer
       storage_bufs := *SDL_GPUBuffer.[
@@ -452,13 +452,13 @@ GPU_Iterate :: ()
 
       for mesh: model.meshes
       {
-        material := ASSET_GetMaterial(mesh.material);
+        material := GetMaterial(mesh.material);
 
         // Uniforms
         WORLD_ApplyMaterialToUniform(*G.gpu.world_uniform, material, simplified_pipeline);
         G.gpu.world_uniform.flags |= .UseInstanceBuffer;
         if model.is_skinned then G.gpu.world_uniform.flags |= .DoMeshSkinning;
-        if MODEL_MatchKey(model.key, MODEL_CreateKey("Tree"))
+        if MatchKey(model.key, ModelKey("Tree"))
         {
           //G.gpu.world_uniform.flags |= .LessShadows;
         }

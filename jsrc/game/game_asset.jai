@@ -4,8 +4,8 @@ ASSET_State :: struct
   arena: Arena;
 
   // Materials
-  nil_material: ASSET_Material;
-  materials: [] ASSET_Material;
+  nil_material: Material;
+  materials: [] Material;
 
   // Texture loading thread
   tex_load_needed: bool;
@@ -13,8 +13,8 @@ ASSET_State :: struct
   tex_thread: Thread;
 
   // Models
-  nil_model: ASSET_Model;
-  models: [] ASSET_Model;
+  nil_model: Model;
+  models: [] Model;
   model_vertices: *SDL_GPUBuffer;
   model_indices: *SDL_GPUBuffer;
   skeletons: [] Skeleton;
@@ -23,7 +23,7 @@ ASSET_State :: struct
   shaders: [] string;
 };
 
-ASSET_ShaderType :: enum
+ShaderType :: enum
 {
   WORLD_VS;
   WORLD_PS;
@@ -56,7 +56,7 @@ ASSET_Key :: struct
 MATERIAL_Key :: #type,isa ASSET_Key;
 MODEL_Key ::  #type,isa ASSET_Key;
 
-ASSET_CreateKey :: (type: ASSET_Type, name: string /* EXTERNALLY OWNED STRING */) -> ASSET_Key
+AssetCreateKey :: (type: ASSET_Type, name: string /* EXTERNALLY OWNED STRING */) -> ASSET_Key
 {
   hash := Hash64Any(type, name);
 
@@ -65,28 +65,23 @@ ASSET_CreateKey :: (type: ASSET_Type, name: string /* EXTERNALLY OWNED STRING */
   res.name = name;
   return res;
 }
+MaterialKey :: (name: string) -> MATERIAL_Key { return cast(MATERIAL_Key) AssetCreateKey(.Material, name); }
+ModelKey    :: (name: string) -> MODEL_Key    { return cast(MODEL_Key)    AssetCreateKey(.Model, name); }
 
-ASSET_MatchKey :: (a: ASSET_Key, b: ASSET_Key) -> bool
+MatchKey :: (a: ASSET_Key, b: ASSET_Key) -> bool
 {
   return a.type4_hash60 == b.type4_hash60;
 }
 
-ASSET_KeyType :: (key: ASSET_Key) -> ASSET_Type
+KeyType :: (key: ASSET_Key) -> ASSET_Type
 {
   return cast(ASSET_Type) (key.type4_hash60 & 0b1111);
 }
 
-ASSET_IsZeroKey :: (key: ASSET_Key) -> bool
+IsZeroKey :: (key: ASSET_Key) -> bool
 {
   return !key.type4_hash60;
 }
-
-MATERIAL_CreateKey :: (name: string) -> MATERIAL_Key { return cast(MATERIAL_Key) ASSET_CreateKey(.Material, name); }
-MODEL_CreateKey    :: (name: string) -> MODEL_Key    { return cast(MODEL_Key)    ASSET_CreateKey(.Model, name); }
-MATERIAL_MatchKey :: (a: MATERIAL_Key, b: MATERIAL_Key) -> bool { return ASSET_MatchKey(a, b); }
-MODEL_MatchKey    :: (a: MODEL_Key, b: MODEL_Key)       -> bool { return ASSET_MatchKey(a, b); }
-MATERIAL_IsZeroKey :: ASSET_IsZeroKey;
-MODEL_IsZeroKey    :: ASSET_IsZeroKey;
 
 ASSET_Streamable :: struct
 {
@@ -101,7 +96,7 @@ ASSET_Streamable :: struct
   };
 }
 
-ASSET_Material :: struct
+Material :: struct
 {
   stream: ASSET_Streamable;
   key: MATERIAL_Key;
@@ -112,7 +107,7 @@ ASSET_Material :: struct
   tex: *SDL_GPUTexture;
 };
 
-ASSET_Mesh :: struct
+Mesh :: struct
 {
   material: MATERIAL_Key;
   vertices_start_index: u32;
@@ -120,14 +115,12 @@ ASSET_Mesh :: struct
   indices_count: u32;
 };
 
-
-
-ASSET_Model :: struct
+Model :: struct
 {
   key: MODEL_Key;
   is_skinned: bool;
   skeleton: *Skeleton; // can be null
-  meshes: [] ASSET_Mesh;
+  meshes: [] Mesh;
 };
 
 ASSET_PieFile :: struct
@@ -142,25 +135,25 @@ ASSET_PieFile :: struct
   shaders: [] PIE_Shader;
 };
 
-ASSET_MaterialIsNil :: (a: *ASSET_Material) -> bool
+MaterialIsNil :: (a: *Material) -> bool
 {
   return a == *G.ast.nil_material;
 }
 
-ASSET_GetMaterial :: (key: MATERIAL_Key) -> *ASSET_Material
+GetMaterial :: (key: MATERIAL_Key) -> *Material
 {
   // @speed hash table lookup in the future
   asset := *G.ast.nil_material;
   for *G.ast.materials
   {
-    if (MATERIAL_MatchKey(it.key, key))
+    if (MatchKey(it.key, key))
     {
       asset = it;
       break;
     }
   }
 
-  if !ASSET_MaterialIsNil(asset)
+  if !MaterialIsNil(asset)
   {
     asset.stream.last_touched_frame = G.frame_number;
     if !(asset.stream.flags & .LOADED)  G.ast.tex_load_needed = true;
@@ -169,24 +162,24 @@ ASSET_GetMaterial :: (key: MATERIAL_Key) -> *ASSET_Material
   return asset;
 }
 
-ASSET_PrefetchMaterial :: (key: MATERIAL_Key)
+PrefetchMaterial :: (key: MATERIAL_Key)
 {
-  ASSET_GetMaterial(key);
+  GetMaterial(key);
 }
 
 // Model
-ASSET_ModelIsNil :: (a: *ASSET_Model) -> bool
+ModelIsNil :: (a: *Model) -> bool
 {
   return a == *G.ast.nil_model;
 }
 
-ASSET_GetModel :: (key: MODEL_Key) -> *ASSET_Model
+GetModel :: (key: MODEL_Key) -> *Model
 {
   // @speed hash table lookup in the future
   asset := *G.ast.nil_model;
   for *G.ast.models
   {
-    if (MODEL_MatchKey(it.key, key))
+    if (MatchKey(it.key, key))
     {
       asset = it;
       break;
@@ -195,30 +188,8 @@ ASSET_GetModel :: (key: MODEL_Key) -> *ASSET_Model
   return asset;
 }
 
-AnimationNameToIndex :: (skeleton: Skeleton, name: string) -> index: s32, found: bool
-{
-  for skeleton.animations
-  {
-    if name == it.name
-      return xx it_index, true;
-  }
-  log("Animation name not found: %", name, flags=.WARNING);
-  return 0, false;
-}
-
-JointNameToIndex :: (skeleton: Skeleton, name: string) -> index: u32, found: bool
-{
-  for skeleton.joint_names
-  {
-    if name == it
-      return xx it_index, true;
-  }
-  log("Joint name not found: %", name, flags=.WARNING);
-  return 0, false;
-}
-
 // Shader
-ASSET_GetShader :: (type: ASSET_ShaderType) -> string
+GetShader :: (type: ShaderType) -> string
 {
   if xx type >= G.ast.shaders.count then return "";
   return G.ast.shaders[type];

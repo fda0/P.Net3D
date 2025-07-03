@@ -77,7 +77,7 @@ ASSET_TextureThread :: (thread: *Thread) -> s64
   return 0;
 }
 
-ASSET_LoadTextureFromPieToGPU :: (material: *ASSET_Material, material_index: s64)
+ASSET_LoadTextureFromPieToGPU :: (material: *Material, material_index: s64)
 {
   if material.stream.flags & (.LOADED | .ERROR)
     return;
@@ -292,11 +292,11 @@ ASSET_InitMaterials :: ()
   {
     using,only(pie) G.ast;
 
-    G.ast.materials = NewArray(pie.materials.count, ASSET_Material);
+    G.ast.materials = NewArray(pie.materials.count, Material);
     for *G.ast.materials
     {
       pie_material := *pie.materials[it_index];
-      it.key = MATERIAL_CreateKey(PIE_LOAD_ListToString(pie_material.name));
+      it.key = MaterialKey(PIE_LOAD_ListToString(pie_material.name));
       it.params = pie_material.params;
       it.has_texture = pie_material.tex.format != .Empty;
       it.texture_layers = pie_material.tex.layers;
@@ -334,13 +334,13 @@ ASSET_InitModels :: ()
     SDL_SubmitGPUCommandBuffer(cmd);
   }
 
-  G.ast.models = NewArray(pie.models.count, ASSET_Model);
+  G.ast.models = NewArray(pie.models.count, Model);
 
   for *model: G.ast.models
   {
     pie_model := *pie.models[it_index];
 
-    model.key = MODEL_CreateKey(PIE_LOAD_ListToString(pie_model.name));
+    model.key = ModelKey(PIE_LOAD_ListToString(pie_model.name));
     model.is_skinned = !!pie_model.is_skinned;
 
     if PIE_LOAD_Check(pie_model.skeleton_index < G.ast.skeletons.count,
@@ -351,7 +351,7 @@ ASSET_InitModels :: ()
     }
 
     pie_meshes := PIE_LOAD_ListToArray(pie_model.meshes);
-    model.meshes = NewArray(pie_meshes.count, ASSET_Mesh);
+    model.meshes = NewArray(pie_meshes.count, Mesh);
 
     for *mesh: model.meshes
     {

@@ -66,10 +66,10 @@ GPU_BATCH_TargetMatch :: (a: GPU_BATCH_Target, b: GPU_BATCH_Target) -> bool
   if (a.type == b.type)
   {
     if (a.type == .MeshVertices)
-      return MATERIAL_MatchKey(a.material_key, b.material_key);
+      return MatchKey(a.material_key, b.material_key);
 
     if (a.type == .ModelInstances)
-      return MODEL_MatchKey(a.model_key, b.model_key);
+      return MatchKey(a.model_key, b.model_key);
   }
   return false;
 }

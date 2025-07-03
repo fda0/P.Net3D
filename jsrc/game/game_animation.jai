@@ -92,7 +92,7 @@ ANIMATION_Init :: ()
 {
   using G.anim;
 
-  skeleton := ASSET_GetModel(MODEL_CreateKey("Dude")).skeleton;
+  skeleton := GetModel(ModelKey("Dude")).skeleton;
   if skeleton
   {
     for enum_values_as_enum(ANIMATION_Type)
@@ -164,7 +164,7 @@ ANIMATION_AnimateObjects :: ()
 
     if OBJ_HasAnyFlag(obj, .ANIMATE_TRACKS)
     {
-      model := ASSET_GetModel(obj.s.model);
+      model := GetModel(obj.s.model);
       if model.is_skinned
       {
         {
@@ -437,4 +437,29 @@ ANIMATION_WaterfallToChildren :: ($mode: enum {MULTIPLY; ASSIGN;},
     child_joint_index := skeleton.child_index_buffer[it];
     ANIMATION_WaterfallToChildren(mode, skeleton, child_joint_index, values, values[joint_index]);
   }
+}
+
+//
+//
+//
+AnimationNameToIndex :: (skeleton: Skeleton, name: string) -> index: s32, found: bool
+{
+  for skeleton.animations
+  {
+    if name == it.name
+      return xx it_index, true;
+  }
+  log("Animation name not found: %", name, flags=.WARNING);
+  return 0, false;
+}
+
+JointNameToIndex :: (skeleton: Skeleton, name: string) -> index: u32, found: bool
+{
+  for skeleton.joint_names
+  {
+    if name == it
+      return xx it_index, true;
+  }
+  log("Joint name not found: %", name, flags=.WARNING);
+  return 0, false;
 }

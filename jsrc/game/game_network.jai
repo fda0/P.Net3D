@@ -254,10 +254,10 @@ NET_IterateSend :: ()
         if !player_key.serial_number
         {
           model_keys := MODEL_Key.[
-            MODEL_CreateKey("Dude"),
-            // MODEL_CreateKey("Worker"),
-            // MODEL_CreateKey("Formal"),
-            // MODEL_CreateKey("Casual"),
+            ModelKey("Dude"),
+            // ModelKey("Worker"),
+            // ModelKey("Formal"),
+            // ModelKey("Casual"),
           ];
 
           model := model_keys[user_index % model_keys.count];

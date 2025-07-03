@@ -107,7 +107,7 @@ OBJ_Init :: ()
   // Sun
   {
     sun := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS);
-    sun.s.material = MATERIAL_CreateKey("tex.Leather011");
+    sun.s.material = MaterialKey("tex.Leather011");
     sun.s.height = 0.5;
     sun.s.collider = OBJ_ColliderFromRect(.{.5, .5});
     G.obj.sun = sun.s.key;
@@ -122,7 +122,7 @@ OBJ_Init :: ()
   {
     ground := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS);
     ground.s.collider = OBJ_ColliderFromRect(.{100, 100});
-    ground.s.material = MATERIAL_CreateKey("tex.Grass004");
+    ground.s.material = MaterialKey("tex.Grass004");
     ground.s.texture_texels_per_m = 1.0;
   }
 
@@ -143,7 +143,7 @@ OBJ_Init :: ()
     {
       flying_cube := OBJ_Create(.OFFLINE, .DRAW_COLLIDERS);
       flying_cube.s.p = V3.{0.5, 1.2, 1.};
-      flying_cube.s.material = MATERIAL_CreateKey("tex.Tiles101");
+      flying_cube.s.material = MaterialKey("tex.Tiles101");
       flying_cube.s.texture_texels_per_m = 1.;
       flying_cube.s.height = 0.3;
       flying_cube.s.collider = OBJ_ColliderFromRect(.{1., 1.});
@@ -167,7 +167,7 @@ OBJ_Init :: ()
           block.s.p = V3.{d*x - len*0.5*d, d*y - len*0.5*d, 0};
           block.s.collider = OBJ_ColliderFromRect(.{d,d});
           block.s.height = d;
-          block.s.material = MATERIAL_CreateKey("tex.Clay002");
+          block.s.material = MaterialKey("tex.Clay002");
         }
       }
     }
@@ -199,13 +199,13 @@ OBJ_Init :: ()
         if !OBJ_IsNil(tree)
         {
           tree.s.p = pos;
-          tree.s.model = MODEL_CreateKey("Tree");
+          tree.s.model = ModelKey("Tree");
         }
       }
     }
   }
 
-  OBJ_CreateHero(.NETWORK, MODEL_CreateKey("Dude"));
+  OBJ_CreateHero(.NETWORK, ModelKey("Dude"));
 }
 
 lerp :: (prev: OBJ_Sync, next: OBJ_Sync, t: float) -> OBJ_Sync
@@ -372,7 +372,7 @@ OBJ_CreateWall :: (p: V2, dim: V2, height: float) -> *Object
   {
     obj.s.p = V3.{xy = p};
     obj.s.collider = OBJ_ColliderFromRect(dim);
-    obj.s.material = MATERIAL_CreateKey("tex.Bricks071");
+    obj.s.material = MaterialKey("tex.Bricks071");
     obj.s.texture_texels_per_m = 1;
     obj.s.color = Color32_Grayf(1);
     obj.s.height = height;

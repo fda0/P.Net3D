@@ -164,7 +164,7 @@ UI_BuildDeveloperWindow :: ()
 
       CreateText(tprint("ModelKey: %", obj.s.model));
 
-      model := ASSET_GetModel(obj.s.model);
+      model := GetModel(obj.s.model);
       if !OBJ_IsNil(obj) && model.skeleton
       {
         anim: Animation;

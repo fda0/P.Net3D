@@ -36,7 +36,7 @@ WORLD_InstanceModel :: struct
   pose_offset: u32; // in indices; unused for rigid
 };
 
-WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Material, simplified_pipeline: bool)
+WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *Material, simplified_pipeline: bool)
 {
   uniform.material_loaded_t = material.stream.loaded_t;
   uniform.material_diffuse = xx material.params.diffuse;
@@ -67,7 +67,7 @@ WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, animation_tracks: [] 
     picking_color = picking_color
   };
 
-  model := ASSET_GetModel(model_key);
+  model := GetModel(model_key);
   if model.is_skinned
   {
     instance.pose_offset = GPU_BATCH_GetPosesBatch().element_count;
@@ -143,7 +143,7 @@ WORLD_DrawObjects :: ()
       if debug_colliders && draw_model
       {
         if !height  height = 0.2;
-        if MATERIAL_IsZeroKey(material)  material = MATERIAL_CreateKey("tex.Leather011");
+        if IsZeroKey(material)  material = MaterialKey("tex.Leather011");
       }
 
       face_count := cast(u32) ifx height then 6 else 1;

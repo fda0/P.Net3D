@@ -323,7 +323,7 @@ GAME_Iterate :: ()
       if G.action.type == .PATHING
       {
         marker.s.flags |= .DRAW_MODEL;
-        marker.s.model = MODEL_CreateKey("Flag");
+        marker.s.model = ModelKey("Flag");
         marker.s.p = G.action.world_p;
 
         marker.l.animated_p.x = marker.s.p.x;
