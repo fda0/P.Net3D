@@ -174,7 +174,7 @@ UI_BuildDeveloperWindow :: ()
         }
         CreateText(tprint("overwrite animation: %/%", obj.l.overwrite_animation_index, model.skeleton.animations.count));
         CreateText(tprint("name: %, t range: {%, %}", anim.name, anim.t_min, anim.t_max));
-        CreateText(tprint("obj_anim[0]: %", obj.l.animations[0]));
+        CreateText(tprint("obj_anim[0]: %", obj.l.animation_tracks[0]));
 
         horizontal_group := BoxSpec.{layout.sizing = .{Grow(), Fit()}, layout.child_gap = Em(1)};
 
@@ -189,13 +189,13 @@ UI_BuildDeveloperWindow :: ()
         {
           Parent(CreateBox(horizontal_group));
           CreateText("Anim t");
-          if UI_Button("reset")  obj.l.animations[0].t = 0.0;
-          if UI_Button("-.5")    obj.l.animations[0].t -= 0.5;
-          if UI_Button("-.05")   obj.l.animations[0].t -= 0.05;
-          if UI_Button("-.01")   obj.l.animations[0].t -= 0.01;
-          if UI_Button("+.01")   obj.l.animations[0].t += 0.01;
-          if UI_Button("+.05")   obj.l.animations[0].t += 0.05;
-          if UI_Button("+.5")    obj.l.animations[0].t += 0.5;
+          if UI_Button("reset")  obj.l.animation_tracks[0].t = 0.0;
+          if UI_Button("-.5")    obj.l.animation_tracks[0].t -= 0.5;
+          if UI_Button("-.05")   obj.l.animation_tracks[0].t -= 0.05;
+          if UI_Button("-.01")   obj.l.animation_tracks[0].t -= 0.01;
+          if UI_Button("+.01")   obj.l.animation_tracks[0].t += 0.01;
+          if UI_Button("+.05")   obj.l.animation_tracks[0].t += 0.05;
+          if UI_Button("+.5")    obj.l.animation_tracks[0].t += 0.5;
         }
 
         {

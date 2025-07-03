@@ -224,7 +224,7 @@ ASSET_GetModel :: (key: MODEL_Key) -> *ASSET_Model
   return asset;
 }
 
-AnimationNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index:s32, found:bool
+AnimationNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index: s32, found: bool
 {
   for skeleton.animations
   {
@@ -235,7 +235,7 @@ AnimationNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index:s32, f
   return 0, false;
 }
 
-JointNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index:s32, found:bool
+JointNameToIndex :: (skeleton: ASSET_Skeleton, name: string) -> index: u32, found: bool
 {
   for skeleton.joint_names
   {

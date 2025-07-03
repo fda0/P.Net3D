@@ -58,7 +58,7 @@ WORLD_ApplyMaterialToUniform :: (uniform: *WORLD_Uniform, material: *ASSET_Mater
   }
 }
 
-WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, animation_params: [] ANIMATION_PoseParams,
+WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, animation_tracks: [] ANIMATION_Track,
                     color: Color32, picking_color: Color32 = 0)
 {
   instance := WORLD_InstanceModel.{
@@ -72,7 +72,7 @@ WORLD_DrawModel :: (model_key: MODEL_Key, transform: Mat4, animation_params: [] 
   {
     instance.pose_offset = GPU_BATCH_GetPosesBatch().element_count;
 
-    transforms := ANIMATION_GetPoseTransforms(model.skeleton, animation_params);
+    transforms := ANIMATION_GetPoseTransforms(model.skeleton, animation_tracks);
     transfer_size := transforms.count * size_of(type_of(transforms[0]));
     GPU_BATCH_TransferUploadBytes(GPU_BATCH_GetPosesBatch(), transforms.data, xx transfer_size, xx transforms.count);
   }
@@ -114,7 +114,7 @@ WORLD_DrawObjects :: ()
       if obj.s.key == G.hover_object         then hover_color.x   *= 0.25*Cos01(G.at*1.5);
       if obj.s.key == G.dev.selected_object  then hover_color.xyz *= 0.5 + 0.5*Sin01(G.at*3.0);
 
-      WORLD_DrawModel(obj.s.model, transform, obj.l.animations,
+      WORLD_DrawModel(obj.s.model, transform, obj.l.animation_tracks,
                       Color32_RGBAf(hover_color), OBJ_KeyToColor(obj.s.key));
     }
 
