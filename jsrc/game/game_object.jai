@@ -64,6 +64,7 @@ OBJ_Sync :: struct
   // game stats
   max_hp: float;
   hp: float;
+  attack_speed: float = 1.0;
 
   // game state
   is_attacking: bool;
@@ -92,7 +93,8 @@ OBJ_Local :: struct
 
   animation_distance01: float; // in range [0; 1]
   animation_moving_hot_t: float; // 1 = moving; 0 = idling
-  animation_punching_hot_t: float;
+  animation_hands_punching_hot_t: float;
+  animation_full_punching_hot_t: float;
   animation_attack_hide_cooldown: bool;
   animation_tracks: [8] ANIMATION_Track;
 };

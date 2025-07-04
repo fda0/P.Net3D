@@ -158,6 +158,11 @@ CastSaturate :: ($Tdst: Type, value: $Tstr) -> Tdst
   return 0;
 }
 
+AddClamp01 :: (dst: *float, delta: float)
+{
+  dst.* = clamp(dst.* + delta, 0.0, 1.0);
+}
+
 Round :: (x: float) -> float {
     return cast(float)cast(int)(x + 0.5 * ifx x < 0 then -1 else 1);
 }

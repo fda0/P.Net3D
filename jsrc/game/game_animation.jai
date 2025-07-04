@@ -169,30 +169,33 @@ ANIMATION_AnimateObjects :: ()
       model := GetModel(obj.s.model);
       if model.is_skinned
       {
+        // Movement calculations
         {
           moved_distance := length(obj.s.moved_dp);
           WALK_T_SPEED :: 0.016;
           distance01_delta := moved_distance * WALK_T_SPEED * TICK_RATE;
           obj.l.animation_distance01 = WrapFloat(0.0, 1.0, obj.l.animation_distance01 + distance01_delta);
-
-          obj.l.animation_moving_hot_t += (ifx moved_distance > 0 then G.dt else -G.dt) * 10;
-          obj.l.animation_moving_hot_t = clamp(obj.l.animation_moving_hot_t, 0.0, 1.0);
+          AddClamp01(*obj.l.animation_moving_hot_t, (ifx moved_distance > 0 then G.dt else -G.dt) * 10);
 
           if obj.l.animation_moving_hot_t == 0
             obj.l.animation_distance01 = 0;
         }
 
+        // Attack calculations
         if !obj.s.is_attacking
           obj.l.animation_attack_hide_cooldown = true;
         if obj.s.is_attacking && obj.s.attack_t >= 0.0
           obj.l.animation_attack_hide_cooldown = false;
 
         is_punching := obj.s.is_attacking && !obj.l.animation_attack_hide_cooldown;
-        obj.l.animation_punching_hot_t += (ifx is_punching then G.dt else -G.dt) * 5;
-        obj.l.animation_punching_hot_t = clamp(obj.l.animation_punching_hot_t, 0.0, 1.0);
+        AddClamp01(*obj.l.animation_hands_punching_hot_t,
+          (ifx is_punching then G.dt*4 else -G.dt*8) * obj.s.attack_speed);
+        AddClamp01(*obj.l.animation_full_punching_hot_t,
+          (ifx is_punching then G.dt*2 else -G.dt*20) * obj.s.attack_speed);
         attack_normalized_t := WrapFloat(0.0, ATTACK_COOLDOWN_T, obj.s.attack_t);
         attack_normalized_t /= ATTACK_COOLDOWN_T;
 
+        // Fill animation tracks
         for *obj.l.animation_tracks
         {
           anim_mode: ANIMATION_AdvanceMode;
@@ -218,24 +221,20 @@ ANIMATION_AnimateObjects :: ()
           }
           else if it_index == 3
           {
-            it.weight = 0.0;
-            if is_punching
             {
               anim_mode = .MANUAL01;
               it.type = .PUNCH_HANDS;
               it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
-              it.weight = 1.0;
+              it.weight = obj.l.animation_hands_punching_hot_t;
             }
           }
           else if it_index == 4
           {
-            it.weight = 0.0;
-            if is_punching
             {
               anim_mode = .MANUAL01;
               it.type = .PUNCH;
               it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
-              it.weight = obj.l.animation_punching_hot_t;
+              it.weight = obj.l.animation_full_punching_hot_t;
             }
           }
           else if it_index == 5

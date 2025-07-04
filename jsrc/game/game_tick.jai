@@ -52,7 +52,7 @@ TICK_AdvanceSimulation :: ()
     }
 
     not_attacking := action.type != .ATTACK;
-    player.s.attack_t += TICK_FLOAT_STEP;
+    player.s.attack_t += TICK_FLOAT_STEP * player.s.attack_speed;
 
     if action.type == .ATTACK
     {
