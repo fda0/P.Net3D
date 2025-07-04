@@ -54,11 +54,6 @@ TICK_AdvanceSimulation :: ()
     not_attacking := action.type != .ATTACK;
     player.s.attack_t += TICK_FLOAT_STEP;
 
-    if player.s.attack_t >= 0.0
-    {
-      player.s.hide_attack_animation_tail = false;
-    }
-
     if action.type == .ATTACK
     {
       attack_object := OBJ_Get(action.target_object, .NETWORK);
@@ -89,7 +84,6 @@ TICK_AdvanceSimulation :: ()
     if not_attacking
     {
       player.s.is_attacking = false;
-      player.s.hide_attack_animation_tail = true;
       player.s.attack_t = min(player.s.attack_t, 0.0);
     }
 

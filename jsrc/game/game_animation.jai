@@ -57,12 +57,11 @@ ANIMATION_Type :: enum u8
   DIE;
 }
 
-// ANIMATION_Request :: struct
-// {
-//   start: TimestampMS;
-//   record: ANIMATION_Type;
-//   mode: enum { DISABLED; ONCE; LOOP; };
-// }
+ANIMATION_Request :: struct
+{
+  start: TimestampMS;
+  type: ANIMATION_Type;
+}
 
 ANIMATION_Track :: struct
 {
@@ -122,6 +121,9 @@ ANIMATION_Init :: ()
         MaskJoints("DEF-spine.003", 1.0);
         #through; case .PUNCH;
         animation_index = AnimationNameToIndex(skeleton, "Punch_Cross");
+
+        case .HIT;
+        animation_index = AnimationNameToIndex(skeleton, "Hit_Head");
       }
     }
   }
@@ -180,7 +182,12 @@ ANIMATION_AnimateObjects :: ()
             obj.l.animation_distance01 = 0;
         }
 
-        is_punching := obj.s.is_attacking && !obj.s.hide_attack_animation_tail;
+        if !obj.s.is_attacking
+          obj.l.animation_attack_hide_cooldown = true;
+        if obj.s.is_attacking && obj.s.attack_t >= 0.0
+          obj.l.animation_attack_hide_cooldown = false;
+
+        is_punching := obj.s.is_attacking && !obj.l.animation_attack_hide_cooldown;
         obj.l.animation_punching_hot_t += (ifx is_punching then G.dt else -G.dt) * 5;
         obj.l.animation_punching_hot_t = clamp(obj.l.animation_punching_hot_t, 0.0, 1.0);
         attack_normalized_t := WrapFloat(0.0, ATTACK_COOLDOWN_T, obj.s.attack_t);
@@ -230,6 +237,12 @@ ANIMATION_AnimateObjects :: ()
               it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
               it.weight = obj.l.animation_punching_hot_t;
             }
+          }
+          else if it_index == 5
+          {
+            it.weight = 0.0;
+
+            anim := ANIMATION_FromType(model.skeleton, it.type);
           }
           else
           {

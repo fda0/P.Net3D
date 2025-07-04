@@ -68,7 +68,7 @@ OBJ_Sync :: struct
   // game state
   is_attacking: bool;
   attack_t: float;
-  hide_attack_animation_tail: bool;
+  animation_requests: Queue(8, ANIMATION_Request);
 
   // visuals
   color: Color32; // unused?
@@ -93,6 +93,7 @@ OBJ_Local :: struct
   animation_distance01: float; // in range [0; 1]
   animation_moving_hot_t: float; // 1 = moving; 0 = idling
   animation_punching_hot_t: float;
+  animation_attack_hide_cooldown: bool;
   animation_tracks: [8] ANIMATION_Track;
 };
 
