@@ -56,10 +56,10 @@ TICK_AdvanceSimulation :: ()
 
     if action.type == .ATTACK
     {
-      attack_object := OBJ_Get(action.target_object, .NETWORK);
-      if !OBJ_IsNil(attack_object)
+      attacked := OBJ_Get(action.target_object, .NETWORK);
+      if !OBJ_IsNil(attacked)
       {
-        player_to_destination := attack_object.s.p.xy - player.s.p.xy;
+        player_to_destination := attacked.s.p.xy - player.s.p.xy;
         distance := length(player_to_destination);
 
         if distance < 1
@@ -70,7 +70,13 @@ TICK_AdvanceSimulation :: ()
           while player.s.attack_t >= ATTACK_LANDED_T
           {
             player.s.attack_t -= ATTACK_COOLDOWN_T;
-            attack_object.s.hp -= attack_damage;
+            attacked.s.hp -= attack_damage;
+
+            hit_animation_request := ANIMATION_Request.{
+              start = GetTime(),
+              type = .HIT
+            };
+            QueuePush(*attacked.s.animation_requests, hit_animation_request);
           }
         }
         else if distance >= MINIMUM_VALID_DISTANCE

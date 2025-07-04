@@ -64,12 +64,12 @@ OBJ_Sync :: struct
   // game stats
   max_hp: float;
   hp: float;
-  attack_speed: float = 1.0;
+  attack_speed: float = 1.1;
 
   // game state
   is_attacking: bool;
   attack_t: float;
-  animation_requests: Queue(8, ANIMATION_Request);
+  animation_requests: Queue(3, ANIMATION_Request);
 
   // visuals
   color: Color32; // unused?
@@ -96,7 +96,8 @@ OBJ_Local :: struct
   animation_hands_punching_hot_t: float;
   animation_full_punching_hot_t: float;
   animation_attack_hide_cooldown: bool;
-  animation_tracks: [8] ANIMATION_Track;
+  // animation_requests_hot_t: [3] float;
+  animation_tracks: [10] ANIMATION_Track;
 };
 
 Object :: struct

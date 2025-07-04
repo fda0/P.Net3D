@@ -59,7 +59,7 @@ ANIMATION_Type :: enum u8
 
 ANIMATION_Request :: struct
 {
-  start: TimestampMS;
+  start: TimestampMS = ~0; // @todo use type like ServerTick here; And add functions like TimeElapsedFromServerTick(tick)
   type: ANIMATION_Type;
 }
 
@@ -124,6 +124,10 @@ ANIMATION_Init :: ()
 
         case .HIT;
         animation_index = AnimationNameToIndex(skeleton, "Hit_Head");
+        MaskJoints("root", 0.0);
+        MaskJoints("DEF-spine.001", 1.0);
+        MaskJoints("DEF-shoulder.L", 0.0);
+        MaskJoints("DEF-shoulder.R", 0.0);
       }
     }
   }
@@ -171,8 +175,10 @@ ANIMATION_AnimateObjects :: ()
       {
         // Movement calculations
         {
-          moved_distance := length(obj.s.moved_dp);
           WALK_T_SPEED :: 0.016;
+          RUN_T_SPEED :: WALK_T_SPEED * 0.15;
+
+          moved_distance := length(obj.s.moved_dp);
           distance01_delta := moved_distance * WALK_T_SPEED * TICK_RATE;
           obj.l.animation_distance01 = WrapFloat(0.0, 1.0, obj.l.animation_distance01 + distance01_delta);
           AddClamp01(*obj.l.animation_moving_hot_t, (ifx moved_distance > 0 then G.dt else -G.dt) * 10);
@@ -221,27 +227,44 @@ ANIMATION_AnimateObjects :: ()
           }
           else if it_index == 3
           {
-            {
-              anim_mode = .MANUAL01;
-              it.type = .PUNCH_HANDS;
-              it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
-              it.weight = obj.l.animation_hands_punching_hot_t;
-            }
+            anim_mode = .MANUAL01;
+            it.type = .PUNCH_HANDS;
+            it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
+            it.weight = obj.l.animation_hands_punching_hot_t;
           }
           else if it_index == 4
           {
-            {
-              anim_mode = .MANUAL01;
-              it.type = .PUNCH;
-              it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
-              it.weight = obj.l.animation_full_punching_hot_t;
-            }
+            anim_mode = .MANUAL01;
+            it.type = .PUNCH;
+            it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
+            it.weight = obj.l.animation_full_punching_hot_t;
           }
           else if it_index == 5
           {
-            it.weight = 0.0;
-
-            anim := ANIMATION_FromType(model.skeleton, it.type);
+            anim_mode = .MANUAL01;
+            p := QueuePeek(obj.s.animation_requests, 0);
+            pt := ElapsedTimeS(p.start, max_on_fail=true) * 3.0;
+            it.type = p.type;
+            it.t = pt;
+            it.weight = ifx pt <= 1.0 then 1.0 else 0.0;
+          }
+          else if it_index == 6
+          {
+            anim_mode = .MANUAL01;
+            p := QueuePeek(obj.s.animation_requests, 1);
+            pt := ElapsedTimeS(p.start, max_on_fail=true) * 3.0;
+            it.type = p.type;
+            it.t = pt;
+            it.weight = ifx pt <= 1.0 then 1.0 else 0.0;
+          }
+          else if it_index == 7
+          {
+            anim_mode = .MANUAL01;
+            p := QueuePeek(obj.s.animation_requests, 2);
+            pt := ElapsedTimeS(p.start, max_on_fail=true) * 3.0;
+            it.type = p.type;
+            it.t = pt;
+            it.weight = ifx pt <= 1.0 then 1.0 else 0.0;
           }
           else
           {
@@ -259,16 +282,13 @@ ANIMATION_AnimateObjects :: ()
           else if anim_mode == .TIME
           {
             it.t += G.dt;
+            it.t = ANIMATION_WrapTime(model.skeleton, it.type, it.t);
           }
           else if anim_mode == .MANUAL01
           {
             anim := ANIMATION_FromType(model.skeleton, it.type);
             it.t = (anim.t_max - anim.t_min) * it.t + anim.t_min;
-            it.t = ANIMATION_WrapTime(model.skeleton, it.type, it.t);
           }
-
-          // Wrap T
-          it.t = ANIMATION_WrapTime(model.skeleton, it.type, it.t);
         }
 
 
