@@ -44,6 +44,7 @@ ANIMATION_Record :: struct
 {
   animation_index: s32;
   joint_weights: [] float; // Animations like punching shouldn't really apply to legs etc
+  // count = 0 -> all weights are equal to one
 }
 
 ANIMATION_Type :: enum u8
@@ -96,39 +97,44 @@ ANIMATION_Init :: ()
   {
     for enum_values_as_enum(ANIMATION_Type)
     {
-      using records[it];
-      joint_weights = NewArray(skeleton.joints_count, float,, arena);
-      for *joint_weights it.* = 1.0;
+      r := *records[it];
+
+      temp_weights := NewArray(skeleton.joints_count, float,, temp);
+      for *temp_weights it.* = 1.0;
 
       MaskJoints :: (joint_name: string, value: float) #expand
       {
-        ANIMATION_WaterfallToChildren(.ASSIGN, skeleton, JointNameToIndex(skeleton, joint_name), joint_weights, value);
+        ANIMATION_WaterfallToChildren(.ASSIGN, skeleton, JointNameToIndex(skeleton, joint_name), temp_weights, value);
       }
 
       if it == {
         case .IDLE;
-        animation_index = AnimationNameToIndex(skeleton, "Idle_Loop");
+        r.animation_index = AnimationNameToIndex(skeleton, "Idle_Loop");
 
         case .WALK;
-        animation_index = AnimationNameToIndex(skeleton, "Walk_Loop");
+        r.animation_index = AnimationNameToIndex(skeleton, "Walk_Loop");
 
         case .RUN;
-        animation_index = AnimationNameToIndex(skeleton, "Jog_Fwd_Loop");
-        // joint_weights[JointNameToIndex(skeleton, "DEF-spine.001")] = 0.5;
+        r.animation_index = AnimationNameToIndex(skeleton, "Jog_Fwd_Loop");
+        // temp_weights[JointNameToIndex(skeleton, "DEF-spine.001")] = 0.5;
 
         case .PUNCH_HANDS;
         MaskJoints("root", 0.0);
         MaskJoints("DEF-spine.003", 1.0);
         #through; case .PUNCH;
-        animation_index = AnimationNameToIndex(skeleton, "Punch_Cross");
+        r.animation_index = AnimationNameToIndex(skeleton, "Punch_Cross");
 
         case .HIT;
-        animation_index = AnimationNameToIndex(skeleton, "Hit_Head");
+        r.animation_index = AnimationNameToIndex(skeleton, "Hit_Head");
         MaskJoints("root", 0.0);
         MaskJoints("DEF-spine.001", 1.0);
         MaskJoints("DEF-shoulder.L", 0.0);
         MaskJoints("DEF-shoulder.R", 0.0);
       }
+
+      has_non_one := false;
+      for temp_weights if it != 1.0 then has_non_one = true;
+      if has_non_one then r.joint_weights = array_copy(temp_weights,, arena);
     }
   }
 }
@@ -202,8 +208,12 @@ ANIMATION_AnimateObjects :: ()
         attack_normalized_t /= ATTACK_COOLDOWN_T;
 
         // Fill animation tracks
-        for *obj.l.animation_tracks
+        all_joints_are_masked := false;
+        for < *obj.l.animation_tracks
         {
+          if all_joints_are_masked
+            it.weight = 0.0;
+
           anim_mode: ANIMATION_AdvanceMode;
           time: float;
 
@@ -289,6 +299,11 @@ ANIMATION_AnimateObjects :: ()
             anim := ANIMATION_FromType(model.skeleton, it.type);
             it.t = (anim.t_max - anim.t_min) * it.t + anim.t_min;
           }
+
+
+          record := ANIMATION_RecordFromType(it.type);
+          if record.joint_weights.count == 0 && it.weight == 1.0
+            all_joints_are_masked = true;
         }
 
 
@@ -341,7 +356,8 @@ ANIMATION_GetPoseTransforms :: (skeleton: Skeleton, params: [] ANIMATION_Track) 
           continue;
         }
 
-        if record.joint_weights[channel.joint_index] <= 0.0 then continue;
+        if record.joint_weights.count > 0 && record.joint_weights[channel.joint_index] <= 0.0
+          continue;
 
         t := 1.0;
         sample_start: u32;
@@ -394,8 +410,12 @@ ANIMATION_GetPoseTransforms :: (skeleton: Skeleton, params: [] ANIMATION_Track) 
 
     if param_index > 0
     {
-      for joint_weight: record.joint_weights
+      for joint_index: MakeRange(skeleton.joints_count)
       {
+        joint_weight := 1.0;
+        if record.joint_weights.count > 0
+          joint_weight = record.joint_weights[joint_index];
+
         weight := param.weight * joint_weight;
         if weight <= 0 then continue;
 

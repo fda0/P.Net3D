@@ -30,7 +30,7 @@ TICK_Iterate :: ()
 
 ATTACK_LANDED_T :: 0.25;
 ATTACK_COOLDOWN_T :: 1.0;
-MINIMUM_VALID_DISTANCE :: 0.05;
+MINIMUM_MOVE_START_DISTANCE :: 0.05;
 
 TICK_AdvanceSimulation :: ()
 {
@@ -48,7 +48,7 @@ TICK_AdvanceSimulation :: ()
     {
       player_to_destination := action.world_p.xy - player.s.p.xy;
       distance := length(player_to_destination);
-      if distance >= MINIMUM_VALID_DISTANCE then player_move_dir = player_to_destination * (1.0 / distance);
+      if distance >= MINIMUM_MOVE_START_DISTANCE then player_move_dir = player_to_destination * (1.0 / distance);
     }
 
     not_attacking := action.type != .ATTACK;
@@ -62,7 +62,7 @@ TICK_AdvanceSimulation :: ()
         player_to_destination := attacked.s.p.xy - player.s.p.xy;
         distance := length(player_to_destination);
 
-        if distance < 1
+        if distance < 0.8
         {
           player.s.is_attacking = true;
           player.s.rotation = DirectionXYToRotationZ(attacked.s.p - player.s.p);
@@ -80,7 +80,7 @@ TICK_AdvanceSimulation :: ()
             QueuePush(*attacked.s.animation_requests, hit_animation_request);
           }
         }
-        else if distance >= MINIMUM_VALID_DISTANCE
+        else if distance >= MINIMUM_MOVE_START_DISTANCE
         {
           player_move_dir = player_to_destination * (1.0 / distance);
           not_attacking = true;
@@ -191,14 +191,15 @@ TICK_AdvanceSimulation :: ()
     obj.s.p.x = obj_pos.x;
     obj.s.p.y = obj_pos.y;
     obj.s.moved_dp = obj.s.p - prev_obj_pos;
+    if length(obj.s.moved_dp) < MINIMUM_MOVE_START_DISTANCE * TICK_FLOAT_STEP // some arbitary small number
+      obj.s.moved_dp = .{}; // Other systems like animation should ignore these tiny movemements.
   } // obj loop
 
   for * obj: G.obj.all_objects
   {
     if OBJ_HasAllFlags(obj, .ANIMATE_ROTATION)
     {
-      lensq := length_squared(obj.s.moved_dp);
-      if lensq > square(0.05 * TICK_FLOAT_STEP)
+      if HasLength(obj.s.moved_dp)
         obj.s.rotation = DirectionXYToRotationZ(obj.s.moved_dp);
     }
   }
