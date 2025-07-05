@@ -146,6 +146,15 @@ for_expansion :: (range: Range($T), body: Code, flags: For_Flags) #expand
 }
 
 // SCALAR MATH
+DirectionXYToRotationZ :: (not_normalized_dir3: V3) -> Quat
+{
+  dir := normalize(not_normalized_dir3.xy);
+  turns := -Atan2(dir) + 0.25;
+  turns = WrapFloat(-0.5, 0.5, turns);
+  rotation := RotationAroundAxis(AxisV3(.Z), turns);
+  return rotation;
+}
+
 CastSaturate :: ($Tdst: Type, value: $Tstr) -> Tdst
 #modify { return IsInteger(Tdst) && IsInteger(Tstr), "Both arguments have to be of an integer type."; }
 {

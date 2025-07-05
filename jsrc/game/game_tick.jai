@@ -65,6 +65,7 @@ TICK_AdvanceSimulation :: ()
         if distance < 1
         {
           player.s.is_attacking = true;
+          player.s.rotation = DirectionXYToRotationZ(attacked.s.p - player.s.p);
 
           attack_damage := 10.0;
           while player.s.attack_t >= ATTACK_LANDED_T
@@ -198,12 +199,7 @@ TICK_AdvanceSimulation :: ()
     {
       lensq := length_squared(obj.s.moved_dp);
       if lensq > square(0.05 * TICK_FLOAT_STEP)
-      {
-        dir := normalize(obj.s.moved_dp.xy);
-        rot := -Atan2(dir) + 0.25;
-        rot = WrapFloat(-0.5, 0.5, rot);
-        obj.s.rotation = RotationAroundAxis(AxisV3(.Z), rot);
-      }
+        obj.s.rotation = DirectionXYToRotationZ(obj.s.moved_dp);
     }
   }
 }

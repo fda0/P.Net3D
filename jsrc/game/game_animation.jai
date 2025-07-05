@@ -242,7 +242,7 @@ ANIMATION_AnimateObjects :: ()
           else if it_index == 5
           {
             anim_mode = .MANUAL01;
-            p := QueuePeek(obj.s.animation_requests, 0);
+            p := QueuePeek(obj.s.animation_requests, 2);
             pt := ElapsedTimeS(p.start, max_on_fail=true) * 3.0;
             it.type = p.type;
             it.t = pt;
@@ -260,7 +260,7 @@ ANIMATION_AnimateObjects :: ()
           else if it_index == 7
           {
             anim_mode = .MANUAL01;
-            p := QueuePeek(obj.s.animation_requests, 2);
+            p := QueuePeek(obj.s.animation_requests, 0);
             pt := ElapsedTimeS(p.start, max_on_fail=true) * 3.0;
             it.type = p.type;
             it.t = pt;

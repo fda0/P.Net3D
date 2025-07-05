@@ -64,7 +64,7 @@ OBJ_Sync :: struct
   // game stats
   max_hp: float;
   hp: float;
-  attack_speed: float = 1.1;
+  attack_speed: float = 2.0;
 
   // game state
   is_attacking: bool;
