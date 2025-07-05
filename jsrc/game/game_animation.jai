@@ -54,6 +54,8 @@ ANIMATION_Type :: enum u8
   RUN;
   PUNCH;
   PUNCH_HANDS;
+  JAB;
+  JAB_HANDS;
   HIT;
   DIE;
 }
@@ -123,6 +125,12 @@ ANIMATION_Init :: ()
         MaskJoints("DEF-spine.003", 1.0);
         #through; case .PUNCH;
         r.animation_index = AnimationNameToIndex(skeleton, "Punch_Cross");
+
+        case .JAB_HANDS;
+        MaskJoints("root", 0.0);
+        MaskJoints("DEF-spine.003", 1.0);
+        #through; case .JAB;
+        r.animation_index = AnimationNameToIndex(skeleton, "Punch_Jab");
 
         case .HIT;
         r.animation_index = AnimationNameToIndex(skeleton, "Hit_Head");
@@ -206,6 +214,7 @@ ANIMATION_AnimateObjects :: ()
           (ifx is_punching then G.dt*2 else -G.dt*20) * obj.s.attack_speed);
         attack_normalized_t := WrapFloat(0.0, ATTACK_COOLDOWN_T, obj.s.attack_t);
         attack_normalized_t /= ATTACK_COOLDOWN_T;
+        use_jab_animation := WrapFloat(0.0, ATTACK_COOLDOWN_T*2, obj.s.attack_continous_t) > ATTACK_COOLDOWN_T;
 
         // Fill animation tracks
         all_joints_are_masked := false;
@@ -217,6 +226,7 @@ ANIMATION_AnimateObjects :: ()
           anim_mode: ANIMATION_AdvanceMode;
           time: float;
 
+          // Select an animation per slot
           if it_index == 0
           {
             anim_mode = .TIME;
@@ -238,14 +248,14 @@ ANIMATION_AnimateObjects :: ()
           else if it_index == 3
           {
             anim_mode = .MANUAL01;
-            it.type = .PUNCH_HANDS;
+            it.type = ifx use_jab_animation then .JAB_HANDS else .PUNCH_HANDS;
             it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
             it.weight = obj.l.animation_hands_punching_hot_t;
           }
           else if it_index == 4
           {
             anim_mode = .MANUAL01;
-            it.type = .PUNCH;
+            it.type = ifx use_jab_animation then .JAB else .PUNCH;
             it.t = attack_normalized_t; // @todo pick anim.t_min & anim.t_max instead of 0.0 and 1.0; -> this is repeating pattern!
             it.weight = obj.l.animation_full_punching_hot_t;
           }

@@ -52,7 +52,9 @@ TICK_AdvanceSimulation :: ()
     }
 
     not_attacking := action.type != .ATTACK;
-    player.s.attack_t += TICK_FLOAT_STEP * player.s.attack_speed;
+    attack_t_delta := TICK_FLOAT_STEP * player.s.attack_speed;
+    player.s.attack_t += attack_t_delta;
+    player.s.attack_continous_t += attack_t_delta;
 
     if action.type == .ATTACK
     {
@@ -92,6 +94,7 @@ TICK_AdvanceSimulation :: ()
     {
       player.s.is_attacking = false;
       player.s.attack_t = min(player.s.attack_t, 0.0);
+      player.s.attack_continous_t = 0.0;
     }
 
     player_speed := 1.4 * TICK_FLOAT_STEP;

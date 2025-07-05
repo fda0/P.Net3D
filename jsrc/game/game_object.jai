@@ -69,6 +69,7 @@ OBJ_Sync :: struct
   // game state
   is_attacking: bool;
   attack_t: float;
+  attack_continous_t: float;
   animation_requests: Queue(3, ANIMATION_Request);
 
   // visuals
