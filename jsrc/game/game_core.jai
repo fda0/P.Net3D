@@ -44,6 +44,8 @@ GAME_State :: struct
   window_on_top: bool;
   window_autolayout: bool;
   server_exit_on_disconnect: bool;
+  // SDL audio
+  audio: *SDL_AudioStream;
 
   // user input
   mouse: V2;
@@ -339,6 +341,15 @@ GAME_Iterate :: ()
         marker.s.p.z = -2.0;
         G.obj.pathing_marker_set = false;
       }
+    }
+
+
+    if KEY_Pressed(.M)
+    {
+      sound := G.ast.sounds[0];
+      planes := *void.[sound.data];
+      SDL_PutAudioStreamPlanarData(G.audio, planes.data, xx planes.count, xx sound.count);
+      SDL_FlushAudioStream(G.audio);
     }
 
     WORLD_DrawObjects();

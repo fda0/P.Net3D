@@ -136,6 +136,7 @@ PIE_Links :: struct
 
   shaders: PIE_ListT(PIE_Blob);
   fonts: PIE_ListT(PIE_Blob);
+  sounds: PIE_ListT(PIE_Blob);
 }
 
 PIE_MAGIC_HASH_SEED :: (0xB5EADC0D + 0); // @todo use 64 bits

@@ -14,6 +14,7 @@ PIE_Builder :: struct
 
   shaders: [..] PIE_Blob;
   fonts: [..] PIE_Blob;
+  sounds: [..] PIE_Blob;
 };
 
 //
@@ -32,6 +33,7 @@ PIE_InitBuilder :: ()
   remember_allocators(*materials);
   remember_allocators(*shaders);
   remember_allocators(*fonts);
+  remember_allocators(*sounds);
 
   PIE_FileAllocType(PIE_Header);
 }
@@ -49,6 +51,7 @@ PIE_FinalizeBuilder :: ()
   PIE_ListSetArray(*links.materials, materials);
   PIE_ListSetArray(*links.shaders, shaders);
   PIE_ListSetArray(*links.fonts, fonts);
+  PIE_ListSetArray(*links.sounds, sounds);
 
   // Prepare PIE_Header
   header := file.memory_base.(*PIE_Header);

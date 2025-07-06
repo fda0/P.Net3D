@@ -125,6 +125,34 @@ main :: ()
     Timer("Loaded font files");
   }
 
+  // Load sounds
+  {
+    sound_names := string.[
+      "punch_general_body_impact_03",
+    ];
+
+    audio_spec := SDL_AudioSpec.{.SDL_AUDIO_S32LE, 2, 48000};
+    base_dir := "../res/sounds/";
+    for sound_names
+    {
+      path := join(base_dir, it, ".wav");
+
+      data_ptr: *u8;
+      data_size: u32;
+      success := SDL_LoadWAV(temp_c_string(path), *audio_spec, *data_ptr, *data_size);
+      Check(success, "Failed to load sound file %", path);
+      defer SDL_free(data_ptr);
+
+      data_string := string.{count = xx data_size, data = data_ptr};
+      blob: PIE_Blob;
+      PIE_ListSetString(*blob.data, data_string);
+      PIE_ListSetString(*blob.info, it);
+      array_add(*B.pie.sounds, blob);
+    }
+
+    Timer("Loaded sound files");
+  }
+
   PIE_FinalizeBuilder();
   PIE_SaveToFile("data.pie");
   Timer("Saved to file");
