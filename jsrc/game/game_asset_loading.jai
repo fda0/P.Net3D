@@ -10,6 +10,7 @@ ASSET_InitPreGPU :: ()
     if !err ASSET_InitMaterials();
     if !err ASSET_InitModels();
     if !err ASSET_InitShaders();
+    if !err ASSET_InitFonts();
   }
 }
 
@@ -51,6 +52,13 @@ ASSET_InitShaders :: ()
   G.ast.shaders = NewArray(G.ast.pie.shaders.count, string);
   for G.ast.pie.shaders
     G.ast.shaders[it_index] = PIE_LOAD_ListToString(it.data);
+}
+
+ASSET_InitFonts :: ()
+{
+  G.ast.fonts = NewArray(G.ast.pie.fonts.count, string);
+  for G.ast.pie.fonts
+    G.ast.fonts[it_index] = PIE_LOAD_ListToString(it.data);
 }
 
 // TEXTURE THREAD
@@ -200,10 +208,12 @@ ASSET_LoadPieFile :: (file_path: string)
   models := PIE_LOAD_ListToArray(pie.links.models.list);
   materials := PIE_LOAD_ListToArray(pie.links.materials);
   shaders := PIE_LOAD_ListToArray(pie.links.shaders);
+  fonts := PIE_LOAD_ListToArray(pie.links.fonts);
   if err return;
   pie.models = models;
   pie.materials = materials;
   pie.shaders = shaders;
+  pie.fonts = fonts;
 }
 
 // MATERIALS

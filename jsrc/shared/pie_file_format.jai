@@ -116,9 +116,10 @@ PIE_Material :: struct
   };
 }
 
-PIE_Shader :: struct
+PIE_Blob :: struct
 {
   data: PIE_ListT(u8);
+  info: PIE_ListT(u8);
 }
 
 PIE_Links :: struct
@@ -133,7 +134,8 @@ PIE_Links :: struct
   skeletons: PIE_ListT(PIE_Skeleton);
   materials: PIE_ListT(PIE_Material);
 
-  shaders: PIE_ListT(PIE_Shader);
+  shaders: PIE_ListT(PIE_Blob);
+  fonts: PIE_ListT(PIE_Blob);
 }
 
 PIE_MAGIC_HASH_SEED :: (0xB5EADC0D + 0); // @todo use 64 bits

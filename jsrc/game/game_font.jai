@@ -59,14 +59,15 @@ FONT_Init :: ()
   err = FT_Init_FreeType(*ft_library);
   for enum_values_as_enum(FONT_Family)
   {
-    path := "";
-    if #complete it == { // @todo this should be put into .PIE file
-      case .PlayfairDisplay; path = "../res/fonts/PlayfairDisplay-Regular.ttf";
-      case .Jacquard24; path = "../res/fonts/Jacquard24-Regular.ttf";
-      case .Inconsolata; path = "../res/fonts/Inconsolata-Regular.ttf";
-      case .NotoColorEmoji; path = "../res/fonts/NotoColorEmoji-Regular.ttf";
+    if err break;
+    if it.(s64) > G.ast.fonts.count
+    {
+      log_error("Font %(%) is missing in .pie file. Loaded fonts count: %", it, it.(s64), G.ast.fonts.count);
+      break;
     }
-    if !err then err = FT_New_Face(ft_library, temp_c_string(path), 0, *ft_faces[it]);
+
+    font_data := G.ast.fonts[it];
+    err = FT_New_Memory_Face(ft_library, font_data.data, xx font_data.count, 0, *ft_faces[it]);
   }
 
   FONT_MaybeResizeAtlasTexture();

@@ -100,6 +100,31 @@ main :: ()
     Timer("Shaders compiled");
   }
 
+  // Load fonts
+  {
+    font_names := string.[
+      "PlayfairDisplay-Regular",
+      "Jacquard24-Regular",
+      "Inconsolata-Regular",
+      "NotoColorEmoji-Regular",
+    ];
+
+    base_dir := "../res/fonts/";
+    for font_names
+    {
+      path := join(base_dir, it, ".ttf");
+      data, success := read_entire_file(path);
+      Check(success, "Failed to load font file %", path);
+
+      blob: PIE_Blob;
+      PIE_ListSetString(*blob.data, data);
+      PIE_ListSetString(*blob.info, it);
+      array_add(*B.pie.fonts, blob);
+    }
+
+    Timer("Loaded font files");
+  }
+
   PIE_FinalizeBuilder();
   PIE_SaveToFile("data.pie");
   Timer("Saved to file");

@@ -19,8 +19,9 @@ ASSET_State :: struct
   model_indices: *SDL_GPUBuffer;
   skeletons: [] Skeleton;
 
-  // Shaders
+  // Blobs
   shaders: [] string;
+  fonts: [] string;
 };
 
 ShaderType :: enum
@@ -132,7 +133,8 @@ ASSET_PieFile :: struct
   links: *PIE_Links;
   models: [] PIE_Model;
   materials: [] PIE_Material;
-  shaders: [] PIE_Shader;
+  shaders: [] PIE_Blob;
+  fonts: [] PIE_Blob;
 };
 
 MaterialIsNil :: (a: *Material) -> bool

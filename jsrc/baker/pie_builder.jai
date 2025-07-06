@@ -12,7 +12,8 @@ PIE_Builder :: struct
   skeletons: [..] PIE_Skeleton;
   materials: [..] PIE_Material;
 
-  shaders: [..] PIE_Shader;
+  shaders: [..] PIE_Blob;
+  fonts: [..] PIE_Blob;
 };
 
 //
@@ -29,6 +30,8 @@ PIE_InitBuilder :: ()
   remember_allocators(*models);
   remember_allocators(*skeletons);
   remember_allocators(*materials);
+  remember_allocators(*shaders);
+  remember_allocators(*fonts);
 
   PIE_FileAllocType(PIE_Header);
 }
@@ -45,6 +48,7 @@ PIE_FinalizeBuilder :: ()
   PIE_ListSetArray(*links.skeletons, skeletons);
   PIE_ListSetArray(*links.materials, materials);
   PIE_ListSetArray(*links.shaders, shaders);
+  PIE_ListSetArray(*links.fonts, fonts);
 
   // Prepare PIE_Header
   header := file.memory_base.(*PIE_Header);
