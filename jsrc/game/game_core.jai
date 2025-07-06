@@ -21,6 +21,7 @@ GAME_State :: struct
   // component states
   gpu: GPU_State;
   ast: ASSET_State;
+  audio: AUDIO_State;
   hr: HOT_RELOAD_State;
   font: FONT_State;
   obj: OBJ_State;
@@ -45,7 +46,6 @@ GAME_State :: struct
   window_autolayout: bool;
   server_exit_on_disconnect: bool;
   // SDL audio
-  audio: *SDL_AudioStream;
 
   // user input
   mouse: V2;
@@ -107,6 +107,7 @@ GAME_Iterate :: ()
 
   if !G.headless
   {
+    AUDIO_CloseFinishedStreams();
     GPU_ReadbackMousePickingTexture();
   }
 
@@ -346,10 +347,7 @@ GAME_Iterate :: ()
 
     if KEY_Pressed(.M)
     {
-      sound := G.ast.sounds[0];
-      planes := *void.[sound.data];
-      SDL_PutAudioStreamPlanarData(G.audio, planes.data, xx planes.count, xx sound.count);
-      SDL_FlushAudioStream(G.audio);
+      AUDIO_PlaySound(.HIT);
     }
 
     WORLD_DrawObjects();
@@ -480,6 +478,7 @@ String :: #import "String";
 #load "game_client.jai";
 #load "game_server.jai";
 #load "game_tick.jai";
+#load "game_audio.jai";
 #load "game_gpu.jai";
 #load "game_gpu_batch.jai";
 #load "game_render_world.jai";

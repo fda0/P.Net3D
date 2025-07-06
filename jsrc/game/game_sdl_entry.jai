@@ -34,10 +34,8 @@ PLATFORM_Init :: ()
 
   if ok && !G.headless
   {
-    audio_spec := SDL_AudioSpec.{.SDL_AUDIO_S32LE, 2, 48000};
-    G.audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, *audio_spec, null, null);
-    ok = G.audio != null;
-    if ok then SDL_ResumeAudioStreamDevice(G.audio);
+    G.audio.device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, null);
+    ok = G.audio.device != 0;
   }
 
   if ok && !G.headless
