@@ -49,6 +49,7 @@ OBJ_Flags :: enum_flags u32
 
   HAS_HP;
   TARGETABLE;
+  PLAY_SOUNDS;
 };
 
 OBJ_Sync :: struct
@@ -71,6 +72,7 @@ OBJ_Sync :: struct
   attack_t: float;
   attack_continous_t: float;
   animation_requests: Queue(3, ANIMATION_Request);
+  sound_requests: Queue(3, AUDIO_Request);
 
   // visuals
   color: Color32; // unused?
@@ -99,6 +101,8 @@ OBJ_Local :: struct
   animation_attack_hide_cooldown: bool;
   // animation_requests_hot_t: [3] float;
   animation_tracks: [10] ANIMATION_Track;
+
+  audio_handled: TimestampMS; // @todo 1. This should be ServerTick type; 2. Shouldn't be specific to sound.
 };
 
 Object :: struct
@@ -390,7 +394,7 @@ OBJ_CreateHero :: (storage: OBJ_Storage, model: MODEL_Key) -> *Object
   obj := OBJ_Create(storage,
     .MOVE | .COLLIDE | .DRAW_MODEL |
     .ANIMATE_ROTATION | .ANIMATE_TRACKS |
-    .HAS_HP | .TARGETABLE);
+    .HAS_HP | .TARGETABLE | .PLAY_SOUNDS);
 
   if !OBJ_IsNil(obj)
   {

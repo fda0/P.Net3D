@@ -80,6 +80,12 @@ TICK_AdvanceSimulation :: ()
               type = .HIT
             };
             QueuePush(*attacked.s.animation_requests, hit_animation_request);
+
+            hit_sound_request := AUDIO_Request.{
+              start = GetTime(),
+              type = .HIT
+            };
+            QueuePush(*attacked.s.sound_requests, hit_sound_request);
           }
         }
         else if distance >= MINIMUM_MOVE_START_DISTANCE

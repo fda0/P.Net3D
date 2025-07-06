@@ -272,6 +272,7 @@ GAME_Iterate :: ()
     }
 
     ANIMATION_AnimateObjects();
+    AUDIO_PlayObjectSounds();
 
     // Process gameplay actions
     {

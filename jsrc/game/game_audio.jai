@@ -9,6 +9,33 @@ AUDIO_SoundType :: enum u32
   HIT;
 }
 
+AUDIO_Request :: struct
+{
+  start: TimestampMS = ~0; // @todo use type like ServerTick here; And add functions like TimeElapsedFromServerTick(tick)
+  type: AUDIO_SoundType;
+}
+
+AUDIO_PlayObjectSounds :: ()
+{
+  for *obj: G.obj.all_objects
+  {
+    if OBJ_HasAnyFlag(obj, .PLAY_SOUNDS)
+    {
+      max_start := obj.l.audio_handled;
+      for obj.s.sound_requests
+      {
+        max_start = max(max_start, it.start);
+        if it.start > obj.l.audio_handled /*&&
+           ElapsedTime(it.start, max_on_fail = true) < 300 // Dont play sounds older than 300ms.*/
+        {
+          AUDIO_PlaySound(it.type);
+        }
+      }
+      obj.l.audio_handled = max_start;
+    }
+  }
+}
+
 AUDIO_PlaySound :: (sound_type: AUDIO_SoundType)
 {
   if xx sound_type >= G.ast.sounds.count
