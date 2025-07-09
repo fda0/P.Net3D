@@ -19,13 +19,20 @@ git submodule update --init --recursive
 # Building
 Building the game and its dependency libraries (SDL .dll)
 ```
-jai compile.jai - all
+jai compile.jai - build_all
 ```
 
 Generating asset file (data.pie)
 ```
 cd build
 Baker.exe
+```
+
+Launching the game server & client
+```
+cd build
+Treasure.exe -server -headless
+Treasure.exe
 ```
 
 
