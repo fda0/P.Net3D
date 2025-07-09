@@ -8,27 +8,24 @@
 
 The project started in C [(C version before migration)](https://github.com/fda0/Treasure/tree/f481e293cac2e9dfe7562ccf02a65b7db5f36fca/src) and migrated to jai [(jai version after migration)](https://github.com/fda0/Treasure/tree/c2429a78a422837ab6513f348323790700b9e3a0/jsrc) along the way.
 
-# Cloning the project
-To download the repository and its submodules (SDL), run
+# Cloning & building
 ```bash
 git clone git@github.com:fda0/Treasure.git
 git submodule update --init --recursive
 ```
 
-
-# Building
-Building the game and its dependency libraries (SDL .dll)
+Building the game, asset preprocessor and libraries (cgltf, SDL dlls).
 ```
 jai compile.jai - build_all
 ```
 
-Generating asset file (data.pie)
+Generating asset file (data.pie).
 ```
 cd build
 Baker.exe
 ```
 
-Launching the game server & client
+Launching the game server & client.
 ```
 cd build
 Treasure.exe -server -headless
