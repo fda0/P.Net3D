@@ -87,6 +87,12 @@ PLATFORM_Iterate :: ()
 {
   while !G.in_shutdown
   {
+    if !G.headless && G.window_fullscreen != G.sdl_is_fullscreen
+    {
+      G.sdl_is_fullscreen = G.window_fullscreen;
+      SDL_SetWindowFullscreen(G.window, G.window_fullscreen);
+    }
+
     // Poll input
     {
       ev: SDL_Event;

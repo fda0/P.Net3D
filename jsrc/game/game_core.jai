@@ -45,6 +45,7 @@ GAME_State :: struct
   window_on_top: bool;
   window_autolayout: bool;
   server_exit_on_disconnect: bool;
+  sdl_is_fullscreen: bool;
   // SDL audio
 
   // user input
@@ -104,6 +105,8 @@ GAME_Iterate :: ()
     G.dt = delta_timestamp * 0.001;
     G.at = WrapFloat(0, 1000, G.at + G.dt);
   }
+
+  if KEY_Pressed(.F11) then G.window_fullscreen = !G.window_fullscreen;
 
   if !G.headless
   {
