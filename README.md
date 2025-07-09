@@ -1,10 +1,12 @@
 3D game/engine with networking.
-[Video clip 4](https://www.youtube.com/watch?v=VxGE_yR9gus)
-[Video clip 3](https://www.youtube.com/watch?v=QV_7TaHOlao)
-[Video clip 2](https://www.youtube.com/watch?v=tm6N5Fy2Jxs)
-[Video clip 1](https://www.youtube.com/watch?v=567seD6WJco)
-[Video clip 0](https://www.youtube.com/watch?v=v2UXzL0xuF4)
 
+[Clip 4,](https://www.youtube.com/watch?v=VxGE_yR9gus)
+[Clip 3,](https://www.youtube.com/watch?v=QV_7TaHOlao)
+[Clip 2,](https://www.youtube.com/watch?v=tm6N5Fy2Jxs)
+[Clip 1,](https://www.youtube.com/watch?v=567seD6WJco)
+[Clip 0](https://www.youtube.com/watch?v=v2UXzL0xuF4)
+
+The project started in C [(C version before migration)](https://github.com/fda0/Treasure/tree/f481e293cac2e9dfe7562ccf02a65b7db5f36fca/src) and migrated to jai [(jai version after migration)](https://github.com/fda0/Treasure/tree/c2429a78a422837ab6513f348323790700b9e3a0/jsrc) along the way.
 
 # Cloning the project
 To download the repository and its submodules (SDL), run
@@ -28,7 +30,7 @@ Baker.exe
 
 
 # Educational resources
-Things I found useful while working on this.
+Things I found useful while working on this project.
 
 ## Collision
 The game uses the SAT algorithm for collision detection.
